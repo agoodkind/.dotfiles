@@ -1,7 +1,17 @@
 ##########################
 # macos specific plugins #
-plugins=(vscode brew iterm2 macos)
+custom_plugins=(vscode brew iterm2 macos)
 ##########################
+
+######################
+# ZSH completions    #
+# if type brew &>/dev/null; then
+#     FPATH=$(brew --prefix)/share/zsh-completions:$FPATH
+
+#     autoload -Uz compinit
+#     compinit
+# fi
+######################
 
 ########################
 # iterm customizations #
@@ -35,22 +45,22 @@ esac
 #########
 # Conda #
 lazy_conda_aliases=('python' 'conda')
+
+unalias conda python 2>/dev/null
+
 load_conda() {
-  for lazy_conda_alias in $lazy_conda_aliases
-  do
-    unalias $lazy_conda_alias
-  done
+    for lazy_conda_alias in $lazy_conda_aliases; do
+        unalias $lazy_conda_alias 2>/dev/null
+    done
 
     export CONDA_EXE='/Users/alex/anaconda3/bin/conda'
     export _CE_M=''
     export _CE_CONDA=''
     export CONDA_PYTHON_EXE='/Users/alex/anaconda3/bin/python'
 
-    # Copyright (C) 2012 Anaconda, Inc
-    # SPDX-License-Identifier: BSD-3-Clause
-    __conda_exe() (
+    __conda_exe() {
         "$CONDA_EXE" $_CE_M $_CE_CONDA "$@"
-    )
+    }
 
     __conda_hashr() {
         if [ -n "${ZSH_VERSION:+x}" ]; then
@@ -64,8 +74,6 @@ load_conda() {
 
     __conda_activate() {
         if [ -n "${CONDA_PS1_BACKUP:+x}" ]; then
-            # Handle transition from shell activated with conda <= 4.3 to a subsequent activation
-            # after conda updated to >= 4.4. See issue #6173.
             PS1="$CONDA_PS1_BACKUP"
             \unset CONDA_PS1_BACKUP
         fi
@@ -76,7 +84,6 @@ load_conda() {
     }
 
     __conda_reactivate() {
-        # FUTURE: conda 25.9, remove this function
         echo "'__conda_reactivate' is deprecated and will be removed in 25.9. Use '__conda_activate reactivate' instead." 1>&2
         __conda_activate reactivate
     }
@@ -99,8 +106,6 @@ load_conda() {
 
     if [ -z "${CONDA_SHLVL+x}" ]; then
         \export CONDA_SHLVL=0
-        # In dev-mode CONDA_EXE is python.exe and on Windows
-        # it is in a different relative location to condabin.
         if [ -n "${_CE_CONDA:+x}" ] && [ -n "${WINDIR+x}" ]; then
             PATH="$(\dirname "$CONDA_EXE")/condabin${PATH:+":${PATH}"}"
         else
@@ -108,9 +113,6 @@ load_conda() {
         fi
         \export PATH
 
-        # We're not allowing PS1 to be unbound. It must at least be set.
-        # However, we're not exporting it, which can cause problems when starting a second shell
-        # via a first shell (i.e. starting zsh from bash).
         if [ -z "${PS1+x}" ]; then
             PS1=
         fi
@@ -119,9 +121,8 @@ load_conda() {
     conda activate base
 }
 
-for lazy_conda_alias in $lazy_conda_aliases
-do
-  alias $lazy_conda_alias="load_conda && $lazy_conda_alias"
+for lazy_conda_alias in $lazy_conda_aliases; do
+    alias $lazy_conda_alias="load_conda && $lazy_conda_alias"
 done
 
 # uncomment to see zprof output
