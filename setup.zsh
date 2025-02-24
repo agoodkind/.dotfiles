@@ -27,8 +27,6 @@ fi
 
 echo "Updating plugins and submodules"
 git submodule update --init --recursive
-git submodule sync
-git pull --recurse-submodules
 
 timestamp=$(date +"%Y%m%d_%H%M%S")
 
@@ -36,15 +34,7 @@ BACKUPS_PATH="$DOTDOTFILES/backups"
 mkdir -p $BACKUPS_PATH
 
 OMZ_SUBMODULE_PATH="$DOTDOTFILES/lib/.oh-my-zsh"
-OMZ_SUBMODULE_CUSTOM_PATH="$OMZ_SUBMODULE_PATH/custom"
 OMZ_CUSTOM_PATH="$DOTDOTFILES/lib/omz-custom"
-if [ -d "$OMZ_SUBMODULE_PATH/custom" ]; then
-    echo "Backing up $OMZ_SUBMODULE_CUSTOM_PATH to $BACKUPS_PATH/custom.bak-$timestamp"
-    mv "$OMZ_SUBMODULE_CUSTOM_PATH" "$BACKUPS_PATH/custom.bak-$timestamp"
-fi
-
-echo "Creating symlink from $OMZ_CUSTOM_PATH to $OMZ_SUBMODULE_CUSTOM_PATH"
-ln -sF "$OMZ_CUSTOM_PATH" "$OMZ_SUBMODULE_CUSTOM_PATH"
 
 if [ -f "$ZSHRC_HOME" ]; then
     echo "Backing up $ZSHRC_HOME to $BACKUPS_PATH/.zshrc.bak-$timestamp"

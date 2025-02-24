@@ -1,3 +1,6 @@
+# import variable for dotfiles path
+source ./dotfiles_path.zsh
+
 ##############################################
 # Platform-independent omz/zsh configuration #
 # do not modify this section                 #
@@ -5,34 +8,25 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 export ZSH="$DOTDOTFILES/lib/.oh-my-zsh"
-ZSH_THEME="powerlevel10k/powerlevel10k"
-# git status sits and polls your git config, and frankly is unecessary
-POWERLEVEL9K_DISABLE_GITSTATUS=true
-# this is the list of plugins that are common to all platforms
-common_plugins=(colored-man-pages zsh-navigation-tools git zsh-syntax-highlighting zsh-autosuggestions)
+ZSH_CUSTOM="$DOTDOTFILES/lib/omz-custom"
+
 ##############################################
 
 #########################################################
 # Determine OS and load platform-specific configuration #
-
 if [[ $(uname) == "Darwin" ]]; then
     source $DOTDOTFILES/os/mac.zsh
-
 # elif command -v freebsd-version > /dev/null; then
 #     source "$ZSH_CUSTOM"/os/freebsd.zsh
-
 elif command -v apt > /dev/null; then
     source $DOTDOTFILES/os/debian.zsh
-
 else
     echo 'Unknown OS!'
 fi
-
 # Do we have systemd on board?
 # if command -v systemctl > /dev/null; then
 #     source "$ZSH_CUSTOM"/os/systemd.zsh
 # fi
-
 # # Ditto Kubernetes?
 # if command -v kubectl > /dev/null; then
 #     source "$ZSH_CUSTOM"/os/kubernetes.zsh
