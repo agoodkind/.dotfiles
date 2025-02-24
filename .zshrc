@@ -1,16 +1,33 @@
-ZSH_THEME="powerlevel10k/powerlevel10k"
-# git status sits and polls your git config for changes, which can be slow
-POWERLEVEL9K_DISABLE_GITSTATUS=true
-# this is the list of plugins that are common to all platforms
-common_plugins=(colored-man-pages zsh-navigation-tools git zsh-syntax-highlighting zsh-autosuggestions)
+####################################
+# DO NOT EDIT ######################
+# Keep this before common_plugins ##
+export DOTDOTFILES="/Users/alex/.dotfiles"
+source $DOTDOTFILES/lib/head.zsh   #
+####################################
 
-###########DO NOT EDIT##############
-source $DOTDOTFILES/lib/shared.zsh #
+ZSH_THEME="powerlevel10k/powerlevel10k"
+common_plugins=(colored-man-pages zsh-navigation-tools git fast-syntax-highlighting zsh-autosuggestions zsh-autocomplete)
+
+####################################
+# DO NOT EDIT ######################
+# Keep this after common_plugins ###
+source $DOTDOTFILES/lib/body.zsh   #
 ####################################
 
 ################################################
 # Add platform-indepedent custom configs below #
 alias nano=vim
-alias pbcopy="ssh alexs-mba pbcopy"
 alias ls=ll
+
+add_plugin() {
+    PLUGIN_GIT_URL="$1"
+
+    if [ -z $2 ] ; then
+        PLUGIN_FOLDER_NAME="${$(basename "${PLUGIN_GIT_URL##*:}")%%.git}"
+    else
+        PLUGIN_FOLDER_NAME="$2"
+    fi
+
+    git submodule add $PLUGIN_GIT_URL ./lib/omz-custom/plugins/$PLUGIN_FOLDER_NAME
+}
 ################################################

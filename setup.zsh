@@ -15,7 +15,6 @@ done
 
 if [ $USE_DEFAULTS -eq 0 ]; then
     vared -p "Enter path for Dotfiles: " DOTDOTFILES 
-    echo "export DOTDOTFILES=$DOTDOTFILES" > "$DOTDOTFILES/dotfiles_path.zsh"
     vared -p "Enter path for ZSH config: " ZSHRC_HOME 
     vared -p "Enter path for VIM config: " VIMRC_HOME 
 else 
@@ -24,6 +23,8 @@ else
     echo "ZSH config: $ZSHRC_HOME"
     echo "VIM config: $VIMRC_HOME"
 fi
+
+sed -i '' "s|export DOTDOTFILES=.*|export DOTDOTFILES=\"$DOTDOTFILES\"|" "$DOTDOTFILES/.zshrc"
 
 echo "Updating plugins and submodules"
 git submodule update --init --recursive
@@ -48,7 +49,7 @@ if [ -f "$VIMRC_HOME" ]; then
     mv "$VIMRC_HOME" "$BACKUPS_PATH/.vimrc.bak-$timestamp"
 fi
 
-echo "Creating symlink from $DOTDOTFILES/.vimrc to $VIMRC_HOME"
+echo "Creating symlink from $DOTDOTFILES/.vimrc to $VIMRC_HOME\n"
 ln -sF "$DOTDOTFILES/.vimrc" "$VIMRC_HOME"
 
 # if [[ $(uname) == "Darwin" ]]; then
@@ -59,5 +60,4 @@ ln -sF "$DOTDOTFILES/.vimrc" "$VIMRC_HOME"
 #     chmod -R go-w '/opt/homebrew/share/zsh'
 # fi
 
-echo "Sourcing $ZSHRC_HOME"
-source "$ZSHRC_HOME"
+echo "Run 'source \"$ZSHRC_HOME\"' to apply changes or restart your terminal"
