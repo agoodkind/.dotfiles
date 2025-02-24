@@ -10,3 +10,12 @@
 [submodule "lib/omz-custom/themes/powerlevel10k"]
 	path = lib/omz-custom/themes/powerlevel10k
 	url = git@github.com:romkatv/powerlevel10k.git
+[submodule "omz-custom/plugins/fast-syntax-highlighting"]
+	path = omz-custom/plugins/fast-syntax-highlighting
+	url = git@github.com:zdharma-continuum/fast-syntax-highlighting.git
+[submodule "lib/omz-custom/plugins/fast-syntax-highlighting"]
+	path = lib/omz-custom/plugins/fast-syntax-highlighting
+	url = git@github.com:zdharma-continuum/fast-syntax-highlighting.git
+[submodule "lib/omz-custom/plugins/zsh-autocomplete"]
+	path = lib/omz-custom/plugins/zsh-autocomplete
+	url = git@github.com:marlonrichert/zsh-autocomplete.git

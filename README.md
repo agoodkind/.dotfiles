@@ -16,4 +16,4 @@ chmod +x setup.zsh
 Instead of cloning into `~/.oh-my-zsh/custom/plugins` do `git submodule add git@github.com:<plugin-repo> ./omz-custom/plugins/<plugin-name>`, for themese change `plugins` to `themes`
 
 ## Updating omz & plugins
-`git pull --recurse-submodules`
+

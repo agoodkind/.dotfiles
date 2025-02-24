@@ -5,5 +5,5 @@ plugins=(ubuntu)
 
 ####################################
 # Platform-specific customizations #
-
+alias pbcopy="ssh alexs-mba pbcopy"
 ####################################
