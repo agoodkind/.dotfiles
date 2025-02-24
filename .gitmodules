@@ -7,3 +7,6 @@
 [submodule "lib/omz-custom/plugins/zsh-syntax-highlighting"]
 	path = lib/omz-custom/plugins/zsh-syntax-highlighting
 	url = git@github.com:zsh-users/zsh-syntax-highlighting.git
+[submodule "lib/omz-custom/themes/powerlevel10k"]
+	path = lib/omz-custom/themes/powerlevel10k
+	url = git@github.com:romkatv/powerlevel10k.git

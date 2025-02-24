@@ -38,7 +38,7 @@ mkdir -p $BACKUPS_PATH
 OMZ_SUBMODULE_PATH="$DOTDOTFILES/lib/.oh-my-zsh"
 OMZ_SUBMODULE_CUSTOM_PATH="$OMZ_SUBMODULE_PATH/custom"
 OMZ_CUSTOM_PATH="$DOTDOTFILES/lib/omz-custom"
-if [ -f "$OMZ_SUBMODULE_PATH/custom" ]; then
+if [ -d "$OMZ_SUBMODULE_PATH/custom" ]; then
     echo "Backing up $OMZ_SUBMODULE_CUSTOM_PATH to $BACKUPS_PATH/custom.bak-$timestamp"
     mv "$OMZ_SUBMODULE_CUSTOM_PATH" "$BACKUPS_PATH/custom.bak-$timestamp"
 fi
