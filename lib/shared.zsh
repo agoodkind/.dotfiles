@@ -9,20 +9,20 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
 # git status sits and polls your git config, and frankly is unecessary
 POWERLEVEL9K_DISABLE_GITSTATUS=true
 # this is the list of plugins that are common to all platforms
-common_plugins=(zsh-autosuggestions colored-man-pages zsh-navigation-tools git zsh-syntax-highlighting)
+common_plugins=(colored-man-pages zsh-navigation-tools git zsh-syntax-highlighting zsh-autosuggestions)
 ##############################################
 
 #########################################################
 # Determine OS and load platform-specific configuration #
 
 if [[ $(uname) == "Darwin" ]]; then
-    source "$DOTDOTFILES/os/mac.zsh"
+    source $DOTDOTFILES/os/mac.zsh
 
 # elif command -v freebsd-version > /dev/null; then
 #     source "$ZSH_CUSTOM"/os/freebsd.zsh
 
 elif command -v apt > /dev/null; then
-    source "$DOTDOTFILES/os/debian.zsh"
+    source $DOTDOTFILES/os/debian.zsh
 
 else
     echo 'Unknown OS!'
