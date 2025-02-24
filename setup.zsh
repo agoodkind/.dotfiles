@@ -24,7 +24,14 @@ else
     echo "VIM config: $VIMRC_HOME"
 fi
 
-sed -i '' "s|export DOTDOTFILES=.*|export DOTDOTFILES=\"$DOTDOTFILES\"|" "$DOTDOTFILES/.zshrc"
+SED_PATTERN="s|export DOTDOTFILES=.*|export DOTDOTFILES=\"$DOTDOTFILES\"|"
+SED_PATH="$DOTDOTFILES/.zshrc"
+echo "Updating DOTDOTFILES path in .zshrc"
+if [[ $(uname) == "Darwin" ]]; then
+    sed -i '' "$SED_PATTERN" "$SED_PATH"
+else
+    sed -i "$SED_PATTERN" "$SED_PATH"
+fi
 
 echo "Updating plugins and submodules"
 git submodule update --init --recursive

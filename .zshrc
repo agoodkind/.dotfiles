@@ -1,7 +1,7 @@
 ####################################
 # DO NOT EDIT ######################
 # Keep this before common_plugins ##
-export DOTDOTFILES="/Users/alex/.dotfiles"
+export DOTDOTFILES="/home/agoodkind/.dotfiles"
 source $DOTDOTFILES/lib/head.zsh   #
 ####################################
 
