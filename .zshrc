@@ -1,7 +1,7 @@
 ####################################
 # DO NOT EDIT ######################
 # Keep this before common_plugins ##
-export $DOTDOTFILES="$(dirname "$(readlink -f "$0")")"
+export DOTDOTFILES="$(dirname "$(readlink -f .zshrc)")"
 source $DOTDOTFILES/lib/head.zsh   #
 ####################################
 
@@ -21,8 +21,10 @@ source $DOTDOTFILES/lib/body.zsh   #
 ################################################
 # Ok to edit ###################################
 # Add platform-indepedent custom configs below #
+# enables color in ls
+export CLICOLOR=1
 alias nano=vim
-alias ll=ls -la
+alias ll=ls -la --color=auto
 
 add_plugin() {
     PLUGIN_GIT_URL="$1"
