@@ -11,7 +11,6 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
 common_plugins=(colored-man-pages zsh-navigation-tools git fast-syntax-highlighting zsh-autosuggestions zsh-autocomplete)
 ####################################
 
-
 ####################################
 # DO NOT EDIT ######################
 # Keep this after common_plugins ###
@@ -21,10 +20,15 @@ source $DOTDOTFILES/lib/body.zsh   #
 ################################################
 # Ok to edit ###################################
 # Add platform-indepedent custom configs below #
+################################################
+
 # enables color in ls
 export CLICOLOR=1
+
+# aliases
 alias nano=vim
 alias ll=ls -la --color=auto
+alias config="git --git-dir=$DOTDOTFILES/.git --work-tree=$DOTDOTFILES"
 
 add_plugin() {
     PLUGIN_GIT_URL="$1"
