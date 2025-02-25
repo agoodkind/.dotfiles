@@ -29,7 +29,8 @@ export CLICOLOR=1
 alias nano=vim
 alias ll=ls -la --color=auto
 alias config="git --git-dir=$DOTDOTFILES/.git --work-tree=$DOTDOTFILES"
-
+alias reload="source $HOME/.zshrc"
+alias c="clear"
 add_plugin() {
     PLUGIN_GIT_URL="$1"
 
