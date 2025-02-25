@@ -14,7 +14,6 @@ while getopts "d" opt; do
 done
 
 if [ $USE_DEFAULTS -eq 0 ]; then
-
     vared -p "Enter path for ZSH config: " ZSHRC_HOME 
     vared -p "Enter path for VIM config: " VIMRC_HOME 
 else 
