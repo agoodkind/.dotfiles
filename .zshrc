@@ -1,7 +1,7 @@
 ####################################
 # DO NOT EDIT ######################
 # Keep this before common_plugins ##
-export DOTDOTFILES="/home/agoodkind/.dotfiles"
+export $DOTDOTFILES="$(dirname "$(readlink "$0")")"
 source $DOTDOTFILES/lib/head.zsh   #
 ####################################
 
@@ -17,7 +17,7 @@ source $DOTDOTFILES/lib/body.zsh   #
 ################################################
 # Add platform-indepedent custom configs below #
 alias nano=vim
-alias ls=ll
+alias ll=ls -la
 
 add_plugin() {
     PLUGIN_GIT_URL="$1"
