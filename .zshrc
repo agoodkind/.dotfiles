@@ -1,7 +1,7 @@
 ####################################
 # DO NOT EDIT ######################
 # Keep this before common_plugins ##
-export DOTDOTFILES="$(dirname "$(readlink -f .zshrc)")"
+export DOTDOTFILES="$(dirname "$(readlink -f $HOME/.zshrc)")"
 source $DOTDOTFILES/lib/head.zsh   #
 ####################################
 
