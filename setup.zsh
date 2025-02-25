@@ -1,5 +1,5 @@
 #!/bin/zsh
-export DOTDOTFILES="$(dirname "$(readlink "$0")")"
+export DOTDOTFILES="$(dirname "$(readlink -f "$0")")"
 ZSHRC_HOME=$HOME/.zshrc
 VIMRC_HOME=$HOME/.vimrc
 
