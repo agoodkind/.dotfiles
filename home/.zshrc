@@ -17,7 +17,6 @@ common_plugins=(colored-man-pages zsh-navigation-tools git fast-syntax-highlight
 # DO NOT EDIT ######################
 # Keep this after common_plugins ###
 source $DOTDOTFILES/lib/body.sh ####
-source $DOTDOTFILES/.zshrc.local ###
 ####################################
 
 ################################################
@@ -39,3 +38,4 @@ alias c="clear"
 
 # smart cd command
 eval "$(zoxide init zsh --cmd cd)"
+
