@@ -5,6 +5,7 @@ echo "Installing GUI applications..."
 brew install --cask 1password
 brew install --cask 1password-cli
 brew install --cask iterm2
+brew install --cask keycastr
 
 # Core Utils
 echo "Installing core utilities..."
@@ -29,6 +30,7 @@ echo "Installing network tools..."
 brew install openssh
 brew install screen
 brew install ssh-copy-id
+brew install teamookla/speedtest/speedtest
 
 # Navigation
 echo "Installing navigation tools..."
