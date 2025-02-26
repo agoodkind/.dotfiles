@@ -2,3 +2,4 @@
 .dotfiles_path
 backups
 .DS_Store
+.zshrc.local
