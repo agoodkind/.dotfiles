@@ -3,11 +3,11 @@
 # exit on error
 set -e
 
-# run repair.sh
-./repair.sh
+DOTDOTFILES="$HOME/.dotfiles"
 
-# install zoxide
-curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
+chmod +x "$DOTDOTFILES/repair.sh"
+chmod +x "$DOTDOTFILES/lib/brew.sh"
+chmod +x "$DOTDOTFILES/lib/apt.sh"
 
 # set some common git configs
 git config --global rerere.enabled true
@@ -16,10 +16,17 @@ git config --global pull.rebase true
 
 # if mac, install brew
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    ./lib/brew.sh
+    echo "macOS detected"
+    echo "Installing brew packages"
+    "$DOTDOTFILES/lib/brew.sh"
 fi
 
 # if linux, install apt
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    ./lib/apt.sh
+    echo "Linux detected"
+    echo "Installing apt packages"
+    "$DOTDOTFILES/lib/apt.sh"
 fi
+
+# run repair.sh
+"$DOTDOTFILES/repair.sh"

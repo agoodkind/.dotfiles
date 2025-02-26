@@ -29,3 +29,7 @@ echo "Installing network tools..."
 brew install openssh
 brew install screen
 brew install ssh-copy-id
+
+# Navigation
+echo "Installing navigation tools..."
+brew install zoxide
