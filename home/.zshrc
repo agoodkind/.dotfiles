@@ -1,7 +1,9 @@
+zmodload zsh/zprof
 ####################################
 # DO NOT EDIT ######################
 # Keep this before common_plugins ##
-export DOTDOTFILES="$(dirname "$(readlink -f $HOME/.zshrc)")"
+# export DOTDOTFILES="$(dirname "$(readlink -f $HOME/.zshrc)")"
+export DOTDOTFILES="$HOME/.dotfiles"
 source $DOTDOTFILES/lib/head.sh ####
 ####################################
 
@@ -38,3 +40,4 @@ alias c="clear"
 # smart cd command
 eval "$(zoxide init zsh --cmd cd)"
 
+zprof

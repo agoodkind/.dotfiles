@@ -24,5 +24,12 @@ add_plugin() {
         PLUGIN_FOLDER_NAME="$2"
     fi
 
-    git submodule add "$PLUGIN_GIT_URL" "$DOTDOTFILES/lib/omz-custom/plugins/$PLUGIN_FOLDER_NAME"
+    git submodule add "$PLUGIN_GIT_URL" "lib/omz-custom/plugins/$PLUGIN_FOLDER_NAME"
 }
+
+add_theme() {
+    THEME_GIT_URL="$1"
+    THEME_FOLDER_NAME="$(basename "${THEME_GIT_URL##*:}")"
+    git submodule add "$THEME_GIT_URL" "lib/omz-custom/themes/$THEME_FOLDER_NAME"
+}
+
