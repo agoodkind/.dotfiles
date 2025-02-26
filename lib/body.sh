@@ -29,7 +29,7 @@ add_plugin() {
 
 add_theme() {
     THEME_GIT_URL="$1"
-    THEME_FOLDER_NAME="$(basename "${THEME_GIT_URL##*:}")"
+    TEMP_NAME="$(basename "${THEME_GIT_URL##*:}")"
+    THEME_FOLDER_NAME="${TEMP_NAME%%.git}"
     git submodule add "$THEME_GIT_URL" "lib/omz-custom/themes/$THEME_FOLDER_NAME"
 }
-
