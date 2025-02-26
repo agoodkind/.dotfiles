@@ -15,6 +15,7 @@ common_plugins=(colored-man-pages zsh-navigation-tools git fast-syntax-highlight
 # DO NOT EDIT ######################
 # Keep this after common_plugins ###
 source $DOTDOTFILES/lib/body.zsh   #
+source $DOTDOTFILES/.zshrc.local   #
 ####################################
 
 ################################################
