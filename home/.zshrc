@@ -1,4 +1,4 @@
-zmodload zsh/zprof
+
 ####################################
 # DO NOT EDIT ######################
 # Keep this before common_plugins ##
@@ -9,7 +9,7 @@ source $DOTDOTFILES/lib/head.sh ####
 
 ####################################
 # Ok to edit #######################
-ZSH_THEME="robbyrussell"
+ZSH_THEME="powerlevel10k/powerlevel10k"
 common_plugins=(colored-man-pages zsh-navigation-tools git fast-syntax-highlighting zsh-autosuggestions zsh-autocomplete)
 ####################################
 
@@ -39,5 +39,3 @@ alias c="clear"
 
 # smart cd command
 eval "$(zoxide init zsh --cmd cd)"
-
-zprof
