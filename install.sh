@@ -6,8 +6,8 @@ set -e
 DOTDOTFILES="$HOME/.dotfiles"
 
 chmod +x "$DOTDOTFILES/repair.sh"
-chmod +x "$DOTDOTFILES/lib/brew.sh"
-chmod +x "$DOTDOTFILES/lib/apt.sh"
+chmod +x "$DOTDOTFILES/lib/install/brew.sh"
+chmod +x "$DOTDOTFILES/lib/install/apt.sh"
 
 # set some common git configs
 git config --global rerere.enabled true
@@ -17,15 +17,14 @@ git config --global pull.rebase true
 # if mac, install brew
 if [[ "$OSTYPE" == "darwin"* ]]; then
     echo "macOS detected"
-    echo "Installing brew packages"
-    "$DOTDOTFILES/lib/brew.sh"
+    "$DOTDOTFILES/lib/install/mac.sh"
 fi
 
 # if linux, install apt
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     echo "Linux detected"
     echo "Installing apt packages"
-    "$DOTDOTFILES/lib/apt.sh"
+    "$DOTDOTFILES/lib/install/apt.sh"
 fi
 
 # run repair.sh

@@ -1,17 +1,7 @@
 ##########################
 # macos specific plugins #
-custom_plugins=(vscode brew iterm2 macos)
+export custom_plugins=(vscode brew iterm2 macos)
 ##########################
-
-######################
-# ZSH completions    #
-# if type brew &>/dev/null; then
-#     FPATH=$(brew --prefix)/share/zsh-completions:$FPATH
-
-#     autoload -Uz compinit
-#     compinit
-# fi
-######################
 
 ########################
 # iterm customizations #
@@ -63,7 +53,7 @@ load_conda() {
     export CONDA_PYTHON_EXE='/Users/alex/anaconda3/bin/python'
 
     __conda_exe() {
-        "$CONDA_EXE" $_CE_M $_CE_CONDA "$@"
+        "$CONDA_EXE" "$_CE_M" "$_CE_CONDA" "$@"
     }
 
     __conda_hashr() {
@@ -126,7 +116,7 @@ load_conda() {
 }
 
 for lazy_conda_alias in $lazy_conda_aliases; do
-    alias $lazy_conda_alias="load_conda && $lazy_conda_alias"
+    alias "$lazy_conda_alias"="load_conda && $lazy_conda_alias"
 done
 
 # uncomment to see zprof output
