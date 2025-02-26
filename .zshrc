@@ -25,13 +25,16 @@ source $DOTDOTFILES/.zshrc.local   #
 
 # enables color in ls
 export CLICOLOR=1
+eval "$(dircolors -b)"
+zstyle ':completion:*:default' list-colors ${(s.:.)LS_COLORS}
 
 # aliases
-alias nano=vim
-alias ll=ls -la --color=auto
+alias nano="vim"
+alias ll="ls -lah --color=auto"
 alias config="git --git-dir=$DOTDOTFILES/.git --work-tree=$DOTDOTFILES"
 alias reload="source $HOME/.zshrc"
 alias c="clear"
+
 add_plugin() {
     PLUGIN_GIT_URL="$1"
 
