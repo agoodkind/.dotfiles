@@ -13,6 +13,6 @@
 [submodule "lib/omz-custom/plugins/zsh-autocomplete"]
 	path = lib/omz-custom/plugins/zsh-autocomplete
 	url = git@github.com:marlonrichert/zsh-autocomplete.git
-[submodule "lib/omz-custom/themes/powerlevel10k.git"]
-	path = lib/omz-custom/themes/powerlevel10k.git
+[submodule "lib/omz-custom/themes/powerlevel10k"]
+	path = lib/omz-custom/themes/powerlevel10k
 	url = git@github.com:romkatv/powerlevel10k.git
