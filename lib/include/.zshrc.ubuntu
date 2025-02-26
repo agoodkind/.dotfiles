@@ -1,6 +1,6 @@
 ###########################
 # ubuntu specific plugins #
-plugins=(ubuntu)
+export plugins=(ubuntu)
 ###########################
 
 ####################################

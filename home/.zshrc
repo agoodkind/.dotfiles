@@ -1,23 +1,29 @@
 
-####################################
-# DO NOT EDIT ######################
-# Keep this before common_plugins ##
-# export DOTDOTFILES="$(dirname "$(readlink -f $HOME/.zshrc)")"
+###########################################
+# DO NOT EDIT ############################
+# Keep this before common_plugins ########
 export DOTDOTFILES="$HOME/.dotfiles"
-source $DOTDOTFILES/lib/head.sh ####
-####################################
+source $DOTDOTFILES/lib/include/.zshrc.head 
+###########################################
 
-####################################
-# Ok to edit #######################
+######################################
+# Ok to edit #########################  
 ZSH_THEME="powerlevel10k/powerlevel10k"
-common_plugins=(colored-man-pages zsh-navigation-tools git fast-syntax-highlighting zsh-autosuggestions zsh-autocomplete)
-####################################
+common_plugins=(
+    colored-man-pages
+    zsh-navigation-tools
+    git
+    fast-syntax-highlighting
+    zsh-autosuggestions 
+    zsh-autocomplete
+)
+######################################  
 
-####################################
-# DO NOT EDIT ######################
-# Keep this after common_plugins ###
-source $DOTDOTFILES/lib/body.sh ####
-####################################
+################################################
+# DO NOT EDIT ##################################
+# Keep this after common_plugins ###############
+source $DOTDOTFILES/lib/include/.zshrc.body ####
+################################################
 
 ################################################
 # Ok to edit ###################################
