@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 
 #########################################################
 # Determine OS and load platform-specific configuration #
@@ -10,5 +11,18 @@ else
 fi
 
 plugins+=( "${common_plugins[@]}" )
+
 source $ZSH/oh-my-zsh.sh
-[[ ! -f "$DOTDOTFILES/lib/.p10k.zsh" ]] || source "$DOTDOTFILES/lib/.p10k.zsh"
+
+add_plugin() {
+    PLUGIN_GIT_URL="$1"
+
+    if [ -z $2 ] ; then
+        TEMP_NAME="$(basename "${PLUGIN_GIT_URL##*:}")"
+        PLUGIN_FOLDER_NAME="${TEMP_NAME%%.git}"
+    else
+        PLUGIN_FOLDER_NAME="$2"
+    fi
+
+    git submodule add "$PLUGIN_GIT_URL" "$DOTDOTFILES/lib/omz-custom/plugins/$PLUGIN_FOLDER_NAME"
+}
