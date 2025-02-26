@@ -2,20 +2,20 @@
 # DO NOT EDIT ######################
 # Keep this before common_plugins ##
 export DOTDOTFILES="$(dirname "$(readlink -f $HOME/.zshrc)")"
-source $DOTDOTFILES/lib/head.zsh   #
+source $DOTDOTFILES/lib/head.sh ####
 ####################################
 
 ####################################
 # Ok to edit #######################
-ZSH_THEME="powerlevel10k/powerlevel10k"
+ZSH_THEME="robbyrussell"
 common_plugins=(colored-man-pages zsh-navigation-tools git fast-syntax-highlighting zsh-autosuggestions zsh-autocomplete)
 ####################################
 
 ####################################
 # DO NOT EDIT ######################
 # Keep this after common_plugins ###
-source $DOTDOTFILES/lib/body.zsh   #
-source $DOTDOTFILES/.zshrc.local   #
+source $DOTDOTFILES/lib/body.sh ####
+source $DOTDOTFILES/.zshrc.local ###
 ####################################
 
 ################################################
@@ -35,15 +35,6 @@ alias config="git --git-dir=$DOTDOTFILES/.git --work-tree=$DOTDOTFILES"
 alias reload="source $HOME/.zshrc"
 alias c="clear"
 
-add_plugin() {
-    PLUGIN_GIT_URL="$1"
+# smart cd command
+eval "$(zoxide init zsh --cmd cd)"
 
-    if [ -z $2 ] ; then
-        PLUGIN_FOLDER_NAME="${$(basename "${PLUGIN_GIT_URL##*:}")%%.git}"
-    else
-        PLUGIN_FOLDER_NAME="$2"
-    fi
-
-    git submodule add $PLUGIN_GIT_URL ./lib/omz-custom/plugins/$PLUGIN_FOLDER_NAME
-}
-################################################

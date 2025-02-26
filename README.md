@@ -13,7 +13,5 @@ chmod +x setup.zsh
 
 ## Adding omz plugins
 
-Instead of cloning into `~/.oh-my-zsh/custom/plugins` do `git submodule add git@github.com:<plugin-repo> ./omz-custom/plugins/<plugin-name>`, for themese change `plugins` to `themes`
-
-## Updating omz & plugins
+Plugins that need to be installed into `.oh-my-zsh/custom` should be installed by calling `install_plugin` with the git url as the argument
 
