@@ -34,7 +34,8 @@ add_theme() {
     git submodule add "$THEME_GIT_URL" "$DOTDOTFILES/lib/omz-custom/themes/$THEME_FOLDER_NAME"
 }
 
-[[ ! -f "$DOTDOTFILES/.zshrc.local" ]] ||  source "$DOTDOTFILES/.zshrc.local" ###
+# Load local zshrc customizations that are not to be tracked by git
+[[ ! -f "$DOTDOTFILES/.zshrc.local" ]] ||  source "$DOTDOTFILES/.zshrc.local"
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
