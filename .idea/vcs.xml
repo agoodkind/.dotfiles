@@ -2,5 +2,11 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/.oh-my-zsh" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/omz-custom/plugins/fast-syntax-highlighting" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/omz-custom/plugins/zsh-autocomplete" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/omz-custom/plugins/zsh-autosuggestions" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/omz-custom/plugins/zsh-syntax-highlighting" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/omz-custom/themes/powerlevel10k" vcs="Git" />
   </component>
 </project>
