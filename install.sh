@@ -13,6 +13,7 @@ chmod +x "$DOTDOTFILES/lib/install/apt.sh"
 git config --global rerere.enabled true
 git config --global push.autoSetupRemote true
 git config --global pull.rebase true
+git config --global alias.change-commits '!'"f() { VAR=\$1; OLD=\$2; NEW=\$3; shift 3; git filter-branch --env-filter \"if [[ \\\"\$\`echo \$VAR\`\\\" = '\$OLD' ]]; then export \$VAR='\$NEW'; fi\" \$@; }; f"
 
 # if mac, install brew
 if [[ "$OSTYPE" == "darwin"* ]]; then
