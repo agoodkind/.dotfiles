@@ -86,11 +86,11 @@ function __zoxide_zi() {
 # Commands for zoxide. Disable these using --no-cmd.
 #
 
-function z() {
+function cd() {
     __zoxide_z "$@"
 }
 
-function zi() {
+function cdi() {
     __zoxide_zi "$@"
 }
 
@@ -129,7 +129,7 @@ if [[ -o zle ]]; then
     function __zoxide_z_complete_helper() {
         if [[ -n "${__zoxide_result}" ]]; then
             # shellcheck disable=SC2034,SC2296
-            BUFFER="z ${(q-)__zoxide_result}"
+            BUFFER="cd ${(q-)__zoxide_result}"
             __zoxide_result=''
             \builtin zle reset-prompt
             \builtin zle accept-line
@@ -139,7 +139,7 @@ if [[ -o zle ]]; then
     }
     \builtin zle -N __zoxide_z_complete_helper
 
-    [[ "${+functions[compdef]}" -ne 0 ]] && \compdef __zoxide_z_complete z
+    [[ "${+functions[compdef]}" -ne 0 ]] && \compdef __zoxide_z_complete cd
 fi
 
 # =============================================================================

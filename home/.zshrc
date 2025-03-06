@@ -42,6 +42,4 @@ alias config="git --git-dir=$DOTDOTFILES/.git --work-tree=$DOTDOTFILES"
 alias reload="source $HOME/.zshrc"
 alias c="clear"
 
-# smart cd command
-eval "$(zoxide init zsh --cmd cd)"
 
