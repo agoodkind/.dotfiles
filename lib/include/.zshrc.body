@@ -10,6 +10,8 @@ else
     echo 'Unknown OS!'
 fi
 
+source "$DOTDOTFILES/lib/include/.zshrc.zoxide"
+
 plugins+=( "${common_plugins[@]}" )
 
 source "$ZSH"/oh-my-zsh.sh
