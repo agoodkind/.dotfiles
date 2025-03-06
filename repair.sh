@@ -24,7 +24,8 @@ for source_file in $files; do
     if [ -a "$home_file" ]; then
         backup_file="$BACKUPS_PATH/$file_name.bak-$timestamp"
         printf "Backing up %s to %s\n" "$home_file" "$backup_file"
-        mv "$home_file" "$backup_file"
+        cp -L "$home_file" "$backup_file"
+        rm "$home_file"
     fi
 
     printf "Creating symlink from %s to %s\n" "$source_file" "$home_file"
