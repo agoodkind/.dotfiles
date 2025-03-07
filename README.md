@@ -3,13 +3,14 @@
 ### Automatic (preferred)
 
 ```sh
-chmod +x setup.zsh
-./setup.zsh
+chmod +x install.sh
+./install.sh
 ```
 
 ### Manual Setup
 
 `ln -s .zshrc ~/.zshrc`
+`ln -s ....`
 
 ## Adding omz plugins
 
