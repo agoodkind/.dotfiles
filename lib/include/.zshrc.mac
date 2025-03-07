@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 ##########################
 # macos specific plugins #
 export custom_plugins=(vscode brew iterm2 macos)
@@ -44,7 +46,7 @@ unalias conda python 2>/dev/null
 
 load_conda() {
     for lazy_conda_alias in $lazy_conda_aliases; do
-        unalias $lazy_conda_alias 2>/dev/null
+        unalias "$lazy_conda_alias" 2>/dev/null
     done
 
     export CONDA_EXE='/Users/alex/anaconda3/bin/conda'
