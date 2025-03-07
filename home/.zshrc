@@ -41,5 +41,3 @@ alias ll="ls -lah --color=auto"
 alias config="git --git-dir=$DOTDOTFILES/.git --work-tree=$DOTDOTFILES"
 alias reload="source $HOME/.zshrc"
 alias c="clear"
-
-

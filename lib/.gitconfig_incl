@@ -1,0 +1,69 @@
+[alias]
+	blaame = blame -w -C -C -C -L
+	change-commits = "!f() { VAR=$1; OLD=$2; NEW=$3; shift 3; git filter-branch --env-filter \"if [[ \\\"$`echo $VAR`\\\" = '$OLD' ]]; then export $VAR='$NEW'; fi\" $@; }; f"
+	punch = push --force-with-lease
+	staash = stash --all
+[branch]
+	autoSetupMerge = simple
+	sort = -committerdate
+[color "diff"]
+	commit = yellow bold
+	frag = magenta bold
+	meta = yellow
+	new = green bold
+	old = red bold
+	whitespace = red reverse
+[color "diff-highlight"]
+	newHighlight = green bold 22
+	newNormal = green bold
+	oldHighlight = red bold 52
+	oldNormal = red bold
+[color]
+	ui = true
+[column]
+	ui = auto
+[commit]
+	gpgsign = true
+[core]
+	editor = code --wait
+	fsmonitor = true
+	pager = delta
+	untrackedcache = true
+[delta "decorations"]
+	commit-decoration-style = blue ol
+	commit-style = raw
+	file-style = omit
+	hunk-header-decoration-style = blue box
+	hunk-header-file-style = red
+	hunk-header-line-number-style = "#067a00"
+	hunk-header-style = file line-number syntax
+[delta "interactive"]
+	keep-plus-minus-markers = false
+[delta]
+	features = decorations
+[diff-so-fancy]
+	first-run = false
+[fetch]
+	writeCommitGraph = true
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	process = git-lfs filter-process
+	required = true
+	smudge = git-lfs smudge -- %f
+[gpg]
+	format = ssh
+[init]
+	defaultBranch = main
+[interactive]
+	diffFilter = delta --color-only --features=interactive
+[pull]
+	rebase = true
+[push]
+	autoSetupRemote = true
+[rebase]
+	autoStash = true
+[rerere]
+	autoupdate = true
+	enabled = true
+[safe]
+	directory = =
