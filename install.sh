@@ -10,21 +10,23 @@ chmod +x "$DOTDOTFILES/lib/install/apt.sh"
 chmod +x "$DOTDOTFILES/lib/install/mac.sh"
 chmod +x "$DOTDOTFILES/lib/install/brew.sh"
 
-# include the global gitconfig
-git config --global include.path "$DOTDOTFILES/lib/.gitconfig_incl"
+alias config="git --git-dir=$DOTDOTFILES/.git --work-tree=$DOTDOTFILES"
+alias config="$DOTDOTFILES/lib/config.sh"
 
+# include the global gitconfig
+config --global include.path "$DOTDOTFILES/lib/.gitconfig_incl"
+
+SSH_SIGNING_KEY="$HOME/.ssh/id_ed25519"
 # get ssh signing key (path or paste)
 vared -p "Enter your ssh signing key: " SSH_SIGNING_KEY
 # if path, check if file exists
 if [[ "$SSH_SIGNING_KEY" == *"/"* ]]; then
     if [ -f "$SSH_SIGNING_KEY" ]; then
-        git config --global user.signingkey "$SSH_SIGNING_KEY"
+        config --global user.signingkey "$SSH_SIGNING_KEY"
     else
         echo "File does not exist"
         exit 1
     fi
-else
-    git config --global user.signingkey "$SSH_SIGNING_KEY"
 fi
 
 # run repair.sh
