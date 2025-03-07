@@ -1,7 +1,8 @@
-#!/usr/bin/env bash
+# shellcheck shell=bash
 
 ##############################################
 # Platform-independent omz/zsh configuration #
 # do not modify this section                 #
 export ZSH="$DOTDOTFILES/lib/.oh-my-zsh"
 export ZSH_CUSTOM="$DOTDOTFILES/lib/omz-custom"
+export PATH="$PATH:$HOME/.local/bin"

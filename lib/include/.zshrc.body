@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+# shellcheck shell=bash
 
 #########################################################
 # Determine OS and load platform-specific configuration #
@@ -15,6 +15,12 @@ source "$DOTDOTFILES/lib/include/.zshrc.zoxide"
 plugins+=( "${common_plugins[@]}" )
 
 source "$ZSH"/oh-my-zsh.sh
+
+# Load local zshrc customizations that are not to be tracked by git
+[[ ! -f "$DOTDOTFILES/.zshrc.local" ]] ||  source "$DOTDOTFILES/.zshrc.local"
+
+# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
 add_plugin() {
     PLUGIN_GIT_URL="$1"
@@ -36,8 +42,7 @@ add_theme() {
     git submodule add "$THEME_GIT_URL" "$DOTDOTFILES/lib/omz-custom/themes/$THEME_FOLDER_NAME"
 }
 
-# Load local zshrc customizations that are not to be tracked by git
-[[ ! -f "$DOTDOTFILES/.zshrc.local" ]] ||  source "$DOTDOTFILES/.zshrc.local"
-
-# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+zsudo (){
+  args=$*
+  /run/wrappers/bin/sudo -u "$USER" zsh -i -c "$args"
+}

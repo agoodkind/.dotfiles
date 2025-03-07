@@ -12,3 +12,7 @@ defaults write com.apple.finder ShowPathbar -bool true
 
 # show status bar
 defaults write com.apple.finder ShowStatusBar -bool true
+
+# disable google chrome's built-in dns client
+defaults write com.google.Chrome BuiltInDnsClientEnabled -bool false
+

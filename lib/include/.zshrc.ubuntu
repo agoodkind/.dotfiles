@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 ###########################
 # ubuntu specific plugins #
 export plugins=(ubuntu)

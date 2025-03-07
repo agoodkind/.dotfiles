@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-# exit on error
-set -e
+set -e 
 
 timestamp=$(date +"%Y%m%d_%H%M%S")
 
@@ -9,26 +8,28 @@ export DOTDOTFILES="$(dirname "$(readlink -f "$0")")"
 
 printf "DOTDOTFILES: %s\n" "$DOTDOTFILES"
 
-BACKUPS_PATH="$DOTDOTFILES/backups"
+BACKUPS_PATH="$DOTDOTFILES/backups/$timestamp"
 mkdir -p "$BACKUPS_PATH"
 
 # go through all files in $DOTDOTFILES/home and create symlinks in $HOME
 # make a backup of each file if it exists
 files=$(find "$DOTDOTFILES/home" -type f)
 for source_file in $files; do
-    file_name=$(basename "$source_file")
-    home_file=$HOME/$file_name
+    relative_path=$(realpath --relative-to="$DOTDOTFILES/home" --no-symlinks "$source_file")
+    backup_file="$BACKUPS_PATH/$relative_path.bak"
+    home_file=$HOME/$relative_path
     
     printf "\n\n"
 
     if [ -a "$home_file" ]; then
-        backup_file="$BACKUPS_PATH/$file_name.bak-$timestamp"
-        printf "Backing up %s to %s\n" "$home_file" "$backup_file"
-        cp -L "$home_file" "$backup_file"
-        rm "$home_file"
+        
+        printf "Backing up %s -> %s\n" "$home_file" "$backup_file"
+
+        mkdir -p "$(dirname "$backup_file")"
+        cp -Hr "$home_file" "$backup_file"
     fi
 
-    printf "Creating symlink from %s to %s\n" "$source_file" "$home_file"
+    printf "Symlink created: "
     ln -sfv "$source_file" "$home_file"
 done
 
