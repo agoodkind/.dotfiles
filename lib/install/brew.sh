@@ -31,6 +31,7 @@ brew install openssh
 brew install screen
 brew install ssh-copy-id
 brew install teamookla/speedtest/speedtest
+brew install sshuttle/
 
 # Navigation
 echo "Installing navigation tools..."
