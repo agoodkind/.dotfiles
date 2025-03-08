@@ -42,7 +42,7 @@ zstyle ':completion:*:default' list-colors ${(s.:.)LS_COLORS}
 alias nano="vim"
 alias ll="ls -lah --color=auto"
 alias config="git --git-dir=$DOTDOTFILES/.git --work-tree=$DOTDOTFILES"
-alias reload="source $HOME/.zshrc && echo 'zshrc reloaded'"
+alias reload="echo 'Reloading zshrc...' && source $HOME/.zshrc"
 alias c="clear"
 # repair dotfiles
-alias repair="(cd $DOTDOTFILES && exec git pull && exec ./repair.sh)"
+alias repair="(config pull && cd $DOTDOTFILES && $DOTDOTFILES/repair.sh) && reload"
