@@ -9,29 +9,30 @@ brew install --cask keycastr
 
 # Core Utils
 echo "Installing core utilities..."
-brew install coreutils
-brew install moreutils
-brew install bash
-brew install grep
-brew install tree
-brew install rename
+brew install coreutils moreutils bash grep tree rename
 
 # Development Tools
 echo "Installing development tools..."
-brew install git
-brew install git-lfs
-brew install gh
-brew install node
-brew install vim 
-brew install ack
+brew install git git-lfs gh node vim ack
 
 # Network Tools
 echo "Installing network tools..."
-brew install openssh
-brew install screen
-brew install ssh-copy-id
-brew install teamookla/speedtest/speedtest
+brew install openssh screen ssh-copy-id teamookla/speedtest/speedtest sshuttle speedtest-cli
 
 # Navigation
 echo "Installing navigation tools..."
 brew install zoxide
+
+# Shell
+echo "Installing shell tools..."
+brew install zsh zsh-syntax-highlighting zsh-autosuggestions thefuck
+
+# Languages
+echo "Installing languages tools..."
+brew install python3 node pnpm ruby
+
+# Other
+echo "Installing other tools..."
+brew install ack ack-grep
+brew install ffmpeg
+brew install imagemagick
