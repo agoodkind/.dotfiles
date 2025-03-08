@@ -13,3 +13,5 @@ set smartcase
 set wildmenu
 " Use the OS clipboard by default (on versions compiled with `+clipboard`)
 set clipboard=unnamed
+" Show line numbers
+set number

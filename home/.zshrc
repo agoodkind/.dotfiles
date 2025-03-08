@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 
 ###########################################
 # DO NOT EDIT ############################
@@ -30,6 +31,8 @@ source $DOTDOTFILES/lib/include/.zshrc.body ####
 # Add platform-indepedent custom configs below #
 ################################################
 
+# set editor to vim
+export EDITOR=vim
 # enables color in ls
 export CLICOLOR=1
 eval "$(dircolors -b)"
@@ -39,5 +42,7 @@ zstyle ':completion:*:default' list-colors ${(s.:.)LS_COLORS}
 alias nano="vim"
 alias ll="ls -lah --color=auto"
 alias config="git --git-dir=$DOTDOTFILES/.git --work-tree=$DOTDOTFILES"
-alias reload="source $HOME/.zshrc"
+alias reload="source $HOME/.zshrc && echo 'zshrc reloaded'"
 alias c="clear"
+# repair dotfiles
+alias repair="(cd $DOTDOTFILES && exec git pull && exec ./repair.sh)"

@@ -37,5 +37,5 @@ printf "\nUpdating plugins and submodules\n"
 # can't use config here since we don't know if its been defined yet
 git --git-dir="$DOTDOTFILES"/.git --work-tree="$DOTDOTFILES" submodule update --init --recursive
 
-
+printf ".zshrc has been repaired and relinked\n"
 printf "\nRun 'source \"%s/.zshrc\"' to apply changes or restart your terminal\n" "$HOME"
