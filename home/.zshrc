@@ -32,6 +32,8 @@ source $DOTDOTFILES/lib/include/.zshrc.body ####
 ################################################
 
 # set editor to vim
+export SUDO_EDITOR=vim
+export VISUAL=vim
 export EDITOR=vim
 # enables color in ls
 export CLICOLOR=1
