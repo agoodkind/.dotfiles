@@ -11,6 +11,8 @@ chmod +x "$DOTDOTFILES/lib/install/apt.sh"
 chmod +x "$DOTDOTFILES/lib/install/mac.sh"
 chmod +x "$DOTDOTFILES/lib/install/brew.sh"
 
+mkdir -p "$HOME/.ssh/sockets"
+
 # include the global gitconfig
 git --git-dir="$DOTDOTFILES"/.git \
     --work-tree="$DOTDOTFILES" \
