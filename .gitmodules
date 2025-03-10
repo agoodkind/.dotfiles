@@ -16,3 +16,6 @@
 [submodule "lib/omz-custom/themes/powerlevel10k"]
 	path = lib/omz-custom/themes/powerlevel10k
 	url = git@github.com:romkatv/powerlevel10k.git
+[submodule "lib/omz-custom/plugins/zsh-nvm"]
+	path = lib/omz-custom/plugins/zsh-nvm
+	url = git@github.com:lukechilds/zsh-nvm.git

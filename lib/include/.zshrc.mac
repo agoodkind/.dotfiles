@@ -2,7 +2,7 @@
 
 ##########################
 # macos specific plugins #
-export custom_plugins=(vscode brew iterm2 macos)
+export plugins=(vscode brew iterm2 macos)
 ##########################
 
 ########################
