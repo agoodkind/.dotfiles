@@ -12,6 +12,7 @@ fi
 
 source "$DOTDOTFILES/lib/include/.zshrc.zoxide"
 
+plugins+=( "${custom_plugins[@]}" )
 plugins+=( "${common_plugins[@]}" )
 
 source "$ZSH"/oh-my-zsh.sh
