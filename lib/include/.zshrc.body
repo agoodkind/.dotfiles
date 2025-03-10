@@ -32,14 +32,14 @@ add_plugin() {
         PLUGIN_FOLDER_NAME="$2"
     fi
 
-    config submodule add "$PLUGIN_GIT_URL" "$DOTDOTFILES/lib/omz-custom/plugins/$PLUGIN_FOLDER_NAME"
+    config submodule add "$PLUGIN_GIT_URL" "lib/omz-custom/plugins/$PLUGIN_FOLDER_NAME"
 }
 
 add_theme() {
     THEME_GIT_URL="$1"
     TEMP_NAME="$(basename "${THEME_GIT_URL##*:}")"
     THEME_FOLDER_NAME="${TEMP_NAME%%.git}"
-    config submodule add "$THEME_GIT_URL" "$DOTDOTFILES/lib/omz-custom/themes/$THEME_FOLDER_NAME"
+    config submodule add "$THEME_GIT_URL" "lib/omz-custom/themes/$THEME_FOLDER_NAME"
 }
 
 zsudo (){
