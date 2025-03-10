@@ -6,3 +6,5 @@
 export ZSH="$DOTDOTFILES/lib/.oh-my-zsh"
 export ZSH_CUSTOM="$DOTDOTFILES/lib/omz-custom"
 export PATH="$PATH:$HOME/.local/bin"
+export NVM_LAZY_LOAD=true
+alias config=git --git-dir="$DOTDOTFILES"/.git --work-tree="$DOTDOTFILES"
