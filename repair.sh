@@ -22,6 +22,13 @@ realpath_cmd() {
     fi
 }
 
+# for macOS clean up brew
+if is_macos; then        
+    brew cleanup 
+fi
+
+rm -f "$ZSH_COMPDUMP"
+
 # go through all files in $DOTDOTFILES/home and create symlinks in $HOME
 # make a backup of each file if it exists
 files=$(find "$DOTDOTFILES/home" -type f)
