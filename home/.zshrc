@@ -11,7 +11,7 @@ source $DOTDOTFILES/lib/include/.zshrc.head
 # Ok to edit #########################  
 ZSH_THEME="powerlevel10k/powerlevel10k"
 common_plugins=(
-    zsh-nvm
+    # zsh-nvm
     colored-man-pages
     zsh-navigation-tools
     # git
