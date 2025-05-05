@@ -14,7 +14,7 @@ common_plugins=(
     zsh-nvm
     colored-man-pages
     zsh-navigation-tools
-    git
+    # git
     fast-syntax-highlighting
     zsh-autosuggestions 
     zsh-autocomplete
