@@ -45,6 +45,7 @@ export EDITOR=vim
 # enables color in ls
 export CLICOLOR=1
 eval "$(dircolors -b)"
+
 zstyle ':completion:*:default' list-colors ${(s.:.)LS_COLORS}
 
 # aliases
