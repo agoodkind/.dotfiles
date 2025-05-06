@@ -15,13 +15,8 @@ source "$DOTDOTFILES/lib/include/.zshrc.zoxide"
 plugins+=( "${custom_plugins[@]}" )
 plugins+=( "${common_plugins[@]}" )
 
-source "$ZSH"/oh-my-zsh.sh
-
 # Load local zshrc customizations that are not to be tracked by git
 [[ ! -f "$DOTDOTFILES/.zshrc.local" ]] ||  source "$DOTDOTFILES/.zshrc.local"
-
-# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
 add_plugin() {
     PLUGIN_GIT_URL="$1"
