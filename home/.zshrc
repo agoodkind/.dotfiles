@@ -32,6 +32,12 @@ source $DOTDOTFILES/lib/include/.zshrc.body ####
 # Add platform-indepedent custom configs below #
 ################################################
 
+# enable up/down arrow key bindings for history search
+bindkey '\e[A' up-line-or-history
+bindkey '\eOA' up-line-or-history
+bindkey '\e[B' down-line-or-history
+bindkey '\eOB' down-line-or-history
+
 # set editor to vim
 export SUDO_EDITOR=vim
 export VISUAL=vim
@@ -45,8 +51,9 @@ zstyle ':completion:*:default' list-colors ${(s.:.)LS_COLORS}
 alias nano="vim"
 alias ll="ls -lah --color=auto"
 alias config="git --git-dir=$DOTDOTFILES/.git --work-tree=$DOTDOTFILES"
-alias reload="echo 'Reloading zshrc...' && source $HOME/.zshrc"
 alias c="clear"
+alias reload="echo 'Reloading zshrc...' && source $HOME/.zshrc && omz reload"  
 alias repair="(config pull; cd $DOTDOTFILES && $DOTDOTFILES/repair.sh) && reload"
 alias sudoedit="sudo -e"
 alias npm="pnpm"
+alias sshrm="ssh-keygen -R" # remove ssh host from known hosts

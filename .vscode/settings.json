@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.zsh": "shellscript",
+        ".zshrc.*": "shellscript",
+        "home/.ssh/config": "sshconfig"
+    }
+}
