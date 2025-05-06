@@ -1,21 +1,18 @@
-[submodule "lib/.oh-my-zsh"]
-	path = lib/.oh-my-zsh
-	url = git@github.com:ohmyzsh/ohmyzsh.git
-[submodule "lib/omz-custom/plugins/zsh-autosuggestions"]
-	path = lib/omz-custom/plugins/zsh-autosuggestions
+[submodule "lib/plugins/zsh-autosuggestions"]
+	path = lib/plugins/zsh-autosuggestions
 	url = git@github.com:zsh-users/zsh-autosuggestions.git
-[submodule "lib/omz-custom/plugins/zsh-syntax-highlighting"]
-	path = lib/omz-custom/plugins/zsh-syntax-highlighting
+[submodule "lib/plugins/zsh-syntax-highlighting"]
+	path = lib/plugins/zsh-syntax-highlighting
 	url = git@github.com:zsh-users/zsh-syntax-highlighting.git
-[submodule "lib/omz-custom/plugins/fast-syntax-highlighting"]
-	path = lib/omz-custom/plugins/fast-syntax-highlighting
+[submodule "lib/plugins/fast-syntax-highlighting"]
+	path = lib/plugins/fast-syntax-highlighting
 	url = git@github.com:zdharma-continuum/fast-syntax-highlighting.git
-[submodule "lib/omz-custom/plugins/zsh-autocomplete"]
-	path = lib/omz-custom/plugins/zsh-autocomplete
+[submodule "lib/plugins/zsh-autocomplete"]
+	path = lib/plugins/zsh-autocomplete
 	url = git@github.com:marlonrichert/zsh-autocomplete.git
-[submodule "lib/omz-custom/themes/powerlevel10k"]
-	path = lib/omz-custom/themes/powerlevel10k
+[submodule "lib/themes/powerlevel10k"]
+	path = lib/themes/powerlevel10k
 	url = git@github.com:romkatv/powerlevel10k.git
-[submodule "lib/omz-custom/plugins/zsh-nvm"]
-	path = lib/omz-custom/plugins/zsh-nvm
+[submodule "lib/plugins/zsh-nvm"]
+	path = lib/plugins/zsh-nvm
 	url = git@github.com:lukechilds/zsh-nvm.git
