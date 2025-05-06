@@ -10,9 +10,6 @@
 [submodule "lib/plugins/zsh-autocomplete"]
 	path = lib/plugins/zsh-autocomplete
 	url = git@github.com:marlonrichert/zsh-autocomplete.git
-[submodule "lib/themes/powerlevel10k"]
-	path = lib/themes/powerlevel10k
-	url = git@github.com:romkatv/powerlevel10k.git
 [submodule "lib/plugins/zsh-nvm"]
 	path = lib/plugins/zsh-nvm
 	url = git@github.com:lukechilds/zsh-nvm.git
