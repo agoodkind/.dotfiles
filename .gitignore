@@ -1,7 +1,6 @@
 .DS_Store
 .dotfiles_path
 backups
-.DS_Store
 .zshrc.local
-.DS_Store
 .ssh_config.local
+.zsh_plugins.zsh
