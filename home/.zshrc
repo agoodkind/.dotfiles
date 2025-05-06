@@ -8,17 +8,21 @@ source $DOTDOTFILES/lib/include/.zshrc.head
 ###########################################
 
 ######################################
-# Ok to edit #########################  
-ZSH_THEME="powerlevel10k/powerlevel10k"
-common_plugins=(
-    # zsh-nvm
-    colored-man-pages
-    zsh-navigation-tools
-    # git
-    fast-syntax-highlighting
-    zsh-autosuggestions 
-    zsh-autocomplete
-)
+# Theme ############################## 
+autoload -U compinit; compinit
+autoload -Uz vcs_info
+precmd() { vcs_info } 
+
+zstyle ':vcs_info:git:*' formats '%b '
+zstyle ':completion:*:default' list-colors ${(s.:.)LS_COLORS}
+
+setopt PROMPT_SUBST
+export NEWLINE=$'\n'
+PROMPT='%F{cyan}%~%f %F{red}${vcs_info_msg_0_}%f ${NEWLINE}❯ '
+RPROMPT="%D{%L:%M:%S}"
+
+source "$DOTDOTFILES/lib/omz-custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
+bindkey '\t' end-of-line
 ######################################  
 
 ################################################
@@ -32,12 +36,6 @@ source $DOTDOTFILES/lib/include/.zshrc.body ####
 # Add platform-indepedent custom configs below #
 ################################################
 
-# enable up/down arrow key bindings for history search
-bindkey '\e[A' up-line-or-history
-bindkey '\eOA' up-line-or-history
-bindkey '\e[B' down-line-or-history
-bindkey '\eOB' down-line-or-history
-
 # set editor to vim
 export SUDO_EDITOR=vim
 export VISUAL=vim
@@ -45,8 +43,6 @@ export EDITOR=vim
 # enables color in ls
 export CLICOLOR=1
 eval "$(dircolors -b)"
-
-zstyle ':completion:*:default' list-colors ${(s.:.)LS_COLORS}
 
 # aliases
 alias nano="vim"
