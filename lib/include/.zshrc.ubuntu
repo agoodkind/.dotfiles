@@ -1,10 +1,5 @@
 # shellcheck shell=bash
 
-###########################
-# ubuntu specific plugins #
-export custom_plugins=(ubuntu)
-###########################
-
 ####################################
 # Platform-specific customizations #
 alias pbcopy="ssh alexs-mba pbcopy"

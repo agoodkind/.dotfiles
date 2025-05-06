@@ -12,16 +12,9 @@ fi
 
 source "$DOTDOTFILES/lib/include/.zshrc.zoxide"
 
-plugins+=( "${custom_plugins[@]}" )
-plugins+=( "${common_plugins[@]}" )
-
-source "$ZSH"/oh-my-zsh.sh
 
 # Load local zshrc customizations that are not to be tracked by git
 [[ ! -f "$DOTDOTFILES/.zshrc.local" ]] ||  source "$DOTDOTFILES/.zshrc.local"
-
-# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
 add_plugin() {
     PLUGIN_GIT_URL="$1"
@@ -33,14 +26,14 @@ add_plugin() {
         PLUGIN_FOLDER_NAME="$2"
     fi
 
-    config submodule add "$PLUGIN_GIT_URL" "lib/omz-custom/plugins/$PLUGIN_FOLDER_NAME"
+    config submodule add "$PLUGIN_GIT_URL" "lib/plugins/$PLUGIN_FOLDER_NAME"
 }
 
 add_theme() {
     THEME_GIT_URL="$1"
     TEMP_NAME="$(basename "${THEME_GIT_URL##*:}")"
     THEME_FOLDER_NAME="${TEMP_NAME%%.git}"
-    config submodule add "$THEME_GIT_URL" "lib/omz-custom/themes/$THEME_FOLDER_NAME"
+    config submodule add "$THEME_GIT_URL" "lib/themes/$THEME_FOLDER_NAME"
 }
 
 zsudo (){
