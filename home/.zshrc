@@ -20,9 +20,6 @@ setopt PROMPT_SUBST
 export NEWLINE=$'\n'
 PROMPT='%F{cyan}%~%f %F{red}${vcs_info_msg_0_}%f ${NEWLINE}❯ '
 RPROMPT="%D{%L:%M:%S}"
-
-source "$DOTDOTFILES/lib/omz-custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
-bindkey '\t' end-of-line
 ######################################  
 
 ################################################
@@ -35,6 +32,9 @@ source $DOTDOTFILES/lib/include/.zshrc.body ####
 # Ok to edit ###################################
 # Add platform-indepedent custom configs below #
 ################################################
+
+# autosuggestions bindkey
+bindkey '\t' end-of-line
 
 # set editor to vim
 export SUDO_EDITOR=vim
