@@ -4,3 +4,4 @@ backups
 .DS_Store
 .zshrc.local
 .DS_Store
+.ssh_config.local
