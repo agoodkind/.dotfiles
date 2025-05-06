@@ -1,10 +1,5 @@
 # shellcheck shell=bash
 
-##########################
-# macos specific plugins #
-export custom_plugins=(vscode brew iterm2 macos)
-##########################
-
 ########################
 # iterm customizations #
 test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
