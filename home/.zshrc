@@ -102,3 +102,4 @@ alias repair="(config pull; cd $DOTDOTFILES && $DOTDOTFILES/repair.sh) && reload
 
 # ssh
 alias sshrm="ssh-keygen -R" # remove ssh host from known hosts
+
