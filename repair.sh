@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e 
+set -e
 
 timestamp=$(date +"%Y%m%d_%H%M%S")
 
@@ -23,8 +23,8 @@ realpath_cmd() {
 }
 
 # for macOS clean up brew
-if is_macos; then        
-    brew cleanup 
+if is_macos; then
+    brew cleanup
 fi
 
 rm -f "$ZSH_COMPDUMP"
@@ -38,7 +38,7 @@ for source_file in $files; do
     home_file=$HOME/$relative_path
 
     if [ -a "$home_file" ]; then
-        
+
         printf "\n\nBacking up %s -> %s\n" "$home_file" "$backup_file"
 
         mkdir -p "$(dirname "$backup_file")"
@@ -52,6 +52,13 @@ done
 printf "\nUpdating plugins and submodules\n"
 # can't use config here since we don't know if its been defined yet
 git --git-dir="$DOTDOTFILES"/.git --work-tree="$DOTDOTFILES" submodule update --init --recursive
+
+# remove zcompdump files
+printf "retaining zcompdump files\nif cd is malfunctioning run\n 'rm ~/.zcompdump*'\n"
+
+# update zinit
+zinit self-update
+zinit update --all
 
 printf "\n.zshrc has been repaired and relinked\n"
 printf "\nRun 'source \"%s/.zshrc\"' to apply changes or restart your terminal\n" "$HOME"

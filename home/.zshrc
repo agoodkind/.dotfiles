@@ -2,64 +2,103 @@
 
 ###########################################
 export DOTDOTFILES="$HOME/.dotfiles"
-source $DOTDOTFILES/lib/include/.zshrc.head
 ###########################################
+
+export PATH="$PATH:$HOME/.local/bin"
+export NVM_LAZY_LOAD=true
+
+################################################
+# DO NOT EDIT ##################################
+source $DOTDOTFILES/lib/include/.zshrc.incl ####
+################################################
 
 ######################################
 # Theme ##############################
-source $DOTDOTFILES/lib/include/.zshrc.styles
 
+# enables color in ls
+export CLICOLOR=1
+# dircolors just prints LS_COLORS
+eval "$(dircolors -b)"
+
+########################################
+# plugins ##############################
+########################################
+
+zi snippet OMZP::git
+zi snippet OMZP::dotenv
+
+# Completions
 autoload -U compinit
 compinit
-autoload -Uz vcs_info
-precmd() {
-    vcs_info
-}
-#
 
-# Prompt ################################
+# fzf-tab: replace zsh's default completion selection menu with fzf
+zinit light Aloxaf/fzf-tab
+
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
+zstyle ':fzf-tab:complete:git-(add|diff|restore):*' fzf-preview 'git diff $word | delta'
+zstyle ':fzf-tab:complete:git-log:*' fzf-preview 'git log --color=always $word'
+zstyle ':fzf-tab:complete:git-help:*' fzf-preview 'git help $word | bat -plman --color=always'
+zstyle ':fzf-tab:complete:git-show:*' fzf-preview 'case "$group" in "commit tag") git show --color=always $word ;; *) git show --color=always $word | delta ;; esac'
+zstyle ':fzf-tab:complete:git-checkout:*' fzf-preview 'case "$group" in "modified file") git diff $word | delta ;; "recent commit object name") git show --color=always $word | delta ;; *) git log --color=always $word ;; esac'
+zstyle ':completion:*:git-checkout:*' sort false
+zstyle ':completion:*:descriptions' format '[%d]'
+zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
+zstyle ':completion:*' menu no
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
+zstyle ':fzf-tab:*' switch-group '<' '>'
+zstyle ':completion:*' list-max-items 20
+
+zinit light Freed-Wu/fzf-tab-source
+
+# Syntax highlighting with fast initialization
+zinit ice wait lucid atinit"ZINIT[COMPINIT_OPTS]=-C; zicompinit; zicdreplay"
+zinit light zdharma-continuum/fast-syntax-highlighting
+
+# Additional completions with blockf to prevent clashes
+zinit ice wait lucid blockf
+zinit light zsh-users/zsh-completions
+
+# Auto-suggestions with proper initialization
+zinit ice wait lucid atload"!_zsh_autosuggest_start"
+zinit light zsh-users/zsh-autosuggestions
+
+# Prompt ###############################
 setopt PROMPT_SUBST
 export NEWLINE=$'\n'
 PROMPT='%F{cyan}%~%f %F{red}${vcs_info_msg_0_}%f ${NEWLINE}❯ '
 RPROMPT="%D{%L:%M:%S}"
 ######################################
 
-################################################
-# DO NOT EDIT ##################################
-# Keep this after common_plugins ###############
-source $DOTDOTFILES/lib/include/.zshrc.body ####
-################################################
-
-################################################
-# Ok to edit ###################################
-# Add platform-indepedent custom configs below #
-################################################
-
-# autosuggestions bindkey
-bindkey '\t' end-of-line
-
 # set editor to vim
 export SUDO_EDITOR=vim
 export VISUAL=vim
 export EDITOR=vim
-# enables color in ls
-export CLICOLOR=1
-eval "$(dircolors -b)"
 
-# aliases
-alias c="clear"
-alias config="git --git-dir=$DOTDOTFILES/.git --work-tree=$DOTDOTFILES"
-alias ll="ls -lah --color=auto"
-alias nano="vim"
-alias npm="pnpm"
+########################################
+# Aliases ##############################
+########################################
+
+# sudo wrapper to run commands with current user
+alias sudo="zsudo"
 alias please="sudo"
-alias reload="echo 'Reloading zshrc...' && source $HOME/.zshrc"
-alias repair="(config pull; cd $DOTDOTFILES && $DOTDOTFILES/repair.sh) && reload"
-alias sshrm="ssh-keygen -R" # remove ssh host from known hosts
 alias sudoedit="sudo -e"
 
-# The following lines were added by compinstall
+# clear screen
+alias c="clear"
 
-autoload -Uz compinit
-compinit
-# End of lines added by compinstall
+# ls
+alias ll="ls -lah --color=auto"
+
+# vim
+alias nano="nvim"
+
+# npm
+alias npm="pnpm"
+
+# dotfile management
+alias config="git --git-dir=$DOTDOTFILES/.git --work-tree=$DOTDOTFILES"
+alias reload="echo 'Reloading zshrc...' && source $HOME/.zshrc"
+alias repair="(config pull; cd $DOTDOTFILES && $DOTDOTFILES/repair.sh) && reload"
+
+# ssh
+alias sshrm="ssh-keygen -R" # remove ssh host from known hosts

@@ -21,11 +21,11 @@ brew install openssh screen ssh-copy-id teamookla/speedtest/speedtest sshuttle s
 
 # Navigation
 echo "Installing navigation tools..."
-brew install zoxide
+brew install fzf eza zoxide
 
 # Shell
 echo "Installing shell tools..."
-brew install zsh zsh-syntax-highlighting zsh-autosuggestions thefuck
+brew install zsh thefuck
 
 # Languages
 echo "Installing languages tools..."
@@ -33,6 +33,4 @@ brew install python3 node pnpm ruby
 
 # Other
 echo "Installing other tools..."
-brew install ack ack-grep
-brew install ffmpeg
-brew install imagemagick
+brew install ack ack-grep ffmpeg imagemagick bat pandoc glow paper mdless grc less
