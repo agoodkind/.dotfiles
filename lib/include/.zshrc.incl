@@ -30,7 +30,6 @@ source "$HOME/.local/share/zinit/zinit.git/zinit.zsh"
 autoload -Uz _zinit
 (( ${+_comps} )) && _comps[zinit]=_zinit
 
-
 # zoxide is fancy cd
 source "$DOTDOTFILES/lib/include/.zshrc.zoxide"
 
@@ -59,4 +58,3 @@ add_theme() {
     THEME_FOLDER_NAME="${TEMP_NAME%%.git}"
     config submodule add "$THEME_GIT_URL" "lib/themes/$THEME_FOLDER_NAME"
 }
-
