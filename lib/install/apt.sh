@@ -17,7 +17,7 @@ sudo apt install neovim -y
 sudo apt install speedtest-cli moreutils bash grep tree rename ack ack-grep -y
 
 # install shell tools
-sudo apt install zsh zsh-syntax-highlighting zsh-autosuggestions thefuck -y
+sudo apt install zsh thefuck fzf eza bat pandoc mdless glow grc less -y
 
 # install languages
 sudo apt install python3 ruby -y

@@ -1,3 +1,0 @@
-[submodule "lib/plugins/antidote"]
-	path = lib/antidote
-	url = git@github.com:mattmc3/antidote.git

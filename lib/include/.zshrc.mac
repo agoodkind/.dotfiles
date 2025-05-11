@@ -16,7 +16,7 @@ PATH="/opt/homebrew/opt/coreutils/libexec/gnubin:$PATH"
 
 #################
 # ocaml pkg mgr #
-[[ ! -r /Users/alex/.opam/opam-init/init.zsh ]] || source /Users/alex/.opam/opam-init/init.zsh  > /dev/null 2> /dev/null
+[[ ! -r /Users/alex/.opam/opam-init/init.zsh ]] || source /Users/alex/.opam/opam-init/init.zsh >/dev/null 2>/dev/null
 #################
 
 #######
@@ -28,10 +28,9 @@ export NVM_DIR=~/.nvm
 # pnpm #
 export PNPM_HOME="$HOME/Library/pnpm"
 case ":$PATH:" in
-  *":$PNPM_HOME:"*) ;;
-  *) export PATH="$PNPM_HOME:$PATH" ;;
+*":$PNPM_HOME:"*) ;;
+*) export PATH="$PNPM_HOME:$PATH" ;;
 esac
 #######
 
-# uncomment to see zprof output
-# zprof
+alias dircolors="gdircolors"
