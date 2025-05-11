@@ -49,16 +49,12 @@ for source_file in $files; do
     ln -sfv "$source_file" "$home_file"
 done
 
-printf "\nUpdating plugins and submodules\n"
+printf "\nUpdating plugins and submodules\n\n"
 # can't use config here since we don't know if its been defined yet
 git --git-dir="$DOTDOTFILES"/.git --work-tree="$DOTDOTFILES" submodule update --init --recursive
 
 # remove zcompdump files
-printf "retaining zcompdump files\nif cd is malfunctioning run\n 'rm ~/.zcompdump*'\n"
-
-# update zinit
-zinit self-update
-zinit update --all
+printf "retaining zcompdump files\nif cd is malfunctioning run\n 'rm ~/.zcompdump*'\n\n"
 
 printf "\n.zshrc has been repaired and relinked\n"
 printf "\nRun 'source \"%s/.zshrc\"' to apply changes or restart your terminal\n" "$HOME"
