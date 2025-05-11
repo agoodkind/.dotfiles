@@ -1,0 +1,8 @@
+
+# Theme ##############################
+zstyle ':vcs_info:git:*' formats '%b '
+zstyle ':completion:*' completer _complete _ignored _approximate
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+zstyle ':completion:*' menu select=15
+zstyle ':completion:*' select-prompt %SScrolling active: current selection at %p%s
+zstyle :compinstall filename '/Users/alex/.zshrc'
