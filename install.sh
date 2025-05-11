@@ -18,18 +18,15 @@ git --git-dir="$DOTDOTFILES"/.git \
     --work-tree="$DOTDOTFILES" \
     config --global include.path "$DOTDOTFILES/lib/.gitconfig_incl"
 
-SSH_SIGNING_KEY="$HOME/.ssh/id_ed25519"
+export SSH_SIGNING_KEY="$HOME/.ssh/id_ed25519"
 # get ssh signing key (path or paste)
-vared -p "Enter your ssh signing key: " SSH_SIGNING_KEY
+EDITOR=nano vared -p "Enter your ssh signing key: " SSH_SIGNING_KEY
 # if path, check if file exists
 if [[ "$SSH_SIGNING_KEY" == *"/"* ]]; then
     if [ -f "$SSH_SIGNING_KEY" ]; then
         git --git-dir="$DOTDOTFILES"/.git \
             --work-tree="$DOTDOTFILES" \
             config --global user.signingkey "$SSH_SIGNING_KEY"
-    else
-        echo "File does not exist"
-        exit 1
     fi
 fi
 
@@ -46,6 +43,9 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     echo "macOS detected"
     "$DOTDOTFILES/lib/install/mac.sh"
 fi
+
+# install zinit
+bash -c "$(curl --fail --show-error --silent --location https://raw.githubusercontent.com/zdharma-continuum/zinit/HEAD/scripts/install.sh)"
 
 # run repair.sh
 "$DOTDOTFILES/repair.sh"
