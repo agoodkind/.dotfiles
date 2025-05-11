@@ -79,7 +79,6 @@ export EDITOR=vim
 ########################################
 
 # sudo wrapper to run commands with current user
-alias sudo="zsudo"
 alias please="sudo"
 alias sudoedit="sudo -e"
 
