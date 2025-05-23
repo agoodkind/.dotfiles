@@ -2,6 +2,7 @@
     "files.associations": {
         "*.zsh": "shellscript",
         ".zshrc.*": "shellscript",
-        "${workspaceFolder}/home/.ssh/config": "sshconfig"
+        "${workspaceFolder}/home/.ssh/config": "sshconfig",
+        "${workspaceFolder}/.ssh_config.local": "sshconfig"
     }
 }
