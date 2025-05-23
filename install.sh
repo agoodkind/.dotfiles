@@ -18,18 +18,6 @@ git --git-dir="$DOTDOTFILES"/.git \
     --work-tree="$DOTDOTFILES" \
     config --global include.path "$DOTDOTFILES/lib/.gitconfig_incl"
 
-export SSH_SIGNING_KEY="$HOME/.ssh/id_ed25519"
-# get ssh signing key (path or paste)
-EDITOR=nano vared -p "Enter your ssh signing key: " SSH_SIGNING_KEY
-# if path, check if file exists
-if [[ "$SSH_SIGNING_KEY" == *"/"* ]]; then
-    if [ -f "$SSH_SIGNING_KEY" ]; then
-        git --git-dir="$DOTDOTFILES"/.git \
-            --work-tree="$DOTDOTFILES" \
-            config --global user.signingkey "$SSH_SIGNING_KEY"
-    fi
-fi
-
 # if linux, install apt
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     echo "Linux detected"
