@@ -69,10 +69,15 @@ PROMPT='%F{cyan}%~%f %F{red}${vcs_info_msg_0_}%f ${NEWLINE}❯ '
 RPROMPT="%D{%L:%M:%S}"
 ######################################
 
-# set editor to vim
+########################################
+# Configs 
 export SUDO_EDITOR=vim
 export VISUAL=vim
 export EDITOR=vim
+
+export HISTFILE=~/.zsh_history
+export HISTSIZE=100000
+export SAVEHIST=100000
 
 ########################################
 # Aliases ##############################
@@ -115,3 +120,4 @@ fi
 source "$HOME/.local/share/zinit/zinit.git/zinit.zsh"
 autoload -Uz _zinit
 (( ${+_comps} )) && _comps[zinit]=_zinit
+
