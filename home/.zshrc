@@ -71,9 +71,7 @@ RPROMPT="%D{%L:%M:%S}"
 
 ########################################
 # Configs 
-export SUDO_EDITOR=vim
-export VISUAL=vim
-export EDITOR=vim
+export SUDO_EDITOR=nvim
 
 export HISTFILE=~/.zsh_history
 export HISTSIZE=100000
@@ -95,6 +93,7 @@ alias ll="ls -lah --color=auto"
 
 # vim
 alias nano="nvim"
+alias emacs="nvim"
 
 # npm
 alias npm="pnpm"
