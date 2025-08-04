@@ -27,7 +27,6 @@
 [core]
 	editor = code --wait
 	fsmonitor = true
-	pager = delta
 	untrackedcache = true
 [delta "decorations"]
 	commit-decoration-style = blue ol
@@ -67,3 +66,9 @@
 	enabled = true
 [safe]
 	directory = =
+[merge]
+	conflictStyle = zdiff3
+	renameLimit=999999
+[diff]
+	algorithm=histogram
+	renameLimit=999999

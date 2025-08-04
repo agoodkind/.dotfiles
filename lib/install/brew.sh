@@ -13,7 +13,7 @@ brew install coreutils moreutils bash grep tree rename
 
 # Development Tools
 echo "Installing development tools..."
-brew install git git-lfs gh node vim ack
+brew install git git-lfs gh node vim ack git-delta
 
 # Network Tools
 echo "Installing network tools..."
