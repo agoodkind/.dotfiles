@@ -9,7 +9,7 @@ brew install --cask keycastr
 
 # Core Utils
 echo "Installing core utilities..."
-brew install coreutils moreutils bash grep tree rename
+brew install coreutils moreutils bash grep tree rename most less
 
 # Development Tools
 echo "Installing development tools..."
@@ -33,4 +33,4 @@ brew install python3 node pnpm ruby
 
 # Other
 echo "Installing other tools..."
-brew install ack ack-grep ffmpeg imagemagick bat pandoc glow paper mdless grc less
+brew install ack ack-grep ffmpeg imagemagick bat pandoc glow paper mdless grc
