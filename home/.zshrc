@@ -71,7 +71,13 @@ RPROMPT="%D{%L:%M:%S}"
 
 ########################################
 # Configs 
-export SUDO_EDITOR=nvim
+if command -v nvim &> /dev/null; then
+    export SUDO_EDITOR=nvim
+    alias vim="$(command -v nvim)"
+else
+    export SUDO_EDITOR=vim
+    alias nvim="$(command -v vim)"
+fi
 
 export HISTFILE=~/.zsh_history
 export HISTSIZE=100000
