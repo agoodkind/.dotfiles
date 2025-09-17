@@ -17,7 +17,7 @@ brew install git git-lfs gh node vim ack git-delta
 
 # Network Tools
 echo "Installing network tools..."
-brew install openssh screen ssh-copy-id teamookla/speedtest/speedtest sshuttle speedtest-cli
+brew install openssh screen ssh-copy-id teamookla/speedtest/speedtest sshuttle speedtest-cli aria2
 
 # Navigation
 echo "Installing navigation tools..."
