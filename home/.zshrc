@@ -79,6 +79,10 @@ else
     alias nvim="$(command -v vim)"
 fi
 
+if command -v most &> /dev/null; then
+    export PAGER=most
+fi
+
 export HISTFILE=~/.zsh_history
 export HISTSIZE=100000
 export SAVEHIST=100000
