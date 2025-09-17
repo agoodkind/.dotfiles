@@ -14,10 +14,10 @@ sudo apt install gh
 sudo apt install neovim -y
 
 # install tools
-sudo apt install speedtest-cli moreutils bash grep tree rename ack ack-grep -y
+sudo apt install speedtest-cli moreutils bash grep tree rename ack ack-grep aria2 -y
 
 # install shell tools
-sudo apt install zsh thefuck fzf eza bat pandoc grc less -y
+sudo apt install zsh thefuck fzf eza bat pandoc grc less most -y
 
 # install languages
 sudo apt install python3 ruby -y
