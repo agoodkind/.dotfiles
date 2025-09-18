@@ -6,6 +6,8 @@ brew install --cask 1password
 brew install --cask 1password-cli
 brew install --cask iterm2
 brew install --cask keycastr
+brew install --cask visual-studio-code
+brew install --cask google-chrome
 
 # Core Utils
 echo "Installing core utilities..."
@@ -17,7 +19,7 @@ brew install git git-lfs gh node vim ack git-delta
 
 # Network Tools
 echo "Installing network tools..."
-brew install openssh screen ssh-copy-id teamookla/speedtest/speedtest sshuttle speedtest-cli aria2
+brew install openssh screen ssh-copy-id showwin/speedtest/speedtest sshuttle aria2
 
 # Navigation
 echo "Installing navigation tools..."
