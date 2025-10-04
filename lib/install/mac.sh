@@ -35,4 +35,4 @@ defaults write com.google.Chrome BuiltInDnsClientEnabled -bool false
 
 # enable sudo-touchid
 # if installed 
-[[ -f /opt/homebrew/opt/sudo-touchid/bin/sudo-touchid ]] && /opt/homebrew/opt/sudo-touchid/bin/sudo-touchid
+[[ -f /opt/homebrew/opt/sudo-touchid/bin/sudo-touchid ]] && /opt/homebrew/opt/sudo-touchid/bin/sudo-touchid -q -y
