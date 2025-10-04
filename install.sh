@@ -4,7 +4,7 @@
 # exit on error
 set -e
 
-DOTDOTFILES="$HOME/.dotfiles"
+export DOTDOTFILES="$HOME/.dotfiles"
 
 chmod +x "$DOTDOTFILES/repair.sh"
 chmod +x "$DOTDOTFILES/lib/install/apt.sh"
