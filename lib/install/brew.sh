@@ -13,6 +13,8 @@ brew install --cask google-chrome
 brew install --cask font-jetbrains-mono-nerd-font
 brew install --cask font-jetbrains-mono
 brew install --cask cyberduck
+brew install --cask showwin/speedtest/speedtest 
+brew install --cask vlc
 
 brew install xcodesorg/made/xcodes
 brew install artginzburg/tap/sudo-touchid
