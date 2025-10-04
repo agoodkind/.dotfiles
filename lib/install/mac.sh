@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+echo $DOTDOTFILES
+
 # Brew
 $DOTDOTFILES/lib/install/brew.sh
 
