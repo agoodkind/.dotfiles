@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-echo $DOTDOTFILES
+echo "$DOTDOTFILES"
 
 # Brew
 "$DOTDOTFILES/lib/install/brew.sh"
@@ -14,6 +14,21 @@ defaults write com.apple.finder ShowPathbar -bool true
 
 # show status bar
 defaults write com.apple.finder ShowStatusBar -bool true
+
+# show all filename extensions
+defaults write NSGlobalDomain AppleShowAllExtensions -bool true
+
+# avoid creating .DS_Store files on network or usb volumes
+defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
+defaults write com.apple.desktopservices DSDontWriteUSBStores -bool true
+
+# highlight dock
+defaults write com.apple.dock mouse-over-hilite-stack -bool true
+
+# minimize effect
+defaults write com.apple.dock mineffect -string suck
+
+killall Finder Dock
 
 # disable google chrome's built-in dns client
 defaults write com.google.Chrome BuiltInDnsClientEnabled -bool false
