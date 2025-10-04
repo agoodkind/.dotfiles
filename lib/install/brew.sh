@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+/usr/bin/which -s brew || /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
 # GUI Applications
 echo "Installing GUI applications..."
 brew install --cask 1password
