@@ -3,7 +3,7 @@
 echo $DOTDOTFILES
 
 # Brew
-$DOTDOTFILES/lib/install/brew.sh
+"$DOTDOTFILES/lib/install/brew.sh"
 
 # Finder
 # enable hidden files

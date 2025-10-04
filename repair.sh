@@ -3,7 +3,8 @@ set -e
 
 timestamp=$(date +"%Y%m%d_%H%M%S")
 
-export DOTDOTFILES="$(dirname "$(readlink -f "$0")")"
+DOTDOTFILES="$(dirname "$(readlink -f "$0")")"
+export DOTDOTFILES
 
 printf "DOTDOTFILES: %s\n" "$DOTDOTFILES"
 

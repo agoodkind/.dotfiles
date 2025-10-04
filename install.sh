@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck shell=bash
 
 # exit on error
 set -e
@@ -7,16 +6,18 @@ set -e
 export DOTDOTFILES="$HOME/.dotfiles"
 
 chmod +x "$DOTDOTFILES/repair.sh"
+chmod +x "$DOTDOTFILES/lib/install/git.sh"
 chmod +x "$DOTDOTFILES/lib/install/apt.sh"
 chmod +x "$DOTDOTFILES/lib/install/mac.sh"
 chmod +x "$DOTDOTFILES/lib/install/brew.sh"
 
 mkdir -p "$HOME/.ssh/sockets"
 
-# include the global gitconfig
-git --git-dir="$DOTDOTFILES"/.git \
-    --work-tree="$DOTDOTFILES" \
-    config --global include.path "$DOTDOTFILES/lib/.gitconfig_incl"
+# run repair.sh
+"$DOTDOTFILES/repair.sh"
+
+# set up git
+"$DOTDOTFILES/lib/install/git.sh"
 
 # if linux, install apt
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
@@ -29,11 +30,11 @@ fi
 # if mac, install brew
 if [[ "$OSTYPE" == "darwin"* ]]; then
     echo "macOS detected"
+    echo "Installing mac packages"
     "$DOTDOTFILES/lib/install/mac.sh"
 fi
 
 # install zinit
 bash -c "$(curl --fail --show-error --silent --location https://raw.githubusercontent.com/zdharma-continuum/zinit/HEAD/scripts/install.sh)"
 
-# run repair.sh
-"$DOTDOTFILES/repair.sh"
+
