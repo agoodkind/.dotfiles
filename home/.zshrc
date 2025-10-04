@@ -102,7 +102,7 @@ alias emacs="nvim"
 export EDITOR="nvim"
 
 # use most as pager if installed
-if command -v most &> /dev/null; then
+if isinstalled -s most; then
     export PAGER=most
 fi
 
@@ -127,6 +127,8 @@ alias repair="(config pull; cd $DOTDOTFILES && $DOTDOTFILES/repair.sh) && reload
 # ssh
 alias sshrm="ssh-keygen -R" # remove ssh host from known hosts
 
+# the fuck
+eval $(thefuck --alias)
 
 ### Added by Zinit's installer
 if [[ ! -f $HOME/.local/share/zinit/zinit.git/zinit.zsh ]]; then
