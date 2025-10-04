@@ -8,6 +8,8 @@ brew install --cask iterm2
 brew install --cask keycastr
 brew install --cask visual-studio-code
 brew install --cask google-chrome
+brew install xcodesorg/made/xcodes
+brew install artginzburg/tap/sudo-touchid
 
 # Core Utils
 echo "Installing core utilities..."
