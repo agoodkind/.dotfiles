@@ -13,11 +13,15 @@ brew install --cask google-chrome
 brew install --cask font-jetbrains-mono-nerd-font
 brew install --cask font-jetbrains-mono
 brew install --cask cyberduck
-brew install --cask showwin/speedtest/speedtest 
+brew install --cask utm
 brew install --cask vlc
+brew install --cask stats
+brew install --cask xcodes-app
 
-brew install xcodesorg/made/xcodes
+brew install xcodes
 brew install artginzburg/tap/sudo-touchid
+brew install showwin/speedtest/speedtest 
+brew install wireguard-tools
 
 # Core Utils
 echo "Installing core utilities..."
