@@ -70,19 +70,8 @@ RPROMPT="%D{%L:%M:%S}"
 ######################################
 
 ########################################
-# Configs 
-if command -v nvim &> /dev/null; then
-    export SUDO_EDITOR=nvim
-    alias vim="$(command -v nvim)"
-else
-    export SUDO_EDITOR=vim
-    alias nvim="$(command -v vim)"
-fi
-
-if command -v most &> /dev/null; then
-    export PAGER=most
-fi
-
+# zsh Configs 
+########################################
 export HISTFILE=~/.zsh_history
 export HISTSIZE=100000
 export SAVEHIST=100000
@@ -90,6 +79,32 @@ export SAVEHIST=100000
 ########################################
 # Aliases ##############################
 ########################################
+# use system which and not built in since system supports -s arg
+alias which="$(which -a which | tail -n 1)"
+alias isinstalled="which -s"
+
+# vim
+if isinstalled nvim; then
+    export SUDO_EDITOR=nvim
+    alias vim="$(command -v nvim)"
+elif isinstalled vim; then
+    export SUDO_EDITOR=vim
+    alias nvim="$(command -v vim)"
+else
+    export SUDO_EDITOR=vi
+    alias vim="vi"
+    alias nvim="vi"
+fi
+
+alias edit="nvim"
+alias nano="nvim"
+alias emacs="nvim"
+export EDITOR="nvim"
+
+# use most as pager if installed
+if command -v most &> /dev/null; then
+    export PAGER=most
+fi
 
 # sudo wrapper to run commands with current user
 alias please="sudo"
@@ -99,11 +114,7 @@ alias sudoedit="sudo -e"
 alias c="clear"
 
 # ls
-alias ll="ls -lah --color=auto"
-
-# vim
-alias nano="nvim"
-alias emacs="nvim"
+alias ls="$(which ls) -lah --color=auto"
 
 # npm
 alias npm="pnpm"

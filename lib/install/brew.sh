@@ -2,20 +2,24 @@
 
 /usr/bin/which -s brew || /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-# GUI Applications
-echo "Installing GUI applications..."
+# Cask/Custom Applications
+echo "Installing Cask + Custom applications..."
 brew install --cask 1password
 brew install --cask 1password-cli
 brew install --cask iterm2
 brew install --cask keycastr
 brew install --cask visual-studio-code
 brew install --cask google-chrome
+brew install --cask font-jetbrains-mono-nerd-font
+brew install --cask font-jetbrains-mono
+brew install --cask cyberduck
+
 brew install xcodesorg/made/xcodes
 brew install artginzburg/tap/sudo-touchid
 
 # Core Utils
 echo "Installing core utilities..."
-brew install coreutils moreutils bash grep tree rename most less
+brew install coreutils moreutils bash grep tree rename most less nvim
 
 # Development Tools
 echo "Installing development tools..."
