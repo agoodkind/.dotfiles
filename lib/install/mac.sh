@@ -33,3 +33,6 @@ killall Finder Dock
 # disable google chrome's built-in dns client
 defaults write com.google.Chrome BuiltInDnsClientEnabled -bool false
 
+# enable sudo-touchid
+# if installed 
+[[ -f /opt/homebrew/opt/sudo-touchid/bin/sudo-touchid ]] && /opt/homebrew/opt/sudo-touchid/bin/sudo-touchid
