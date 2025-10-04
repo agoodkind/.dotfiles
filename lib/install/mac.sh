@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Brew
-"$DOTDOTFILES"/lib/install/brew.sh
+$DOTDOTFILES/lib/install/brew.sh
 
 # Finder
 # enable hidden files
