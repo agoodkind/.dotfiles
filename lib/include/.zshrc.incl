@@ -1,21 +1,50 @@
 # shellcheck shell=bash
+# Check if profiling was requested and load zprof module early if needed
+SHOULD_PROFILE=false
+if [[ -f ~/.cache/zsh_profile_next ]]; then
+    SHOULD_PROFILE=true
+    zmodload zsh/zprof
+    rm ~/.cache/zsh_profile_next
 
-# Determine OS and load platform-specific configuration #
-is_mac() {
-    [[ $(uname) == "Darwin" ]]
-}
-
-is_ubuntu() {
-    command -v apt >/dev/null
-}
-
-if is_mac; then
-    source "$DOTDOTFILES/lib/include/.zshrc.mac"
-elif is_ubuntu; then
-    source "$DOTDOTFILES/lib/include/.zshrc.ubuntu"
-else
-    echo 'Unknown OS!'
+    do_profile() {
+        echo "Zsh performance profiling results:"
+        zprof
+    }
 fi
+export SHOULD_PROFILE
+
+# Run this function to enable profiling for the next shell session
+zsh_profile() {
+    mkdir -p ~/.cache
+    touch ~/.cache/zsh_profile_next
+    echo "Performance profiling enabled for next shell session"
+}
+
+# Cache OS detection
+if [[ ! -f ~/.cache/os-type.cache ]]; then
+    mkdir -p ~/.cache
+    if [[ $(uname) == "Darwin" ]]; then
+        echo "mac" > ~/.cache/os-type.cache
+    elif command -v apt >/dev/null; then
+        echo "ubuntu" > ~/.cache/os-type.cache
+    else
+        echo "unknown" > ~/.cache/os-type.cache
+    fi
+fi
+
+OS_TYPE=$(cat ~/.cache/os-type.cache)
+
+case "$OS_TYPE" in
+    mac)
+        source "$DOTDOTFILES/lib/include/.zshrc.mac"
+        ;;
+    ubuntu)
+        source "$DOTDOTFILES/lib/include/.zshrc.ubuntu"
+        ;;
+    *)
+        echo 'Unknown OS!'
+        ;;
+esac
 
 ### Added by Zinit's installer
 if [[ ! -f $HOME/.local/share/zinit/zinit.git/zinit.zsh ]]; then
@@ -36,43 +65,10 @@ source "$DOTDOTFILES/lib/include/.zshrc.zoxide"
 # Load local zshrc customizations that are not to be tracked by git
 [[ ! -f "$DOTDOTFILES/.zshrc.local" ]] || source "$DOTDOTFILES/.zshrc.local"
 
-autoload -U add_plugin
-autoload -U add_theme
-
-add_plugin() {
-    PLUGIN_GIT_URL="$1"
-
-    if [ -z "$2" ]; then
-        TEMP_NAME="$(basename "${PLUGIN_GIT_URL##*:}")"
-        PLUGIN_FOLDER_NAME="${TEMP_NAME%%.git}"
-    else
-        PLUGIN_FOLDER_NAME="$2"
-    fi
-
-    config submodule add "$PLUGIN_GIT_URL" "lib/plugins/$PLUGIN_FOLDER_NAME"
-}
-
-add_theme() {
-    THEME_GIT_URL="$1"
-    TEMP_NAME="$(basename "${THEME_GIT_URL##*:}")"
-    THEME_FOLDER_NAME="${TEMP_NAME%%.git}"
-    config submodule add "$THEME_GIT_URL" "lib/themes/$THEME_FOLDER_NAME"
-}
-
-# the fuck
+# the fuck - lazy load this function
 fuck () {
-    TF_PYTHONIOENCODING=$PYTHONIOENCODING;
-    export TF_SHELL=zsh;
-    export TF_ALIAS=fuck;
-    TF_SHELL_ALIASES=$(alias);
-    export TF_SHELL_ALIASES;
-    TF_HISTORY="$(fc -ln -10)";
-    export TF_HISTORY;
-    export PYTHONIOENCODING=utf-8;
-    TF_CMD=$(
-        thefuck THEFUCK_ARGUMENT_PLACEHOLDER "$@"
-    ) && eval "$TF_CMD";
-    unset TF_HISTORY;
-    export PYTHONIOENCODING=$TF_PYTHONIOENCODING;
-    test -n "$TF_CMD" && print -s "$TF_CMD"
+    # Undefine this function and source the real one on first use
+    unfunction fuck
+    eval "$(thefuck --alias)"
+    fuck "$@"
 }

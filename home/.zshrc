@@ -1,14 +1,14 @@
 # shellcheck shell=bash
 
-###########################################
-export DOTDOTFILES="$HOME/.dotfiles"
-###########################################
-
-export PATH="$PATH:$HOME/.local/bin"
-export NVM_LAZY_LOAD=true
-
 ################################################
 # DO NOT EDIT ##################################
+########################################
+export DOTDOTFILES="$HOME/.dotfiles"
+########################################
+export PATH="$PATH:$HOME/.local/bin"
+export NVM_LAZY_LOAD=true
+################################################
+# Include OS specific and common zshrc configs
 source $DOTDOTFILES/lib/include/.zshrc.incl ####
 ################################################
 
@@ -29,37 +29,37 @@ source ~/.cache/dircolors.cache
 # plugins ##############################
 ########################################
 
-# Defer OMZ snippets
-zinit ice wait lucid
-zi snippet OMZP::git
+# Use turbo mode for all plugins
+zinit wait lucid for \
+    OMZP::git \
+    OMZP::dotenv
 
-zinit ice wait lucid
-zi snippet OMZP::dotenv
-
-# fzf-tab: replace zsh's default completion selection menu with fzf
-zinit light Aloxaf/fzf-tab
+# fzf-tab with slight delay
+zinit wait'1' lucid for \
+    Aloxaf/fzf-tab
 
 # Defer zstyle configuration
-zinit ice wait lucid atload'
+zinit wait'1' lucid atload'
     zstyle ":fzf-tab:complete:cd:*" fzf-preview "eza -1 --color=always \$realpath"
     zstyle ":fzf-tab:complete:git-(add|diff|restore):*" fzf-preview "git diff \$word | delta"
     zstyle ":completion:*" list-colors ${(s.:.)LS_COLORS}
     zstyle ":completion:*" menu no
-'
-zinit light Freed-Wu/fzf-tab-source
+' for \
+    Freed-Wu/fzf-tab-source
 
-# Syntax highlighting with fast initialization
-zinit ice wait lucid atinit"ZINIT[COMPINIT_OPTS]=-C; zicompinit; zicdreplay"
-zinit light zdharma-continuum/fast-syntax-highlighting
+# Syntax highlighting with compinit
+zinit wait lucid atinit"ZINIT[COMPINIT_OPTS]=-C; zicompinit; zicdreplay" for \
+    zdharma-continuum/fast-syntax-highlighting
 
-# Additional completions with blockf to prevent clashes
-zinit ice wait lucid blockf
-zinit light zsh-users/zsh-completions
+# Additional completions
+zinit wait lucid blockf for \
+    zsh-users/zsh-completions
 
-# Auto-suggestions with proper initialization
-zinit ice wait lucid atload"!_zsh_autosuggest_start"
-zinit light zsh-users/zsh-autosuggestions
+# Auto-suggestions
+zinit wait lucid atload"_zsh_autosuggest_start" for \
+    zsh-users/zsh-autosuggestions
 
+########################################
 # Prompt ###############################
 setopt PROMPT_SUBST
 export NEWLINE=$'\n'
@@ -139,3 +139,6 @@ source "$HOME/.local/share/zinit/zinit.git/zinit.zsh"
 autoload -Uz _zinit
 (( ${+_comps} )) && _comps[zinit]=_zinit
 ### End of Zinit's installer chunk
+
+# Show profiling results if module was loaded
+$SHOULD_PROFILE && do_profile

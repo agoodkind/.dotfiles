@@ -16,7 +16,7 @@ is_macos() {
 }
 
 realpath_cmd() {
-    if is_macos; then
+    if is_macos && command -v grealpath >/dev/null; then
         grealpath "$@"
     else
         realpath "$@"
@@ -38,7 +38,7 @@ for source_file in $files; do
     backup_file="$BACKUPS_PATH/$relative_path.bak"
     home_file=$HOME/$relative_path
 
-    if [ -a "$home_file" ]; then
+    if [ -e "$home_file" ]; then
 
         printf "\n\nBacking up %s -> %s\n" "$home_file" "$backup_file"
 
