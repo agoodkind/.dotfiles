@@ -17,33 +17,35 @@ source $DOTDOTFILES/lib/include/.zshrc.incl ####
 
 # enables color in ls
 export CLICOLOR=1
-# dircolors just prints LS_COLORS
-eval "$(dircolors -b)"
+
+# Cache dircolors
+if [[ ! -f ~/.cache/dircolors.cache ]] || [[ ~/.dir_colors -nt ~/.cache/dircolors.cache ]]; then
+    mkdir -p ~/.cache
+    dircolors -b > ~/.cache/dircolors.cache
+fi
+source ~/.cache/dircolors.cache
 
 ########################################
 # plugins ##############################
 ########################################
 
+# Defer OMZ snippets
+zinit ice wait lucid
 zi snippet OMZP::git
+
+zinit ice wait lucid
 zi snippet OMZP::dotenv
 
 # fzf-tab: replace zsh's default completion selection menu with fzf
 zinit light Aloxaf/fzf-tab
 
-zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
-zstyle ':fzf-tab:complete:git-(add|diff|restore):*' fzf-preview 'git diff $word | delta'
-zstyle ':fzf-tab:complete:git-log:*' fzf-preview 'git log --color=always $word'
-zstyle ':fzf-tab:complete:git-help:*' fzf-preview 'git help $word | bat -plman --color=always'
-zstyle ':fzf-tab:complete:git-show:*' fzf-preview 'case "$group" in "commit tag") git show --color=always $word ;; *) git show --color=always $word | delta ;; esac'
-zstyle ':fzf-tab:complete:git-checkout:*' fzf-preview 'case "$group" in "modified file") git diff $word | delta ;; "recent commit object name") git show --color=always $word | delta ;; *) git log --color=always $word ;; esac'
-zstyle ':completion:*:git-checkout:*' sort false
-zstyle ':completion:*:descriptions' format '[%d]'
-zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
-zstyle ':completion:*' menu no
-zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
-zstyle ':fzf-tab:*' switch-group '<' '>'
-zstyle ':completion:*' list-max-items 20
-
+# Defer zstyle configuration
+zinit ice wait lucid atload'
+    zstyle ":fzf-tab:complete:cd:*" fzf-preview "eza -1 --color=always \$realpath"
+    zstyle ":fzf-tab:complete:git-(add|diff|restore):*" fzf-preview "git diff \$word | delta"
+    zstyle ":completion:*" list-colors ${(s.:.)LS_COLORS}
+    zstyle ":completion:*" menu no
+'
 zinit light Freed-Wu/fzf-tab-source
 
 # Syntax highlighting with fast initialization
@@ -110,7 +112,8 @@ alias sudoedit="sudo -e"
 alias c="clear"
 
 # ls
-alias ls="$(which ls) -lah --color=auto"
+alias ll="$(which ls) -lah --color=auto"
+alias ls=ll
 
 # npm
 alias npm="pnpm"
