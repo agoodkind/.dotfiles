@@ -1,2 +1,3 @@
 # shellcheck shell=bash
 # add your custom zsh configurations here
+[[ "$TERM_PROGRAM" == "vscode" ]] && . "$(code --locate-shell-integration-path zsh)"

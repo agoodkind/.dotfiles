@@ -14,11 +14,6 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 # If you need to use these commands with their normal names, you can add a "gnubin" directory to your PATH with:
 PATH="/opt/homebrew/opt/coreutils/libexec/gnubin:$PATH"
 
-#################
-# ocaml pkg mgr #
-[[ ! -r /Users/alex/.opam/opam-init/init.zsh ]] || source /Users/alex/.opam/opam-init/init.zsh >/dev/null 2>/dev/null
-#################
-
 #######
 # nvm #
 export NVM_DIR=~/.nvm

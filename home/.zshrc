@@ -27,10 +27,6 @@ eval "$(dircolors -b)"
 zi snippet OMZP::git
 zi snippet OMZP::dotenv
 
-# Completions
-autoload -U compinit
-compinit
-
 # fzf-tab: replace zsh's default completion selection menu with fzf
 zinit light Aloxaf/fzf-tab
 
@@ -127,8 +123,7 @@ alias repair="(config pull; cd $DOTDOTFILES && $DOTDOTFILES/repair.sh) && reload
 # ssh
 alias sshrm="ssh-keygen -R" # remove ssh host from known hosts
 
-# the fuck
-eval $(thefuck --alias)
+
 
 ### Added by Zinit's installer
 if [[ ! -f $HOME/.local/share/zinit/zinit.git/zinit.zsh ]]; then
