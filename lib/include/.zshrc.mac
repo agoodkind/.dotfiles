@@ -7,7 +7,12 @@ test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell
 
 ############
 # homebrew #
-eval "$(/opt/homebrew/bin/brew shellenv)"
+# Cache brew shellenv to avoid slow eval on every startup
+if [[ ! -f ~/.cache/brew-shellenv.cache ]] || [[ /opt/homebrew/bin/brew -nt ~/.cache/brew-shellenv.cache ]]; then
+    mkdir -p ~/.cache
+    /opt/homebrew/bin/brew shellenv > ~/.cache/brew-shellenv.cache
+fi
+source "$HOME/.cache/brew-shellenv.cache"
 ############
 
 # Commands also provided by macOS and the commands dir, dircolors, vdir have been installed with the prefix "g".
