@@ -34,6 +34,14 @@ zinit wait lucid for \
     OMZP::git \
     OMZP::dotenv
 
+# Additional completions
+zinit wait lucid blockf atinit'fpath=("$DOTDOTFILES/lib/completions" $fpath)' for \
+    zsh-users/zsh-completions
+
+# Local completion snippets
+zinit wait lucid as"completion" id-as"_curl" for \
+    "$DOTDOTFILES/lib/_curl"
+
 # fzf-tab with slight delay
 zinit wait'1' lucid for \
     Aloxaf/fzf-tab
@@ -50,10 +58,6 @@ zinit wait'1' lucid atload'
 # Syntax highlighting with compinit
 zinit wait lucid atinit"ZINIT[COMPINIT_OPTS]=-C; zicompinit; zicdreplay" for \
     zdharma-continuum/fast-syntax-highlighting
-
-# Additional completions
-zinit wait lucid blockf for \
-    zsh-users/zsh-completions
 
 # Auto-suggestions
 zinit wait lucid atload"_zsh_autosuggest_start" for \
