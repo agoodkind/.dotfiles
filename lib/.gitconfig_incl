@@ -3,6 +3,8 @@
 	change-commits = "!f() { VAR=$1; OLD=$2; NEW=$3; shift 3; git filter-branch --env-filter \"if [[ \\\"$`echo $VAR`\\\" = '$OLD' ]]; then export $VAR='$NEW'; fi\" $@; }; f"
 	punch = push --force-with-lease
 	staash = stash --all
+	revertfile = checkout master --
+	resetfile = checkout master --
 [branch]
 	autoSetupMerge = simple
 	sort = -committerdate
