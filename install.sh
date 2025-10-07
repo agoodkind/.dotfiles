@@ -18,6 +18,7 @@ mkdir -p "$HOME/.ssh/sockets"
 
 # set up git
 "$DOTDOTFILES/lib/install/git.sh"
+ssh-add "$HOME/.ssh/id_ed25519"
 
 # if linux, install apt
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then

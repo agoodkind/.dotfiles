@@ -16,16 +16,20 @@ if [[ -z "$(git config --global user.email)" ]]; then
     git config --global user.email "$git_user_email"
 fi
 
+# set up gpg ssh key
 if [[ -z "$(git config --global gpg.ssh.defaultKeyCommand)" ]]; then
+    # check if ed25519 key is in ssh-agent
     if ssh-add -L 2>/dev/null | grep -q "ed25519"; then
         git_ssh_key_full=$(ssh-add -L | grep "ed25519" | head -n 1)
         git_ssh_key_id=$(echo "$git_ssh_key_full" | awk '{print $2}')
         git config --global gpg.ssh.defaultKeyCommand "ssh-add -L | grep '$git_ssh_key_id'"
         git config --global user.signingKey "key::$git_ssh_key_full"
+    # check if ed25519 key is in $HOME/.ssh/id_ed25519.pub
     elif [[ -f "$HOME/.ssh/id_ed25519.pub" ]]; then
         git_ssh_key_full=$(cat "$HOME/.ssh/id_ed25519.pub")
         git config --global user.signingKey "key::$git_ssh_key_full"
     else
+    # if not, prompt for path to key
         read -r -p "Enter path to your SSH public key (or leave empty to skip): " git_ssh_key_path
         if [[ -n "$git_ssh_key_path" && -f "$git_ssh_key_path" ]]; then
             git_ssh_key_full=$(cat "$git_ssh_key_path")
