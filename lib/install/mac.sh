@@ -28,11 +28,14 @@ defaults write com.apple.dock mouse-over-hilite-stack -bool true
 # minimize effect
 defaults write com.apple.dock mineffect -string suck
 
-killall Finder Dock
+# change screenshot location
+defaults write com.apple.screencapture location ~/Documents/Screenshots
+
+killall Finder Dock SystemUIServer
 
 # disable google chrome's built-in dns client
 defaults write com.google.Chrome BuiltInDnsClientEnabled -bool false
 
 # enable sudo-touchid
 # if installed 
-sh <( curl -sL git.io/sudo-touch-id ) -q -y
+sh <( curl -sL git.io/sudo-touch-id )

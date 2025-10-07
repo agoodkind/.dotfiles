@@ -2,24 +2,7 @@
 
 /usr/bin/which -s brew || /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-# Cask/Custom Applications
-echo "Installing Cask + Custom applications..."
-brew install --cask 1password
-brew install --cask 1password-cli
-brew install --cask iterm2
-brew install --cask keycastr
-brew install --cask visual-studio-code
-brew install --cask google-chrome
-brew install --cask font-jetbrains-mono-nerd-font
-brew install --cask font-jetbrains-mono
-brew install --cask cyberduck
-brew install --cask utm
-brew install --cask vlc
-brew install --cask stats
-brew install --cask xcodes-app
-
 brew install xcodes
-brew install artginzburg/tap/sudo-touchid
 brew install showwin/speedtest/speedtest 
 brew install wireguard-tools
 
@@ -50,3 +33,19 @@ brew install python3 node pnpm ruby
 # Other
 echo "Installing other tools..."
 brew install ack ack-grep ffmpeg imagemagick bat pandoc glow paper mdless grc
+
+# Cask/Custom Applications
+echo "Installing Cask + Custom applications..."
+brew install --cask 1password
+brew install --cask 1password-cli
+brew install --cask iterm2
+brew install --cask keycastr
+brew install --cask visual-studio-code
+brew install --cask google-chrome
+brew install --cask font-jetbrains-mono-nerd-font
+brew install --cask font-jetbrains-mono
+brew install --cask cyberduck
+brew install --cask utm
+brew install --cask vlc
+brew install --cask stats
+brew install --cask xcodes-app

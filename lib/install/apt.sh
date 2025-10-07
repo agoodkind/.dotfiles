@@ -17,7 +17,12 @@ sudo apt install neovim -y
 sudo apt install speedtest-cli moreutils bash grep tree rename ack ack-grep aria2 -y
 
 # install shell tools
-sudo apt install zsh thefuck fzf eza bat pandoc grc less most -y
+sudo apt install zsh thefuck fzf eza  pandoc grc less most -y
 
 # install languages
 sudo apt install python3 ruby -y
+
+# install bat and link to ~/.local/bin (to avoid conflicts)
+sudo apt install bat -y
+mkdir -p ~/.local/bin
+ln -s /usr/bin/batcat ~/.local/bin/bat
