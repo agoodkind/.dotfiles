@@ -2,6 +2,9 @@
 
 ################################################
 # DO NOT EDIT ##################################
+# use system `which` and not built in since system supports -s arg
+alias which="$(which -a which | tail -n 1)"
+alias isinstalled="which -s"
 ########################################
 export DOTDOTFILES="$HOME/.dotfiles"
 ########################################
@@ -81,9 +84,6 @@ export SAVEHIST=100000
 ########################################
 # Aliases ##############################
 ########################################
-# use system which and not built in since system supports -s arg
-alias which="$(which -a which | tail -n 1)"
-alias isinstalled="which -s"
 
 # vim
 if isinstalled nvim; then
