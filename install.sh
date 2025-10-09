@@ -13,12 +13,12 @@ chmod +x "$DOTDOTFILES/lib/install/brew.sh"
 
 mkdir -p "$HOME/.ssh/sockets"
 
-# run repair.sh
-"$DOTDOTFILES/repair.sh"
-
 # set up git
 "$DOTDOTFILES/lib/install/git.sh"
 ssh-add "$HOME/.ssh/id_ed25519"
+
+# run repair.sh
+"$DOTDOTFILES/repair.sh"
 
 # if linux, install apt
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
