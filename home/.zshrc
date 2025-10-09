@@ -32,25 +32,32 @@ source ~/.cache/dircolors.cache
 # plugins ##############################
 ########################################
 
-# Use turbo mode for all plugins
+# Core plugins - load immediately with turbo
 zinit wait lucid for \
     OMZP::git \
     OMZP::dotenv
 
-# Additional completions
-zinit wait lucid blockf atinit'fpath=("$DOTDOTFILES/lib/completions" $fpath)' for \
+# Completions with custom fpath
+zinit wait lucid blockf for \
     zsh-users/zsh-completions
 
-# Local completion snippets
-zinit wait lucid as"completion" id-as"_curl" for \
-    "$DOTDOTFILES/lib/_curl"
+# Auto-suggestions
+zinit wait lucid atload"_zsh_autosuggest_start" for \
+    zsh-users/zsh-autosuggestions
 
-# fzf-tab with slight delay
-zinit wait'1' lucid for \
+# Local completion files
+fpath=("$DOTDOTFILES/lib/completions" $fpath)
+
+# Syntax highlighting with deferred compinit
+zinit wait'1' lucid atinit"ZINIT[COMPINIT_OPTS]=-C; zicompinit; zicdreplay" for \
+    zdharma-continuum/fast-syntax-highlighting
+
+# fzf-tab - defer to reduce startup impact
+zinit wait'2' lucid for \
     Aloxaf/fzf-tab
 
-# Defer zstyle configuration
-zinit wait'1' lucid atload'
+# fzf-tab configuration - load last
+zinit wait'2' lucid atload'
     zstyle ":fzf-tab:complete:cd:*" fzf-preview "eza -1 --color=always \$realpath"
     zstyle ":fzf-tab:complete:git-(add|diff|restore):*" fzf-preview "git diff \$word | delta"
     zstyle ":completion:*" list-colors ${(s.:.)LS_COLORS}
@@ -58,19 +65,11 @@ zinit wait'1' lucid atload'
 ' for \
     Freed-Wu/fzf-tab-source
 
-# Syntax highlighting with compinit
-zinit wait lucid atinit"ZINIT[COMPINIT_OPTS]=-C; zicompinit; zicdreplay" for \
-    zdharma-continuum/fast-syntax-highlighting
-
-# Auto-suggestions
-zinit wait lucid atload"_zsh_autosuggest_start" for \
-    zsh-users/zsh-autosuggestions
-
 ########################################
 # Prompt ###############################
 setopt PROMPT_SUBST
 export NEWLINE=$'\n'
-PROMPT='%F{cyan}%~%f %F{red}${vcs_info_msg_0_}%f ${NEWLINE}❯ '
+PROMPT='%F{cyan}%~%f ${NEWLINE}❯ '
 RPROMPT="%D{%L:%M:%S}"
 ######################################
 
@@ -129,8 +128,6 @@ alias repair="(config pull; cd $DOTDOTFILES && $DOTDOTFILES/repair.sh) && reload
 
 # ssh
 alias sshrm="ssh-keygen -R" # remove ssh host from known hosts
-
-
 
 # Show profiling results if module was loaded
 $SHOULD_PROFILE && do_profile
