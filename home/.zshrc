@@ -130,11 +130,7 @@ alias repair="(config pull; cd $DOTDOTFILES && $DOTDOTFILES/repair.sh) && reload
 # ssh
 alias sshrm="ssh-keygen -R" # remove ssh host from known hosts
 
-### Zinit
-source "$DOTDOTFILES/lib/zinit/zinit.zsh"
-autoload -Uz _zinit
-(( ${+_comps} )) && _comps[zinit]=_zinit
-### End of Zinit's installer chunk
+
 
 # Show profiling results if module was loaded
 $SHOULD_PROFILE && do_profile
