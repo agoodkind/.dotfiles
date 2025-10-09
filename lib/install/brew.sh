@@ -8,7 +8,7 @@ brew install wireguard-tools
 
 # Core Utils
 echo "Installing core utilities..."
-brew install coreutils moreutils bash grep tree rename most less nvim
+brew install coreutils moreutils bash grep tree rename most less nvim watch
 
 # Development Tools
 echo "Installing development tools..."
