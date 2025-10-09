@@ -22,6 +22,7 @@ zsh_profile() {
 
 # Cache OS detection
 if [[ ! -f ~/.cache/os-type.cache ]]; then
+    echo "Detecting & caching OS type"
     mkdir -p ~/.cache
     if [[ $(uname) == "Darwin" ]]; then
         echo "mac" > ~/.cache/os-type.cache
