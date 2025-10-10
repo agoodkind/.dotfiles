@@ -26,10 +26,6 @@
 	ui = auto
 [commit]
 	gpgsign = true
-[core]
-	editor = code --wait
-	fsmonitor = true
-	untrackedcache = true
 [delta "decorations"]
 	commit-decoration-style = blue ol
 	commit-style = raw
