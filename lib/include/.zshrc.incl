@@ -55,12 +55,6 @@ autoload -Uz _zinit
 # zoxide is fancy cd
 source "$DOTDOTFILES/lib/include/.zshrc.zoxide"
 
-# # Start SSH agent if not running
-# if [ -z "$SSH_AUTH_SOCK" ]; then
-#     eval $(ssh-agent -s) > /dev/null
-#     ssh-add ~/.ssh/id_ed25519
-# fi
-
 # Load local zshrc customizations that are not to be tracked by git
 [[ ! -f "$DOTDOTFILES/.zshrc.local" ]] || source "$DOTDOTFILES/.zshrc.local"
 
