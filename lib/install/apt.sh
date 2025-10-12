@@ -10,10 +10,16 @@ sudo apt update -y
 sudo apt upgrade -y
 
 # install tools
-sudo apt install gh speedtest-cli moreutils bash grep tree rename ack ack-grep aria2 -y
+sudo apt install gh tree ack ack-grep -y
 
-# install shell tools
-sudo apt install zsh thefuck fzf eza neovim pandoc grc less most -y
+# System utilities
+sudo apt install speedtest-cli moreutils bash grep rename aria2 sendmail -y
+
+# Shell and terminal tools
+sudo apt install zsh thefuck fzf eza neovim -y
+
+# Text processing and paging tools
+sudo apt install pandoc grc less most -y
 
 # install languages
 sudo apt install python3 ruby go -y
