@@ -84,6 +84,11 @@ export SAVEHIST=100000
 # Aliases ##############################
 ########################################
 
+# Use bat if installed
+if isinstalled bat; then
+    alias cat="bat"
+fi
+
 # vim
 if isinstalled nvim; then
     export SUDO_EDITOR=nvim
