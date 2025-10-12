@@ -34,8 +34,3 @@ esac
 #######
 
 alias dircolors="gdircolors"
-
-# Use bat if installed
-if isinstalled bat; then
-    alias cat="bat"
-fi
