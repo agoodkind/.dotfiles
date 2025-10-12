@@ -1,23 +1,28 @@
 #!/usr/bin/env bash
 
 # include the global gitconfig
+echo "Including global gitconfig from $DOTDOTFILES/lib/.gitconfig_incl"
 git --git-dir="$DOTDOTFILES"/.git \
     --work-tree="$DOTDOTFILES" \
     config --global include.path "$DOTDOTFILES/lib/.gitconfig_incl"
 
 # Set git user name and email
+echo "Setting up git user name and email"
 if [[ -z "$(git config --global user.name)" ]]; then
+    echo "No git user name found"
     read -r -p "Enter your git user name: " git_user_name
     git config --global user.name "$git_user_name"
 fi
 
 if [[ -z "$(git config --global user.email)" ]]; then
+    echo "No git email found"
     read -r -p "Enter your git email: " git_user_email
     git config --global user.email "$git_user_email"
 fi
 
 # set up gpg ssh key
 if [[ -z "$(git config --global gpg.ssh.defaultKeyCommand)" ]]; then
+    echo "Setting up git gpg ssh key for signing commits"
     # check if ed25519 key is in ssh-agent
     if ssh-add -L 2>/dev/null | grep -q "ed25519"; then
         git_ssh_key_full=$(ssh-add -L | grep "ed25519" | head -n 1)

@@ -8,19 +8,15 @@ curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo 
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
 sudo apt update -y
 sudo apt upgrade -y
-sudo apt install gh
-
-# install neovim
-sudo apt install neovim -y
 
 # install tools
-sudo apt install speedtest-cli moreutils bash grep tree rename ack ack-grep aria2 -y
+sudo apt install gh speedtest-cli moreutils bash grep tree rename ack ack-grep aria2 -y
 
 # install shell tools
-sudo apt install zsh thefuck fzf eza  pandoc grc less most -y
+sudo apt install zsh thefuck fzf eza neovim pandoc grc less most -y
 
 # install languages
-sudo apt install python3 ruby -y
+sudo apt install python3 ruby go -y
 
 # install bat and link to ~/.local/bin (to avoid conflicts)
 sudo apt install bat -y

@@ -11,13 +11,21 @@ chmod +x "$DOTDOTFILES/lib/install/apt.sh"
 chmod +x "$DOTDOTFILES/lib/install/mac.sh"
 chmod +x "$DOTDOTFILES/lib/install/brew.sh"
 
+echo "Creating SSH sockets directory"
 mkdir -p "$HOME/.ssh/sockets"
 
+echo "Starting SSH agent"
+eval $(ssh-agent -s)
+
+echo "Adding SSH keys"
+ssh-add $HOME/.ssh/id_* || true
+
 # set up git
+echo "Setting up git configuration"
 "$DOTDOTFILES/lib/install/git.sh"
-ssh-add "$HOME/.ssh/id_ed25519"
 
 # run repair.sh
+echo "Running repair script"
 "$DOTDOTFILES/repair.sh"
 
 # if linux, install apt
@@ -36,6 +44,5 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 fi
 
 # install zinit
-bash -c "$(curl --fail --show-error --silent --location https://raw.githubusercontent.com/zdharma-continuum/zinit/HEAD/scripts/install.sh)"
-
-
+echo "Installing zinit"
+git submodule update --init --recursive lib/zinit
