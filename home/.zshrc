@@ -69,7 +69,7 @@ zinit wait'2' lucid atload'
 # Prompt ###############################
 setopt PROMPT_SUBST
 export NEWLINE=$'\n'
-PROMPT='%F{214}%D{%H:%M:%S.%.3}%f %F{green}%m%f %F{cyan}%~%f ${NEWLINE}❯ '
+PROMPT='%F{215}%D{%H:%M:%S}%f%F{234}.%D{%.3}%f %F{green}%m%f %F{cyan}%~%f ${NEWLINE}❯ '
 ######################################
 
 ########################################
