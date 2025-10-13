@@ -47,6 +47,14 @@ case "$OS_TYPE" in
         ;;
 esac
 
+function is_macos() {
+    [[ "$OS_TYPE" == "mac" ]]
+}
+
+function is_ubuntu() {
+    [[ "$OS_TYPE" == "ubuntu" ]]
+}
+
 ### Zinit
 source "$DOTDOTFILES/lib/zinit/zinit.zsh"
 autoload -Uz _zinit

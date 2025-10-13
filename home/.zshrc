@@ -136,7 +136,7 @@ alias sudoedit="sudo -e"
 alias c="clear"
 
 # ls
-alias ll="$(which ls) -lah --color=auto"
+alias ll="$(which ls) -lah --color=auto --group-directories-first"
 alias ls=ll
 
 # npm
