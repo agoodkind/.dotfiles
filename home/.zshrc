@@ -68,9 +68,26 @@ zinit wait'2' lucid atload'
 ########################################
 # Prompt ###############################
 setopt PROMPT_SUBST
-export NEWLINE=$'\n'
-PROMPT='%F{215}%D{%H:%M:%S}%f%F{234}.%D{%.3}%f %F{green}%m%f %F{cyan}%~%f ${NEWLINE}❯ '
-######################################
+
+# Prompt Components & Colors
+NL=$'\n'
+ORANGE='%F{214}'      # Orange
+GRAY='%F{231}'       # Dark gray
+GREEN='%F{green}'    # Green
+CYAN='%F{cyan}'      # Cyan
+R='%f'                # Reset
+
+CUSTOM_PROMPT=
+
+# Build Prompt with iTerm2 integration
+if [[ -n "$ITERM_SESSION_ID" && -n "$(iterm2_prompt_mark &> /dev/null)" ]]; then
+    # iTerm2 integration - include prompt mark for shell integration features
+    PS1='%{$(iterm2_prompt_mark)%}${GREEN}%m${R} ${CYAN}%~${R} ❯ '
+else
+    # Standard prompt without iTerm2
+    PROMPT='${ORANGE}%D{%H:%M:%S}${R}${GRAY}.%D{%.}${R} ${GREEN}%m${R} ${CYAN}%~${R} ${NL}❯ '
+fi
+########################################
 
 ########################################
 # zsh Configs 
