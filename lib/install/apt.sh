@@ -19,7 +19,7 @@ sudo apt install sasl-xoauth2 postfix -y
 sudo apt install gh tree ack ack-grep -y
 
 # System utilities
-sudo apt install speedtest-cli moreutils bash grep rename aria2 -y
+sudo apt install speedtest-cli moreutils bash grep rename aria2 net-tools -y
 
 # Shell and terminal tools
 sudo apt install zsh thefuck fzf eza neovim -y
