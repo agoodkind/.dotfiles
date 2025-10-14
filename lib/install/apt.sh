@@ -30,6 +30,9 @@ sudo apt install pandoc grc less most -y
 # install languages
 sudo apt install python3 ruby go nodejs -y
 
+# install network tools
+sudo apt install gping fping -y
+
 # install bat and link to ~/.local/bin (to avoid conflicts)
 sudo apt install bat -y
 mkdir -p ~/.local/bin

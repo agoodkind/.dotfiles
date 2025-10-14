@@ -16,7 +16,7 @@ brew install git git-lfs gh node vim ack git-delta
 
 # Network Tools
 echo "Installing network tools..."
-brew install openssh screen ssh-copy-id sshuttle aria2 nmap
+brew install openssh screen ssh-copy-id sshuttle aria2 gping fping
 
 # Navigation
 echo "Installing navigation tools..."
@@ -49,3 +49,4 @@ brew install --cask utm
 brew install --cask vlc
 brew install --cask stats
 brew install --cask xcodes-app
+brew install --cask pingplotter
