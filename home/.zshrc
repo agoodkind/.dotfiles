@@ -95,7 +95,9 @@ fi
 export HISTFILE=~/.zsh_history
 export HISTSIZE=100000
 export SAVEHIST=100000
-setopt SHARE_HISTORY
+setopt appendhistory
+setopt incappendhistory
+setopt share_history
 
 ########################################
 # Aliases ##############################
