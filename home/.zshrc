@@ -72,7 +72,7 @@ setopt PROMPT_SUBST
 # Prompt Components & Colors
 NL=$'\n'
 ORANGE='%F{214}'      # Orange
-GRAY='%F{231}'       # Dark gray
+GRAY='%F{250}'    # Light gray
 GREEN='%F{green}'    # Green
 CYAN='%F{cyan}'      # Cyan
 R='%f'                # Reset
