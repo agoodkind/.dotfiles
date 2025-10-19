@@ -16,7 +16,7 @@ sudo apt upgrade -y
 sudo apt install sasl-xoauth2 postfix -y
 
 # install tools
-sudo apt install gh tree ack ack-grep -y
+sudo apt install gh tree ack ack-grep nvim -y
 
 # System utilities
 sudo apt install speedtest-cli moreutils bash grep rename aria2 net-tools -y
@@ -32,6 +32,9 @@ sudo apt install python3 ruby go nodejs -y
 
 # install network tools
 sudo apt install gping fping -y
+
+sudo apt remove nano -y
+ln -sf $(which nvim) /usr/bin/nano
 
 # install bat and link to ~/.local/bin (to avoid conflicts)
 sudo apt install bat -y
