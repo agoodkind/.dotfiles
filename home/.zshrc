@@ -139,7 +139,11 @@ alias sudoedit="sudo -e"
 alias c="clear"
 
 # ls
-alias ll="$(which ls) -lah --color=auto --group-directories-first"
+if isinstalled -s gls; then
+    alias ll="$(which gls) -lah --color=auto --group-directories-first"
+else
+    alias ll="$(which ls) -lah"
+fi
 alias ls=ll
 
 # npm
