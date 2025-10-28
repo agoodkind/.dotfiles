@@ -42,15 +42,15 @@ function __zoxide_doctor() {
     [[ ${chpwd_functions[(Ie)__zoxide_hook]:-} -eq 0 ]] || return 0
 
     _ZO_DOCTOR=0
-    \builtin printf '%s\n' \
-        'zoxide: detected a possible configuration issue.' \
-        'Please ensure that zoxide is initialized right at the end of your shell configuration file (usually ~/.zshrc).' \
-        '' \
-        'If the issue persists, consider filing an issue at:' \
-        'https://github.com/ajeetdsouza/zoxide/issues' \
-        '' \
-        'Disable this message by setting _ZO_DOCTOR=0.' \
-        '' >&2
+    # \builtin printf '%s\n' \
+    #     'zoxide: detected a possible configuration issue.' \
+    #     'Please ensure that zoxide is initialized right at the end of your shell configuration file (usually ~/.zshrc).' \
+    #     '' \
+    #     'If the issue persists, consider filing an issue at:' \
+    #     'https://github.com/ajeetdsouza/zoxide/issues' \
+    #     '' \
+    #     'Disable this message by setting _ZO_DOCTOR=0.' \
+    #     '' >&2
 }
 
 # =============================================================================
