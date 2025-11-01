@@ -104,9 +104,9 @@ setopt share_history
 ########################################
 
 # Use bat if installed
-if isinstalled bat; then
-    alias cat="bat"
-fi
+# if isinstalled bat; then
+#     alias cat="bat"
+# fi
 
 # vim
 if isinstalled nvim; then
