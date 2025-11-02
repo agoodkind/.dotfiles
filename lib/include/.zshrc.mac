@@ -19,7 +19,31 @@ source "$HOME/.cache/brew-shellenv.cache"
 
 # Commands also provided by macOS and the commands dir, dircolors, vdir have been installed with the prefix "g".
 # If you need to use these commands with their normal names, you can add a "gnubin" directory to your PATH with:
-PATH="/opt/homebrew/opt/coreutils/libexec/gnubin:$PATH"
+export PATH="/opt/homebrew/opt/coreutils/libexec/gnubin:$PATH"
+
+########
+# Ruby
+# fallback to homebrew
+export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
+# use rbenv if present
+export PATH="${HOME}/.rbenv/shims:${PATH}"
+export RBENV_SHELL=zsh
+
+rbenv() {
+  local command
+  command="${1:-}"
+  if [ "$#" -gt 0 ]; then
+    shift
+  fi
+
+  case "$command" in
+  rehash|shell)
+    eval "$(rbenv "sh-$command" "$@")";;
+  *)
+    command rbenv "$command" "$@";;
+  esac
+}
+
 
 #######
 # nvm #
