@@ -1,13 +1,42 @@
-[alias]
-	blaame = blame -w -C -C -C -L
-	change-commits = "!f() { VAR=$1; OLD=$2; NEW=$3; shift 3; git filter-branch --env-filter \"if [[ \\\"$`echo $VAR`\\\" = '$OLD' ]]; then export $VAR='$NEW'; fi\" $@; }; f"
-	punch = push --force-with-lease
-	staash = stash --all
-	revertfile = checkout master --
-	resetfile = checkout master --
+# Core Configuration
+[init]
+	defaultBranch = main
 [branch]
 	autoSetupMerge = simple
 	sort = -committerdate
+[commit]
+	gpgsign = true
+[gpg]
+	format = ssh
+[safe]
+	directory = =
+
+# Remote Operations
+[fetch]
+	writeCommitGraph = true
+[pull]
+	rebase = true
+[push]
+	autoSetupRemote = true
+
+# Merge and Rebase
+[merge]
+	conflictStyle = zdiff3
+	renameLimit=999999
+[rebase]
+	autoStash = true
+[rerere]
+	autoupdate = true
+	enabled = true
+
+# Diff Configuration
+[diff]
+	algorithm=histogram
+	renameLimit=999999
+
+# Color Configuration
+[color]
+	ui = true
 [color "diff"]
 	commit = yellow bold
 	frag = magenta bold
@@ -20,12 +49,10 @@
 	newNormal = green bold
 	oldHighlight = red bold 52
 	oldNormal = red bold
-[color]
-	ui = true
-[column]
-	ui = auto
-[commit]
-	gpgsign = true
+
+# Delta Configuration
+[delta]
+	features = decorations
 [delta "decorations"]
 	commit-decoration-style = blue ol
 	commit-style = raw
@@ -36,32 +63,22 @@
 	hunk-header-style = file line-number syntax
 [delta "interactive"]
 	keep-plus-minus-markers = false
-[delta]
-	features = decorations
-[diff-so-fancy]
-	first-run = false
-[fetch]
-	writeCommitGraph = true
-[gpg]
-	format = ssh
-[init]
-	defaultBranch = main
+
+# Interactive Tools
 [interactive]
 	diffFilter = delta --color-only --features=interactive
-[pull]
-	rebase = true
-[push]
-	autoSetupRemote = true
-[rebase]
-	autoStash = true
-[rerere]
-	autoupdate = true
-	enabled = true
-[safe]
-	directory = =
-[merge]
-	conflictStyle = zdiff3
-	renameLimit=999999
-[diff]
-	algorithm=histogram
-	renameLimit=999999
+[diff-so-fancy]
+	first-run = false
+[column]
+	ui = auto
+
+# Aliases
+[alias]
+	blaame = blame -w -C -C -C -L
+	change-commits = "!f() { VAR=$1; OLD=$2; NEW=$3; shift 3; git filter-branch --env-filter \"if [[ \\\"$`echo $VAR`\\\" = '$OLD' ]]; then export $VAR='$NEW'; fi\" $@; }; f"
+	punch = push --force-with-lease
+	staash = stash --all
+	revertfile = "!f() { git checkout $(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@') -- \"$@\"; }; f"
+	resetfile = "!f() { git checkout $(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@') -- \"$@\"; }; f"
+	squash-branch = !f() { base=${1:-main}; git reset --soft $(git merge-base HEAD $base) && git commit --edit -m"$(git log --format=%B --reverse HEAD..HEAD@{1})"; }; f
+	reset-to-base = !f() { base=${1:-main}; git reset --soft $(git merge-base HEAD $base); }; f
