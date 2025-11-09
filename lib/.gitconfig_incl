@@ -81,4 +81,4 @@
 	revertfile = "!f() { git checkout $(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@') -- \"$@\"; }; f"
 	resetfile = "!f() { git checkout $(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@') -- \"$@\"; }; f"
 	squash-branch = !f() { base=${1:-main}; git reset --soft $(git merge-base HEAD $base) && git commit --edit -m"$(git log --format=%B --reverse HEAD..HEAD@{1})"; }; f
-	reset-to-base = !f() { base=${1:-main}; git reset --soft $(git merge-base HEAD $base); }; f
+
