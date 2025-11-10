@@ -34,8 +34,7 @@ source ~/.cache/dircolors.cache
 
 # Core plugins - load immediately with turbo
 zinit wait lucid for \
-    OMZP::git \
-    OMZP::dotenv
+    OMZP::git
 
 # Completions with custom fpath
 zinit wait lucid blockf for \
