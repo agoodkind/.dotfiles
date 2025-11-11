@@ -31,7 +31,7 @@ sudo apt install pandoc grc less most -y
 sudo apt install python3 ruby go nodejs -y
 
 # install network tools
-sudo apt install gping fping -y
+sudo apt install gping fping ansible -y
 
 sudo apt remove nano -y
 ln -sf $(which nvim) /usr/bin/nano
