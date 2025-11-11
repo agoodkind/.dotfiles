@@ -116,7 +116,7 @@ function config {
     case $1 in
         update)
             git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" pull
-            git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" submodule update --init --recursive
+            (cd "$DOTDOTFILES" && git submodule update --init --recursive)
             ;;
         reload)
             reload

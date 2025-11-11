@@ -3,7 +3,8 @@ set -euo pipefail
 
 printf "\nUpdating plugins and submodules\n\n"
 # can't use config here since we don't know if its been defined yet
-git --git-dir="$DOTDOTFILES"/.git --work-tree="$DOTDOTFILES" submodule update --init --recursive
+(cd "$DOTDOTFILES" && git pull)
+(cd "$DOTDOTFILES" && git submodule update --init --recursive)
 
 timestamp=$(date +"%Y%m%d_%H%M%S")
 
