@@ -72,6 +72,5 @@ if is_macos; then
     brew cleanup
 fi
 
-
 printf "\n.zshrc has been repaired and relinked\n"
 printf "\nRun 'source \"%s/.zshrc\"' to apply changes or restart your terminal\n" "$HOME"
