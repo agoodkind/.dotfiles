@@ -110,8 +110,12 @@ setopt share_history
 # vim
 if isinstalled nvim; then
     export SUDO_EDITOR=nvim
+    export MANPAGER="nvim -M +MANPAGER"
+    export PAGER="nvim -M +MANPAGER"
     alias vim="$(command -v nvim)"
 elif isinstalled vim; then
+    export MANPAGER="vim -M +MANPAGER --not-a-term -"
+    export PAGER="vim -M +MANPAGER --not-a-term -"
     export SUDO_EDITOR=vim
     alias nvim="$(command -v vim)"
 else
@@ -125,10 +129,10 @@ alias nano="nvim"
 alias emacs="nvim"
 export EDITOR="nvim"
 
-# use most as pager if installed
-if isinstalled -s most; then
-    export PAGER=most
-fi
+# # use most as pager if installed
+# if isinstalled -s most; then
+#     export PAGER=most
+# fi
 
 # sudo wrapper to run commands with current user
 alias please="sudo"
