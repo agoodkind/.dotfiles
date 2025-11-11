@@ -10,6 +10,16 @@ vim.g.colors_name = 'iterm'
 vim.o.termguicolors = true
 
 local colors = {
+    ruby_keyword = '#C586C0',
+    ruby_control = '#D19A66',
+    operator = '#56B6C2',
+    punctuation = '#7F848E',
+    method = '#61AFEF',
+    interpolation = '#FFD700',
+    todo_bg = '#3E3B3E',
+    warning = '#E5C07B',
+    todo = '#FFD700',
+    shell_var = '#56B6C2',
     -- Background/Foreground
     bg = '#262427', -- Background Color (Dark)
     fg = '#FCFBFA', -- Foreground Color (Dark)
@@ -35,9 +45,9 @@ local colors = {
     bright_white = '#FCFBFA',   -- Ansi 15
 
     -- UI Elements
-    selection = '#FCFBFA', -- Selection background
-    cursor = '#FCFBFA',    -- Cursor color
-    link = '#2559B5',      -- Link Color
+    selection = '#BCDF5820', -- Selection background (darker, less transparent)
+    cursor = '#FCFBFA',      -- Cursor color
+    link = '#2559B5',        -- Link Color
 }
 
 -- Helper function to set highlight
@@ -51,35 +61,56 @@ local function hi(group, opts)
 end
 
 -- Editor highlights
+hi('Todo', { fg = colors.todo, bg = colors.todo_bg, style = 'bold,italic' })
+hi('Directory', { fg = colors.blue, style = 'bold' })
+hi('Title', { fg = colors.yellow, style = 'bold' })
+hi('WarningMsg', { fg = colors.warning, style = 'bold' })
+hi('Todo', { fg = colors.todo, bg = colors.bg, style = 'bold,italic' })
 hi('Normal', { fg = colors.fg, bg = colors.bg })
 hi('NormalFloat', { fg = colors.fg, bg = colors.bg })
-hi('Visual', { bg = colors.selection, fg = colors.bg })
+hi('Visual', { bg = '#3E3B3E' })
 hi('Cursor', { fg = colors.bg, bg = colors.cursor })
 hi('CursorLine', { bg = '#2E2B2E' })
 hi('CursorLineNr', { fg = colors.yellow })
-hi('LineNr', { fg = colors.bright_black })
-hi('SignColumn', { bg = colors.bg })
+hi('LineNr', { fg = colors.bright_black, bg = '#232123' })
+hi('SignColumn', { bg = '#232123' })
 hi('Pmenu', { fg = colors.fg, bg = '#2E2B2E' })
 hi('PmenuSel', { fg = colors.bg, bg = colors.blue })
 hi('PmenuSbar', { bg = colors.bright_black })
 hi('PmenuThumb', { bg = colors.white })
 
 -- Syntax highlighting
-hi('Comment', { fg = colors.bright_black, style = 'italic' })
+hi('Operator', { fg = colors.operator })
+hi('Delimiter', { fg = colors.punctuation })
+hi('SpecialChar', { fg = colors.punctuation })
+hi('@operator', { fg = colors.operator })
+hi('@punctuation.delimiter', { fg = colors.punctuation })
+hi('@punctuation.bracket', { fg = colors.punctuation })
+hi('@punctuation.special', { fg = colors.punctuation })
+hi('@function.method', { fg = colors.method, style = 'italic' })
+hi('@function', { fg = colors.blue, style = 'bold' })
+hi('@keyword.ruby', { fg = colors.ruby_keyword, style = 'bold' })
+hi('@keyword.control.ruby', { fg = colors.ruby_control, style = 'bold' })
+hi('@string.special.symbol', { fg = colors.interpolation })
+hi('@string.special', { fg = colors.interpolation })
+hi('@comment.todo', { fg = colors.todo, bg = colors.todo_bg, style = 'bold,italic' })
+hi('Special', { fg = colors.cyan })
+hi('@function.call', { fg = colors.yellow, style = 'italic' })
+hi('@variable.parameter', { fg = colors.shell_var, style = 'italic' })
+hi('@constant.builtin', { fg = colors.orange, style = 'bold' })
+hi('@string.special', { fg = colors.cyan })
+hi('Comment', { fg = '#6A9955', style = 'italic' })
 hi('Constant', { fg = colors.magenta })
-hi('String', { fg = colors.green })
+hi('String', { fg = colors.yellow })
 hi('Character', { fg = colors.green })
-hi('Number', { fg = colors.magenta })
-hi('Boolean', { fg = colors.magenta })
-hi('Float', { fg = colors.magenta })
 hi('Identifier', { fg = colors.blue })
-hi('Function', { fg = colors.yellow })
-hi('Statement', { fg = colors.red })
-hi('Conditional', { fg = colors.red })
-hi('Repeat', { fg = colors.red })
-hi('Label', { fg = colors.red })
+hi('Function', { fg = colors.blue, style = 'bold' })
+hi('Statement', { fg = colors.magenta, style = 'bold' })
+hi('Conditional', { fg = colors.magenta, style = 'bold' })
+hi('Repeat', { fg = colors.magenta, style = 'bold' })
+hi('Label', { fg = colors.yellow })
 hi('Operator', { fg = colors.cyan })
-hi('Keyword', { fg = colors.red })
+hi('Keyword', { fg = colors.magenta, style = 'bold' })
 hi('Exception', { fg = colors.red })
 hi('PreProc', { fg = colors.cyan })
 hi('Include', { fg = colors.cyan })
@@ -91,7 +122,7 @@ hi('StorageClass', { fg = colors.yellow })
 hi('Structure', { fg = colors.yellow })
 hi('Typedef', { fg = colors.yellow })
 hi('Special', { fg = colors.magenta })
-hi('SpecialChar', { fg = colors.magenta })
+hi('SpecialChar', { fg = colors.cyan })
 hi('Tag', { fg = colors.blue })
 hi('Delimiter', { fg = colors.fg })
 hi('SpecialComment', { fg = colors.cyan, style = 'italic' })
@@ -100,51 +131,58 @@ hi('Underlined', { fg = colors.link, style = 'underline' })
 hi('Error', { fg = colors.red, bg = colors.bg })
 hi('Todo', { fg = colors.yellow, bg = colors.bg, style = 'bold' })
 
--- Search
 hi('Search', { fg = colors.bg, bg = colors.yellow })
 hi('IncSearch', { fg = colors.bg, bg = colors.cyan })
 
--- Diff
 hi('DiffAdd', { fg = colors.green, bg = colors.bg })
 hi('DiffChange', { fg = colors.yellow, bg = colors.bg })
 hi('DiffDelete', { fg = colors.red, bg = colors.bg })
 hi('DiffText', { fg = colors.cyan, bg = colors.bg })
 
--- Spell
 hi('SpellBad', { sp = colors.red, style = 'underline' })
 hi('SpellCap', { sp = colors.yellow, style = 'underline' })
 hi('SpellLocal', { sp = colors.cyan, style = 'underline' })
 hi('SpellRare', { sp = colors.magenta, style = 'underline' })
 
--- Treesitter highlights
-hi('@comment', { fg = colors.bright_black, style = 'italic' })
-hi('@string', { fg = colors.green })
-hi('@number', { fg = colors.magenta })
-hi('@boolean', { fg = colors.magenta })
-hi('@function', { fg = colors.yellow })
-hi('@function.builtin', { fg = colors.yellow })
-hi('@function.call', { fg = colors.yellow })
-hi('@method', { fg = colors.yellow })
-hi('@keyword', { fg = colors.red })
-hi('@keyword.function', { fg = colors.red })
-hi('@keyword.return', { fg = colors.red })
-hi('@conditional', { fg = colors.red })
-hi('@repeat', { fg = colors.red })
+hi('@comment', { fg = '#6A9955', style = 'italic' })
+hi('@string', { fg = colors.yellow })
+hi('@string.regex', { fg = colors.cyan })
+hi('@string.escape', { fg = colors.yellow })
+hi('@character', { fg = colors.green })
+hi('@function', { fg = colors.blue, style = 'bold' })
+hi('@function.builtin', { fg = colors.blue, style = 'bold' })
+hi('@function.call', { fg = colors.blue })
+hi('@method', { fg = colors.blue })
+hi('@method.call', { fg = colors.blue })
+hi('@constructor', { fg = colors.blue })
+hi('@parameter', { fg = colors.cyan })
+hi('@field', { fg = colors.cyan })
+hi('@property', { fg = colors.cyan })
 hi('@variable', { fg = colors.blue })
-hi('@variable.builtin', { fg = colors.blue })
-hi('@parameter', { fg = colors.blue })
-hi('@type', { fg = colors.yellow })
-hi('@type.builtin', { fg = colors.yellow })
-hi('@operator', { fg = colors.cyan })
-hi('@punctuation.bracket', { fg = colors.fg })
-hi('@punctuation.delimiter', { fg = colors.fg })
+hi('@variable.builtin', { fg = colors.cyan, style = 'italic' })
 hi('@constant', { fg = colors.magenta })
-hi('@constant.builtin', { fg = colors.magenta })
+hi('@constant.builtin', { fg = colors.magenta, style = 'bold' })
+hi('@constant.macro', { fg = colors.cyan })
+hi('@type', { fg = colors.yellow })
+hi('@type.builtin', { fg = colors.yellow, style = 'italic' })
+hi('@type.definition', { fg = colors.yellow })
+hi('@type.qualifier', { fg = colors.cyan })
+hi('@keyword', { fg = colors.magenta, style = 'bold' })
+hi('@keyword.function', { fg = colors.magenta, style = 'bold,italic' })
+hi('@keyword.return', { fg = colors.magenta, style = 'bold' })
+hi('@keyword.operator', { fg = colors.cyan })
+hi('@keyword.import', { fg = colors.cyan })
+hi('@conditional', { fg = colors.magenta, style = 'bold' })
+hi('@repeat', { fg = colors.magenta, style = 'bold' })
+hi('@label', { fg = colors.yellow })
+hi('@operator', { fg = colors.cyan })
+hi('@punctuation.delimiter', { fg = colors.fg })
+hi('@punctuation.bracket', { fg = colors.fg })
+hi('@punctuation.special', { fg = colors.cyan })
 hi('@tag', { fg = colors.blue })
 hi('@tag.attribute', { fg = colors.yellow })
 hi('@tag.delimiter', { fg = colors.fg })
 
--- LSP
 hi('DiagnosticError', { fg = colors.red })
 hi('DiagnosticWarn', { fg = colors.yellow })
 hi('DiagnosticInfo', { fg = colors.blue })
