@@ -66,7 +66,7 @@ zinit wait'2' lucid atload'
 
 # Dotfiles async update logic as a zinit local plugin
 zinit ice wait"0" lucid
-zinit load $DOTDOTFILES/lib/include/dotfiles-update.zsh
+zinit load $DOTDOTFILES/lib/include/.zshrc.updater
 
 ########################################
 # Prompt ###############################

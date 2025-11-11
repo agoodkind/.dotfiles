@@ -1,0 +1,68 @@
+#!/usr/bin/env zsh
+
+# do not run if update already scheduled
+if [[ -f ~/.cache/dotfiles_update_next ]]; then
+    exit 0
+fi
+
+fetch_latest() {
+  git --git-dir="$DOTFILES_GIT_DIR" --work-tree="$DOTDOTFILES" fetch --quiet --all 2>/dev/null || return 1
+}
+
+get_latest_hash() {
+  git --git-dir="$DOTFILES_GIT_DIR" rev-parse origin/main 2>/dev/null || return 1
+}
+
+get_current_hash() {
+  git --git-dir="$DOTFILES_GIT_DIR" rev-parse HEAD 2>/dev/null || return 1
+}
+
+compare_hashes() {
+  local current_hash="$1"
+  local latest_hash="$2"
+  if [ -z "$latest_hash" ] || [ -z "$current_hash" ]; then
+    return 1
+  fi
+
+  is_behind=$(git --git-dir="$DOTFILES_GIT_DIR" \
+    merge-base --is-ancestor "$current_hash" "$latest_hash" \
+    && echo yes || echo no)
+  is_ahead=$(git --git-dir="$DOTFILES_GIT_DIR" \
+    merge-base --is-ancestor "$latest_hash" "$current_hash" \
+    && echo yes || echo no)
+
+  status=""
+  if [ "$current_hash" = "$latest_hash" ]; then
+    status="up_to_date"
+  elif [ "$is_behind" = "yes" ]; then
+    status="behind"
+  elif [ "$is_ahead" = "yes" ]; then
+    status="ahead"
+  else
+    status="diverged"
+  fi
+
+  case "$status" in
+    up_to_date)
+    #   echo "Up to date"
+      ;;
+    behind)
+      mkdir -p ~/.cache
+      touch ~/.cache/dotfiles_update_next
+      ;;
+    ahead)
+    #   echo "Local is ahead of remote"
+      ;;
+    diverged)
+    #   echo "Local and remote have diverged"
+      ;;
+  esac
+}
+
+
+# main logic
+fetch_latest || exit 0
+LATEST_HASH=$(get_latest_hash) || exit 0
+CURRENT_HASH=$(get_current_hash) || exit 0
+compare_hashes "$CURRENT_HASH" "$LATEST_HASH" || exit 0
+
