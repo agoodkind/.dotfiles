@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
+
+printf "\nUpdating plugins and submodules\n\n"
+# can't use config here since we don't know if its been defined yet
+git --git-dir="$DOTDOTFILES"/.git --work-tree="$DOTDOTFILES" submodule update --init --recursive
 
 timestamp=$(date +"%Y%m%d_%H%M%S")
 
@@ -28,8 +32,6 @@ if is_macos; then
     brew cleanup
 fi
 
-rm -f "$ZSH_COMPDUMP"
-
 # go through all files in $DOTDOTFILES/home and create symlinks in $HOME
 # make a backup of each file if it exists
 files=$(find "$DOTDOTFILES/home" -type f)
@@ -39,23 +41,29 @@ for source_file in $files; do
     home_file=$HOME/$relative_path
 
     if [ -e "$home_file" ]; then
-
-        printf "\n\nBacking up %s -> %s\n" "$home_file" "$backup_file"
-
         mkdir -p "$(dirname "$backup_file")"
         cp -Hr "$home_file" "$backup_file"
+        printf "\tBackup created: %s\n" "$relative_path"
     fi
-
-    printf "Symlink created: "
+    
     ln -sfv "$source_file" "$home_file"
+    printf "\tLinked: %s\n" "$relative_path"
 done
 
-printf "\nUpdating plugins and submodules\n\n"
-# can't use config here since we don't know if its been defined yet
-git --git-dir="$DOTDOTFILES"/.git --work-tree="$DOTDOTFILES" submodule update --init --recursive
+# Symlink all .sh scripts to ~/.local/bin without .sh extension
+printf "\nLinking scripts to ~/.local/bin\n"
+mkdir -p "$HOME/.local/bin"
+scripts=$(find "$DOTDOTFILES/lib/scripts" -maxdepth 1 -type f -name "*.sh")
+for script in $scripts; do
+    script_name=$(basename "$script" .sh)
+    target="$HOME/.local/bin/$script_name"
+    ln -sfv "$script" "$target"
+    chmod +x "$script"
+    printf "\tLinked script: %s\n" "$script_name"
+done
 
 # remove zcompdump files
-printf "retaining zcompdump files\nif cd is malfunctioning run\n 'rm ~/.zcompdump*'\n\n"
+rm -f "$ZSH_COMPDUMP"
 
 printf "\n.zshrc has been repaired and relinked\n"
 printf "\nRun 'source \"%s/.zshrc\"' to apply changes or restart your terminal\n" "$HOME"
