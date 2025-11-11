@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 
-# do not run if update already scheduled
+# do not run if update already scheduled 
 if [[ -f ~/.cache/dotfiles_update_next ]]; then
     exit 0
 fi
