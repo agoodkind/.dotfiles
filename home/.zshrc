@@ -138,10 +138,11 @@ alias sudoedit="sudo -e"
 alias c="clear"
 
 # ls
+LS_ARGS="-lah --color=auto -G --group-directories-first"
 if isinstalled -s gls; then
-    alias ll="$(which gls) -lah --color=auto --group-directories-first"
+    alias ll="$(which gls) $LS_ARGS"
 else
-    alias ll="$(which ls) -lah"
+    alias ll="$(which ls) $LS_ARGS"
 fi
 alias ls=ll
 
