@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # exit on error
-set -e
+set -euo pipefail
 
 export DOTDOTFILES="$HOME/.dotfiles"
 
@@ -44,6 +44,8 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     "$DOTDOTFILES/lib/install/mac.sh"
 fi
 
-# install zinit
-echo "Installing zinit"
+
+echo "Installing submodule"
 git submodule update --init --recursive lib/zinit
+git submodule update --init --recursive lib/scripts
+git submodule update --init --recursive home/.ssh
