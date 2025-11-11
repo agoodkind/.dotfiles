@@ -35,6 +35,7 @@ fi
 # go through all files in $DOTDOTFILES/home and create symlinks in $HOME
 # make a backup of each file if it exists
 files=$(find "$DOTDOTFILES/home" -type f)
+printf "\nLinking dotfiles to home directory\n"
 for source_file in $files; do
     relative_path=$(realpath_cmd --no-symlinks --relative-to="$DOTDOTFILES/home" "$source_file")
     backup_file="$BACKUPS_PATH/$relative_path.bak"
@@ -43,27 +44,30 @@ for source_file in $files; do
     if [ -e "$home_file" ]; then
         mkdir -p "$(dirname "$backup_file")"
         cp -Hr "$home_file" "$backup_file"
-        printf "\tBackup created: %s\n" "$relative_path"
     fi
     
-    ln -sfv "$source_file" "$home_file"
+    ln -sf "$source_file" "$home_file"
     printf "\tLinked: %s\n" "$relative_path"
 done
 
 # Symlink all .sh scripts to ~/.local/bin without .sh extension
 printf "\nLinking scripts to ~/.local/bin\n"
-mkdir -p "$HOME/.local/bin"
+rm -rf "$HOME/.local/bin/scripts" 2>/dev/null || true
+mkdir -p "$HOME/.local/bin/scripts"
 scripts=$(find "$DOTDOTFILES/lib/scripts" -maxdepth 1 -type f -name "*.sh")
 for script in $scripts; do
     script_name=$(basename "$script" .sh)
-    target="$HOME/.local/bin/$script_name"
-    ln -sfv "$script" "$target"
+    target="$HOME/.local/bin/scripts/$script_name"
+    ln -sf "$script" "$target"
     chmod +x "$script"
     printf "\tLinked script: %s\n" "$script_name"
 done
 
-# remove zcompdump files
-rm -f "$ZSH_COMPDUMP"
+# remove zcompdump files only if ZSH_COMPDUMP is set
+if [ -n "${ZSH_COMPDUMP:-}" ]; then
+    printf "\nRemoving zcompdump file: %s\n" "$ZSH_COMPDUMP"
+    rm -f "$ZSH_COMPDUMP"
+fi
 
 printf "\n.zshrc has been repaired and relinked\n"
 printf "\nRun 'source \"%s/.zshrc\"' to apply changes or restart your terminal\n" "$HOME"
