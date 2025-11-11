@@ -28,7 +28,19 @@ require("lazy").setup({
             'nvim-treesitter/nvim-treesitter',
             lazy = false,
             branch = 'main',
-            build = ':TSUpdate'
+            build = ':TSUpdate',
+            ensure_installed = { 'all' }
+        },
+        {
+            'olimorris/onedarkpro.nvim',
+            priority = 1000,
+            config = function()
+                require('onedarkpro').setup({
+                    styles = { comments = 'italic' },
+                    plugins = { treesitter = true },
+                })
+                vim.cmd('colorscheme onedark_vivid')
+            end
         }
     },
     -- Configure any other settings here. See the documentation for more details.
@@ -39,7 +51,7 @@ require("lazy").setup({
 })
 
 -- Load custom iTerm-matched colorscheme
-vim.cmd('colorscheme iterm')
+-- vim.cmd('colorscheme iterm')
 
 -- Enable OSC 52 clipboard for SSH sessions
 vim.opt.clipboard = 'unnamedplus'
@@ -78,6 +90,9 @@ end
 
 -- Mouse support
 vim.opt.mouse = 'a'
+
+-- Prevent :'<,'> when pressing : in visual mode
+vim.keymap.set('v', ':', '<Esc>:')
 
 -- Man page configuration with syntax highlighting
 vim.g.man_hardwrap = 0
