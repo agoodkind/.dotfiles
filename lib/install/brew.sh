@@ -16,7 +16,7 @@ brew install git git-lfs gh node vim ack git-delta
 
 # Network Tools
 echo "Installing network tools..."
-brew install openssh screen ssh-copy-id sshuttle aria2 gping fping
+brew install openssh screen ssh-copy-id sshuttle aria2 gping fping ansible
 
 # Navigation
 echo "Installing navigation tools..."
