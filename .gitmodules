@@ -4,3 +4,6 @@
 [submodule "lib/scripts"]
 	path = lib/scripts
 	url = https://github.com/agoodkind/scripts.git
+[submodule "home/.ssh"]
+	path = home/.ssh
+	url = https://github.com/agoodkind/.ssh.git
