@@ -1,3 +1,4 @@
+
 # shellcheck shell=bash
 # Check if profiling was requested and load zprof module early if needed
 SHOULD_PROFILE=false
@@ -129,3 +130,18 @@ function config {
             ;;
     esac
 }
+
+# Synchronous dotfiles update check
+DOTFILES_GIT_HASH_FILE="$HOME/.cache/dotfiles-git-hash"
+DOTFILES_GIT_DIR="$DOTDOTFILES/.git"
+DOTFILES_GIT_HASH="$(git --git-dir="$DOTFILES_GIT_DIR" rev-parse HEAD 2>/dev/null)"
+NEEDS_DOTFILES_UPDATE=false
+if [[ ! -f "$DOTFILES_GIT_HASH_FILE" ]]; then
+    NEEDS_DOTFILES_UPDATE=true
+elif [[ "$DOTFILES_GIT_HASH" != "$(cat "$DOTFILES_GIT_HASH_FILE" 2>/dev/null)" ]]; then
+    NEEDS_DOTFILES_UPDATE=true
+fi
+
+if $NEEDS_DOTFILES_UPDATE; then
+    echo "Dotfiles update needed."
+fi

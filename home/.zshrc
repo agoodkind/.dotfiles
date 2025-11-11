@@ -64,6 +64,10 @@ zinit wait'2' lucid atload'
 ' for \
     Freed-Wu/fzf-tab-source
 
+# Dotfiles async update logic as a zinit local plugin
+zinit ice wait"0" lucid
+zinit load $DOTDOTFILES/lib/include/dotfiles-update.zsh
+
 ########################################
 # Prompt ###############################
 setopt PROMPT_SUBST

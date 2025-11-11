@@ -1,36 +1,79 @@
+-- Bootstrap lazy.nvim
+local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+if not (vim.uv or vim.loop).fs_stat(lazypath) then
+    local lazyrepo = "https://github.com/folke/lazy.nvim.git"
+    local out = vim.fn.system({ "git", "clone", "--filter=blob:none", "--branch=stable", lazyrepo, lazypath })
+    if vim.v.shell_error ~= 0 then
+        vim.api.nvim_echo({
+            { "Failed to clone lazy.nvim:\n", "ErrorMsg" },
+            { out,                            "WarningMsg" },
+            { "\nPress any key to exit..." },
+        }, true, {})
+        vim.fn.getchar()
+        os.exit(1)
+    end
+end
+vim.opt.rtp:prepend(lazypath)
+
+-- Make sure to setup `mapleader` and `maplocalleader` before
+-- loading lazy.nvim so that mappings are correct.
+-- This is also a good place to setup other settings (vim.opt)
+vim.g.mapleader = " "
+vim.g.maplocalleader = "\\"
+
+-- Setup lazy.nvim
+require("lazy").setup({
+    spec = {
+        {
+            'nvim-treesitter/nvim-treesitter',
+            lazy = false,
+            branch = 'main',
+            build = ':TSUpdate'
+        }
+    },
+    -- Configure any other settings here. See the documentation for more details.
+    -- colorscheme that will be used when installing plugins.
+    install = { colorscheme = { "habamax" } },
+    -- automatically check for plugin updates
+    checker = { enabled = true },
+})
+
+-- Load custom iTerm-matched colorscheme
+vim.cmd('colorscheme iterm')
+
 -- Enable OSC 52 clipboard for SSH sessions
 vim.opt.clipboard = 'unnamedplus'
 
 -- OSC 52 clipboard provider
 if vim.fn.has('nvim-0.10') == 1 then
-  vim.g.clipboard = {
-    name = 'OSC 52',
-    copy = {
-      ['+'] = require('vim.ui.clipboard.osc52').copy('+'),
-      ['*'] = require('vim.ui.clipboard.osc52').copy('*'),
-    },
-    paste = {
-      ['+'] = require('vim.ui.clipboard.osc52').paste('+'),
-      ['*'] = require('vim.ui.clipboard.osc52').paste('*'),
-    },
-  }
+    vim.g.clipboard = {
+        name = 'OSC 52',
+        copy = {
+            ['+'] = require('vim.ui.clipboard.osc52').copy('+'),
+            ['*'] = require('vim.ui.clipboard.osc52').copy('*'),
+        },
+        paste = {
+            ['+'] = require('vim.ui.clipboard.osc52').paste('+'),
+            ['*'] = require('vim.ui.clipboard.osc52').paste('*'),
+        },
+    }
 else
-  -- Fallback for older nvim versions
-  local function copy(lines, _)
-    local text = table.concat(lines, '\n')
-    local b64 = vim.fn.system('base64', text)
-    io.write(string.format('\027]52;c;%s\007', b64))
-  end
-  
-  local function paste()
-    return vim.fn.getreg('"')
-  end
-  
-  vim.g.clipboard = {
-    name = 'OSC 52',
-    copy = { ['+'] = copy, ['*'] = copy },
-    paste = { ['+'] = paste, ['*'] = paste },
-  }
+    -- Fallback for older nvim versions
+    local function copy(lines, _)
+        local text = table.concat(lines, '\n')
+        local b64 = vim.fn.system('base64', text)
+        io.write(string.format('\027]52;c;%s\007', b64))
+    end
+
+    local function paste()
+        return vim.fn.getreg('"')
+    end
+
+    vim.g.clipboard = {
+        name = 'OSC 52',
+        copy = { ['+'] = copy, ['*'] = copy },
+        paste = { ['+'] = paste, ['*'] = paste },
+    }
 end
 
 -- Mouse support
@@ -39,12 +82,10 @@ vim.opt.mouse = 'a'
 -- Man page configuration with syntax highlighting
 vim.g.man_hardwrap = 0
 vim.api.nvim_create_autocmd('FileType', {
-  pattern = 'man',
-  callback = function()
-    vim.opt_local.number = false
-    vim.opt_local.relativenumber = false
-    vim.opt_local.signcolumn = 'no'
-  end,
+    pattern = 'man',
+    callback = function()
+        vim.opt_local.number = false
+        vim.opt_local.relativenumber = false
+        vim.opt_local.signcolumn = 'no'
+    end,
 })
-
-vim.opt.termguicolors = true
