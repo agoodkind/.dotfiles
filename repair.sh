@@ -57,7 +57,6 @@ for script in $scripts; do
     target="$HOME/.local/bin/scripts/$script_name"
 
     ln -sf "$script" "$target"
-    chmod +x "$script"
 
     printf "\tLinked script: %s\n" "$script_name"
 done
