@@ -8,7 +8,7 @@ alias isinstalled="which -s"
 ########################################
 export DOTDOTFILES="$HOME/.dotfiles"
 ########################################
-export PATH="$PATH:$HOME/.local/bin"
+export PATH="$PATH:$HOME/.local/bin:$HOME/.local/bin/scripts"
 export NVM_LAZY_LOAD=true
 ################################################
 # Include OS specific and common zshrc configs
@@ -147,11 +147,6 @@ alias ls=ll
 
 # npm
 alias npm="pnpm"
-
-# dotfile management
-alias config="git --git-dir=$DOTDOTFILES/.git --work-tree=$DOTDOTFILES"
-alias reload="echo 'Reloading zshrc...' && source $HOME/.zshrc"
-alias repair="(config pull; cd $DOTDOTFILES && $DOTDOTFILES/repair.sh) && git pull && git submodule update --init --recursive --remote && reload"
 
 # ssh
 alias sshrm="ssh-keygen -R" # remove ssh host from known hosts
