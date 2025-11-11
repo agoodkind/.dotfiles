@@ -38,6 +38,17 @@ require("lazy").setup({
                 require('onedarkpro').setup({
                     styles = { comments = 'italic' },
                     plugins = { treesitter = true },
+                    highlights = {
+                        ["@comment.documentation"] = { fg = "${cyan}", italic = true },
+                        ["@comment.documentation.java"] = { fg = "${cyan}", italic = true },
+                        ["@comment.documentation.go"] = { fg = "${cyan}", italic = true },
+                        ["@comment.documentation.rust"] = { fg = "${cyan}", italic = true },
+                        ["@comment.documentation.python"] = { fg = "${cyan}", italic = true },
+                        ["@comment.documentation.c"] = { fg = "${cyan}", italic = true },
+                        ["@comment.documentation.cpp"] = { fg = "${cyan}", italic = true },
+                        ["@comment.documentation.ruby"] = { fg = "${cyan}", italic = true },
+                        ["@comment.documentation.typescript"] = { fg = "${cyan}", italic = true },
+                    },
                 })
                 vim.cmd('colorscheme onedark_vivid')
             end
