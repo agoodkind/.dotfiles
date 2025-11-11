@@ -20,6 +20,9 @@ zsh_profile() {
     echo "Performance profiling enabled for next shell session"
 }
 
+# store timestamp for debugging
+export DOTDOTFILES_TIMESTAMP="$(date '+%Y-%m-%d %H:%M:%S')"
+
 # Cache OS detection
 if [[ ! -f ~/.cache/os-type.cache ]]; then
     echo "Detecting & caching OS type"
@@ -74,19 +77,9 @@ fuck () {
     fuck "$@"
 }
 
-# dotfile management
-function config {
-    # if update, do 
-    if [[ $1 == "update" ]]; then
-        git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" pull
-        git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" submodule update --init --recursive
-    else
-        git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" "$@"
-    fi
-}
-
 function reload {
     echo "Reloading zshrc..."
+    local _timestamp="$DOTDOTFILES_TIMESTAMP"
     # Preserve current directory
     local _pwd=$PWD
     # Refresh command hash table (new installs)
@@ -98,16 +91,15 @@ function reload {
     fi
     # Source main config (will redefine this function)
     source "$HOME/.zshrc"
-    # Rebuild completions (avoid stale state); -u to skip security check speed penalty
-    autoload -Uz compinit && compinit -u
     # Sync history with other sessions
     fc -RI
-    # Dedupe PATH using zsh unique array feature
-    typeset -U path
-    PATH=$path
     # Return to original directory
     builtin cd "$_pwd"
-    echo "zshrc reloaded."
+    if [[ "$_timestamp" != "$DOTDOTFILES_TIMESTAMP" ]]; then
+        echo "zshrc reloaded."
+    else
+        echo "zshrc was unable to be reloaded."
+    fi
 }
 
 function repair {
@@ -117,4 +109,23 @@ function repair {
     config submodule update --init --recursive --remote
     "$DOTDOTFILES/repair.sh"
     reload
+}
+
+# dotfile management
+function config {
+    case $1 in
+        update)
+            git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" pull
+            git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" submodule update --init --recursive
+            ;;
+        reload)
+            reload
+            ;;
+        repair)
+            repair
+            ;;
+        *)
+            git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" "$@"
+            ;;
+    esac
 }
