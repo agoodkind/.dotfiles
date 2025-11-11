@@ -42,6 +42,7 @@ for source_file in $files; do
         cp -Hr "$home_file" "$backup_file"
     fi
     
+    mkdir -p "$(dirname "$home_file")"
     ln -sf "$source_file" "$home_file"
     printf "\tLinked: %s\n" "$relative_path"
 done
