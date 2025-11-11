@@ -136,17 +136,15 @@ function config {
 # if yes, run config update and then reload
 # if no, make another file ~/.cache/dotfiles_update_skipped to avoid asking again
 if [[ -f ~/.cache/dotfiles_update_next ]] && [[ ! -f ~/.cache/dotfiles_update_skipped ]]; then
-    echo "Dotfiles update available. Do you want to update now? (y/n)"
-    read -r answer
-    if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
+    # printf "Dotfiles update available. Do you want to update now? (y/n) "
+    # read answer
+    # if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
         rm ~/.cache/dotfiles_update_next
-        echo "Updating dotfiles..."
+        echo "Dotfiles update detected."
         config update
-        echo "Dotfiles updated. Reloading zsh configuration..."
         reload
-        echo "Zsh configuration reloaded."
-    else 
-        touch ~/.cache/dotfiles_update_skipped
-        echo "Dotfiles update skipped."
-    fi
+    # else 
+    #     touch ~/.cache/dotfiles_update_skipped
+    #     echo "Dotfiles update skipped."
+    # fi
 fi

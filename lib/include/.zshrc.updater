@@ -5,6 +5,8 @@ if [[ -f ~/.cache/dotfiles_update_next ]]; then
     exit 0
 fi
 
+export DOTFILES_GIT_DIR="$DOTDOTFILES/.git"
+
 fetch_latest() {
   git --git-dir="$DOTFILES_GIT_DIR" --work-tree="$DOTDOTFILES" fetch --quiet --all 2>/dev/null || return 1
 }
@@ -31,36 +33,34 @@ compare_hashes() {
     merge-base --is-ancestor "$latest_hash" "$current_hash" \
     && echo yes || echo no)
 
-  status=""
+  update_status=""
   if [ "$current_hash" = "$latest_hash" ]; then
-    status="up_to_date"
+    update_status="up_to_date"
   elif [ "$is_behind" = "yes" ]; then
-    status="behind"
+    update_status="behind"
   elif [ "$is_ahead" = "yes" ]; then
-    status="ahead"
+    update_status="ahead"
   else
-    status="diverged"
+    update_status="diverged"
   fi
 
-  case "$status" in
+  case "$update_status" in
     up_to_date)
-    #   echo "Up to date"
+      # echo "Up to date"
       ;;
     behind)
       mkdir -p ~/.cache
       touch ~/.cache/dotfiles_update_next
       ;;
     ahead)
-    #   echo "Local is ahead of remote"
+      # echo "Local is ahead of remote"
       ;;
     diverged)
-    #   echo "Local and remote have diverged"
+      # echo "Local and remote have diverged"
       ;;
   esac
 }
 
-
-# main logic
 fetch_latest || exit 0
 LATEST_HASH=$(get_latest_hash) || exit 0
 CURRENT_HASH=$(get_current_hash) || exit 0
