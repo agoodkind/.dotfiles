@@ -10,7 +10,7 @@ timestamp=$(date +"%Y%m%d_%H%M%S")
 DOTDOTFILES="$(dirname "$(readlink -f "$0")")"
 export DOTDOTFILES
 
-printf "DOTDOTFILES: %s\n" "$DOTDOTFILES"
+printf "DOTDOTFILES: %s\n\n" "$DOTDOTFILES"
 
 BACKUPS_PATH="$DOTDOTFILES/backups/$timestamp"
 mkdir -p "$BACKUPS_PATH"
