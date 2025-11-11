@@ -27,11 +27,6 @@ realpath_cmd() {
     fi
 }
 
-# for macOS clean up brew
-if is_macos; then
-    brew cleanup
-fi
-
 # go through all files in $DOTDOTFILES/home and create symlinks in $HOME
 # make a backup of each file if it exists
 files=$(find "$DOTDOTFILES/home" -type f)
@@ -58,8 +53,10 @@ scripts=$(find "$DOTDOTFILES/lib/scripts" -maxdepth 1 -type f -name "*.sh")
 for script in $scripts; do
     script_name=$(basename "$script" .sh)
     target="$HOME/.local/bin/scripts/$script_name"
+
     ln -sf "$script" "$target"
     chmod +x "$script"
+
     printf "\tLinked script: %s\n" "$script_name"
 done
 
@@ -68,6 +65,13 @@ if [ -n "${ZSH_COMPDUMP:-}" ]; then
     printf "\nRemoving zcompdump file: %s\n" "$ZSH_COMPDUMP"
     rm -f "$ZSH_COMPDUMP"
 fi
+
+# for macOS clean up brew
+if is_macos; then
+    printf "\nCleaning up Homebrew\n"
+    brew cleanup
+fi
+
 
 printf "\n.zshrc has been repaired and relinked\n"
 printf "\nRun 'source \"%s/.zshrc\"' to apply changes or restart your terminal\n" "$HOME"
