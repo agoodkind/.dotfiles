@@ -118,6 +118,8 @@ function config {
         update)
             git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" pull
             (cd "$DOTDOTFILES" && git submodule update --init --recursive)
+            config repair
+            config reload
             ;;
         reload)
             reload
@@ -142,7 +144,6 @@ if [[ -f ~/.cache/dotfiles_update_next ]] && [[ ! -f ~/.cache/dotfiles_update_sk
         rm ~/.cache/dotfiles_update_next
         echo "Dotfiles update detected."
         config update
-        reload
     # else 
     #     touch ~/.cache/dotfiles_update_skipped
     #     echo "Dotfiles update skipped."
