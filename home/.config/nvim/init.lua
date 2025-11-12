@@ -1,13 +1,3 @@
--- Vim options migrated from .vimrc
-vim.opt.hlsearch = true
-vim.cmd('syntax on')
-vim.opt.ignorecase = true
-vim.opt.smartcase = true
-vim.opt.wildmenu = true
-vim.opt.clipboard = 'unnamed'
-vim.cmd([[cmap w!! w !sudo tee > /dev/null %]])
-vim.opt.termguicolors = true
-
 -- Bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
