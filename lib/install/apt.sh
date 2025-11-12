@@ -16,7 +16,7 @@ sudo apt-get upgrade -y
 sudo apt-get install sasl-xoauth2 postfix -y
 
 # install tools
-sudo apt-get install gh tree ack ack-grep nvim -y
+sudo apt-get install gh tree ack ack-grep -y
 
 # System utilities
 sudo apt-get install speedtest-cli moreutils bash grep rename aria2 net-tools -y
