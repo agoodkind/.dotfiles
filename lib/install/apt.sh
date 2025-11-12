@@ -27,8 +27,9 @@ sudo apt install zsh thefuck fzf eza neovim -y
 # Text processing and paging tools
 sudo apt install pandoc grc less most -y
 
+
 # install languages
-sudo apt install python3 ruby go nodejs -y
+sudo apt install python3 ruby rbenv golang-go nodejs -y
 
 # install network tools
 sudo apt install gping fping ansible -y
