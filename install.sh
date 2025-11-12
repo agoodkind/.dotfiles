@@ -20,48 +20,48 @@ color_echo() {
 
 export DOTDOTFILES="$HOME/.dotfiles"
 
-color_echo BLUE "🔧 Making scripts executable..."
+color_echo BLUE "🔧  Making scripts executable..."
 chmod +x "$DOTDOTFILES/repair.sh"
 chmod +x "$DOTDOTFILES/lib/install/git.sh"
 chmod +x "$DOTDOTFILES/lib/install/apt.sh"
 chmod +x "$DOTDOTFILES/lib/install/mac.sh"
 chmod +x "$DOTDOTFILES/lib/install/brew.sh"
 
-color_echo BLUE "📁 Creating SSH sockets directory..."
+color_echo BLUE "📁  Creating SSH sockets directory..."
 mkdir -p "$HOME/.ssh/sockets"
 
-color_echo BLUE "🗝️  Starting SSH agent..."
+color_echo BLUE "🗝️   Starting SSH agent..."
 eval $(ssh-agent -s)
 
-color_echo BLUE "➕ Adding SSH keys..."
+color_echo BLUE "➕  Adding SSH keys..."
 # Auto-add SSH key if not already in agent
 ssh-add -l  || true
 ssh-add ~/.ssh/id_ed25519 || true
 
-color_echo BLUE "🔧 Setting up git configuration..."
+color_echo BLUE "🔧  Setting up git configuration..."
 "$DOTDOTFILES/lib/install/git.sh"
 
-color_echo BLUE "🛠️  Running repair script..."
+color_echo BLUE "🛠️   Running repair script..."
 "$DOTDOTFILES/repair.sh"
 
 # if linux, install apt
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    color_echo YELLOW "🐧 Linux detected"
-    color_echo YELLOW "📦 Installing apt packages..."
+    color_echo YELLOW "🐧  Linux detected"
+    color_echo YELLOW "📦  Installing apt packages..."
     "$DOTDOTFILES/lib/install/apt.sh"
 fi
 
 # run mac last because it calls brew which takes forever
 # if mac, install brew
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    color_echo YELLOW "🍏 macOS detected"
-    color_echo YELLOW "🍺 Installing mac packages..."
+    color_echo YELLOW "🍏  macOS detected"
+    color_echo YELLOW "🍺  Installing mac packages..."
     "$DOTDOTFILES/lib/install/mac.sh"
 fi
 
-color_echo BLUE "🔄 Installing submodules..."
+color_echo BLUE "🔄  Installing submodules..."
 git submodule update --init --recursive lib/zinit
 git submodule update --init --recursive lib/scripts
 git submodule update --init --recursive home/.ssh
 
-color_echo GREEN "✅ Installation complete!"
+color_echo GREEN "✅  Installation complete!"
