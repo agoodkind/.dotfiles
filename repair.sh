@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-printf "DOTDOTFILES: %s\n\n" "$DOTDOTFILES"
 timestamp=$(date +"%Y%m%d_%H%M%S")
 
 DOTDOTFILES="$(dirname "$(readlink -f "$0")")"
@@ -23,16 +22,12 @@ color_echo() {
     echo -e "${!color}$*${NC}"
 }
 
-printf "DOTDOTFILES: %s\n\n" "$DOTDOTFILES"
-
 color_echo BLUE "🔄 Updating plugins and submodules..."
 # can't use config here since we don't know if its been defined yet
 (cd "$DOTDOTFILES" && git pull)
 (cd "$DOTDOTFILES" && git submodule update --init --recursive)
 
 timestamp=$(date +"%Y%m%d_%H%M%S")
-
-color_echo BLUE "📁 DOTDOTFILES: $DOTDOTFILES"
 
 BACKUPS_PATH="$DOTDOTFILES/backups/$timestamp"
 mkdir -p "$BACKUPS_PATH"
