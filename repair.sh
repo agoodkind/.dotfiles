@@ -86,8 +86,6 @@ for script in $scripts; do
     color_echo GREEN "  🔗 Linked script: $script_name"
 done
 
-printf "\n.zshrc has been repaired and relinked\n"
-printf "\nRun 'source \"%s/.zshrc\"' to apply changes or restart your terminal\n" "$HOME"
 
 # remove zcompdump files only if ZSH_COMPDUMP is set
 if [ -n "${ZSH_COMPDUMP:-}" ]; then
