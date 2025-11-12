@@ -50,3 +50,5 @@ echo "Installing submodule"
 git submodule update --init --recursive lib/zinit
 git submodule update --init --recursive lib/scripts
 git submodule update --init --recursive home/.ssh
+
+echo "Installation complete!"

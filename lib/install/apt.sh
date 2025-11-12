@@ -9,34 +9,24 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githu
 
 sudo add-apt-repository ppa:sasl-xoauth2/stable -y
 
+
 sudo apt-get update -y
 sudo apt-get upgrade -y
 
-# install email tools
-sudo apt-get install sasl-xoauth2 postfix -y
+# Core utilities and shells
+sudo apt-get install -y \
+	bash grep rename moreutils net-tools aria2 \
+	zsh thefuck fzf eza neovim nvim \
+	gh tree ack ack-grep \
+	speedtest-cli \
+	grc less most pandoc \
+	python3 ruby rbenv golang-go nodejs \
+	sasl-xoauth2 postfix \
+	gping fping ansible bat jq
 
-# install tools
-sudo apt-get install gh tree ack ack-grep -y
-
-# System utilities
-sudo apt-get install speedtest-cli moreutils bash grep rename aria2 net-tools -y
-
-# Shell and terminal tools
-sudo apt-get install zsh thefuck fzf eza neovim -y
-
-# Text processing and paging tools
-sudo apt-get install pandoc grc less most -y
-
-# install languages
-sudo apt-get install python3 ruby rbenv golang-go nodejs -y
-
-# install network tools
-sudo apt-get install gping fping ansible -y
-
-sudo apt-get remove nano -y
+sudo apt-get purge nano -y
 sudo ln -sf $(which nvim) /usr/bin/nano
 
-# install bat and link to ~/.local/bin (to avoid conflicts)
-sudo apt-get install bat -y
+# link bat to ~/.local/bin (to avoid conflicts)
 mkdir -p ~/.local/bin
 ln -sf /usr/bin/batcat ~/.local/bin/bat
