@@ -19,8 +19,8 @@ eval $(ssh-agent -s)
 
 echo "Adding SSH keys"
 # Auto-add SSH key if not already in agent
-ssh-add -l 
-ssh-add ~/.ssh/id_ed25519
+ssh-add -l  || true
+ssh-add ~/.ssh/id_ed25519 || true
 
 # set up git
 echo "Setting up git configuration"
