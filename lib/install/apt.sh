@@ -9,34 +9,34 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githu
 
 sudo add-apt-repository ppa:sasl-xoauth2/stable -y
 
-sudo apt update -y
-sudo apt upgrade -y
+sudo apt-get update -y
+sudo apt-get upgrade -y
 
 # install email tools
-sudo apt install sasl-xoauth2 postfix -y
+sudo apt-get install sasl-xoauth2 postfix -y
 
 # install tools
-sudo apt install gh tree ack ack-grep nvim -y
+sudo apt-get install gh tree ack ack-grep nvim -y
 
 # System utilities
-sudo apt install speedtest-cli moreutils bash grep rename aria2 net-tools -y
+sudo apt-get install speedtest-cli moreutils bash grep rename aria2 net-tools -y
 
 # Shell and terminal tools
-sudo apt install zsh thefuck fzf eza neovim -y
+sudo apt-get install zsh thefuck fzf eza neovim -y
 
 # Text processing and paging tools
-sudo apt install pandoc grc less most -y
+sudo apt-get install pandoc grc less most -y
 
 # install languages
-sudo apt install python3 ruby rbenv golang-go nodejs -y
+sudo apt-get install python3 ruby rbenv golang-go nodejs -y
 
 # install network tools
-sudo apt install gping fping ansible -y
+sudo apt-get install gping fping ansible -y
 
-sudo apt remove nano -y
-ln -sf $(which nvim) /usr/bin/nano
+sudo apt-get remove nano -y
+sudo ln -sf $(which nvim) /usr/bin/nano
 
 # install bat and link to ~/.local/bin (to avoid conflicts)
-sudo apt install bat -y
+sudo apt-get install bat -y
 mkdir -p ~/.local/bin
 ln -sf /usr/bin/batcat ~/.local/bin/bat
