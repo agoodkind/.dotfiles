@@ -39,4 +39,4 @@ ln -sf $(which nvim) /usr/bin/nano
 # install bat and link to ~/.local/bin (to avoid conflicts)
 sudo apt install bat -y
 mkdir -p ~/.local/bin
-ln -s /usr/bin/batcat ~/.local/bin/bat
+ln -sf /usr/bin/batcat ~/.local/bin/bat
