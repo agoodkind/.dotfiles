@@ -96,11 +96,14 @@ function reload {
     fc -RI
     # Return to original directory
     builtin cd "$_pwd"
-    if [[ "$_timestamp" != "$DOTDOTFILES_TIMESTAMP" ]]; then
+    # Trim whitespace for robust comparison
+    local _ts1="$(echo -n "$_timestamp" | tr -d '\n' | xargs)"
+    local _ts2="$(echo -n "$DOTDOTFILES_TIMESTAMP" | tr -d '\n' | xargs)"
+    if [[ "$_ts1" != "$_ts2" ]]; then
         echo "zshrc reloaded."
     else
         echo "zshrc was unable to be reloaded."
-        echo "$_timestamp != $DOTDOTFILES_TIMESTAMP"
+        printf 'TIMESTAMP DEBUG: <%s> != <%s>\n' "$_ts1" "$_ts2"
     fi
 }
 
