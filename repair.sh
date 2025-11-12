@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 
 printf "DOTDOTFILES: %s\n\n" "$DOTDOTFILES"
 timestamp=$(date +"%Y%m%d_%H%M%S")
@@ -5,8 +6,10 @@ timestamp=$(date +"%Y%m%d_%H%M%S")
 DOTDOTFILES="$(dirname "$(readlink -f "$0")")"
 export DOTDOTFILES
 
-#!/usr/bin/env bash
-set -euo pipefail
+set -eu
+if [ -n "$BASH_VERSION" ]; then
+    set -o pipefail
+fi
 
 # Color and emoji setup
 RED='\033[0;31m'
