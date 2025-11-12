@@ -1,17 +1,35 @@
+
+printf "DOTDOTFILES: %s\n\n" "$DOTDOTFILES"
+timestamp=$(date +"%Y%m%d_%H%M%S")
+
+DOTDOTFILES="$(dirname "$(readlink -f "$0")")"
+export DOTDOTFILES
+
 #!/usr/bin/env bash
 set -euo pipefail
 
-printf "\nUpdating plugins and submodules\n\n"
+# Color and emoji setup
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+color_echo() {
+    color="$1"; shift
+    echo -e "${!color}$*${NC}"
+}
+
+printf "DOTDOTFILES: %s\n\n" "$DOTDOTFILES"
+
+color_echo BLUE "🔄 Updating plugins and submodules..."
 # can't use config here since we don't know if its been defined yet
 (cd "$DOTDOTFILES" && git pull)
 (cd "$DOTDOTFILES" && git submodule update --init --recursive)
 
 timestamp=$(date +"%Y%m%d_%H%M%S")
 
-DOTDOTFILES="$(dirname "$(readlink -f "$0")")"
-export DOTDOTFILES
-
-printf "DOTDOTFILES: %s\n\n" "$DOTDOTFILES"
+color_echo BLUE "📁 DOTDOTFILES: $DOTDOTFILES"
 
 BACKUPS_PATH="$DOTDOTFILES/backups/$timestamp"
 mkdir -p "$BACKUPS_PATH"
@@ -28,10 +46,12 @@ realpath_cmd() {
     fi
 }
 
+printf "\nLinking dotfiles to home directory\n"
+
 # go through all files in $DOTDOTFILES/home and create symlinks in $HOME
 # make a backup of each file if it exists
 files=$(find "$DOTDOTFILES/home" -type f)
-printf "\nLinking dotfiles to home directory\n"
+color_echo YELLOW "🔗 Linking dotfiles to home directory..."
 for source_file in $files; do
     relative_path=$(realpath_cmd --no-symlinks --relative-to="$DOTDOTFILES/home" "$source_file")
     backup_file="$BACKUPS_PATH/$relative_path.bak"
@@ -40,15 +60,17 @@ for source_file in $files; do
     if [ -e "$home_file" ]; then
         mkdir -p "$(dirname "$backup_file")"
         cp -Hr "$home_file" "$backup_file"
+        color_echo YELLOW "  💾 Backed up: $relative_path"
     fi
     
     mkdir -p "$(dirname "$home_file")"
     ln -sf "$source_file" "$home_file"
-    printf "\tLinked: %s\n" "$relative_path"
+    color_echo GREEN "  🔗 Linked: $relative_path"
 done
 
+
 # Symlink all .sh scripts to ~/.local/bin without .sh extension
-printf "\nLinking scripts to ~/.local/bin\n"
+color_echo YELLOW "🔗 Linking scripts to ~/.local/bin..."
 rm -rf "$HOME/.local/bin/scripts" 2>/dev/null || true
 mkdir -p "$HOME/.local/bin/scripts"
 scripts=$(find "$DOTDOTFILES/lib/scripts" -maxdepth 1 -type f -name "*.sh")
@@ -58,20 +80,23 @@ for script in $scripts; do
 
     ln -sf "$script" "$target"
 
-    printf "\tLinked script: %s\n" "$script_name"
+    color_echo GREEN "  🔗 Linked script: $script_name"
 done
+
+printf "\n.zshrc has been repaired and relinked\n"
+printf "\nRun 'source \"%s/.zshrc\"' to apply changes or restart your terminal\n" "$HOME"
 
 # remove zcompdump files only if ZSH_COMPDUMP is set
 if [ -n "${ZSH_COMPDUMP:-}" ]; then
-    printf "\nRemoving zcompdump file: %s\n" "$ZSH_COMPDUMP"
+    color_echo YELLOW "🧹 Removing zcompdump file: $ZSH_COMPDUMP"
     rm -f "$ZSH_COMPDUMP"
 fi
 
 # for macOS clean up brew
 if is_macos; then
-    printf "\nCleaning up Homebrew\n"
+    color_echo YELLOW "🧹 Cleaning up Homebrew..."
     brew cleanup
 fi
 
-printf "\n.zshrc has been repaired and relinked\n"
-printf "\nRun 'source \"%s/.zshrc\"' to apply changes or restart your terminal\n" "$HOME"
+color_echo GREEN "✅ .zshrc has been repaired and relinked"
+color_echo BLUE "💡 Run 'source \"$HOME/.zshrc\"' to apply changes or restart your terminal"
