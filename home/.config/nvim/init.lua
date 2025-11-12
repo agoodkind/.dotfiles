@@ -1,4 +1,5 @@
 -- Bootstrap lazy.nvim
+
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
     local lazyrepo = "https://github.com/folke/lazy.nvim.git"
@@ -51,6 +52,11 @@ require("lazy").setup({
                     },
                 })
                 vim.cmd('colorscheme onedark_vivid')
+                -- Restore default background color and tildes after theme loads
+                vim.cmd('highlight Normal guibg=NONE ctermbg=NONE')
+                vim.opt.fillchars = { eob = '~' }
+                -- Make tildes on empty lines more visible
+                vim.cmd('highlight EndOfBuffer guifg=#00ffff ctermfg=cyan')
             end
         }
     },
@@ -61,10 +67,9 @@ require("lazy").setup({
     checker = { enabled = true },
 })
 
--- Load custom iTerm-matched colorscheme
--- vim.cmd('colorscheme iterm')
+vim.opt.fillchars = { eob = '~' }
 
--- Enable OSC 52 clipboard for SSH sessions
+-- Use system clipboard
 vim.opt.clipboard = 'unnamedplus'
 
 -- OSC 52 clipboard provider
