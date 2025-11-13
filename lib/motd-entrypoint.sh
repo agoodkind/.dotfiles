@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Dynamically execute all scripts in the motd directory
+# Dynamically execute all scripts in the dotfiles motd directory
 
-MOTD_DIR="$(cd "$(dirname "$0")" && pwd)/motd"
+DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
+MOTD_DIR="$DOTFILES_DIR/lib/motd"
 
 # Check if directory exists
 if [ ! -d "$MOTD_DIR" ]; then
