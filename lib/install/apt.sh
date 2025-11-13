@@ -38,7 +38,7 @@ sudo apt-get install -y \
 	gpg gping grc grep htop imagemagick jq less locales most moreutils \
 	net-tools neovim nodejs openssh-client openssh-server pandoc postfix \
 	python3 rbenv rename rsync rsyslog ruby sasl-xoauth2 screen \
-	speedtest-cli sshuttle thefuck tree vim watch wget wireguard zsh
+	speedtest-cli smartmontools sshuttle thefuck tree vim watch wget wireguard zsh
 
 
 color_echo BLUE "Installing latest Fastfetch..."
