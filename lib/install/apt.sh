@@ -33,7 +33,7 @@ sudo apt-get upgrade -y
 
 color_echo YELLOW "Installing core and extra packages..."
 sudo apt-get install -y \
-	ack ast-grep ansible aria2 bat bash coreutils curl eza fail2ban \
+	ack ack-grep ansible aria2 bat bash coreutils curl eza fail2ban \
 	ffmpeg figlet fping fzf gh git git-delta git-lfs golang-go \
 	gpg gping grc grep htop imagemagick jq less locales most moreutils \
 	net-tools neovim nodejs openssh-client openssh-server pandoc postfix \
