@@ -41,18 +41,19 @@ color_echo BLUE "🛠️  Running repair script..."
 "$DOTDOTFILES/repair.sh"
 
 # Set up passwordless sudo for current user (macOS and Ubuntu)
-if sudo -n true 2>/dev/null; then
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    SUDOERS_FILE="/private/etc/sudoers.d/$(whoami)"
+else
+    SUDOERS_FILE="/etc/sudoers.d/$(whoami)"
+fi
+
+if [[ -f "$SUDOERS_FILE" ]]; then
     color_echo GREEN "🔓  Sudo already passwordless for $(whoami)"
 else
     color_echo YELLOW "🔓  Configuring passwordless sudo for $(whoami)"
     SUDOERS_LINE="$(whoami) ALL=(ALL) NOPASSWD:ALL"
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        echo "$SUDOERS_LINE" | sudo tee "/private/etc/sudoers.d/$(whoami)" >/dev/null
-        sudo chmod 0440 "/private/etc/sudoers.d/$(whoami)"
-    else
-        echo "$SUDOERS_LINE" | sudo tee "/etc/sudoers.d/$(whoami)" >/dev/null
-        sudo chmod 0440 "/etc/sudoers.d/$(whoami)"
-    fi
+    echo "$SUDOERS_LINE" | sudo tee "$SUDOERS_FILE" >/dev/null
+    sudo chmod 0440 "$SUDOERS_FILE"
     color_echo GREEN "✅  Passwordless sudo configured for $(whoami)"
 fi
 
