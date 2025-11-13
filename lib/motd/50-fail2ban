@@ -9,7 +9,13 @@ if ! command -v fail2ban-client &> /dev/null; then
 fi
 
 logfile='/var/log/fail2ban.log*'
-mapfile -t lines < <(grep -hioP '(\[[a-z-]+\]) (ban|unban)' "$logfile" | sort | uniq -c)
+
+# Check if log files exist
+if ! ls $logfile &>/dev/null; then
+    exit 0
+fi
+
+mapfile -t lines < <(grep -hioP '(\[[a-z-]+\]) (ban|unban)' $logfile 2>/dev/null | sort | uniq -c)
 jails=($(printf -- '%s\n' "${lines[@]}" | grep -oP '\[\K[^\]]+' | sort | uniq))
 
 out=""

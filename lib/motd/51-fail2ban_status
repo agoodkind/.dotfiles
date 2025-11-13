@@ -4,8 +4,13 @@ if ! command -v fail2ban-client &> /dev/null; then
     exit 0
 fi
 
+# fail2ban-client requires root permissions
+if [[ $EUID -ne 0 ]]; then
+    exit 0
+fi
+
 # fail2ban-client status to get all jails, takes about ~70ms
-jails=($(fail2ban-client status | grep "Jail list:" | sed "s/ //g" | awk '{split($2,a,",");for(i in a) print a[i]}'))
+jails=($(fail2ban-client status 2>/dev/null | grep "Jail list:" | sed "s/ //g" | awk '{split($2,a,",");for(i in a) print a[i]}'))
 
 out="jail,failed,total,banned,total\n"
 
