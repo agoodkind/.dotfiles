@@ -6,7 +6,7 @@ fi
 
 # copy MOTD to /etc/motd
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
-sudo rm -rf /etc/motd
+sudo rm -f /etc/motd
 sudo cp  "$DOTFILES_DIR/lib/motd-entrypoint.sh" /etc/motd
 sudo chmod +x /etc/motd
 
