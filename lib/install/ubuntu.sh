@@ -17,10 +17,18 @@ echo "Configuring MOTD..."
 if [ -d /etc/update-motd.d/ ]; then
     echo "Disabling default MOTD scripts in /etc/update-motd.d/"
     for file in /etc/update-motd.d/*; do
-        if [[ ! "$file" =~ motd-entrypoint\.sh$ ]]; then
+        basename_file=$(basename "$file")
+        if [[ "$basename_file" != "00-motd-entrypoint.sh" ]]; then
             sudo chmod -x "$file"
         fi
     done
+fi
+
+
+# Disable motd-news (Ubuntu's dynamic MOTD messages)
+if [ -f /etc/default/motd-news ]; then
+    echo "Disabling motd-news..."
+    sudo sed -i 's/^ENABLED=.*/ENABLED=0/' /etc/default/motd-news
 fi
 
 # Copy our custom MOTD entrypoint
@@ -31,10 +39,5 @@ sudo cp "$DOTFILES_DIR/lib/motd-entrypoint.sh" /etc/update-motd.d/00-motd-entryp
 sudo chmod +x /etc/update-motd.d/00-motd-entrypoint.sh
 
 
-# Disable motd-news (Ubuntu's dynamic MOTD messages)
-if [ -f /etc/default/motd-news ]; then
-    echo "Disabling motd-news..."
-    sudo sed -i 's/^ENABLED=.*/ENABLED=0/' /etc/default/motd-news
-fi
 
 echo "MOTD configuration complete."
