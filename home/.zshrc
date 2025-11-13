@@ -9,6 +9,11 @@ alias isinstalled="which -s"
 export DOTDOTFILES="$HOME/.dotfiles"
 ########################################
 export PATH="$PATH:$HOME/.local/bin:$HOME/.local/bin/scripts"
+
+# Show MOTD on login shells only
+if [[ -o login ]] && [[ -f "$DOTDOTFILES/lib/motd-entrypoint.sh" ]]; then
+    "$DOTDOTFILES/lib/motd-entrypoint.sh"
+fi
 export NVM_LAZY_LOAD=true
 ################################################
 # Include OS specific and common zshrc configs
