@@ -58,12 +58,12 @@ for source_file in $files; do
     if [ -e "$home_file" ]; then
         mkdir -p "$(dirname "$backup_file")"
         cp -Hr "$home_file" "$backup_file"
-        color_echo YELLOW "  💾 Backed up: $relative_path"
+        color_echo YELLOW "  💾  Backed up: $relative_path"
     fi
     
     mkdir -p "$(dirname "$home_file")"
     ln -sf "$source_file" "$home_file"
-    color_echo GREEN "  🔗 Linked: $relative_path"
+    color_echo GREEN "  🔗  Linked: $relative_path"
 done
 
 
@@ -78,19 +78,19 @@ for script in $scripts; do
 
     ln -sf "$script" "$target"
 
-    color_echo GREEN "  🔗 Linked script: $script_name"
+    color_echo GREEN "  🔗  Linked script: $script_name"
 done
 
 
 # remove zcompdump files only if ZSH_COMPDUMP is set
 if [ -n "${ZSH_COMPDUMP:-}" ]; then
-    color_echo YELLOW "🧹 Removing zcompdump file: $ZSH_COMPDUMP"
+    color_echo YELLOW "🧹  Removing zcompdump file: $ZSH_COMPDUMP"
     rm -f "$ZSH_COMPDUMP"
 fi
 
 # for macOS clean up brew
 if is_macos; then
-    color_echo YELLOW "🧹 Cleaning up Homebrew..."
+    color_echo YELLOW "🧹  Cleaning up Homebrew..."
     brew cleanup
 fi
 

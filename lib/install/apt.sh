@@ -32,7 +32,7 @@ sudo apt-get upgrade -y
 color_echo YELLOW "Installing core and extra packages..."
 sudo apt-get install -y \
 	bash grep rename moreutils net-tools aria2 \
-	zsh thefuck fzf eza neovim nvim \
+	zsh thefuck fzf eza neovim \
 	gh tree ack ack-grep \
 	speedtest-cli \
 	grc less most pandoc \

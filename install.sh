@@ -16,11 +16,6 @@ color_echo() {
 
 export DOTDOTFILES="$HOME/.dotfiles"
 
-color_echo BLUE "🔄  Installing submodules..."
-git submodule update --init --recursive lib/zinit
-git submodule update --init --recursive lib/scripts
-git submodule update --init --recursive home/.ssh
-
 color_echo BLUE "🔧  Making scripts executable..."
 chmod +x "$DOTDOTFILES/repair.sh"
 chmod +x "$DOTDOTFILES/lib/install/git.sh"
