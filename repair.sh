@@ -31,6 +31,10 @@ is_macos() {
     [[ "$OSTYPE" == "darwin"* ]]
 }
 
+is_ubuntu() {
+    [[ -f /etc/os-release ]] && grep -qiE 'ubuntu|debian' /etc/os-release
+}
+
 realpath_cmd() {
     if is_macos && command -v grealpath >/dev/null; then
         grealpath "$@"
@@ -87,6 +91,14 @@ fi
 if is_macos; then
     color_echo YELLOW "🧹  Cleaning up Homebrew..."
     brew cleanup
+
+    color_echo BLUE "💡  Running macOS setup script..."
+    "$DOTDOTFILES/lib/install/mac.sh" --skip-install
+fi
+
+if is_ubuntu; then
+    color_echo BLUE "💡  Running Ubuntu setup script..."
+    "$DOTDOTFILES/lib/install/ubuntu.sh" --skip-install
 fi
 
 color_echo GREEN "✅  .zshrc has been repaired and relinked"

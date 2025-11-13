@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 
 # Apt-based installation script for Ubuntu systems
-"$DOTDOTFILES/lib/install/apt.sh"
+# if not skip install is set, skip installation of packages, --skip-install
+if [[ " $* " != *" --skip-install "* ]]; then
+    "$DOTDOTFILES/lib/install/apt.sh"
+fi
 
 # Script to configure MOTD (Message of the Day) on Ubuntu systems
 # Disables default MOTD scripts and optionally sets a custom MOTD
