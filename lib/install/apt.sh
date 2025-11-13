@@ -41,7 +41,7 @@ sudo apt-get install -y \
 	htop curl wget gpg rsyslog locales \
 	coreutils watch git git-lfs git-delta \
 	openssh-client openssh-server screen sshuttle \
-	ffmpeg imagemagick
+	ffmpeg imagemagick wireguard
 
 
 color_echo YELLOW "Purging nano and linking nvim as nano..."
