@@ -55,11 +55,11 @@ else
     color_echo GREEN "✅  Passwordless sudo configured for $(whoami)"
 fi
 
-# if Ubuntu or Debian, install apt
+# if Ubuntu or Debian, run ubuntu install script
 if [[ -f /etc/os-release ]] && grep -qiE 'ubuntu|debian' /etc/os-release; then
     color_echo YELLOW "🐧  Ubuntu/Debian detected"
-    color_echo YELLOW "📦  Installing apt packages..."
-    "$DOTDOTFILES/lib/install/apt.sh"
+    color_echo YELLOW "📦  Installing ubuntu packages..."
+    "$DOTDOTFILES/lib/install/ubuntu.sh"
 fi
 
 # run mac last because it calls brew which takes forever
