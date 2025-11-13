@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 
-echo "Installing submodule"
-git submodule update --init --recursive lib/zinit
-git submodule update --init --recursive lib/scripts
-git submodule update --init --recursive home/.ssh
-echo "Installation complete!"
+set -euo pipefail
 
 # Color and emoji setup
 RED='\033[0;31m'
@@ -19,6 +15,11 @@ color_echo() {
 }
 
 export DOTDOTFILES="$HOME/.dotfiles"
+
+color_echo BLUE "🔄  Installing submodules..."
+git submodule update --init --recursive lib/zinit
+git submodule update --init --recursive lib/scripts
+git submodule update --init --recursive home/.ssh
 
 color_echo BLUE "🔧  Making scripts executable..."
 chmod +x "$DOTDOTFILES/repair.sh"
@@ -44,6 +45,22 @@ color_echo BLUE "🔧  Setting up git configuration..."
 color_echo BLUE "🛠️   Running repair script..."
 "$DOTDOTFILES/repair.sh"
 
+# Set up passwordless sudo for current user (macOS and Ubuntu)
+if sudo -n true 2>/dev/null; then
+    color_echo GREEN "🔓  Sudo already passwordless for $(whoami)"
+else
+    color_echo YELLOW "🔓  Configuring passwordless sudo for $(whoami)"
+    SUDOERS_LINE="$(whoami) ALL=(ALL) NOPASSWD:ALL"
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "$SUDOERS_LINE" | sudo tee "/private/etc/sudoers.d/$(whoami)" >/dev/null
+        sudo chmod 0440 "/private/etc/sudoers.d/$(whoami)"
+    else
+        echo "$SUDOERS_LINE" | sudo tee "/etc/sudoers.d/$(whoami)" >/dev/null
+        sudo chmod 0440 "/etc/sudoers.d/$(whoami)"
+    fi
+    color_echo GREEN "✅  Passwordless sudo configured for $(whoami)"
+fi
+
 # if linux, install apt
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     color_echo YELLOW "🐧  Linux detected"
@@ -59,9 +76,5 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     "$DOTDOTFILES/lib/install/mac.sh"
 fi
 
-color_echo BLUE "🔄  Installing submodules..."
-git submodule update --init --recursive lib/zinit
-git submodule update --init --recursive lib/scripts
-git submodule update --init --recursive home/.ssh
-
 color_echo GREEN "✅  Installation complete!"
+
