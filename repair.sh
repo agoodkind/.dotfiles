@@ -94,5 +94,5 @@ if is_macos; then
     brew cleanup
 fi
 
-color_echo GREEN "✅ .zshrc has been repaired and relinked"
-color_echo BLUE "💡 Run 'source \"$HOME/.zshrc\"' to apply changes or restart your terminal"
+color_echo GREEN "✅  .zshrc has been repaired and relinked"
+color_echo BLUE "💡  Run 'source \"$HOME/.zshrc\"' to apply changes or restart your terminal"
