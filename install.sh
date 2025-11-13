@@ -70,5 +70,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     "$DOTDOTFILES/lib/install/mac.sh"
 fi
 
+chsh -s "$(which zsh)"
+
 color_echo GREEN "✅  Installation complete!"
 

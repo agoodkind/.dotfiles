@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Dynamically execute all scripts in the motd directory
 
-MOTD_DIR="$(dirname "${BASH_SOURCE[0]}")/motd"
+MOTD_DIR="$(cd "$(dirname "$0")" && pwd)/motd"
 
 # Check if directory exists
 if [ ! -d "$MOTD_DIR" ]; then

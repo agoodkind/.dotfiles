@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
-# Brew
-"$DOTDOTFILES/lib/install/brew.sh"
+if [[ " $* " != *" --skip-install "* ]]; then
+    "$DOTDOTFILES/lib/install/brew.sh"
+fi
 
 # copy MOTD to /etc/motd
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
