@@ -26,7 +26,7 @@ chmod +x "$DOTDOTFILES/lib/install/brew.sh"
 color_echo BLUE "📁  Creating SSH sockets directory..."
 mkdir -p "$HOME/.ssh/sockets"
 
-color_echo BLUE "🗝️   Starting SSH agent..."
+color_echo BLUE "🗝️  Starting SSH agent..."
 eval $(ssh-agent -s)
 
 color_echo BLUE "➕  Adding SSH keys..."
@@ -37,7 +37,7 @@ ssh-add ~/.ssh/id_ed25519 || true
 color_echo BLUE "🔧  Setting up git configuration..."
 "$DOTDOTFILES/lib/install/git.sh"
 
-color_echo BLUE "🛠️   Running repair script..."
+color_echo BLUE "🛠️  Running repair script..."
 "$DOTDOTFILES/repair.sh"
 
 # Set up passwordless sudo for current user (macOS and Ubuntu)
