@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 
-echo "$DOTDOTFILES"
-
 # Brew
 "$DOTDOTFILES/lib/install/brew.sh"
+
+# copy MOTD to /etc/motd
+DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
+sudo rm -rf /etc/motd
+sudo cp  "$DOTFILES_DIR/lib/motd-entrypoint.sh" /etc/motd
+sudo chmod +x /etc/motd
 
 # Finder
 # enable hidden files
@@ -39,3 +43,5 @@ defaults write com.google.Chrome BuiltInDnsClientEnabled -bool false
 # enable sudo-touchid
 # if installed 
 sh <( curl -sL git.io/sudo-touch-id )
+
+echo "Mac setup complete!"
