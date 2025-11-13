@@ -24,7 +24,6 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githu
 color_echo BLUE "Adding sasl-xoauth2 PPA..."
 sudo add-apt-repository ppa:sasl-xoauth2/stable -y
 
-
 color_echo YELLOW "Updating and upgrading packages..."
 sudo apt-get update -y
 sudo apt-get upgrade -y
@@ -39,7 +38,10 @@ sudo apt-get install -y \
 	python3 ruby rbenv golang-go nodejs \
 	sasl-xoauth2 postfix \
 	gping fping ansible bat jq \
-	htop curl wget gpg rsyslog locales
+	htop curl wget gpg rsyslog locales \
+	coreutils watch git git-lfs git-delta \
+	openssh-client openssh-server screen sshuttle \
+	ffmpeg imagemagick
 
 
 color_echo YELLOW "Purging nano and linking nvim as nano..."
