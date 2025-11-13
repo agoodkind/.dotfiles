@@ -6,8 +6,7 @@ MOTD_DIR="$DOTFILES_DIR/lib/motd"
 
 # Check if directory exists
 if [ ! -d "$MOTD_DIR" ]; then
-    echo "Error: MOTD directory not found at $MOTD_DIR"
-    exit 1
+    exit 0
 fi
 
 # Execute all files in the motd directory in sorted order
