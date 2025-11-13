@@ -2,20 +2,16 @@
 
 # include the global gitconfig
 echo "Including global gitconfig from $DOTDOTFILES/lib/.gitconfig_incl"
-git --git-dir="$DOTDOTFILES"/.git \
-    --work-tree="$DOTDOTFILES" \
-    config --global include.path "$DOTDOTFILES/lib/.gitconfig_incl"
+git config --global include.path "$DOTDOTFILES/lib/.gitconfig_incl"
 
 # Set git user name and email
 echo "Setting up git user name and email"
 if [[ -z "$(git config --global user.name)" ]]; then
-    echo "No git user name found"
-    read -r -p "Enter your git user name (First Last): " git_user_name
+    read -r -p "Enter your name for git (First Last): " git_user_name
     git config --global user.name "$git_user_name"
 fi
 
 if [[ -z "$(git config --global user.email)" ]]; then
-    echo "No git email found"
     read -r -p "Enter your git email: " git_user_email
     git config --global user.email "$git_user_email"
 fi

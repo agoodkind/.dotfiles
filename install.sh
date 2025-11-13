@@ -56,9 +56,9 @@ else
     color_echo GREEN "✅  Passwordless sudo configured for $(whoami)"
 fi
 
-# if linux, install apt
-if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    color_echo YELLOW "🐧  Linux detected"
+# if Ubuntu or Debian, install apt
+if [[ -f /etc/os-release ]] && grep -qiE 'ubuntu|debian' /etc/os-release; then
+    color_echo YELLOW "🐧  Ubuntu/Debian detected"
     color_echo YELLOW "📦  Installing apt packages..."
     "$DOTDOTFILES/lib/install/apt.sh"
 fi
