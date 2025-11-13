@@ -24,12 +24,12 @@ if [ -d /etc/update-motd.d/ ]; then
 fi
 
 # Copy our custom MOTD entrypoint
-if [ -f "$DOTFILES_DIR/lib/motd-entrypoint.sh" ]; then
-    echo "Installing custom MOTD entrypoint..."
-    sudo rm -f /etc/update-motd.d/00-motd-entrypoint.sh
-    sudo cp "$DOTFILES_DIR/lib/motd-entrypoint.sh" /etc/update-motd.d/00-motd-entrypoint.sh
-    sudo chmod +x /etc/update-motd.d/00-motd-entrypoint.sh
-fi
+
+echo "Installing custom MOTD entrypoint..."
+sudo rm -f /etc/update-motd.d/00-motd-entrypoint.sh
+sudo cp "$DOTFILES_DIR/lib/motd-entrypoint.sh" /etc/update-motd.d/00-motd-entrypoint.sh
+sudo chmod +x /etc/update-motd.d/00-motd-entrypoint.sh
+
 
 # Disable motd-news (Ubuntu's dynamic MOTD messages)
 if [ -f /etc/default/motd-news ]; then
