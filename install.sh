@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
-
 # Color and emoji setup
 RED='\033[0;31m'
 GREEN='\033[0;32m'

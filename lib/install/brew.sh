@@ -6,7 +6,7 @@ brew install xcodes
 brew install showwin/speedtest/speedtest 
 brew install wireguard-tools
 
-brew install ack ack-grep ansible aria2 bash bat coreutils curl eza fail2ban \
+brew install ack ast-grep ansible aria2 bash bat coreutils curl eza fail2ban \
   fastfetch ffmpeg figlet fping gh git git-delta git-lfs glow gping grc grep \
   htop imagemagick jq less mdless most moreutils node nvim openssh pandoc \
   paper pnpm python3 rename rsync ruby screen ssh-copy-id sshuttle thefuck \
