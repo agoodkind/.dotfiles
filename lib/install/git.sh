@@ -10,7 +10,7 @@ git --git-dir="$DOTDOTFILES"/.git \
 echo "Setting up git user name and email"
 if [[ -z "$(git config --global user.name)" ]]; then
     echo "No git user name found"
-    read -r -p "Enter your git user name: " git_user_name
+    read -r -p "Enter your git user name (First Last): " git_user_name
     git config --global user.name "$git_user_name"
 fi
 
