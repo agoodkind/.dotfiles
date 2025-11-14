@@ -142,13 +142,13 @@ if [[ $last_epoch -gt 0 ]]; then
     when=$(format_relative_time "$diff" "$last_epoch")
     
     if (( diff < 3600 )); then
-        # Recent: "Currently logged in from X, last logged in Y ago from Z"
+        # Recent: "Currently logged in from X, last logged in from Z Y ago"
         printf "%bCurrently logged in from%b %b%s%b, " "$CYAN" "$RESET" "$GREEN" "$current_src" "$RESET"
-        printf "%blast logged in %s from%b %b%s%b\n" "$CYAN" "$when" "$RESET" "$GREEN" "$last_src" "$RESET"
+        printf "%blast logged in from%b %b%s%b %b%s%b\n" "$CYAN" "$RESET" "$GREEN" "$last_src" "$RESET" "$YELLOW" "$when" "$RESET"
     else
-        # Older: "Currently logged in from X, last session was Z at/on Y"
+        # Older: "Currently logged in from X, last logged in from Z at/on Y"
         printf "%bCurrently logged in from%b %b%s%b, " "$CYAN" "$RESET" "$GREEN" "$current_src" "$RESET"
-        printf "%blast session was%b %b%s%b %b%s%b\n" "$CYAN" "$RESET" "$GREEN" "$last_src" "$RESET" "$YELLOW" "$when" "$RESET"
+        printf "%blast logged in from%b %b%s%b %b%s%b\n" "$CYAN" "$RESET" "$GREEN" "$last_src" "$RESET" "$YELLOW" "$when" "$RESET"
     fi
 else
     # Single session or parse failure
