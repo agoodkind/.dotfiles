@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+# Display IP addresses for each network interface
+
+command -v ip >/dev/null 2>&1 || exit 0
+
+declare -A ipv4_arrays
+declare -A ipv6_arrays
+
+# Parse ip addr output to collect interface IPs
+current_iface=""
+while IFS= read -r line; do
+    # Match interface name line: "1: lo: <LOOPBACK..."
+    if [[ "$line" =~ ^[0-9]+:[[:space:]]+([^:]+): ]]; then
+        current_iface="${BASH_REMATCH[1]}"
+        # Skip loopback interface
+        [[ "$current_iface" == "lo" ]] && current_iface=""
+        continue
+    fi
+    
+    # Skip if no current interface
+    [[ -z "$current_iface" ]] && continue
+    
+    # Match IPv4: "    inet 192.168.1.1/24..."
+    if [[ "$line" =~ [[:space:]]+inet[[:space:]]+([0-9.]+) ]]; then
+        ip="${BASH_REMATCH[1]}"
+        # Initialize array if needed
+        [[ -z "${ipv4_arrays[$current_iface]}" ]] && ipv4_arrays[$current_iface]=""
+        # Append to array (space-separated for now)
+        [[ -n "${ipv4_arrays[$current_iface]}" ]] && ipv4_arrays[$current_iface]+=" "
+        ipv4_arrays[$current_iface]+="$ip"
+    # Match IPv6: "    inet6 2001:db8::1/64..."
+    elif [[ "$line" =~ [[:space:]]+inet6[[:space:]]+([0-9a-fA-F:]+) ]]; then
+        ip6="${BASH_REMATCH[1]}"
+        # Skip link-local addresses (fe80::)
+        [[ "$ip6" =~ ^fe80:: ]] && continue
+        
+        # Initialize array if needed
+        [[ -z "${ipv6_arrays[$current_iface]}" ]] && ipv6_arrays[$current_iface]=""
+        # Append to array (space-separated for now)
+        [[ -n "${ipv6_arrays[$current_iface]}" ]] && ipv6_arrays[$current_iface]+=" "
+        ipv6_arrays[$current_iface]+="$ip6"
+    fi
+done < <(ip addr show 2>/dev/null)
+
+# Get all unique interfaces (including those with only IPv6)
+all_interfaces=($(printf '%s\n' "${!ipv4_arrays[@]}" "${!ipv6_arrays[@]}" | sort -u))
+
+# Exit if no interfaces found
+[[ ${#all_interfaces[@]} -eq 0 ]] && exit 0
+
+# Display in a clean format
+echo ""
+echo "IP Addresses:"
+for iface in "${all_interfaces[@]}"; do
+    # Build address arrays: IPv6 first, then IPv4
+    v6_addrs=()
+    v4_addrs=()
+    
+    # Parse IPv6 addresses
+    if [[ -n "${ipv6_arrays[$iface]}" ]]; then
+        read -ra v6_addrs <<< "${ipv6_arrays[$iface]}"
+    fi
+    
+    # Parse IPv4 addresses
+    if [[ -n "${ipv4_arrays[$iface]}" ]]; then
+        read -ra v4_addrs <<< "${ipv4_arrays[$iface]}"
+    fi
+    
+    # Combine: IPv6 first, then IPv4
+    all_addrs=("${v6_addrs[@]}" "${v4_addrs[@]}")
+    
+    # Skip interfaces with no addresses
+    [[ ${#all_addrs[@]} -eq 0 ]] && continue
+    
+    # Display interface name with decoration
+    if [[ ${#iface} -ge 24 ]]; then
+        printf "  └─ %s\n" "$iface"
+        indent="      "
+        first_indent="      "
+    else
+        printf "  └─ %-24s" "$iface"
+        indent="                           "  # 27 spaces to align with interface name
+        first_indent=""  # No indent needed, already aligned
+    fi
+    
+    # Display addresses vertically or in two columns with tree lines
+    if [[ ${#all_addrs[@]} -eq 1 ]]; then
+        # Single address - display inline
+        printf "%s\n" "${all_addrs[0]}"
+    elif [[ ${#all_addrs[@]} -le 4 ]]; then
+        # 2-4 addresses - display vertically with tree lines
+        for i in $(seq 0 $((${#all_addrs[@]} - 1))); do
+            if [[ $i -eq 0 ]]; then
+                # First address
+                if [[ ${#all_addrs[@]} -eq 2 ]]; then
+                    printf "%s└─ %s\n" "$first_indent" "${all_addrs[$i]}"
+                else
+                    printf "%s├─ %s\n" "$first_indent" "${all_addrs[$i]}"
+                fi
+            elif [[ $i -eq $((${#all_addrs[@]} - 1)) ]]; then
+                # Last address
+                printf "%s└─ %s\n" "$indent" "${all_addrs[$i]}"
+            else
+                # Middle addresses
+                printf "%s├─ %s\n" "$indent" "${all_addrs[$i]}"
+            fi
+        done
+    else
+        # 5+ addresses - display in two columns with tree lines
+        mid=$(((${#all_addrs[@]} + 1) / 2))
+        col_width=36  # Width for first column (after tree char)
+        
+        for i in $(seq 0 $(($mid - 1))); do
+            # Determine tree character for first column
+            j=$((i + mid))
+            # It's the last in first column if it's the last row AND there's no second column item
+            is_last_in_first_col=false
+            if [[ $i -eq $(($mid - 1)) ]] && [[ $j -ge ${#all_addrs[@]} ]]; then
+                is_last_in_first_col=true
+            fi
+            
+            if [[ $i -eq 0 ]]; then
+                # First address in first column
+                # Use └─ only if it's the only item (mid=1 and no second column)
+                if [[ $mid -eq 1 ]] && [[ $j -ge ${#all_addrs[@]} ]]; then
+                    tree_char="└─"
+                else
+                    tree_char="├─"
+                fi
+                printf "%s%s %-${col_width}s" "$first_indent" "$tree_char" "${all_addrs[$i]}"
+            else
+                # Subsequent addresses in first column
+                # Use └─ only if it's the last row (i == mid-1) AND there's no second column item on this row
+                # OR if it's the last item in first column AND there's no second column at all
+                if [[ $i -eq $(($mid - 1)) ]] && [[ $j -ge ${#all_addrs[@]} ]]; then
+                    tree_char="└─"
+                else
+                    tree_char="├─"
+                fi
+                printf "%s%s %-${col_width}s" "$indent" "$tree_char" "${all_addrs[$i]}"
+            fi
+            
+            # Add second column if exists
+            if [[ $j -lt ${#all_addrs[@]} ]]; then
+                # Determine if this is the last item overall
+                if [[ $j -eq $((${#all_addrs[@]} - 1)) ]]; then
+                    printf "└─ %s" "${all_addrs[$j]}"
+                else
+                    printf "├─ %s" "${all_addrs[$j]}"
+                fi
+            fi
+            printf "\n"
+        done
+    fi
+done
+
