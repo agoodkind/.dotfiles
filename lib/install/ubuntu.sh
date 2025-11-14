@@ -32,13 +32,5 @@ if [ -f /etc/default/motd-news ]; then
     sudo sed -i 's/^ENABLED=.*/ENABLED=0/' /etc/default/motd-news
 fi
 
-# Copy our custom MOTD entrypoint
-
-echo "Installing custom MOTD entrypoint..."
-sudo rm -f /etc/update-motd.d/00-motd-entrypoint.sh
-sudo cp "$DOTFILES_DIR/lib/motd-entrypoint.deb.sh" /etc/update-motd.d/00-motd-entrypoint.sh
-sudo chmod +x /etc/update-motd.d/00-motd-entrypoint.sh
-
-
 
 echo "MOTD configuration complete."
