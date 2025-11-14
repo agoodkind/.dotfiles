@@ -34,17 +34,35 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 else
     SUDOERS_FILE="/etc/sudoers.d/$(whoami)"
 fi
-
-if [[ -f "$SUDOERS_FILE" ]]; then
-    color_echo GREEN "🔓  Sudo already passwordless for $(whoami)"
-else
-    color_echo YELLOW "🔓  Configuring passwordless sudo for $(whoami)"
-    SUDOERS_LINE="$(whoami) ALL=(ALL) NOPASSWD:ALL"
-    echo "$SUDOERS_LINE" | sudo tee "$SUDOERS_FILE" >/dev/null
-    sudo chmod 0440 "$SUDOERS_FILE"
-    color_echo GREEN "✅  Passwordless sudo configured for $(whoami)"
+# ask user if they want to configure passwordless sudo
+read -p "Configure passwordless sudo? (y/n) " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    if [[ -f "$SUDOERS_FILE" ]]; then
+        color_echo GREEN "🔓  Sudo already passwordless for $(whoami)"
+    else
+        color_echo YELLOW "🔓  Configuring passwordless sudo for $(whoami)"
+        SUDOERS_LINE="$(whoami) ALL=(ALL) NOPASSWD:ALL"
+        echo "$SUDOERS_LINE" | sudo tee "$SUDOERS_FILE" >/dev/null
+        sudo chmod 0440 "$SUDOERS_FILE"
+        color_echo GREEN "✅  Passwordless sudo configured for $(whoami)"
+    fi
 fi
 
+# if Ubuntu or Debian, run ubuntu install script
+if [[ -f /etc/os-release ]] && grep -qiE 'ubuntu|debian' /etc/os-release; then
+    color_echo YELLOW "🐧  Ubuntu/Debian detected"
+    color_echo YELLOW "📦  Installing ubuntu packages..."
+    "$DOTDOTFILES/lib/install/ubuntu.sh"
+fi
+
+# run mac last because it calls brew which takes forever
+# if mac, install brew
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    color_echo YELLOW "🍏  macOS detected"
+    color_echo YELLOW "🍺  Installing mac packages..."
+    "$DOTDOTFILES/lib/install/mac.sh"
+fi
 
 chsh -s "$(which zsh)"
 
