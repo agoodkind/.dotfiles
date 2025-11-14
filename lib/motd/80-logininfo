@@ -15,23 +15,66 @@ fi
 user=$(whoami)
 now=$($DATE +%s)
 
+# Function to format source: use IP if available, otherwise terminal name
+format_source() {
+    local terminal="$1"
+    local ip="$2"
+    if [[ -n "$ip" ]]; then
+        echo "$ip"
+    else
+        echo "$terminal"
+    fi
+}
+
 # Parse login sessions - handle both macOS (YYYY-MM-DD HH:MM) and Linux (MMM DD HH:MM) formats
+# Extract: terminal|date time|ip (if available)
 sessions=$(who | awk -v u="$user" '$1==u {
     # macOS: agoodkind console 2025-11-10 15:41
-    # Linux: agoodkind pts/0 2025-11-13 14:36
+    # macOS SSH: agoodkind ttys000 2025-11-10 15:41 (192.168.1.100)
+    # Linux: agoodkind pts/0 2025-11-13 14:36 (192.168.1.100)
+    # Linux IPv6: agoodkind pts/0 2025-11-13 14:36 (fd00:bad:b01:1::15c6)
+    terminal = $2
+    ip = ""
+    
     if ($3 ~ /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) {
-        print $2 "|" $3 " " $4
+        # macOS format: YYYY-MM-DD HH:MM
+        datetime = $3 " " $4
+        # IP might be in $5 (if present)
+        if (NF > 4 && $5 ~ /^\(/) {
+            # Remove parentheses and extract IP
+            gsub(/[()]/, "", $5)
+            ip = $5
+        }
     } else {
-        print $2 "|" $3 " " $4
+        # Linux format: MMM DD HH:MM (possibly with IP in parentheses)
+        datetime = $3 " " $4
+        # Look for IP in remaining fields (usually in $5 with parentheses)
+        for (i = 5; i <= NF; i++) {
+            if ($i ~ /^\(/) {
+                # Found field with parentheses - extract IP
+                gsub(/[()]/, "", $i)
+                ip = $i
+                break
+            }
+        }
     }
+    print terminal "|" datetime "|" ip
 }')
 
 [[ -z "$sessions" ]] && { echo "No login sessions found"; exit 0; }
 
-current_src=$(echo "$sessions" | head -n1 | cut -d'|' -f1)
+# Extract current session info
+current_line=$(echo "$sessions" | head -n1)
+current_terminal=$(echo "$current_line" | cut -d'|' -f1)
+current_ip=$(echo "$current_line" | cut -d'|' -f3)
+current_src=$(format_source "$current_terminal" "$current_ip")
+
+# Extract last session info
 last_line=$(echo "$sessions" | tail -n1)
-last_src=$(echo "$last_line" | cut -d'|' -f1)
+last_terminal=$(echo "$last_line" | cut -d'|' -f1)
 last_time=$(echo "$last_line" | cut -d'|' -f2 | xargs)
+last_ip=$(echo "$last_line" | cut -d'|' -f3)
+last_src=$(format_source "$last_terminal" "$last_ip")
 
 # Parse last login epoch - handle both date formats
 if [[ "$last_time" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
