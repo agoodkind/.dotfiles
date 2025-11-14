@@ -1,4 +1,5 @@
-########
+# shellcheck shell=bash
+###############################################################################
 # MOTD
 # Show MOTD:
 #   1. Every 12 hours (configurable via MOTD_INTERVAL_HOURS)
