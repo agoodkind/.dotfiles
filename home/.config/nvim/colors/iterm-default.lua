@@ -37,10 +37,10 @@ local colors = {
     status_line = '#2f2e30',        -- Subtle status line
     status_line_nc = '#262427',
     status_line_fg = '#fcfcfa',
-    vert_split = '#2f2e30',         -- Subtle vertical split
-    search = '#ffca58',             -- Yellow search highlight
+    vert_split = '#2f2e30', -- Subtle vertical split
+    search = '#ffca58',     -- Yellow search highlight
     search_bg = '#545452',
-    visual = '#545452',             -- Subtle visual selection
+    visual = '#545452',     -- Subtle visual selection
     error = '#ff7272',
     warning = '#ffca58',
     info = '#49cae4',
@@ -72,39 +72,46 @@ highlight('EndOfBuffer', { fg = colors.bright_black, bg = colors.bg })
 -- Syntax highlights
 -- =============================================================================
 highlight('Comment', { fg = colors.comment, italic = true })
-highlight('Constant', { fg = colors.cyan }) -- Cyan for constants
+
+-- Constants and literals
+highlight('Constant', { fg = colors.yellow })
 highlight('String', { fg = colors.green })
 highlight('Character', { fg = colors.green })
 highlight('Number', { fg = colors.yellow })
 highlight('Boolean', { fg = colors.magenta })
 highlight('Float', { fg = colors.yellow })
 
-highlight('Identifier', { fg = colors.cyan }) -- Cyan for identifiers
-highlight('Function', { fg = colors.blue })   -- Blue for functions
+-- Identifiers and functions
+highlight('Identifier', { fg = colors.fg })
+highlight('Function', { fg = colors.blue })
 
+-- Statements and keywords
 highlight('Statement', { fg = colors.magenta })
-highlight('Conditional', { fg = colors.red }) -- Red for conditionals
+highlight('Conditional', { fg = colors.magenta })
 highlight('Repeat', { fg = colors.magenta })
-highlight('Label', { fg = colors.yellow })    -- Yellow for labels
-highlight('Operator', { fg = colors.cyan })   -- Cyan for operators
+highlight('Label', { fg = colors.magenta })
+highlight('Operator', { fg = colors.fg })
 highlight('Keyword', { fg = colors.magenta })
 highlight('Exception', { fg = colors.red })
 
-highlight('PreProc', { fg = colors.cyan }) -- Cyan for preprocessor
-highlight('Include', { fg = colors.blue })
+-- Preprocessor
+highlight('PreProc', { fg = colors.cyan })
+highlight('Include', { fg = colors.cyan })
 highlight('Define', { fg = colors.cyan })
-highlight('Macro', { fg = colors.yellow }) -- Yellow for macros
-highlight('PreCondit', { fg = colors.blue })
+highlight('Macro', { fg = colors.cyan })
+highlight('PreCondit', { fg = colors.cyan })
 
+-- Types
 highlight('Type', { fg = colors.blue })
 highlight('StorageClass', { fg = colors.magenta })
-highlight('Structure', { fg = colors.cyan }) -- Cyan for structures
+highlight('Structure', { fg = colors.blue })
 highlight('Typedef', { fg = colors.blue })
 
-highlight('Special', { fg = colors.yellow }) -- Yellow for special
+-- Special
+highlight('Special', { fg = colors.cyan })
 highlight('SpecialChar', { fg = colors.red })
 highlight('Tag', { fg = colors.red })
-highlight('Delimiter', { fg = colors.cyan }) -- Cyan for delimiters
+highlight('Delimiter', { fg = colors.fg })
 highlight('SpecialComment', { fg = colors.comment })
 highlight('Debug', { fg = colors.red })
 
@@ -123,37 +130,37 @@ highlight('CursorLineNr', { fg = colors.line_number_active, bg = colors.cursor_l
 highlight('LineNr', { fg = colors.line_number })
 highlight('SignColumn', { bg = colors.bg })
 
-highlight('Visual', { fg = colors.bg, bg = colors.visual }) -- Magenta background for visual
+highlight('Visual', { bg = colors.visual })
 highlight('VisualNOS', { bg = colors.visual })
 
 highlight('Search', { fg = colors.bg, bg = colors.search })
-highlight('IncSearch', { fg = colors.bg, bg = colors.green })                         -- Green for inc search
+highlight('IncSearch', { fg = colors.bg, bg = colors.search })
 
-highlight('MatchParen', { fg = colors.yellow, bg = colors.cursor_line, bold = true }) -- Yellow match paren
+highlight('MatchParen', { fg = colors.cyan, bold = true, underline = true })
 
-highlight('StatusLine', { fg = colors.status_line_fg, bg = colors.status_line, bold = true })
+highlight('StatusLine', { fg = colors.status_line_fg, bg = colors.status_line })
 highlight('StatusLineNC', { fg = colors.comment, bg = colors.status_line_nc })
 highlight('WinSeparator', { fg = colors.vert_split })
 highlight('VertSplit', { fg = colors.vert_split })
 
 highlight('Pmenu', { fg = colors.fg, bg = colors.cursor_line })
-highlight('PmenuSel', { fg = colors.bg, bg = colors.cyan }) -- Cyan for selected item
+highlight('PmenuSel', { fg = colors.bg, bg = colors.blue })
 highlight('PmenuSbar', { bg = colors.cursor_line })
-highlight('PmenuThumb', { bg = colors.blue })               -- Blue thumb
+highlight('PmenuThumb', { bg = colors.comment })
 
 highlight('TabLine', { fg = colors.comment, bg = colors.status_line_nc })
 highlight('TabLineFill', { bg = colors.status_line_nc })
-highlight('TabLineSel', { fg = colors.cyan, bg = colors.status_line, bold = true }) -- Cyan selected tab
+highlight('TabLineSel', { fg = colors.fg, bg = colors.status_line })
 
-highlight('WildMenu', { fg = colors.bg, bg = colors.green })                        -- Green wild menu
+highlight('WildMenu', { fg = colors.bg, bg = colors.blue })
 
-highlight('Folded', { fg = colors.blue, bg = colors.cursor_line })                  -- Blue for folded
-highlight('FoldColumn', { fg = colors.blue, bg = colors.bg })                       -- Blue fold column
+highlight('Folded', { fg = colors.comment, bg = colors.cursor_line })
+highlight('FoldColumn', { fg = colors.comment, bg = colors.bg })
 
-highlight('DiffAdd', { fg = colors.green, bg = colors.bg, bold = true })
-highlight('DiffChange', { fg = colors.yellow, bg = colors.bg, bold = true })
-highlight('DiffDelete', { fg = colors.red, bg = colors.bg, bold = true })
-highlight('DiffText', { fg = colors.cyan, bg = colors.bg, bold = true }) -- Cyan for diff text
+highlight('DiffAdd', { fg = colors.green, bg = colors.bg })
+highlight('DiffChange', { fg = colors.yellow, bg = colors.bg })
+highlight('DiffDelete', { fg = colors.red, bg = colors.bg })
+highlight('DiffText', { fg = colors.blue, bg = colors.bg })
 
 highlight('SpellBad', { sp = colors.error, undercurl = true })
 highlight('SpellCap', { sp = colors.warning, undercurl = true })
@@ -175,9 +182,9 @@ highlight('DiagnosticUnderlineHint', { sp = colors.hint, undercurl = true })
 -- =============================================================================
 -- LSP highlights
 -- =============================================================================
-highlight('LspReferenceText', { bg = colors.cursor_line, underline = true })
-highlight('LspReferenceRead', { bg = colors.cursor_line, fg = colors.blue })
-highlight('LspReferenceWrite', { bg = colors.cursor_line, fg = colors.yellow }) -- Yellow for write
+highlight('LspReferenceText', { bg = colors.cursor_line })
+highlight('LspReferenceRead', { bg = colors.cursor_line })
+highlight('LspReferenceWrite', { bg = colors.cursor_line })
 
 -- =============================================================================
 -- Tree-sitter highlights (if available)
