@@ -1,6 +1,6 @@
 ########
 # MOTD
-if [[ -o login ]] && [[ -n "$SSH_CONNECTION" ]]; then
+if [[ -n "$SSH_CONNECTION" ]] || [[ -n "$SSH_CLIENT" ]]; then
   DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
   MOTD_DIR="$DOTFILES_DIR/lib/motd"
 
