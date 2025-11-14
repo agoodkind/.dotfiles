@@ -102,4 +102,3 @@ if is_ubuntu; then
 fi
 
 color_echo GREEN "✅  .zshrc has been repaired and relinked"
-color_echo BLUE "💡  Run 'source \"$HOME/.zshrc\"' to apply changes or restart your terminal"

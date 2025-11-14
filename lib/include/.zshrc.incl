@@ -1,5 +1,3 @@
-
-# shellcheck shell=bash
 # Check if profiling was requested and load zprof module early if needed
 SHOULD_PROFILE=false
 if [[ -f ~/.cache/zsh_profile_next ]]; then
@@ -10,9 +8,13 @@ if [[ -f ~/.cache/zsh_profile_next ]]; then
     do_profile() {
         echo "Zsh performance profiling results:"
         zprof
+        echo "Zsh initialization time: $(( ($(date +%s%N) - START_TIME) / 1000000 )) ms"
     }
 fi
 export SHOULD_PROFILE
+
+source "$DOTDOTFILES/lib/include/.zshrc.plugins"
+
 
 # Run this function to enable profiling for the next shell session
 zsh_profile() {
@@ -21,121 +23,16 @@ zsh_profile() {
     echo "Performance profiling enabled for next shell session"
 }
 
-# store timestamp for debugging
-export DOTDOTFILES_TIMESTAMP="$(date '+%Y-%m-%d %H:%M:%S')"
 
-# Cache OS detection
-if [[ ! -f ~/.cache/os-type.cache ]]; then
-    echo "Detecting & caching OS type"
-    mkdir -p ~/.cache
-    if [[ $(uname) == "Darwin" ]]; then
-        echo "mac" > ~/.cache/os-type.cache
-    elif command -v apt >/dev/null; then
-        echo "ubuntu" > ~/.cache/os-type.cache
-    else
-        echo "unknown" > ~/.cache/os-type.cache
-    fi
-fi
-
-OS_TYPE=$(cat ~/.cache/os-type.cache)
-
-case "$OS_TYPE" in
-    mac)
-        source "$DOTDOTFILES/lib/include/.zshrc.mac"
-        ;;
-    ubuntu)
-        source "$DOTDOTFILES/lib/include/.zshrc.ubuntu"
-        ;;
-    *)
-        echo 'Unknown OS!'
-        ;;
-esac
-
-function is_macos() {
-    [[ "$OS_TYPE" == "mac" ]]
-}
-
-function is_ubuntu() {
-    [[ "$OS_TYPE" == "ubuntu" ]]
-}
-
-### Zinit
-source "$DOTDOTFILES/lib/zinit/zinit.zsh"
-autoload -Uz _zinit
-(( ${+_comps} )) && _comps[zinit]=_zinit
-
-# zoxide is fancy cd
+# Dotfiles async update - source directly to avoid zinit plugin management
+source "$DOTDOTFILES/lib/include/.zshrc.utils"
+source "$DOTDOTFILES/lib/include/.zshrc.updater" &!
 source "$DOTDOTFILES/lib/include/.zshrc.zoxide"
+source "$DOTDOTFILES/lib/include/.zshrc.motd"
+
 
 # Load local zshrc customizations that are not to be tracked by git
 [[ ! -f "$DOTDOTFILES/.zshrc.local" ]] || source "$DOTDOTFILES/.zshrc.local"
-
-# the fuck - lazy load this function
-fuck () {
-    # Undefine this function and source the real one on first use
-    unfunction fuck
-    eval "$(thefuck --alias)"
-    fuck "$@"
-}
-
-function reload {
-    echo "Reloading zshrc..."
-    local _timestamp="$DOTDOTFILES_TIMESTAMP"
-    # Preserve current directory
-    local _pwd=$PWD
-    # Refresh command hash table (new installs)
-    rehash
-    # Recompute dircolors cache if needed (kept in sync with original logic)
-    if [[ ! -f ~/.cache/dircolors.cache ]] || [[ ~/.dir_colors -nt ~/.cache/dircolors.cache ]]; then
-        mkdir -p ~/.cache
-        dircolors -b > ~/.cache/dircolors.cache
-    fi
-    # Source main config (will redefine this function)
-    source "$HOME/.zshrc"
-    # Sync history with other sessions
-    fc -RI
-    # Return to original directory
-    builtin cd "$_pwd"
-    # Trim whitespace for robust comparison
-    local _ts1="$(echo -n "$_timestamp" | tr -d '\n' | xargs)"
-    local _ts2="$(echo -n "$DOTDOTFILES_TIMESTAMP" | tr -d '\n' | xargs)"
-    if [[ "$_ts1" != "$_ts2" ]]; then
-        echo "zshrc reloaded."
-    else
-        echo "zshrc was unable to be reloaded."
-        printf 'TIMESTAMP DEBUG: <%s> != <%s>\n' "$_ts1" "$_ts2"
-    fi
-}
-
-function repair {
-    echo "Repairing dotfiles..."
-    config checkout main
-    config pull
-    config submodule update --init --recursive --remote
-    "$DOTDOTFILES/repair.sh"
-    reload
-}
-
-# dotfile management
-function config {
-    case $1 in
-        update)
-            git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" pull
-            (cd "$DOTDOTFILES" && git submodule update --init --recursive)
-            config repair
-            config reload
-            ;;
-        reload)
-            reload
-            ;;
-        repair)
-            repair
-            ;;
-        *)
-            git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" "$@"
-            ;;
-    esac
-}
 
 # if ~/.cache/dotfiles_update_next exists
 # interactively ask if user wants to update
@@ -153,3 +50,4 @@ if [[ -f ~/.cache/dotfiles_update_next ]] && [[ ! -f ~/.cache/dotfiles_update_sk
     #     echo "Dotfiles update skipped."
     # fi
 fi
+

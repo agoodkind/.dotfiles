@@ -1,0 +1,18 @@
+########
+# MOTD
+if [[ -o login ]] && [[ -n "$SSH_CONNECTION" ]]; then
+  DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
+  MOTD_DIR="$DOTFILES_DIR/lib/motd"
+
+  # Check if directory exists
+  if [ ! -d "$MOTD_DIR" ]; then
+      exit 0
+  fi
+
+  # Execute all files in the motd directory in sorted order
+  for script in "$MOTD_DIR"/*; do
+      if [ -f "$script" ] && [ -x "$script" ]; then
+          "$script"
+      fi
+  done 
+fi
