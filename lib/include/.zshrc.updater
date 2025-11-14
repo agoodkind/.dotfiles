@@ -1,4 +1,5 @@
 #!/usr/bin/env zsh
+# shellcheck shell=bash
 
 # do not run if update already scheduled
 if [[ -f ~/.cache/dotfiles_update_next ]]; then
