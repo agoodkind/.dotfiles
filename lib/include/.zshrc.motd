@@ -4,19 +4,34 @@
 #   1. Every 12 hours (configurable via MOTD_INTERVAL_HOURS)
 #   2. Always on SSH connections
 #   3. On first shell of each day
+#   4. If forced via flag file (touch ~/.cache/motd_show_next)
 # Set MOTD_INTERVAL_HOURS to change the interval (e.g., 12 for twice daily, 168 for weekly)
+# To force show next time: touch ~/.cache/motd_show_next
+# To disable showing: rm ~/.cache/motd_show_next (if it exists)
 MOTD_INTERVAL_HOURS="${MOTD_INTERVAL_HOURS:-12}"
 
 should_show_motd=false
+MOTD_CACHE_FILE="$HOME/.cache/motd_last_shown"
+MOTD_FORCE_FILE="$HOME/.cache/motd_show_next"
+mkdir -p "$HOME/.cache"
 
-# Always show on SSH connections
-if [[ -n "$SSH_CONNECTION" ]] || [[ -n "$SSH_CLIENT" ]]; then
+# Check for force flag (highest priority - overrides all other checks)
+if [[ -f "$MOTD_FORCE_FILE" ]]; then
   should_show_motd=true
-else
-  # Check if we should show periodically
-  MOTD_CACHE_FILE="$HOME/.cache/motd_last_shown"
-  mkdir -p "$HOME/.cache"
-  
+  # Remove flag after using it (one-time use)
+  rm -f "$MOTD_FORCE_FILE"
+fi
+
+# Always show on SSH connections (unless explicitly disabled)
+if [[ -n "$SSH_CONNECTION" ]] || [[ -n "$SSH_CLIENT" ]]; then
+  # Check if MOTD is explicitly disabled for SSH
+  if [[ ! -f "$HOME/.cache/motd_disable_ssh" ]]; then
+    should_show_motd=true
+  fi
+fi
+
+# Check periodic display (only if not already set to show)
+if [[ "$should_show_motd" != "true" ]]; then
   if [[ ! -f "$MOTD_CACHE_FILE" ]]; then
     # First time - show it
     should_show_motd=true
@@ -61,4 +76,6 @@ if [[ "$should_show_motd" == "true" ]]; then
   
   # Update timestamp after showing (respects interval for future sessions)
   touch "$MOTD_CACHE_FILE"
+  
+  # Note: MOTD_FORCE_FILE was already removed above if it existed
 fi

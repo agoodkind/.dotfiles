@@ -1,46 +1,99 @@
 #!/usr/bin/env bash
 # Display IP addresses for each network interface
-
-command -v ip >/dev/null 2>&1 || exit 0
+# Supports both Linux (ip command) and macOS (ifconfig)
 
 declare -A ipv4_arrays
 declare -A ipv6_arrays
 
-# Parse ip addr output to collect interface IPs
-current_iface=""
-while IFS= read -r line; do
-    # Match interface name line: "1: lo: <LOOPBACK..."
-    if [[ "$line" =~ ^[0-9]+:[[:space:]]+([^:]+): ]]; then
-        current_iface="${BASH_REMATCH[1]}"
-        # Skip loopback interface
-        [[ "$current_iface" == "lo" ]] && current_iface=""
-        continue
+# Detect OS and use appropriate command
+if [[ "$(uname)" == "Darwin" ]]; then
+    # macOS - use ifconfig
+    if ! command -v ifconfig >/dev/null 2>&1; then
+        exit 0
     fi
     
-    # Skip if no current interface
-    [[ -z "$current_iface" ]] && continue
-    
-    # Match IPv4: "    inet 192.168.1.1/24..."
-    if [[ "$line" =~ [[:space:]]+inet[[:space:]]+([0-9.]+) ]]; then
-        ip="${BASH_REMATCH[1]}"
-        # Initialize array if needed
-        [[ -z "${ipv4_arrays[$current_iface]}" ]] && ipv4_arrays[$current_iface]=""
-        # Append to array (space-separated for now)
-        [[ -n "${ipv4_arrays[$current_iface]}" ]] && ipv4_arrays[$current_iface]+=" "
-        ipv4_arrays[$current_iface]+="$ip"
-    # Match IPv6: "    inet6 2001:db8::1/64..."
-    elif [[ "$line" =~ [[:space:]]+inet6[[:space:]]+([0-9a-fA-F:]+) ]]; then
-        ip6="${BASH_REMATCH[1]}"
-        # Skip link-local addresses (fe80::)
-        [[ "$ip6" =~ ^fe80:: ]] && continue
+    # Parse ifconfig output on macOS
+    # Format: en0: flags=... inet 192.168.1.100 netmask ... inet6 fe80::...
+    current_iface=""
+    while IFS= read -r line; do
+        # Match interface name line: "en0: flags=..."
+        if [[ "$line" =~ ^([^:]+):[[:space:]]+flags= ]]; then
+            current_iface="${BASH_REMATCH[1]}"
+            # Skip loopback interface
+            [[ "$current_iface" == "lo0" ]] && current_iface=""
+            continue
+        fi
         
-        # Initialize array if needed
-        [[ -z "${ipv6_arrays[$current_iface]}" ]] && ipv6_arrays[$current_iface]=""
-        # Append to array (space-separated for now)
-        [[ -n "${ipv6_arrays[$current_iface]}" ]] && ipv6_arrays[$current_iface]+=" "
-        ipv6_arrays[$current_iface]+="$ip6"
+        # Skip if no current interface
+        [[ -z "$current_iface" ]] && continue
+        
+        # Match IPv4: "	inet 192.168.1.100 netmask..."
+        if [[ "$line" =~ [[:space:]]+inet[[:space:]]+([0-9.]+) ]]; then
+            ip="${BASH_REMATCH[1]}"
+            # Skip 127.0.0.1 (loopback)
+            [[ "$ip" == "127.0.0.1" ]] && continue
+            # Initialize array if needed
+            [[ -z "${ipv4_arrays[$current_iface]}" ]] && ipv4_arrays[$current_iface]=""
+            # Append to array (space-separated for now)
+            [[ -n "${ipv4_arrays[$current_iface]}" ]] && ipv4_arrays[$current_iface]+=" "
+            ipv4_arrays[$current_iface]+="$ip"
+        # Match IPv6: "	inet6 fe80::...%en0 prefixlen 64" or "	inet6 2001:db8::1/64"
+        elif [[ "$line" =~ [[:space:]]+inet6[[:space:]]+([0-9a-fA-F:]+) ]]; then
+            ip6="${BASH_REMATCH[1]}"
+            # Remove %interface suffix if present (macOS link-local format)
+            ip6="${ip6%%%*}"
+            # Skip link-local addresses (fe80::)
+            [[ "$ip6" =~ ^fe80:: ]] && continue
+            
+            # Initialize array if needed
+            [[ -z "${ipv6_arrays[$current_iface]}" ]] && ipv6_arrays[$current_iface]=""
+            # Append to array (space-separated for now)
+            [[ -n "${ipv6_arrays[$current_iface]}" ]] && ipv6_arrays[$current_iface]+=" "
+            ipv6_arrays[$current_iface]+="$ip6"
+        fi
+    done < <(ifconfig -a 2>/dev/null)
+else
+    # Linux - use ip command
+    if ! command -v ip >/dev/null 2>&1; then
+        exit 0
     fi
-done < <(ip addr show 2>/dev/null)
+    
+    # Parse ip addr output on Linux
+    current_iface=""
+    while IFS= read -r line; do
+        # Match interface name line: "1: lo: <LOOPBACK..."
+        if [[ "$line" =~ ^[0-9]+:[[:space:]]+([^:]+): ]]; then
+            current_iface="${BASH_REMATCH[1]}"
+            # Skip loopback interface
+            [[ "$current_iface" == "lo" ]] && current_iface=""
+            continue
+        fi
+        
+        # Skip if no current interface
+        [[ -z "$current_iface" ]] && continue
+        
+        # Match IPv4: "    inet 192.168.1.1/24..."
+        if [[ "$line" =~ [[:space:]]+inet[[:space:]]+([0-9.]+) ]]; then
+            ip="${BASH_REMATCH[1]}"
+            # Initialize array if needed
+            [[ -z "${ipv4_arrays[$current_iface]}" ]] && ipv4_arrays[$current_iface]=""
+            # Append to array (space-separated for now)
+            [[ -n "${ipv4_arrays[$current_iface]}" ]] && ipv4_arrays[$current_iface]+=" "
+            ipv4_arrays[$current_iface]+="$ip"
+        # Match IPv6: "    inet6 2001:db8::1/64..."
+        elif [[ "$line" =~ [[:space:]]+inet6[[:space:]]+([0-9a-fA-F:]+) ]]; then
+            ip6="${BASH_REMATCH[1]}"
+            # Skip link-local addresses (fe80::)
+            [[ "$ip6" =~ ^fe80:: ]] && continue
+            
+            # Initialize array if needed
+            [[ -z "${ipv6_arrays[$current_iface]}" ]] && ipv6_arrays[$current_iface]=""
+            # Append to array (space-separated for now)
+            [[ -n "${ipv6_arrays[$current_iface]}" ]] && ipv6_arrays[$current_iface]+=" "
+            ipv6_arrays[$current_iface]+="$ip6"
+        fi
+    done < <(ip addr show 2>/dev/null)
+fi
 
 # Get all unique interfaces (including those with only IPv6)
 all_interfaces=($(printf '%s\n' "${!ipv4_arrays[@]}" "${!ipv6_arrays[@]}" | sort -u))
