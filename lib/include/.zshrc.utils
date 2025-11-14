@@ -78,7 +78,7 @@ function repair {
     echo "Repairing dotfiles..."
     config checkout main
     config pull
-    config submodule update --init --recursive --remote
+    (cd "$DOTDOTFILES" && git submodule update --init --recursive --remote)
     "$DOTDOTFILES/repair.sh"
     reload
 }
