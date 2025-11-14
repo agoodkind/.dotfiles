@@ -66,7 +66,45 @@ require("lazy").setup({
     checker = { enabled = true },
 })
 
+-- =============================================================================
+-- General Settings
+-- =============================================================================
+
+-- Enable true color support
+vim.opt.termguicolors = true
+
+-- Enable syntax highlighting
+vim.cmd('syntax on')
+
+-- Mouse support
+vim.opt.mouse = 'a'
+
+-- Fill characters
 vim.opt.fillchars = { eob = '~' }
+
+-- =============================================================================
+-- Search Settings
+-- =============================================================================
+
+-- Highlight search results
+vim.opt.hlsearch = true
+
+-- Ignore case in search patterns
+vim.opt.ignorecase = true
+
+-- Override ignorecase when search pattern has uppercase
+vim.opt.smartcase = true
+
+-- =============================================================================
+-- Command-line Settings
+-- =============================================================================
+
+-- Enable enhanced command-line completion
+vim.opt.wildmenu = true
+
+-- =============================================================================
+-- Clipboard Configuration
+-- =============================================================================
 
 -- Use system clipboard
 vim.opt.clipboard = 'unnamedplus'
@@ -103,32 +141,19 @@ else
     }
 end
 
--- Mouse support
-vim.opt.mouse = 'a'
+-- =============================================================================
+-- Keymaps and Commands
+-- =============================================================================
 
--- Highlight search results
-vim.opt.hlsearch = true
-
--- Enable syntax highlighting (enabled by default in Neovim)
-vim.cmd('syntax on')
-
--- Ignore case in search patterns
-vim.opt.ignorecase = true
-
--- Override ignorecase when search pattern has uppercase
-vim.opt.smartcase = true
-
--- Enable enhanced command-line completion
-vim.opt.wildmenu = true
-
--- Enable true color support
-vim.opt.termguicolors = true
+-- Prevent :'<,'> when pressing : in visual mode
+vim.keymap.set('v', ':', '<Esc>:')
 
 -- Allow saving files as sudo when forgot to start vim using sudo
 vim.api.nvim_create_user_command('W', 'w !sudo tee > /dev/null %', {})
 
--- Prevent :'<,'> when pressing : in visual mode
-vim.keymap.set('v', ':', '<Esc>:')
+-- =============================================================================
+-- FileType Autocommands
+-- =============================================================================
 
 -- Man page configuration with syntax highlighting
 vim.g.man_hardwrap = 0
