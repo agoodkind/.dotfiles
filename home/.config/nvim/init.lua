@@ -106,6 +106,27 @@ end
 -- Mouse support
 vim.opt.mouse = 'a'
 
+-- Highlight search results
+vim.opt.hlsearch = true
+
+-- Enable syntax highlighting (enabled by default in Neovim)
+vim.cmd('syntax on')
+
+-- Ignore case in search patterns
+vim.opt.ignorecase = true
+
+-- Override ignorecase when search pattern has uppercase
+vim.opt.smartcase = true
+
+-- Enable enhanced command-line completion
+vim.opt.wildmenu = true
+
+-- Enable true color support
+vim.opt.termguicolors = true
+
+-- Allow saving files as sudo when forgot to start vim using sudo
+vim.api.nvim_create_user_command('W', 'w !sudo tee > /dev/null %', {})
+
 -- Prevent :'<,'> when pressing : in visual mode
 vim.keymap.set('v', ':', '<Esc>:')
 
