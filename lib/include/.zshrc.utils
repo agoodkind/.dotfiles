@@ -48,7 +48,6 @@ fuck () {
 
 function reload {
     echo "Reloading zshrc..."
-    local _timestamp="$START_TIME"
     # Preserve current directory
     local _pwd=$PWD
     # Refresh command hash table (new installs)
@@ -59,19 +58,17 @@ function reload {
         dircolors -b > ~/.cache/dircolors.cache
     fi
     # Source main config (will redefine this function)
-    source "$HOME/.zshrc"
-    # Sync history with other sessions
-    fc -RI
-    # Return to original directory
-    builtin cd "$_pwd" || exit
-    # Trim whitespace for robust comparison
-    local _ts1="$(echo -n "$_timestamp" | tr -d '\n' | xargs)"
-    local _ts2="$(echo -n "$START_TIME" | tr -d '\n' | xargs)"
-    if [[ "$_ts1" != "$_ts2" ]]; then
+    if source "$HOME/.zshrc" 2>/dev/null; then
+        # Sync history with other sessions
+        fc -RI
+        # Return to original directory
+        builtin cd "$_pwd" || return 1
         echo "zshrc reloaded."
     else
-        echo "zshrc was unable to be reloaded."
-        printf 'TIMESTAMP DEBUG: <%s> != <%s>\n' "$_ts1" "$_ts2"
+        # Return to original directory even on failure
+        builtin cd "$_pwd" 2>/dev/null || true
+        echo "zshrc was unable to be reloaded (sourcing failed)." >&2
+        return 1
     fi
 }
 
