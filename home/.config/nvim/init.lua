@@ -1,4 +1,6 @@
+-- =============================================================================
 -- Bootstrap lazy.nvim
+-- =============================================================================
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
     local lazyrepo = "https://github.com/folke/lazy.nvim.git"
@@ -15,56 +17,13 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
--- Make sure to setup `mapleader` and `maplocalleader` before
--- loading lazy.nvim so that mappings are correct.
--- This is also a good place to setup other settings (vim.opt)
+-- =============================================================================
+-- Leader Keys
+-- =============================================================================
+-- Make sure to setup `mapleader` and `maplocalleader` before loading lazy.nvim
+-- so that mappings are correct.
 vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
-
--- Setup lazy.nvim
-require("lazy").setup({
-    spec = {
-        {
-            'nvim-treesitter/nvim-treesitter',
-            lazy = false,
-            branch = 'main',
-            build = ':TSUpdate',
-            ensure_installed = { 'all' }
-        },
-        {
-            'olimorris/onedarkpro.nvim',
-            priority = 1000,
-            config = function()
-                require('onedarkpro').setup({
-                    styles = { comments = 'italic' },
-                    plugins = { treesitter = true },
-                    highlights = {
-                        ["@comment.documentation"] = { fg = "${cyan}", italic = true },
-                        ["@comment.documentation.java"] = { fg = "${cyan}", italic = true },
-                        ["@comment.documentation.go"] = { fg = "${cyan}", italic = true },
-                        ["@comment.documentation.rust"] = { fg = "${cyan}", italic = true },
-                        ["@comment.documentation.python"] = { fg = "${cyan}", italic = true },
-                        ["@comment.documentation.c"] = { fg = "${cyan}", italic = true },
-                        ["@comment.documentation.cpp"] = { fg = "${cyan}", italic = true },
-                        ["@comment.documentation.ruby"] = { fg = "${cyan}", italic = true },
-                        ["@comment.documentation.typescript"] = { fg = "${cyan}", italic = true },
-                    },
-                })
-                vim.cmd('colorscheme onedark_vivid')
-                -- Restore default background color and tildes after theme loads
-                vim.cmd('highlight Normal guibg=NONE ctermbg=NONE')
-                vim.opt.fillchars = { eob = '~' }
-                -- Make tildes on empty lines more visible
-                vim.cmd('highlight EndOfBuffer guifg=#00ffff ctermfg=cyan')
-            end
-        }
-    },
-    -- Configure any other settings here. See the documentation for more details.
-    -- colorscheme that will be used when installing plugins.
-    install = { colorscheme = { "habamax" } },
-    -- automatically check for plugin updates
-    checker = { enabled = true },
-})
 
 -- =============================================================================
 -- General Settings
@@ -81,6 +40,35 @@ vim.opt.mouse = 'a'
 
 -- Fill characters
 vim.opt.fillchars = { eob = '~' }
+
+-- =============================================================================
+-- Plugin Setup (lazy.nvim)
+-- =============================================================================
+require("lazy").setup({
+    spec = {
+        {
+            'nvim-treesitter/nvim-treesitter',
+            lazy = false,
+            branch = 'main',
+            build = ':TSUpdate',
+            ensure_installed = { 'all' }
+        }
+    },
+    -- Configure any other settings here. See the documentation for more details.
+    -- colorscheme that will be used when installing plugins.
+    install = { colorscheme = { "habamax" } },
+    -- automatically check for plugin updates
+    checker = { enabled = true },
+})
+
+-- =============================================================================
+-- Colorscheme and Highlighting
+-- =============================================================================
+vim.cmd('colorscheme ')
+-- Restore default background color and tildes after theme loads
+vim.cmd('highlight Normal guibg=NONE ctermbg=NONE guifg=#e8e8e8')
+-- Make tildes on empty lines more visible
+vim.cmd('highlight EndOfBuffer guifg=#00ffff ctermfg=cyan')
 
 -- =============================================================================
 -- Search Settings
