@@ -140,3 +140,5 @@ for iface in "${all_interfaces[@]}"; do
         done
     fi
 done
+
+printf "\n"
