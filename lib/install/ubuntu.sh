@@ -3,6 +3,7 @@
 # Apt-based installation script for Ubuntu systems
 # if not skip install is set, skip installation of packages, --skip-install
 if [[ " $* " != *" --skip-install "* ]]; then
+    sudo dpkg-reconfigure tzdata
     "$DOTDOTFILES/lib/install/apt.sh"
 fi
 
