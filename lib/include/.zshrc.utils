@@ -104,7 +104,3 @@ function config {
             ;;
     esac
 }
-
-function show_motd {
-    
-}
