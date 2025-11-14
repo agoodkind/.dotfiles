@@ -68,9 +68,14 @@ function __zoxide_z() {
     elif [[ "$#" -eq 2 ]] && [[ "$1" = "--" ]]; then
         __zoxide_cd "$2"
     else
-        \builtin local result
+        \builtin local result current_pwd
+        current_pwd="$(__zoxide_pwd)"
         # shellcheck disable=SC2312
-        result="$(\command zoxide query --exclude "$(__zoxide_pwd)" -- "$@")" && __zoxide_cd "${result}"
+        result="$(\command zoxide query --exclude "${current_pwd}" -- "$@" 2>/dev/null)"
+        # Only cd if we got a result and it's different from current directory
+        if [[ -n "${result}" ]] && [[ "${result}" != "${current_pwd}" ]]; then
+            __zoxide_cd "${result}"
+        fi
     fi
 }
 

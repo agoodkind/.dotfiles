@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Check if profiling was requested and load zprof module early if needed
 SHOULD_PROFILE=false
 if [[ -f ~/.cache/zsh_profile_next ]]; then
@@ -26,7 +27,7 @@ zsh_profile() {
 
 # Dotfiles async update - source directly to avoid zinit plugin management
 source "$DOTDOTFILES/lib/include/.zshrc.utils"
-source "$DOTDOTFILES/lib/include/.zshrc.updater" &!
+(zsh "$DOTDOTFILES/lib/include/.zshrc.updater" >/dev/null 2>&1 &)
 source "$DOTDOTFILES/lib/include/.zshrc.zoxide"
 source "$DOTDOTFILES/lib/include/.zshrc.motd"
 
