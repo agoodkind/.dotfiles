@@ -19,8 +19,6 @@ if [[ "$(uname)" == "Darwin" ]]; then
         # Match interface name line: "en0: flags=..."
         if [[ "$line" =~ ^([^:]+):[[:space:]]+flags= ]]; then
             current_iface="${BASH_REMATCH[1]}"
-            # Skip loopback interface
-            [[ "$current_iface" == "lo0" ]] && current_iface=""
             continue
         fi
         
@@ -30,8 +28,8 @@ if [[ "$(uname)" == "Darwin" ]]; then
         # Match IPv4: "	inet 192.168.1.100 netmask..."
         if [[ "$line" =~ [[:space:]]+inet[[:space:]]+([0-9.]+) ]]; then
             ip="${BASH_REMATCH[1]}"
-            # Skip 127.0.0.1 (loopback)
-            [[ "$ip" == "127.0.0.1" ]] && continue
+            # Skip loopback addresses (127.0.0.0/8 range)
+            [[ "$ip" =~ ^127\. ]] && continue
             # Initialize array if needed
             [[ -z "${ipv4_arrays[$current_iface]}" ]] && ipv4_arrays[$current_iface]=""
             # Append to array (space-separated for now)
@@ -42,7 +40,8 @@ if [[ "$(uname)" == "Darwin" ]]; then
             ip6="${BASH_REMATCH[1]}"
             # Remove %interface suffix if present (macOS link-local format)
             ip6="${ip6%%%*}"
-            # Skip link-local addresses (fe80::)
+            # Skip loopback (::1) and link-local addresses (fe80::)
+            [[ "$ip6" == "::1" ]] && continue
             [[ "$ip6" =~ ^fe80:: ]] && continue
             
             # Initialize array if needed
@@ -61,11 +60,9 @@ else
     # Parse ip addr output on Linux
     current_iface=""
     while IFS= read -r line; do
-        # Match interface name line: "1: lo: <LOOPBACK..."
+        # Match interface name line: "1: lo: <LOOPBACK..." or "1: eth0: <BROADCAST..."
         if [[ "$line" =~ ^[0-9]+:[[:space:]]+([^:]+): ]]; then
             current_iface="${BASH_REMATCH[1]}"
-            # Skip loopback interface
-            [[ "$current_iface" == "lo" ]] && current_iface=""
             continue
         fi
         
@@ -75,6 +72,8 @@ else
         # Match IPv4: "    inet 192.168.1.1/24..."
         if [[ "$line" =~ [[:space:]]+inet[[:space:]]+([0-9.]+) ]]; then
             ip="${BASH_REMATCH[1]}"
+            # Skip loopback addresses (127.0.0.0/8 range)
+            [[ "$ip" =~ ^127\. ]] && continue
             # Initialize array if needed
             [[ -z "${ipv4_arrays[$current_iface]}" ]] && ipv4_arrays[$current_iface]=""
             # Append to array (space-separated for now)
@@ -83,7 +82,8 @@ else
         # Match IPv6: "    inet6 2001:db8::1/64..."
         elif [[ "$line" =~ [[:space:]]+inet6[[:space:]]+([0-9a-fA-F:]+) ]]; then
             ip6="${BASH_REMATCH[1]}"
-            # Skip link-local addresses (fe80::)
+            # Skip loopback (::1) and link-local addresses (fe80::)
+            [[ "$ip6" == "::1" ]] && continue
             [[ "$ip6" =~ ^fe80:: ]] && continue
             
             # Initialize array if needed
