@@ -28,38 +28,51 @@ format_source() {
 
 # Parse login sessions - handle both macOS (YYYY-MM-DD HH:MM) and Linux (MMM DD HH:MM) formats
 # Extract: terminal|date time|ip (if available)
-sessions=$(who | awk -v u="$user" '$1==u {
-    # macOS: agoodkind console 2025-11-10 15:41
-    # macOS SSH: agoodkind ttys000 2025-11-10 15:41 (192.168.1.100)
-    # Linux: agoodkind pts/0 2025-11-13 14:36 (192.168.1.100)
-    # Linux IPv6: agoodkind pts/0 2025-11-13 14:36 (fd00:bad:b01:1::15c6)
-    terminal = $2
-    ip = ""
+# Formats:
+#   macOS: agoodkind console 2025-11-10 15:41
+#   macOS SSH: agoodkind ttys000 2025-11-10 15:41 (192.168.1.100)
+#   Linux: agoodkind pts/0 2025-11-13 14:36 (192.168.1.100)
+#   Linux IPv6: agoodkind pts/0 2025-11-13 14:36 (fd00:bad:b01:1::15c6)
+
+parse_who_line() {
+    local line="$1"
+    local fields=($line)
     
-    if ($3 ~ /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) {
+    # Skip if username doesn't match
+    [[ "${fields[0]}" != "$user" ]] && return
+    
+    local terminal="${fields[1]}"
+    local datetime="${fields[2]} ${fields[3]}"
+    local ip=""
+    
+    # Check if date is in macOS format (YYYY-MM-DD)
+    if [[ "${fields[2]}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
         # macOS format: YYYY-MM-DD HH:MM
-        datetime = $3 " " $4
-        # IP might be in $5 (if present)
-        if (NF > 4 && $5 ~ /^\(/) {
-            # Remove parentheses and extract IP
-            gsub(/[()]/, "", $5)
-            ip = $5
-        }
-    } else {
+        # IP might be in field 4 (index 4) with parentheses
+        if [[ -n "${fields[4]}" ]] && [[ "${fields[4]}" =~ ^\( ]]; then
+            ip="${fields[4]//[()]/}"
+        fi
+    else
         # Linux format: MMM DD HH:MM (possibly with IP in parentheses)
-        datetime = $3 " " $4
-        # Look for IP in remaining fields (usually in $5 with parentheses)
-        for (i = 5; i <= NF; i++) {
-            if ($i ~ /^\(/) {
+        # Look for IP in remaining fields (usually field 4 with parentheses)
+        for field in "${fields[@]:4}"; do
+            if [[ "$field" =~ ^\( ]]; then
                 # Found field with parentheses - extract IP
-                gsub(/[()]/, "", $i)
-                ip = $i
+                ip="${field//[()]/}"
                 break
-            }
-        }
-    }
-    print terminal "|" datetime "|" ip
-}')
+            fi
+        done
+    fi
+    
+    echo "${terminal}|${datetime}|${ip}"
+}
+
+sessions=""
+while IFS= read -r line; do
+    parsed=$(parse_who_line "$line")
+    [[ -n "$parsed" ]] && sessions+="$parsed"$'\n'
+done < <(who)
+sessions="${sessions%$'\n'}"  # Remove trailing newline
 
 [[ -z "$sessions" ]] && { echo "No login sessions found"; exit 0; }
 
