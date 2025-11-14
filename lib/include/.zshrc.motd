@@ -59,11 +59,10 @@ if [[ "$should_show_motd" != "true" ]]; then
   fi
 fi
 
-if [[ "$should_show_motd" == "true" ]]; then
-  DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
-  MOTD_DIR="$DOTFILES_DIR/lib/motd"
+function motd {
+  local MOTD_DIR="$DOTDOTFILES/lib/motd"
 
-  # Check if directory exists
+      # Check if directory exists
   if [ ! -d "$MOTD_DIR" ]; then
       exit 0
   fi
@@ -74,9 +73,14 @@ if [[ "$should_show_motd" == "true" ]]; then
           "$script"
       fi
   done
-  
+}
+
+if [[ "$should_show_motd" == "true" ]]; then
+  motd
+
   # Update timestamp after showing (respects interval for future sessions)
   touch "$MOTD_CACHE_FILE"
   
   # Note: MOTD_FORCE_FILE was already removed above if it existed
 fi
+
