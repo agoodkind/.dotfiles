@@ -126,29 +126,25 @@ for iface in "${all_interfaces[@]}"; do
     [[ ${#all_addrs[@]} -eq 0 ]] && continue
     
     # Display interface name with decoration
-    if [[ ${#iface} -ge 24 ]]; then
-        printf "  └─ %s\n" "$iface"
-        indent="      "
-        first_indent="      "
-    else
-        printf "  └─ %-24s" "$iface"
-        indent="                           "  # 27 spaces to align with interface name
-        first_indent=""  # No indent needed, already aligned
-    fi
+    # Use consistent left alignment for all addresses (6 spaces to match tree structure)
+    indent="      "
     
     # Display addresses vertically or in two columns with tree lines
+    # All addresses are displayed below the interface name
     if [[ ${#all_addrs[@]} -eq 1 ]]; then
-        # Single address - display inline
-        printf "%s\n" "${all_addrs[0]}"
+        # Single address - display below interface name
+        printf "  └─ %s\n" "$iface"
+        printf "%s└─ %s\n" "$indent" "${all_addrs[0]}"
     elif [[ ${#all_addrs[@]} -le 4 ]]; then
         # 2-4 addresses - display vertically with tree lines
+        printf "  └─ %s\n" "$iface"
         for i in $(seq 0 $((${#all_addrs[@]} - 1))); do
             if [[ $i -eq 0 ]]; then
                 # First address
                 if [[ ${#all_addrs[@]} -eq 2 ]]; then
-                    printf "%s└─ %s\n" "$first_indent" "${all_addrs[$i]}"
+                    printf "%s└─ %s\n" "$indent" "${all_addrs[$i]}"
                 else
-                    printf "%s├─ %s\n" "$first_indent" "${all_addrs[$i]}"
+                    printf "%s├─ %s\n" "$indent" "${all_addrs[$i]}"
                 fi
             elif [[ $i -eq $((${#all_addrs[@]} - 1)) ]]; then
                 # Last address
@@ -163,14 +159,35 @@ for iface in "${all_interfaces[@]}"; do
         mid=$(((${#all_addrs[@]} + 1) / 2))
         col_width=36  # Width for first column (after tree char)
         
+        # Calculate where the second column starts (display position, not byte position)
+        # indent (6) + tree "├─" (2 display chars) + space (1) + col_width (36) = 45
+        # The second column tree character appears at display position 45
+        second_col_start=45
+        
+        # Calculate interface name length and where horizontal line should end
+        # "  └─ " = 5 chars
+        iface_prefix_len=5
+        iface_end_pos=$((iface_prefix_len + ${#iface}))
+        
+        # Calculate horizontal line length: from end of interface name to second column start
+        # The corner character (┐) should be at second_col_start position
+        horizontal_line_len=$((second_col_start - iface_end_pos))
+        
+        # Print interface name with horizontal line extending to second column (ONLY for 5+ addresses)
+        if [[ $horizontal_line_len -gt 0 ]]; then
+            horizontal_line=""
+            for ((k=0; k<horizontal_line_len; k++)); do
+                horizontal_line+="─"
+            done
+            # End with right-down corner character
+            printf "  └─ %s%s┐\n" "$iface" "$horizontal_line"
+        else
+            printf "  └─ %s\n" "$iface"
+        fi
+        
         for i in $(seq 0 $(($mid - 1))); do
             # Determine tree character for first column
             j=$((i + mid))
-            # It's the last in first column if it's the last row AND there's no second column item
-            is_last_in_first_col=false
-            if [[ $i -eq $(($mid - 1)) ]] && [[ $j -ge ${#all_addrs[@]} ]]; then
-                is_last_in_first_col=true
-            fi
             
             if [[ $i -eq 0 ]]; then
                 # First address in first column
@@ -180,7 +197,7 @@ for iface in "${all_interfaces[@]}"; do
                 else
                     tree_char="├─"
                 fi
-                printf "%s%s %-${col_width}s" "$first_indent" "$tree_char" "${all_addrs[$i]}"
+                printf "%s%s %-${col_width}s" "$indent" "$tree_char" "${all_addrs[$i]}"
             else
                 # Subsequent addresses in first column
                 # Use └─ only if it's the last row (i == mid-1) AND there's no second column item on this row
