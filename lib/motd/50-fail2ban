@@ -18,6 +18,11 @@ fi
 mapfile -t lines < <(grep -hioP '(\[[a-z-]+\]) (ban|unban)' $logfile 2>/dev/null | sort | uniq -c)
 jails=($(printf -- '%s\n' "${lines[@]}" | grep -oP '\[\K[^\]]+' | sort | uniq))
 
+# Exit if no jails found
+if [[ ${#jails[@]} -eq 0 ]]; then
+    exit 0
+fi
+
 out=""
 for jail in "${jails[@]}"; do
     bans=$(printf -- '%s\n' "${lines[@]}" | grep -iP "[[:digit:]]+ \[$jail\] ban" | awk '{print $1}')

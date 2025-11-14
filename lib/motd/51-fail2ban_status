@@ -12,6 +12,11 @@ fi
 # fail2ban-client status to get all jails, takes about ~70ms
 jails=($(fail2ban-client status 2>/dev/null | grep "Jail list:" | sed "s/ //g" | awk '{split($2,a,",");for(i in a) print a[i]}'))
 
+# Exit if no jails found
+if [[ ${#jails[@]} -eq 0 ]]; then
+    exit 0
+fi
+
 out="jail,failed,total,banned,total\n"
 
 for jail in "${jails[@]}"; do
