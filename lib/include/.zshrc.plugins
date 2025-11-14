@@ -1,0 +1,41 @@
+###############################################################################
+# plugins #####################################################################
+###############################################################################
+
+# Add before loading zinit
+# ZINIT[OPTIMIZE_OUT_DISK_ACCESSES]=1
+
+### Zinit
+source "$DOTDOTFILES/lib/zinit/zinit.zsh"
+autoload -Uz _zinit
+(( ${+_comps} )) && _comps[zinit]=_zinit
+
+# Completions with custom fpath
+fpath=("$DOTDOTFILES/lib/completions" $fpath)
+
+# Core plugins with staggered loading
+zinit wait lucid for \
+    OMZP::git
+
+zinit wait lucid blockf atpull'zinit creinstall -q .' for \
+    zsh-users/zsh-completions
+
+zinit wait lucid atload'_zsh_autosuggest_start' for \
+    zsh-users/zsh-autosuggestions
+
+# Syntax highlighting with compinit (must run before zicdreplay)
+zinit wait lucid atinit'ZINIT[COMPINIT_OPTS]=-C; zicompinit; zicdreplay' for \
+    zdharma-continuum/fast-syntax-highlighting
+
+# fzf-tab with configuration
+zinit wait'1' lucid atload'
+    zstyle ":fzf-tab:complete:cd:*" fzf-preview "eza -1 --color=always \$realpath"
+    zstyle ":fzf-tab:complete:git-(add|diff|restore):*" fzf-preview "git diff \$word | delta"
+    zstyle ":completion:*" list-colors ${(s.:.)LS_COLORS}
+    zstyle ":completion:*" menu no
+' for \
+    Aloxaf/fzf-tab \
+    Freed-Wu/fzf-tab-source
+
+
+###############################################################################

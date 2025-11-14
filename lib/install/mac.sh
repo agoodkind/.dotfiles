@@ -4,11 +4,11 @@ if [[ " $* " != *" --skip-install "* ]]; then
     "$DOTDOTFILES/lib/install/brew.sh"
 fi
 
-# copy MOTD to /etc/motd
-DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
-sudo rm -f /etc/motd
-sudo cp  "$DOTFILES_DIR/lib/motd-entrypoint.sh" /etc/motd
-sudo chmod +x /etc/motd
+# # copy MOTD to /etc/motd
+# DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
+# sudo rm -f /etc/motd
+# sudo cp  "$DOTFILES_DIR/lib/motd-entrypoint.mac.sh" /etc/motd
+# sudo chmod +x /etc/motd
 
 # Finder
 # enable hidden files

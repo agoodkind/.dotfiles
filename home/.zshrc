@@ -1,28 +1,19 @@
 # shellcheck shell=bash
 
-################################################
-# DO NOT EDIT ##################################
-# use system `which` and not built in since system supports -s arg
-alias which="$(which -a which | tail -n 1)"
-alias isinstalled="which -s"
-########################################
+###############################################################################
+###############################################################################    
+export START_TIME=$(date +%s%N) 
 export DOTDOTFILES="$HOME/.dotfiles"
-########################################
 export PATH="$PATH:$HOME/.local/bin:$HOME/.local/bin/scripts"
-
-# Show MOTD on login shells only
-if [[ -o login ]] && [[ -f "$DOTDOTFILES/lib/motd-entrypoint.sh" ]]; then
-    "$DOTDOTFILES/lib/motd-entrypoint.sh"
-fi
 export NVM_LAZY_LOAD=true
-################################################
-# Include OS specific and common zshrc configs
-($DOTDOTFILES/lib/include/.zshrc.updater &)
-source $DOTDOTFILES/lib/include/.zshrc.incl ####
-################################################
+###############################################################################
+# Include OS specific and common zshrc configs ################################
+source $DOTDOTFILES/lib/include/.zshrc.incl
+###############################################################################
 
-######################################
-# Theme ##############################
+###############################################################################
+# Theme #######################################################################
+###############################################################################
 
 # enables color in ls
 export CLICOLOR=1
@@ -34,48 +25,8 @@ if [[ ! -f ~/.cache/dircolors.cache ]] || [[ ~/.dir_colors -nt ~/.cache/dircolor
 fi
 source ~/.cache/dircolors.cache
 
-########################################
-# plugins ##############################
-########################################
-
-# Core plugins - load immediately with turbo
-zinit wait lucid for \
-    OMZP::git
-
-# Completions with custom fpath
-zinit wait lucid blockf for \
-    zsh-users/zsh-completions
-
-# Auto-suggestions
-zinit wait lucid atload"_zsh_autosuggest_start" for \
-    zsh-users/zsh-autosuggestions
-
-# Local completion files
-fpath=("$DOTDOTFILES/lib/completions" $fpath)
-
-# Syntax highlighting with deferred compinit
-zinit wait'1' lucid atinit"ZINIT[COMPINIT_OPTS]=-C; zicompinit; zicdreplay" for \
-    zdharma-continuum/fast-syntax-highlighting
-
-# fzf-tab - defer to reduce startup impact
-zinit wait'2' lucid for \
-    Aloxaf/fzf-tab
-
-# fzf-tab configuration - load last
-zinit wait'2' lucid atload'
-    zstyle ":fzf-tab:complete:cd:*" fzf-preview "eza -1 --color=always \$realpath"
-    zstyle ":fzf-tab:complete:git-(add|diff|restore):*" fzf-preview "git diff \$word | delta"
-    zstyle ":completion:*" list-colors ${(s.:.)LS_COLORS}
-    zstyle ":completion:*" menu no
-' for \
-    Freed-Wu/fzf-tab-source
-
-# Dotfiles async update logic as a zinit local plugin
-zinit ice wait"0" lucid
-zinit load $DOTDOTFILES/lib/include/.zshrc.updater
-
-########################################
-# Prompt ###############################
+###############################################################################
+# Prompt ######################################################################
 setopt PROMPT_SUBST
 
 # Prompt Components & Colors
@@ -96,11 +47,11 @@ else
     # Standard prompt without iTerm2
     PROMPT='${ORANGE}%D{%H:%M:%S}${R}${GRAY}.%D{%.}${R} ${GREEN}%m${R} ${CYAN}%~${R} ${NL}❯ '
 fi
-########################################
+###############################################################################
 
-########################################
-# zsh Configs 
-########################################
+###############################################################################
+# zsh Configs #################################################################
+###############################################################################
 export HISTFILE=~/.zsh_history
 export HISTSIZE=100000
 export SAVEHIST=100000
@@ -108,17 +59,15 @@ setopt appendhistory
 setopt incappendhistory
 setopt share_history
 
-########################################
-# Aliases ##############################
-########################################
+###############################################################################
+# Aliases #####################################################################
+###############################################################################
 
-# Use bat if installed
-# if isinstalled bat; then
-#     alias cat="bat"
-# fi
+# use system `which` and not built in since system supports -s arg
+alias which="$(which -a which | tail -n 1)"
+alias isinstalled="which -s"
 
-# vim
-
+# vim/nvim editor setup
 if isinstalled nvim; then
     export SUDO_EDITOR=nvim
     export MANPAGER='nvim +Man!'
@@ -141,12 +90,7 @@ alias nano="nvim"
 alias emacs="nvim"
 export EDITOR="nvim"
 
-# # use most as pager if installed
-# if isinstalled -s most; then
-#     export PAGER=most
-# fi
-
-# sudo wrapper to run commands with current user
+# sudo
 alias please="sudo"
 alias sudoedit="sudo -e"
 

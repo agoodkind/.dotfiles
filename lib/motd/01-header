@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# This script generates a ascii art heading
-# You need to install the tool figlet for this to work!
-# apt-get install figlet
-
 
 if command -v fastfetch &> /dev/null; then
     fastfetch --config - <<'EOF'

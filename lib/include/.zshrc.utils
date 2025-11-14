@@ -1,0 +1,105 @@
+###############################################################################
+# Aliases and functions #######################################################
+###############################################################################
+
+# Cache OS detection
+if [[ ! -f ~/.cache/os-type.cache ]]; then
+    echo "Detecting & caching OS type"
+    mkdir -p ~/.cache
+    if [[ $(uname) == "Darwin" ]]; then
+        echo "mac" > ~/.cache/os-type.cache
+    elif command -v apt >/dev/null; then
+        echo "ubuntu" > ~/.cache/os-type.cache
+    else
+        echo "unknown" > ~/.cache/os-type.cache
+    fi
+fi
+
+OS_TYPE=$(cat ~/.cache/os-type.cache)
+
+function is_macos() {
+    [[ "$OS_TYPE" == "mac" ]]
+}
+
+function is_ubuntu() {
+    [[ "$OS_TYPE" == "ubuntu" ]]
+}
+
+case "$OS_TYPE" in
+    mac)
+        source "$DOTDOTFILES/lib/include/.zshrc.mac"
+        ;;
+    ubuntu)
+        source "$DOTDOTFILES/lib/include/.zshrc.ubuntu"
+        ;;
+    *)
+        echo 'Unknown OS!'
+        ;;
+esac
+
+# the fuck - lazy load this function
+fuck () {
+    # Undefine this function and source the real one on first use
+    unfunction fuck
+    eval "$(thefuck --alias)"
+    fuck "$(fc -ln -1)"
+}
+
+function reload {
+    echo "Reloading zshrc..."
+    local _timestamp="$START_TIME"
+    # Preserve current directory
+    local _pwd=$PWD
+    # Refresh command hash table (new installs)
+    rehash
+    # Recompute dircolors cache if needed (kept in sync with original logic)
+    if [[ ! -f ~/.cache/dircolors.cache ]] || [[ ~/.dir_colors -nt ~/.cache/dircolors.cache ]]; then
+        mkdir -p ~/.cache
+        dircolors -b > ~/.cache/dircolors.cache
+    fi
+    # Source main config (will redefine this function)
+    source "$HOME/.zshrc"
+    # Sync history with other sessions
+    fc -RI
+    # Return to original directory
+    builtin cd "$_pwd"
+    # Trim whitespace for robust comparison
+    local _ts1="$(echo -n "$_timestamp" | tr -d '\n' | xargs)"
+    local _ts2="$(echo -n "$START_TIME" | tr -d '\n' | xargs)"
+    if [[ "$_ts1" != "$_ts2" ]]; then
+        echo "zshrc reloaded."
+    else
+        echo "zshrc was unable to be reloaded."
+        printf 'TIMESTAMP DEBUG: <%s> != <%s>\n' "$_ts1" "$_ts2"
+    fi
+}
+
+function repair {
+    echo "Repairing dotfiles..."
+    config checkout main
+    config pull
+    config submodule update --init --recursive --remote
+    "$DOTDOTFILES/repair.sh"
+    reload
+}
+
+# dotfile management
+function config {
+    case $1 in
+        update)
+            git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" pull
+            (cd "$DOTDOTFILES" && git submodule update --init --recursive)
+            config repair
+            config reload
+            ;;
+        reload)
+            reload
+            ;;
+        repair)
+            repair
+            ;;
+        *)
+            git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" "$@"
+            ;;
+    esac
+}
