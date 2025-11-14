@@ -17,7 +17,7 @@ color_echo() {
     echo -e "${!color}$*${NC}"
 }
 
-color_echo BLUE "🔄 Updating plugins and submodules..."
+color_echo BLUE "🔄  Updating plugins and submodules..."
 # can't use config here since we don't know if its been defined yet
 (cd "$DOTDOTFILES" && git pull)
 (cd "$DOTDOTFILES" && git submodule update --init --recursive)
