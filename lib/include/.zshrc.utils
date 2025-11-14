@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 ###############################################################################
 # Aliases and functions #######################################################
 ###############################################################################
@@ -15,7 +16,7 @@ if [[ ! -f ~/.cache/os-type.cache ]]; then
     fi
 fi
 
-OS_TYPE=$(cat ~/.cache/os-type.cache)
+export OS_TYPE=$(cat ~/.cache/os-type.cache)
 
 function is_macos() {
     [[ "$OS_TYPE" == "mac" ]]
@@ -62,7 +63,7 @@ function reload {
     # Sync history with other sessions
     fc -RI
     # Return to original directory
-    builtin cd "$_pwd"
+    builtin cd "$_pwd" || exit
     # Trim whitespace for robust comparison
     local _ts1="$(echo -n "$_timestamp" | tr -d '\n' | xargs)"
     local _ts2="$(echo -n "$START_TIME" | tr -d '\n' | xargs)"
