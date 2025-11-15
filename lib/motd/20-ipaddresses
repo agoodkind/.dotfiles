@@ -252,15 +252,38 @@ for idx in "${!all_interfaces[@]}"; do
         addr_prefix="${top_prefix}│  "
     fi
 
-    # Build colored/bold interface label:
+    # Build colored interface label:
     # - prefer the color of the dominant subnet for this interface
     # - fall back to per-interface palette if subnet colors aren't available
+    # - if the interface is a VLAN (e.g. vlan0100@enp1s0), make the VLAN
+    #   name the primary (bold) part and the parent interface a secondary,
+    #   softer-colored part.
     iface_label="$iface"
-    if [[ -n "$dominant_color" ]]; then
-        iface_label="${bold}${dominant_color}${iface}${reset}"
-    elif [[ ${#iface_colors[@]} -gt 0 ]]; then
-        color_idx=$((idx % ${#iface_colors[@]}))
-        iface_label="${iface_colors[$color_idx]}${iface}${reset}"
+    if [[ -n "$dominant_color" || ${#iface_colors[@]} -gt 0 ]]; then
+        # Decide base color for this interface
+        base_color="$dominant_color"
+        if [[ -z "$base_color" && ${#iface_colors[@]} -gt 0 ]]; then
+            color_idx=$((idx % ${#iface_colors[@]}))
+            base_color="${iface_colors[$color_idx]}"
+        fi
+
+        if [[ "$iface" == *"@"* ]]; then
+            vlan_part="${iface%%@*}"
+            parent_part="${iface#*@}"
+
+            # Primary: VLAN name, bold in base_color
+            iface_label="${bold}${base_color}${vlan_part}${reset}@"
+
+            # Secondary: parent interface, dimmer in same color so it is readable
+            if [[ -n "$dim" ]]; then
+                iface_label+="${dim}${base_color}${parent_part}${reset}"
+            else
+                iface_label+="${base_color}${parent_part}${reset}"
+            fi
+        else
+            # Non‑VLAN: just bold the whole interface name
+            iface_label="${bold}${base_color}${iface}${reset}"
+        fi
     fi
 
     # Print interface line
