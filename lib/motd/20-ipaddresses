@@ -4,6 +4,130 @@
 declare -A ipv4_arrays
 declare -A ipv6_arrays
 
+# Optional color configuration (disabled if NO_COLOR is set or output is not a TTY)
+bold=""
+dim=""
+reset=""
+iface_colors=()
+subnet_colors=()
+host_color=""        # global color for host bits (lower bits), same everywhere
+declare -A subnet_color_cache
+declare -A subnet_index_cache
+
+if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+    bold=$'\e[1m'
+    dim=$'\e[2m'
+    reset=$'\e[0m'
+
+    # Interface colors: bold & bright so they stand out clearly on dark backgrounds
+    iface_colors=(
+        $'\e[1;91m' # bright red
+        $'\e[1;92m' # bright green
+        $'\e[1;93m' # bright yellow
+        $'\e[1;94m' # bright blue
+        $'\e[1;95m' # bright magenta
+        $'\e[1;96m' # bright cyan
+    )
+
+    # Subnet colors: bright, non‑bold variants; avoid dark/gray tones for readability.
+    subnet_colors=(
+        $'\e[91m' # bright red
+        $'\e[92m' # bright green
+        $'\e[93m' # bright yellow
+        $'\e[94m' # bright blue
+        $'\e[95m' # bright magenta
+        $'\e[96m' # bright cyan
+    )
+
+    # Host bits (lower bits) color: single universal style, distinct from the palettes above
+    host_color=$'\e[1;97m' # bright white, bold
+fi
+
+# Return a "subnet key" for an IP:
+# - IPv4: /24, e.g. 10.250.1.53 -> 10.250.1.0/24
+# - IPv6: /64 approximated by first 4 hextets, e.g. 3d06:bad:b01:4::64 -> 3d06:bad:b01:4
+subnet_key_for_ip() {
+    local ip=$1
+
+    # IPv4
+    if [[ "$ip" == *.* ]]; then
+        local o1 o2 o3
+        IFS='.' read -r o1 o2 o3 _ <<< "$ip"
+        [[ -z "$o1" || -z "$o2" || -z "$o3" ]] && return
+        printf '%s\n' "${o1}.${o2}.${o3}.0/24"
+        return
+    fi
+
+    # IPv6
+    local parts=()
+    local part
+    IFS=':' read -ra parts <<< "$ip"
+    local count=0
+    local key_parts=()
+
+    for part in "${parts[@]}"; do
+        [[ -z "$part" ]] && continue
+        key_parts+=("$part")
+        ((count++))
+        [[ $count -ge 4 ]] && break
+    done
+
+    if [[ ${#key_parts[@]} -gt 0 ]]; then
+        printf '%s\n' "$(IFS=':'; echo "${key_parts[*]}")"
+    fi
+}
+
+# Deterministically map a subnet key to a color index so colors are stable
+subnet_color_for_key() {
+    local key=$1
+
+    [[ -z "$key" ]] && return
+    [[ ${#subnet_colors[@]} -eq 0 ]] && return
+
+    # Cached?
+    if [[ -n "${subnet_color_cache[$key]:-}" ]]; then
+        printf '%s\n' "${subnet_color_cache[$key]}"
+        return
+    fi
+
+    # Simple string hash (djb2 style) in pure bash
+    local hash=0
+    local i char_code
+    for ((i=0; i<${#key}; i++)); do
+        printf -v char_code '%d' "'${key:i:1}"
+        hash=$(((hash * 33 + char_code) & 0x7fffffff))
+    done
+
+    local idx=$((hash % ${#subnet_colors[@]}))
+    subnet_index_cache[$key]=$idx
+    subnet_color_cache[$key]="${subnet_colors[$idx]}"
+    printf '%s\n' "${subnet_colors[$idx]}"
+}
+
+# For a given subnet key, return a contrasting color (used for host bits),
+# chosen deterministically so results are stable across runs.
+subnet_contrast_color_for_key() {
+    local key=$1
+
+    [[ -z "$key" ]] && return
+    [[ ${#subnet_colors[@]} -eq 0 ]] && return
+
+    local idx
+    if [[ -n "${subnet_index_cache[$key]:-}" ]]; then
+        idx=${subnet_index_cache[$key]}
+    else
+        # Ensure color/index are initialized
+        subnet_color_for_key "$key" >/dev/null
+        idx=${subnet_index_cache[$key]}
+    fi
+
+    # Pick a color roughly opposite in the palette for contrast
+    local palette_len=${#subnet_colors[@]}
+    local offset=$((palette_len / 2))
+    local contrast_idx=$(((idx + offset) % palette_len))
+    printf '%s\n' "${subnet_colors[$contrast_idx]}"
+}
+
 # Add IP address to array for interface
 add_ip() {
     local iface=$1
@@ -79,9 +203,13 @@ mapfile -t all_interfaces < <(printf '%s\n' "${!ipv4_arrays[@]}" "${!ipv6_arrays
 
 echo ""
 echo "IP Addresses:"
-indent="      "
 
-for iface in "${all_interfaces[@]}"; do
+top_prefix="  "
+num_ifaces=${#all_interfaces[@]}
+
+for idx in "${!all_interfaces[@]}"; do
+    iface="${all_interfaces[$idx]}"
+
     v6_addrs=()
     v4_addrs=()
     
@@ -90,55 +218,111 @@ for iface in "${all_interfaces[@]}"; do
     
     all_addrs=("${v6_addrs[@]}" "${v4_addrs[@]}")
     [[ ${#all_addrs[@]} -eq 0 ]] && continue
-    
-    if [[ ${#all_addrs[@]} -eq 1 ]]; then
-        printf "  └─ %s\n" "$iface"
-        printf "%s└─ %s\n" "$indent" "${all_addrs[0]}"
-    elif [[ ${#all_addrs[@]} -le 4 ]]; then
-        printf "  └─ %s\n" "$iface"
-        for i in $(seq 0 $((${#all_addrs[@]} - 1))); do
-            if [[ $i -eq 0 ]]; then
-                [[ ${#all_addrs[@]} -eq 2 ]] && printf "%s└─ %s\n" "$indent" "${all_addrs[$i]}" || printf "%s├─ %s\n" "$indent" "${all_addrs[$i]}"
-            elif [[ $i -eq $((${#all_addrs[@]} - 1)) ]]; then
-                printf "%s└─ %s\n" "$indent" "${all_addrs[$i]}"
-            else
-                printf "%s├─ %s\n" "$indent" "${all_addrs[$i]}"
-            fi
-        done
-    else
-        mid=$(((${#all_addrs[@]} + 1) / 2))
-        col_width=36
-        second_col_start=45
-        iface_prefix_len=5
-        iface_end_pos=$((iface_prefix_len + ${#iface}))
-        horizontal_line_len=$((second_col_start - iface_end_pos))
-        
-        if [[ $horizontal_line_len -gt 0 ]]; then
-            horizontal_line=""
-            for ((k=0; k<horizontal_line_len; k++)); do
-                horizontal_line+="─"
-            done
-            printf "  └─ %s%s┐\n" "$iface" "$horizontal_line"
-        else
-            printf "  └─ %s\n" "$iface"
+
+    # Build subnet information for this interface so we can pick a dominant subnet
+    declare -A subnet_counts=()
+    addr_subnet_keys=()
+    for i in "${!all_addrs[@]}"; do
+        skey=$(subnet_key_for_ip "${all_addrs[$i]}")
+        addr_subnet_keys[$i]="$skey"
+        [[ -z "$skey" ]] && continue
+        ((subnet_counts["$skey"]++))
+    done
+
+    dominant_key=""
+    dominant_count=0
+    for key in "${!subnet_counts[@]}"; do
+        count=${subnet_counts[$key]}
+        if (( count > dominant_count )) || { (( count == dominant_count )) && [[ -n "$key" && ( -z "$dominant_key" || "$key" < "$dominant_key" ) ]]; }; then
+            dominant_key="$key"
+            dominant_count=$count
         fi
-        
-        for i in $(seq 0 $(($mid - 1))); do
-            j=$((i + mid))
-            
-            if [[ $i -eq 0 ]]; then
-                [[ $mid -eq 1 ]] && [[ $j -ge ${#all_addrs[@]} ]] && tree_char="└─" || tree_char="├─"
-            else
-                [[ $i -eq $(($mid - 1)) ]] && [[ $j -ge ${#all_addrs[@]} ]] && tree_char="└─" || tree_char="├─"
-            fi
-            printf "%s%s %-${col_width}s" "$indent" "$tree_char" "${all_addrs[$i]}"
-            
-            if [[ $j -lt ${#all_addrs[@]} ]]; then
-                [[ $j -eq $((${#all_addrs[@]} - 1)) ]] && printf "└─ %s" "${all_addrs[$j]}" || printf "├─ %s" "${all_addrs[$j]}"
-            fi
-            printf "\n"
-        done
+    done
+    dominant_color=""
+    if [[ -n "$dominant_key" ]]; then
+        dominant_color=$(subnet_color_for_key "$dominant_key")
     fi
+
+    # Determine if this is the last interface for tree drawing
+    if [[ $idx -eq $((num_ifaces - 1)) ]]; then
+        iface_connector="└─"
+        addr_prefix="${top_prefix}   "
+    else
+        iface_connector="├─"
+        addr_prefix="${top_prefix}│  "
+    fi
+
+    # Build colored/bold interface label:
+    # - prefer the color of the dominant subnet for this interface
+    # - fall back to per-interface palette if subnet colors aren't available
+    iface_label="$iface"
+    if [[ -n "$dominant_color" ]]; then
+        iface_label="${bold}${dominant_color}${iface}${reset}"
+    elif [[ ${#iface_colors[@]} -gt 0 ]]; then
+        color_idx=$((idx % ${#iface_colors[@]}))
+        iface_label="${iface_colors[$color_idx]}${iface}${reset}"
+    fi
+
+    # Print interface line
+    printf "%s%s %s\n" "$top_prefix" "$iface_connector" "$iface_label"
+
+    # Print all addresses for this interface
+    num_addrs=${#all_addrs[@]}
+    for i in "${!all_addrs[@]}"; do
+        if [[ $i -eq $((num_addrs - 1)) ]]; then
+            addr_connector="└─"
+        else
+            addr_connector="├─"
+        fi
+
+        addr_label="${all_addrs[$i]}"
+        # Color by subnet so that similar networks share a stable color.
+        # Make IPv4 more visually prominent than IPv6 and highlight the host bits
+        # (lower bits) with a universal host color while keeping colors stable.
+        subnet_key="${addr_subnet_keys[$i]}"
+        subnet_color=$(subnet_color_for_key "$subnet_key")
+        if [[ -n "$subnet_color" ]]; then
+            if [[ "${all_addrs[$i]}" == *.* ]]; then
+                # IPv4: emphasize, and color network vs host differently
+                o1="" o2="" o3="" o4=""
+                IFS='.' read -r o1 o2 o3 o4 <<< "${all_addrs[$i]}"
+                if [[ -n "$o1" && -n "$o2" && -n "$o3" && -n "$o4" ]]; then
+                    net_part="${o1}.${o2}.${o3}."
+                    host_part="$o4"
+                    if [[ -n "$host_color" ]]; then
+                        # Network portion: bold in subnet color
+                        # Host portion: bold in the global host color
+                        addr_label="${bold}${subnet_color}${net_part}${reset}${host_color}${host_part}${reset}"
+                    else
+                        # Fallback: bold whole IPv4 in subnet color
+                        addr_label="${bold}${subnet_color}${all_addrs[$i]}${reset}"
+                    fi
+                else
+                    addr_label="${bold}${subnet_color}${all_addrs[$i]}${reset}"
+                fi
+            else
+                # IPv6: subnet color for upper bits, global host color for host bits (if detectable),
+                # and non‑bold overall so v6 is visually softer than v4.
+                ip6="${all_addrs[$i]}"
+                if [[ -n "$host_color" && -n "$subnet_key" && "$ip6" == "$subnet_key"* ]]; then
+                    net_part="$subnet_key"
+                    host_part="${ip6#"$subnet_key"}"
+                    if [[ -n "$host_part" ]]; then
+                        addr_label="${subnet_color}${net_part}${reset}${host_color}${host_part}${reset}"
+                    else
+                        addr_label="${subnet_color}${ip6}${reset}"
+                    fi
+                else
+                    addr_label="${subnet_color}${ip6}${reset}"
+                fi
+            fi
+        elif [[ -n "$dim" ]]; then
+            # Fallback to dimming if colors are disabled but dim style is available
+            addr_label="${dim}${addr_label}${reset}"
+        fi
+
+        printf "%s%s %s\n" "$addr_prefix" "$addr_connector" "$addr_label"
+    done
 done
 
 printf "\n"
