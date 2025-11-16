@@ -18,11 +18,11 @@ fi
 
 export OS_TYPE=$(cat ~/.cache/os-type.cache)
 
-function is_macos() {
+is_macos() {
     [[ "$OS_TYPE" == "mac" ]]
 }
 
-function is_ubuntu() {
+is_ubuntu() {
     [[ "$OS_TYPE" == "ubuntu" ]]
 }
 
@@ -46,7 +46,15 @@ fuck () {
     fuck "$(fc -ln -1)"
 }
 
-function reload {
+# Run this function to enable profiling for the next shell session
+zsh_profile() {
+    mkdir -p ~/.cache
+    touch ~/.cache/zsh_profile_next
+    echo "Performance profiling enabled for next shell session"
+}
+
+
+reload() {
     # Prevent recursive reloads
     if [[ -n "$_RELOADING" ]]; then
         echo "Reload already in progress, skipping..." >&2
@@ -81,7 +89,7 @@ function reload {
     fi
 }
 
-function repair {
+repair() {
     echo "Repairing dotfiles..."
     config checkout main
     config pull
@@ -91,7 +99,7 @@ function repair {
 }
 
 # dotfile management
-function config {
+config() {
     case $1 in
         update)
             git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" pull
