@@ -1,31 +1,21 @@
 #!/usr/bin/env bash
 
-# Color and emoji setup
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-color_echo() {
-    color="$1"; shift
-    echo -e "${!color}$*${NC}"
-}
-
 export DOTDOTFILES="$HOME/.dotfiles"
+
+# Source color utilities
+source "${DOTDOTFILES}/lib/include/colors.sh"
 
 color_echo BLUE "🔧  Making scripts executable..."
 chmod +x "$DOTDOTFILES/update.sh"
-chmod +x "$DOTDOTFILES/lib/install/git.sh"
-chmod +x "$DOTDOTFILES/lib/install/apt.sh"
-chmod +x "$DOTDOTFILES/lib/install/mac.sh"
-chmod +x "$DOTDOTFILES/lib/install/brew.sh"
+chmod +x "$DOTDOTFILES/repair.sh"
+find "$DOTDOTFILES/lib/install" -name "*.sh" -type f -exec chmod +x {} \;
+color_echo GREEN "  ✅  All install scripts are now executable"
 
 color_echo BLUE "📁  Creating SSH sockets directory..."
 mkdir -p "$HOME/.ssh/sockets"
 
 color_echo BLUE "🗝️  Starting SSH agent..."
-eval $(ssh-agent -s)
+eval "$(ssh-agent -s)"
 
 color_echo BLUE "➕  Adding SSH keys..."
 # Auto-add SSH key if not already in agent

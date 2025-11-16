@@ -5,17 +5,8 @@ timestamp=$(date +"%Y%m%d_%H%M%S")
 DOTDOTFILES="$(dirname "$(readlink -f "$0")")"
 export DOTDOTFILES
 
-# Color and emoji setup
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-color_echo() {
-    color="$1"; shift
-    echo -e "${!color}$*${NC}"
-}
+# Source color utilities
+source "${DOTDOTFILES}/lib/include/colors.sh"
 
 color_echo BLUE "🔄  Updating plugins and submodules..."
 # can't use config here since we don't know if its been defined yet

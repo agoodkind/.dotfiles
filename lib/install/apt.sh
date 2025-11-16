@@ -3,18 +3,7 @@
 # Source centralized package list
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/packages.sh"
-
-# Color functions
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-color_echo() {
-	color="$1"; shift
-	echo -e "${!color}$*${NC}"
-}
+source "${SCRIPT_DIR}/../include/colors.sh"
 
 # Check if a package is installed
 is_installed() {
@@ -50,7 +39,7 @@ fi
 
 
 color_echo YELLOW "Updating package lists..."
-sudo apt-get update -y
+sudo apt-get update -y -qq
 
 
 # Build list of packages to install
@@ -68,7 +57,7 @@ done
 # Install packages if any are missing
 if [ ${#PACKAGES_TO_INSTALL[@]} -gt 0 ]; then
 	color_echo YELLOW "Installing ${#PACKAGES_TO_INSTALL[@]} packages..."
-	sudo apt-get install -y "${PACKAGES_TO_INSTALL[@]}"
+	sudo apt-get install -y -qq "${PACKAGES_TO_INSTALL[@]}"
 else
 	color_echo GREEN "All packages already installed!"
 fi
@@ -92,7 +81,7 @@ fi
 # Purge nano and link nvim
 if is_installed nano; then
 	color_echo YELLOW "Purging nano and linking nvim as nano..."
-	sudo apt-get purge nano -y
+	sudo apt-get purge nano -y -qq
 	sudo ln -sf $(which nvim) /usr/bin/nano
 elif [ ! -e /usr/bin/nano ]; then
 	color_echo YELLOW "Linking nvim as nano..."
