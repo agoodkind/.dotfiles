@@ -93,12 +93,12 @@ if is_macos; then
     brew cleanup
 
     color_echo BLUE "💡  Running macOS setup script..."
-    "$DOTDOTFILES/lib/install/mac.sh" --skip-install
+    "$DOTDOTFILES/lib/install/mac.sh"
 fi
 
 if is_ubuntu; then
     color_echo BLUE "💡  Running Ubuntu setup script..."
-    "$DOTDOTFILES/lib/install/ubuntu.sh" --skip-install
+    "$DOTDOTFILES/lib/install/ubuntu.sh"
 fi
 
 color_echo GREEN "✅  .zshrc has been repaired and relinked"

@@ -15,7 +15,7 @@ color_echo() {
 export DOTDOTFILES="$HOME/.dotfiles"
 
 color_echo BLUE "🔧  Making scripts executable..."
-chmod +x "$DOTDOTFILES/repair.sh"
+chmod +x "$DOTDOTFILES/update.sh"
 chmod +x "$DOTDOTFILES/lib/install/git.sh"
 chmod +x "$DOTDOTFILES/lib/install/apt.sh"
 chmod +x "$DOTDOTFILES/lib/install/mac.sh"
@@ -36,7 +36,7 @@ color_echo BLUE "🔧  Setting up git configuration..."
 "$DOTDOTFILES/lib/install/git.sh"
 
 color_echo BLUE "🛠️  Running repair script..."
-"$DOTDOTFILES/repair.sh"
+"$DOTDOTFILES/update.sh"
 
 # Set up passwordless sudo for current user (macOS and Ubuntu)
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -55,20 +55,6 @@ else
     color_echo GREEN "✅  Passwordless sudo configured for $(whoami)"
 fi
 
-# if Ubuntu or Debian, run ubuntu install script
-if [[ -f /etc/os-release ]] && grep -qiE 'ubuntu|debian' /etc/os-release; then
-    color_echo YELLOW "🐧  Ubuntu/Debian detected"
-    color_echo YELLOW "📦  Installing ubuntu packages..."
-    "$DOTDOTFILES/lib/install/ubuntu.sh"
-fi
-
-# run mac last because it calls brew which takes forever
-# if mac, install brew
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    color_echo YELLOW "🍏  macOS detected"
-    color_echo YELLOW "🍺  Installing mac packages..."
-    "$DOTDOTFILES/lib/install/mac.sh"
-fi
 
 chsh -s "$(which zsh)"
 

@@ -1,30 +1,91 @@
 #!/usr/bin/env bash
 
-/usr/bin/which -s brew || /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+# Source centralized package list
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/packages.sh"
 
-brew install xcodes
-brew install showwin/speedtest/speedtest 
-brew install wireguard-tools
+# Color functions
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-brew install ack ast-grep ansible aria2 bash bat coreutils curl eza fail2ban \
-  fastfetch ffmpeg figlet fping gh git git-delta git-lfs glow gping grc grep \
-  htop imagemagick jq less mdless most moreutils node nvim openssh pandoc \
-  paper pnpm python3 rename rsync ruby screen smartmontools ssh-copy-id sshuttle thefuck \
-  tree vim watch wget zoxide zsh yq
+color_echo() {
+	color="$1"; shift
+	echo -e "${!color}$*${NC}"
+}
 
-# Cask/Custom Applications
-echo "Installing Cask + Custom applications..."
-brew install --cask 1password
-brew install --cask 1password-cli
-brew install --cask iterm2
-brew install --cask keycastr
-brew install --cask visual-studio-code
-brew install --cask google-chrome
-brew install --cask font-jetbrains-mono-nerd-font
-brew install --cask font-jetbrains-mono
-brew install --cask cyberduck
-brew install --cask utm
-brew install --cask vlc
-brew install --cask stats
-brew install --cask xcodes-app
-brew install --cask pingplotter
+# Install Homebrew if not present
+if ! /usr/bin/which -s brew; then
+	color_echo BLUE "Installing Homebrew..."
+	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+else
+	color_echo GREEN "Homebrew already installed, skipping..."
+fi
+
+# Check if a brew package/formula is installed
+is_brew_installed() {
+	brew list --formula "$1" &>/dev/null
+}
+
+# Check if a cask is installed
+is_cask_installed() {
+	brew list --cask "$1" &>/dev/null
+}
+
+# Install special tap packages if not installed
+if ! is_brew_installed xcodes; then
+	color_echo BLUE "Installing xcodes..."
+	brew install xcodes
+else
+	color_echo GREEN "xcodes already installed, skipping..."
+fi
+
+if ! is_brew_installed speedtest; then
+	color_echo BLUE "Installing speedtest..."
+	brew install showwin/speedtest/speedtest
+else
+	color_echo GREEN "speedtest already installed, skipping..."
+fi
+
+# Build list of packages to install
+PACKAGES_TO_INSTALL=()
+
+# Combine common and brew-specific packages
+ALL_BREW_PACKAGES=("${COMMON_PACKAGES[@]}" "${BREW_SPECIFIC[@]}")
+
+color_echo YELLOW "Checking formula packages..."
+for package in "${ALL_BREW_PACKAGES[@]}"; do
+	if ! is_brew_installed "$package"; then
+		PACKAGES_TO_INSTALL+=("$package")
+	fi
+done
+
+# Install packages if any are missing
+if [ ${#PACKAGES_TO_INSTALL[@]} -gt 0 ]; then
+	color_echo YELLOW "Installing ${#PACKAGES_TO_INSTALL[@]} formula packages..."
+	brew install "${PACKAGES_TO_INSTALL[@]}"
+else
+	color_echo GREEN "All formula packages already installed!"
+fi
+
+# Install cask applications
+CASKS_TO_INSTALL=()
+
+color_echo YELLOW "Checking cask applications..."
+for cask in "${BREW_CASKS[@]}"; do
+	if ! is_cask_installed "$cask"; then
+		CASKS_TO_INSTALL+=("$cask")
+	fi
+done
+
+# Install casks if any are missing
+if [ ${#CASKS_TO_INSTALL[@]} -gt 0 ]; then
+	color_echo YELLOW "Installing ${#CASKS_TO_INSTALL[@]} cask applications..."
+	brew install --cask "${CASKS_TO_INSTALL[@]}"
+else
+	color_echo GREEN "All cask applications already installed!"
+fi
+
+color_echo GREEN "All done!"
