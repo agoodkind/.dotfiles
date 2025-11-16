@@ -6,6 +6,7 @@
 export COMMON_PACKAGES=(
 	ack
 	ansible
+	ansible-lint
 	aria2
 	bat
 	bash
