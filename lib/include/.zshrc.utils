@@ -64,11 +64,10 @@ function reload {
         dircolors -b > ~/.cache/dircolors.cache
     fi
     # Source main config (will redefine this function)
-    # Use set +e temporarily to allow sourcing even if some commands fail
+    # Disable errexit temporarily to allow sourcing even if some commands fail
     set +e
     source "$HOME/.zshrc" 2>&1
     local _source_exit=$?
-    set -e
     # Sync history with other sessions
     fc -RI
     # Return to original directory
