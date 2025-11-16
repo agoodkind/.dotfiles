@@ -81,6 +81,13 @@ for script in $scripts; do
 done
 
 
+# Initialize neovim plugins
+if command -v nvim >/dev/null 2>&1; then
+    color_echo YELLOW "📦  Installing/updating Neovim plugins..."
+    nvim --headless -c "quit" 2>/dev/null || true
+    color_echo GREEN "  ✅  Neovim plugins initialized"
+fi
+
 # remove zcompdump files only if ZSH_COMPDUMP is set
 if [ -n "${ZSH_COMPDUMP:-}" ]; then
     color_echo YELLOW "🧹  Removing zcompdump file: $ZSH_COMPDUMP"
