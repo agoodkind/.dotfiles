@@ -86,7 +86,7 @@ function repair {
     config checkout main
     config pull
     (cd "$DOTDOTFILES" && git submodule update --init --recursive --remote)
-    "$DOTDOTFILES/repair.sh"
+    "$DOTDOTFILES/update.sh"
     reload
 }
 
