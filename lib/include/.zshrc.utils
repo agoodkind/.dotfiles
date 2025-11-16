@@ -64,14 +64,12 @@ function reload {
         dircolors -b > ~/.cache/dircolors.cache
     fi
     # Source main config (will redefine this function)
-    # Disable errexit temporarily to allow sourcing even if some commands fail
-    set +e
-    source "$HOME/.zshrc" 2>&1
+    source "$HOME/.zshrc"
     local _source_exit=$?
     # Sync history with other sessions
     fc -RI
     # Return to original directory
-    builtin cd "$_pwd" || return 1
+    builtin cd "$_pwd" || exit
     unset _RELOADING
     if [[ $_source_exit -eq 0 ]]; then
         echo "zshrc reloaded."
