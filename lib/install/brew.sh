@@ -10,7 +10,7 @@ brew install ack ast-grep ansible aria2 bash bat coreutils curl eza fail2ban \
   fastfetch ffmpeg figlet fping gh git git-delta git-lfs glow gping grc grep \
   htop imagemagick jq less mdless most moreutils node nvim openssh pandoc \
   paper pnpm python3 rename rsync ruby screen smartmontools ssh-copy-id sshuttle thefuck \
-  tree vim watch wget zoxide zsh
+  tree vim watch wget zoxide zsh yq
 
 # Cask/Custom Applications
 echo "Installing Cask + Custom applications..."
