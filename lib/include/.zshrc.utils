@@ -69,7 +69,7 @@ function reload {
     # Sync history with other sessions
     fc -RI
     # Return to original directory
-    builtin cd "$_pwd" || exit
+    builtin cd "$_pwd" || true
     unset _RELOADING
     if [[ $_source_exit -eq 0 ]]; then
         echo "zshrc reloaded."
