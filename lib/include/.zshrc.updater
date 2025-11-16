@@ -9,7 +9,16 @@ fi
 export DOTFILES_GIT_DIR="$DOTDOTFILES/.git"
 
 fetch_latest() {
-  git --git-dir="$DOTFILES_GIT_DIR" --work-tree="$DOTDOTFILES" fetch --quiet --all 2>/dev/null || return 1
+  git --git-dir="$DOTFILES_GIT_DIR" --work-tree="$DOTDOTFILES" fetch --quiet --all 2>/dev/null && return 0
+  
+  # If fetch failed, try removing commit-graph lock file and retry
+  local lock_file="$DOTFILES_GIT_DIR/objects/info/commit-graphs/commit-graph-chain.lock"
+  if [[ -f "$lock_file" ]]; then
+    sudo rm -f "$lock_file" 2>/dev/null
+    git --git-dir="$DOTFILES_GIT_DIR" --work-tree="$DOTDOTFILES" fetch --quiet --all 2>/dev/null || return 1
+  else
+    return 1
+  fi
 }
 
 get_latest_hash() {
