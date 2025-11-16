@@ -1,0 +1,15 @@
+# ShellCheck configuration for dotfiles
+# See: https://github.com/koalaman/shellcheck/wiki/Integration
+
+# Set shell dialect
+shell=bash
+
+# Disable warnings about not being able to follow sourced files
+# This is common in dotfiles where files source each other dynamically
+# SC2155: Declare and assign separately - not critical for dotfiles
+disable=SC1090,SC1091,SC2155
+
+# Optional: Set source paths (where shellcheck should look for sourced files)
+# Relative to the file being checked
+source-path=SCRIPTDIR
+

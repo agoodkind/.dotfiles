@@ -83,7 +83,7 @@ export BREW_SPECIFIC=(
 )
 
 # Brew cask applications
-BREW_CASKS=(
+export BREW_CASKS=(
 	1password
 	1password-cli
 	iterm2
