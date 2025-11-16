@@ -113,4 +113,6 @@ alias npm="pnpm"
 alias sshrm="ssh-keygen -R" # remove ssh host from known hosts
 
 # Show profiling results if module was loaded
-$SHOULD_PROFILE && do_profile
+if [[ "${SHOULD_PROFILE:-false}" == "true" ]]; then
+    do_profile
+fi
