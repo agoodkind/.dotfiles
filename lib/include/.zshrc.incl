@@ -16,15 +16,6 @@ export SHOULD_PROFILE
 
 source "$DOTDOTFILES/lib/include/.zshrc.plugins"
 
-
-# Run this function to enable profiling for the next shell session
-zsh_profile() {
-    mkdir -p ~/.cache
-    touch ~/.cache/zsh_profile_next
-    echo "Performance profiling enabled for next shell session"
-}
-
-
 # Dotfiles async update - source directly to avoid zinit plugin management
 source "$DOTDOTFILES/lib/include/.zshrc.utils"
 (zsh "$DOTDOTFILES/lib/include/.zshrc.updater" >/dev/null 2>&1 &)
