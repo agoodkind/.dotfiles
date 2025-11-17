@@ -49,21 +49,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     fi
 fi
 
-# if Ubuntu or Debian, run ubuntu install script
-if [[ -f /etc/os-release ]] && grep -qiE 'ubuntu|debian' /etc/os-release; then
-    color_echo YELLOW "🐧  Ubuntu/Debian detected"
-    color_echo YELLOW "📦  Installing ubuntu packages..."
-    "$DOTDOTFILES/lib/install/ubuntu.sh"
-fi
-
-# run mac last because it calls brew which takes forever
-# if mac, install brew
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    color_echo YELLOW "🍏  macOS detected"
-    color_echo YELLOW "🍺  Installing mac packages..."
-    "$DOTDOTFILES/lib/install/mac.sh"
-fi
-
 chsh -s "$(which zsh)"
 
 color_echo GREEN "✅  Installation complete!"
