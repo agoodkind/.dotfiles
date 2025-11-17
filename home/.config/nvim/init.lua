@@ -51,7 +51,14 @@ require("lazy").setup({
             lazy = false,
             branch = 'main',
             build = ':TSUpdate',
-            ensure_installed = { 'all' }
+            config = function()
+                require('nvim-treesitter.configs').setup({
+                    ensure_installed = { 'lua', 'vim', 'vimdoc', 'bash', 'python', 'javascript', 'typescript', 'json', 'yaml' },
+                    highlight = {
+                        enable = true,
+                    },
+                })
+            end,
         }
     },
     -- Configure any other settings here. See the documentation for more details.
