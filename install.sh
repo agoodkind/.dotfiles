@@ -49,7 +49,21 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     fi
 fi
 
-chsh -s "$(which zsh)"
+color_echo BLUE "🔧  Changing shell to zsh..."
+ZSH_PATH=$(which zsh)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    CURRENT_SHELL=$(dscl . -read "/Users/$(whoami)" UserShell 2>/dev/null | cut -d' ' -f2 || echo "$SHELL")
+else
+    CURRENT_SHELL=$(getent passwd "$(whoami)" 2>/dev/null | cut -d: -f7 || echo "$SHELL")
+fi
+
+# Check if current shell is zsh (by path match or by basename)
+if [[ "$CURRENT_SHELL" == "$ZSH_PATH" ]] || [[ "$(basename "$CURRENT_SHELL")" == "zsh" ]]; then
+    color_echo GREEN "  ✅  Shell is already zsh"
+else
+    chsh -s "$ZSH_PATH"
+    color_echo GREEN "  ✅  Shell changed to zsh"
+fi
 
 color_echo GREEN "✅  Installation complete!"
 
