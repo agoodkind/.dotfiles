@@ -118,3 +118,18 @@ config() {
             ;;
     esac
 }
+
+
+flush_dns() {
+    echo "Flushing DNS..."
+    if is_macos; then
+        sudo dscacheutil -flushcache
+        sudo killall -HUP mDNSResponder
+    elif is_ubuntu; then
+        sudo systemd-resolve --flush-caches
+        sudo systemctl restart systemd-resolved
+    else
+        echo "Unsupported OS"
+        return 1
+    fi
+}
