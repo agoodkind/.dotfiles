@@ -8,5 +8,6 @@ export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
 # alias pbcopy="ssh alexs-mba pbcopy"
 alias brew="sudo apt install"
 alias bat="batcat"
+alias ip="ip --color=always"
 alias ifconfig="ip a"
 ####################################
