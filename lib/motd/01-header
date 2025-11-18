@@ -24,7 +24,6 @@ if command -v fastfetch &> /dev/null; then
     "memory",
     "swap",
     "disk",
-    "locale",
     "users"
   ]
 }
