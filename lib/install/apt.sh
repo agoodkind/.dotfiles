@@ -92,9 +92,12 @@ install_packages() {
 					packages_to_remove_via_apt+=("$package")
 				fi
 				if ! is_installed_via_snap "$package"; then
-
 					packages_to_install_via_snap+=("$package")
-
+				fi
+			else
+				# Package not available via snap, fall back to apt
+				if ! is_installed_via_apt "$package"; then
+					packages_to_install_via_apt+=("$package")
 				fi
 			fi
 		elif ! is_installed_via_apt "$package"; then
@@ -153,7 +156,7 @@ kill_nano() {
 	fi
 	
 	if command -v nano &>/dev/null; then
-		rm -rf "$(which nano)"
+		sudo rm -rf "$(which nano)"
 	fi
 
 	color_echo YELLOW "Linking nvim as nano..."
