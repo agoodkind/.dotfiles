@@ -154,6 +154,9 @@ install_packages() {
     fi
 }
 
+# Debug: Show what we're about to process
+color_echo YELLOW "Total packages to process: ${#ALL_APT_PACKAGES[@]}"
+color_echo CYAN "Packages to process: ${ALL_APT_PACKAGES[*]}"
 install_packages "${ALL_APT_PACKAGES[@]}"
 
 # Install fastfetch if not installed
