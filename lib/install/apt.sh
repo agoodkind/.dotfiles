@@ -11,8 +11,17 @@ is_installed_via_snap() {
 }
 
 is_available_via_snap() {
-    snap info "$1" &>/dev/null
-    return $?
+    # Check if package is available on stable channel
+    local package="$1"
+    local info_output=$(snap info "$package" 2>&1)
+    if [ $? -ne 0 ]; then
+        return 1  # Not available
+    fi
+    # Check if stable channel exists (not just beta/edge)
+    if echo "$info_output" | grep -q "stable:"; then
+        return 0  # Available on stable
+    fi
+    return 1  # Only available on beta/edge, not stable
 }
 
 is_installed_via_apt() {
@@ -22,7 +31,11 @@ is_installed_via_apt() {
 
 requires_classic_confinement() {
     local package="$1"
-    local confinement=$(snap info "$package" 2>/dev/null | grep "^confinement:" | awk '{print $2}')
+    local info_output=$(snap info "$package" 2>/dev/null)
+    if [ $? -ne 0 ]; then
+        return 1  # Can't determine, assume not classic
+    fi
+    local confinement=$(echo "$info_output" | grep "^confinement:" | awk '{print $2}')
     
     if [ "$confinement" = "classic" ]; then
         return 0  # true - requires classic
@@ -144,13 +157,51 @@ install_packages() {
 
     if [ ${#packages_to_install_via_snap[@]} -gt 0 ]; then
         color_echo YELLOW "Installing ${#packages_to_install_via_snap[@]} snap packages..."
+        local failed_snap_packages=()
         for package in "${packages_to_install_via_snap[@]}"; do
+            color_echo CYAN "Installing $package via snap..."
+            local install_output
+            local install_status
+            
+            # Try installing, checking if classic is needed
             if requires_classic_confinement "$package"; then
-                sudo snap install --classic "$package"
+                install_output=$(sudo snap install --classic "$package" 2>&1)
+                install_status=$?
             else
-                sudo snap install "$package"
+                install_output=$(sudo snap install "$package" 2>&1)
+                install_status=$?
+                
+                # If it failed and error mentions classic confinement, retry with --classic
+                if [ $install_status -ne 0 ] && echo "$install_output" | grep -qi "classic confinement"; then
+                    color_echo YELLOW "  -> Retrying $package with --classic flag..."
+                    install_output=$(sudo snap install --classic "$package" 2>&1)
+                    install_status=$?
+                fi
+            fi
+            
+            if [ $install_status -eq 0 ]; then
+                color_echo GREEN "  -> Successfully installed $package via snap"
+            else
+                # Show the error message
+                echo "$install_output" | grep -v "^$" || true
+                color_echo YELLOW "  -> Failed to install $package via snap, will try apt"
+                failed_snap_packages+=("$package")
             fi
         done
+        
+        # Try to install failed snap packages via apt if available
+        if [ ${#failed_snap_packages[@]} -gt 0 ]; then
+            local packages_to_install_via_apt_fallback=()
+            for package in "${failed_snap_packages[@]}"; do
+                if ! is_installed_via_apt "$package" && ! is_installed_via_snap "$package"; then
+                    packages_to_install_via_apt_fallback+=("$package")
+                fi
+            done
+            if [ ${#packages_to_install_via_apt_fallback[@]} -gt 0 ]; then
+                color_echo YELLOW "Installing ${#packages_to_install_via_apt_fallback[@]} packages via apt (snap fallback)..."
+                sudo apt-get install -y -qq "${packages_to_install_via_apt_fallback[@]}" || true
+            fi
+        fi
     fi
 }
 
