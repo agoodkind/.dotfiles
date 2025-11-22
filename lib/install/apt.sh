@@ -75,12 +75,14 @@ install_packages() {
 
 	read -p "Use snap for available packages? (Y/n) " -n 1 -r
 	echo
-	if [[ $REPLY =~ ^[Yy]$ ]]; then
+	if [[ -z "$REPLY" || $REPLY =~ ^[Yy]$ ]]; then
+		color_echo GREEN "OK will use snap for available packages"
 		use_snap=true
 		# Ask if user wants to remove packages from apt if available via snap
 		read -p "Remove packages from apt if available via snap? [Y/n] " -n 1 -r
 		echo
 		if [[ -z "$REPLY" || $REPLY =~ ^[Yy]$ ]]; then
+			color_echo GREEN "OK will remove packages from apt if available via snap"
 			remove_from_apt=true
 		fi
 	fi
