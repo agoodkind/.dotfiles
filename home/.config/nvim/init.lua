@@ -52,11 +52,30 @@ require("lazy").setup({
             branch = 'main',
             build = ':TSUpdate',
             config = function()
-                require('nvim-treesitter.configs').setup({
+                local ts = require('nvim-treesitter')
+
+                -- Setup options
+                local opts = {
+                    highlight = { enable = true },
                     ensure_installed = { 'lua', 'vim', 'vimdoc', 'bash', 'python', 'javascript', 'typescript', 'json', 'yaml' },
-                    highlight = {
-                        enable = true,
-                    },
+                }
+
+                ts.setup(opts)
+
+                -- Install missing parsers
+                local to_install = vim.tbl_filter(function(lang)
+                    return not pcall(vim.treesitter.language.add, lang)
+                end, opts.ensure_installed)
+
+                if #to_install > 0 then
+                    ts.install(to_install, { summary = true })
+                end
+
+                -- Enable highlighting via autocmd
+                vim.api.nvim_create_autocmd('FileType', {
+                    callback = function(ev)
+                        pcall(vim.treesitter.start, ev.buf)
+                    end,
                 })
             end,
         }

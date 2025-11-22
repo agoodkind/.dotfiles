@@ -9,6 +9,21 @@ export DOTDOTFILES
 source "${DOTDOTFILES}/lib/include/colors.sh"
 
 color_echo BLUE "🔄  Updating plugins and submodules..."
+# Check is git is locked
+# and ask if force unlock is desired
+if [ -f "$DOTDOTFILES/.git/objects/info/commit-graphs/commit-graph-chain.lock" ]; then
+    color_echo RED "🔒  Git is locked, do you want to force unlock it?"
+    read -p "Unlock? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        sudo rm -f "$DOTDOTFILES/.git/objects/info/commit-graphs/commit-graph-chain.lock"
+        color_echo GREEN "🔓  Git unlocked"
+    else
+        color_echo RED "🔒  Git is locked, skipping update..."
+        exit 1
+    fi
+fi
+
 # can't use config here since we don't know if its been defined yet
 (cd "$DOTDOTFILES" && git pull)
 (cd "$DOTDOTFILES" && git submodule update --init --recursive)
