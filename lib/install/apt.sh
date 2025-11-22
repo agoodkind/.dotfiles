@@ -19,7 +19,14 @@ is_available_via_snap() {
 }
 
 requires_classic_confinement() {
-	snap info "$1" 2>/dev/null | grep -qE "confinement:\s+classic"
+    local package="$1"
+    local confinement=$(snap info "$package" 2>/dev/null | grep "^confinement:" | awk '{print $2}')
+    
+    if [ "$confinement" = "classic" ]; then
+        return 0  # true - requires classic
+    else
+        return 1  # false - doesn't require classic
+    fi
 }
 
 # Install zoxide if not installed
@@ -90,10 +97,20 @@ install_packages() {
 	for package in $1; do
 		if [[ "$use_snap" == "true" ]]; then
 			if is_available_via_snap "$package"; then
-				if is_installed_via_apt "$package" && [[ "$remove_from_apt" == "true" ]]; then
-					packages_to_remove_via_apt+=("$package")
-				fi
-				if ! is_installed_via_snap "$package"; then
+				# Package available in snap store
+				if is_installed_via_snap "$package"; then
+					# Already installed via snap, nothing to do
+					continue
+				elif is_installed_via_apt "$package"; then
+					# Installed via apt
+					if [[ "$remove_from_apt" == "true" ]]; then
+						# User wants to migrate from apt to snap
+						packages_to_remove_via_apt+=("$package")
+						packages_to_install_via_snap+=("$package")
+					fi
+					# else: keep apt version, do nothing
+				else
+					# Not installed anywhere, install via snap
 					packages_to_install_via_snap+=("$package")
 				fi
 			else
@@ -103,6 +120,7 @@ install_packages() {
 				fi
 			fi
 		elif ! is_installed_via_apt "$package"; then
+			# Not using snap, install via apt if not present
 			packages_to_install_via_apt+=("$package")
 		fi
 	done
