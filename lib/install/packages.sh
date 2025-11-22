@@ -48,6 +48,7 @@ export COMMON_PACKAGES=(
 	wget
 	zsh
 	yq
+	tree-sitter-cli
 )
 
 # APT-specific packages (different names or apt-only)
