@@ -68,7 +68,6 @@ install_packages() {
 	local packages_to_install_via_apt=()
 	local packages_to_remove_via_apt=()
 	local packages_to_install_via_snap=()
-	local packages_to_install_via_snap_classic=()
 
 	# Ask if user wants to use snap for available packages
 	local use_snap=false
@@ -93,11 +92,9 @@ install_packages() {
 					packages_to_remove_via_apt+=("$package")
 				fi
 				if ! is_installed_via_snap "$package"; then
-					if requires_classic_confinement "$package"; then
-						packages_to_install_via_snap_classic+=("$package")
-					else
-						packages_to_install_via_snap+=("$package")
-					fi
+
+					packages_to_install_via_snap+=("$package")
+
 				fi
 			fi
 		elif ! is_installed_via_apt "$package"; then
@@ -115,16 +112,15 @@ install_packages() {
 		sudo apt-get remove -y -qq "${packages_to_remove_via_apt[@]}"
 	fi
 
-	if [ ${#packages_to_install_via_snap_classic[@]} -gt 0 ]; then
-		color_echo YELLOW "Installing ${#packages_to_install_via_snap_classic[@]} snap packages (classic)..."
-		for package in "${packages_to_install_via_snap_classic[@]}"; do
-			sudo snap install --classic "$package"
-		done
-	fi
-
 	if [ ${#packages_to_install_via_snap[@]} -gt 0 ]; then
 		color_echo YELLOW "Installing ${#packages_to_install_via_snap[@]} snap packages (strict)..."
-		sudo snap install "${packages_to_install_via_snap[@]}"
+		for package in "${packages_to_install_via_snap[@]}"; do
+			if requires_classic_confinement "$package"; then
+				sudo snap install --classic "$package"
+			else
+				sudo snap install "$package"
+			fi
+		done
 	fi
 }
 
