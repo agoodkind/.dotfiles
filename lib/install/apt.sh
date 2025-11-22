@@ -17,11 +17,17 @@ is_available_via_snap() {
     if [ $? -ne 0 ]; then
         return 1  # Not available
     fi
-    # Check if stable channel exists (not just beta/edge)
-    if echo "$info_output" | grep -q "stable:"; then
-        return 0  # Available on stable
+    # Check if stable channel has a version (not just "–" or empty)
+    local stable_line=$(echo "$info_output" | grep "latest/stable:" | head -1)
+    if [ -z "$stable_line" ]; then
+        return 1  # No stable channel line found
     fi
-    return 1  # Only available on beta/edge, not stable
+    # If the stable line contains a version number pattern (e.g., "3.30 2020-12-09"), it's available
+    # If it only contains "–" or "-" or is empty, it's not available
+    if echo "$stable_line" | grep -qE "latest/stable:\s+[0-9]"; then
+        return 0  # Available on stable (has version number)
+    fi
+    return 1  # Not available on stable (shows "–" or no version)
 }
 
 is_installed_via_apt() {
@@ -35,13 +41,16 @@ requires_classic_confinement() {
     if [ $? -ne 0 ]; then
         return 1  # Can't determine, assume not classic
     fi
+    # Check top-level confinement field first
     local confinement=$(echo "$info_output" | grep "^confinement:" | awk '{print $2}')
-    
     if [ "$confinement" = "classic" ]; then
         return 0  # true - requires classic
-    else
-        return 1  # false - doesn't require classic
     fi
+    # Also check channels section for classic (some snaps show it there, e.g., "latest/beta: 3.30 ... classic")
+    if echo "$info_output" | grep -qE "latest/[^:]+:\s+[0-9].*\s+classic"; then
+        return 0  # true - requires classic
+    fi
+    return 1  # false - doesn't require classic
 }
 
 # Install zoxide if not installed
