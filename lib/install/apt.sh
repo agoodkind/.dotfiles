@@ -74,7 +74,7 @@ install_packages() {
 	local use_snap=false
 	local remove_from_apt=false
 
-	read -p "Use snap for available packages? (y/n) " -n 1 -r
+	read -p "Use snap for available packages? (Y/n) " -n 1 -r
 	echo
 	if [[ $REPLY =~ ^[Yy]$ ]]; then
 		use_snap=true
@@ -108,15 +108,11 @@ install_packages() {
 	if [ ${#packages_to_install_via_apt[@]} -gt 0 ]; then
 		color_echo YELLOW "Installing ${#packages_to_install_via_apt[@]} apt packages..."
 		sudo apt-get install -y -qq "${packages_to_install_via_apt[@]}"
-	else
-		color_echo GREEN "All apt packages already installed!"
 	fi
 
 	if [ ${#packages_to_remove_via_apt[@]} -gt 0 ]; then
 		color_echo YELLOW "Removing ${#packages_to_remove_via_apt[@]} apt packages..."
 		sudo apt-get remove -y -qq "${packages_to_remove_via_apt[@]}"
-	else
-		color_echo GREEN "All apt packages already removed!"
 	fi
 
 	if [ ${#packages_to_install_via_snap_classic[@]} -gt 0 ]; then
