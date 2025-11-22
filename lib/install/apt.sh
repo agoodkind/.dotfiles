@@ -85,7 +85,6 @@ install_packages() {
     if [[ -z "$REPLY" || $REPLY =~ ^[Yy]$ ]]; then
         color_echo GREEN "OK will use snap for available packages"
         use_snap=true
-        # Ask if user wants to remove packages from apt if available via snap
         read -p "Remove packages from apt if available via snap? [Y/n] " -n 1 -r
         echo
         if [[ -z "$REPLY" || $REPLY =~ ^[Yy]$ ]]; then
@@ -94,33 +93,41 @@ install_packages() {
         fi
     fi
 
+    # DEBUG: Show what packages we're processing
+    color_echo YELLOW "Processing $# packages..."
+    
     for package in "$@"; do
+        color_echo CYAN "Checking: $package"  # DEBUG
+        
         if [[ "$use_snap" == "true" ]]; then
             if is_available_via_snap "$package"; then
-                # Package available in snap store
+                color_echo CYAN "  -> Available in snap store"  # DEBUG
                 if is_installed_via_snap "$package"; then
-                    # Already installed via snap, nothing to do
+                    color_echo CYAN "  -> Already installed via snap, skipping"  # DEBUG
                     continue
                 elif is_installed_via_apt "$package"; then
-                    # Installed via apt
+                    color_echo CYAN "  -> Installed via apt"  # DEBUG
                     if [[ "$remove_from_apt" == "true" ]]; then
-                        # User wants to migrate from apt to snap
+                        color_echo CYAN "  -> Will migrate to snap"  # DEBUG
                         packages_to_remove_via_apt+=("$package")
                         packages_to_install_via_snap+=("$package")
+                    else
+                        color_echo CYAN "  -> Keeping apt version"  # DEBUG
                     fi
-                    # else: keep apt version, do nothing
                 else
-                    # Not installed anywhere, install via snap
+                    color_echo CYAN "  -> Not installed, will install via snap"  # DEBUG
                     packages_to_install_via_snap+=("$package")
                 fi
             else
-                # Package not available via snap, fall back to apt
+                color_echo CYAN "  -> Not in snap store, checking apt"  # DEBUG
                 if ! is_installed_via_apt "$package"; then
+                    color_echo CYAN "  -> Will install via apt"  # DEBUG
                     packages_to_install_via_apt+=("$package")
+                else
+                    color_echo CYAN "  -> Already installed via apt"  # DEBUG
                 fi
             fi
         elif ! is_installed_via_apt "$package"; then
-            # Not using snap, install via apt if not present
             packages_to_install_via_apt+=("$package")
         fi
     done
