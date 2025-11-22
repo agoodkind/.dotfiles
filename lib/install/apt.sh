@@ -6,8 +6,20 @@ source "${SCRIPT_DIR}/packages.sh"
 source "${SCRIPT_DIR}/../include/colors.sh"
 
 # Check if a package is installed
-is_installed() {
+is_installed_via_apt() {
 	dpkg -s "$1" &>/dev/null
+}
+
+is_installed_via_snap() {
+	snap list "$1" &>/dev/null
+}
+
+is_available_via_snap() {
+	snap info "$1" &>/dev/null
+}
+
+requires_classic_confinement() {
+	snap info "$1" 2>/dev/null | grep -qE "confinement:\s+classic"
 }
 
 # Install zoxide if not installed
@@ -37,31 +49,90 @@ else
 	color_echo GREEN "sasl-xoauth2 PPA already added, skipping..."
 fi
 
+# Add backports repository if not already added
+color_echo BLUE "Adding backports repository..."
+if ! sudo add-apt-repository \
+	"deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc)-backports \
+	main restricted universe multiverse" -y; then
+	color_echo RED "Failed to add backports repository, skipping..."
+else
+	color_echo GREEN "backports repository added"
+fi
 
 color_echo YELLOW "Updating package lists..."
 sudo apt-get update -y -qq
 
-
-# Build list of packages to install
-PACKAGES_TO_INSTALL=()
-
-# Combine common and apt-specific packages
-ALL_APT_PACKAGES=("${COMMON_PACKAGES[@]}" "${APT_SPECIFIC[@]}" "arping")
-
-for package in "${ALL_APT_PACKAGES[@]}"; do
-	if ! is_installed "$package"; then
-		PACKAGES_TO_INSTALL+=("$package")
-	fi
-done
-
 # Install packages if any are missing
-if [ ${#PACKAGES_TO_INSTALL[@]} -gt 0 ]; then
-	color_echo YELLOW "Installing ${#PACKAGES_TO_INSTALL[@]} packages..."
-	sudo apt-get install -y -qq "${PACKAGES_TO_INSTALL[@]}"
-else
-	color_echo GREEN "All packages already installed!"
-fi
+install_packages() {
+	# Build list of packages to install
+	local packages_to_install_via_apt=()
+	local packages_to_remove_via_apt=()
+	local packages_to_install_via_snap=()
+	local packages_to_install_via_snap_classic=()
 
+	# Ask if user wants to use snap for available packages
+	local use_snap=false
+	local remove_from_apt=false
+
+	read -p "Use snap for available packages? (y/n) " -n 1 -r
+	echo
+	if [[ $REPLY =~ ^[Yy]$ ]]; then
+		use_snap=true
+		# Ask if user wants to remove packages from apt if available via snap
+		read -p "Remove packages from apt if available via snap? [Y/n] " -n 1 -r
+		echo
+		if [[ -z "$REPLY" || $REPLY =~ ^[Yy]$ ]]; then
+			remove_from_apt=true
+		fi
+	fi
+
+	for package in $1; do
+		if [[ "$use_snap" == "true" ]]; then
+			if is_available_via_snap "$package"; then
+				if is_installed_via_apt "$package" && [[ "$remove_from_apt" == "true" ]]; then
+					packages_to_remove_via_apt+=("$package")
+				fi
+				if ! is_installed_via_snap "$package"; then
+					if requires_classic_confinement "$package"; then
+						packages_to_install_via_snap_classic+=("$package")
+					else
+						packages_to_install_via_snap+=("$package")
+					fi
+				fi
+			fi
+		elif ! is_installed_via_apt "$package"; then
+			packages_to_install_via_apt+=("$package")
+		fi
+	done
+
+	if [ ${#packages_to_install_via_apt[@]} -gt 0 ]; then
+		color_echo YELLOW "Installing ${#packages_to_install_via_apt[@]} apt packages..."
+		sudo apt-get install -y -qq "${packages_to_install_via_apt[@]}"
+	else
+		color_echo GREEN "All apt packages already installed!"
+	fi
+
+	if [ ${#packages_to_remove_via_apt[@]} -gt 0 ]; then
+		color_echo YELLOW "Removing ${#packages_to_remove_via_apt[@]} apt packages..."
+		sudo apt-get remove -y -qq "${packages_to_remove_via_apt[@]}"
+	else
+		color_echo GREEN "All apt packages already removed!"
+	fi
+
+	if [ ${#packages_to_install_via_snap_classic[@]} -gt 0 ]; then
+		color_echo YELLOW "Installing ${#packages_to_install_via_snap_classic[@]} snap packages (classic)..."
+		for package in "${packages_to_install_via_snap_classic[@]}"; do
+			sudo snap install --classic "$package"
+		done
+	fi
+
+	if [ ${#packages_to_install_via_snap[@]} -gt 0 ]; then
+		color_echo YELLOW "Installing ${#packages_to_install_via_snap[@]} snap packages (strict)..."
+		sudo snap install "${packages_to_install_via_snap[@]}"
+	fi
+}
+
+install_packages "${ALL_APT_PACKAGES[@]}"
 
 # Install fastfetch if not installed
 if ! command -v fastfetch &>/dev/null; then
@@ -78,24 +149,32 @@ else
 fi
 
 
-# Purge nano and link nvim
-if is_installed nano; then
-	color_echo YELLOW "Purging nano and linking nvim as nano..."
-	sudo apt-get purge nano -y -qq
-	sudo ln -sf $(which nvim) /usr/bin/nano
-elif [ ! -e /usr/bin/nano ]; then
-	color_echo YELLOW "Linking nvim as nano..."
-	sudo ln -sf $(which nvim) /usr/bin/nano
-else
-	color_echo GREEN "nano already replaced with nvim, skipping..."
-fi
+kill_nano() {
+	color_echo YELLOW "Killing nano..."
 
+	if is_installed_via_apt nano; then
+		sudo apt-get purge nano -y -qq
+	fi
+
+	if is_installed_via_snap nano; then
+		sudo snap remove nano
+	fi
+	
+	if command -v nano &>/dev/null; then
+		rm -rf "$(which nano)"
+	fi
+
+	color_echo YELLOW "Linking nvim as nano..."
+	sudo ln -sf "$(which nvim)" /usr/bin/nano
+}
+
+kill_nano
 
 # Link batcat to bat
 if [ ! -e ~/.local/bin/bat ]; then
 	color_echo YELLOW "Linking batcat to ~/.local/bin/bat..."
 	mkdir -p ~/.local/bin
-	ln -sf /usr/bin/batcat ~/.local/bin/bat
+	ln -sf "$(which batcat)" ~/.local/bin/bat
 else
 	color_echo GREEN "batcat already linked to bat, skipping..."
 fi
