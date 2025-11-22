@@ -102,3 +102,51 @@ export BREW_CASKS=(
 	pingplotter
 )
 
+# Map common package names to APT package names
+# Packages that map to something already in APT_SPECIFIC will be skipped later
+map_to_apt_name() {
+	local package="$1"
+	case "$package" in
+		ack) echo "ack-grep" ;;
+		bat) echo "batcat" ;;
+		neovim) echo "neovim" ;;
+		openssh) echo "openssh-client openssh-server" ;;
+		*) echo "$package" ;;
+	esac
+}
+
+# Check if a package is in an array
+is_in_array() {
+	local search="$1"
+	shift
+	local array=("$@")
+	for item in "${array[@]}"; do
+		if [[ "$item" == "$search" ]]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+# Build ALL_APT_PACKAGES array with mapped names
+ALL_APT_PACKAGES=()
+
+# Add mapped common packages (skip duplicates that are in APT_SPECIFIC)
+for package in "${COMMON_PACKAGES[@]}"; do
+	mapped=$(map_to_apt_name "$package")
+	# Handle multi-word output (like openssh -> openssh-client openssh-server)
+	for pkg in $mapped; do
+		# Skip if already in APT_SPECIFIC (they'll be added separately)
+		if ! is_in_array "$pkg" "${APT_SPECIFIC[@]}"; then
+			# Skip if already in ALL_APT_PACKAGES
+			if ! is_in_array "$pkg" "${ALL_APT_PACKAGES[@]}"; then
+				ALL_APT_PACKAGES+=("$pkg")
+			fi
+		fi
+	done
+done
+
+# Add all APT_SPECIFIC packages (no need to check for duplicates since we excluded them above)
+ALL_APT_PACKAGES+=("${APT_SPECIFIC[@]}")
+
+export ALL_APT_PACKAGES
