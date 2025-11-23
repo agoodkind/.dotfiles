@@ -103,34 +103,70 @@ export BREW_CASKS=(
 # Add all APT_SPECIFIC packages (no need to check for duplicates since we excluded them above)
 ALL_APT_PACKAGES+=("${APT_SPECIFIC[@]}")
 
+# Centralized package name mappings
+# Format: PACKAGE_MAP[package:type] = "mapped-name"
+# Types: apt, snap, cmd
+declare -A PACKAGE_MAP
+
+# Initialize package mappings
+# apt mappings
+PACKAGE_MAP[ack:apt]="ack-grep"
+PACKAGE_MAP[openssh:apt]="openssh-client openssh-server"
+
+# snap mappings
+PACKAGE_MAP[neovim:snap]="nvim"
+
+# cmd mappings (package name -> command name)
+PACKAGE_MAP[neovim:cmd]="nvim"
+PACKAGE_MAP[bat:cmd]="batcat"
+PACKAGE_MAP[git-delta:cmd]="delta"
+PACKAGE_MAP[golang-go:cmd]="go"
+PACKAGE_MAP[thefuck:cmd]="fuck"
+PACKAGE_MAP[tree-sitter-cli:cmd]="tree-sitter"
+
+# Reverse snap mapping (snap_name -> original package name)
+declare -A REVERSE_SNAP_MAP
+REVERSE_SNAP_MAP[nvim]="neovim"
+
 # Map common package names to APT package names
 # Packages that map to something already in APT_SPECIFIC will be skipped later
 map_to_apt_name() {
 	local package="$1"
-	case "$package" in
-		ack) echo "ack-grep" ;;
-		openssh) echo "openssh-client openssh-server" ;;
-		*) echo "$package" ;;
-	esac
+	if [[ -n "${PACKAGE_MAP[$package:apt]}" ]]; then
+		echo "${PACKAGE_MAP[$package:apt]}"
+	else
+		echo "$package"
+	fi
 }
 
 # Map package names to their snap equivalents (if different)
 map_to_snap_name() {
-    local package="$1"
-    case "$package" in
-        neovim) echo "nvim" ;;
-        *) echo "$package" ;;
-    esac
+	local package="$1"
+	if [[ -n "${PACKAGE_MAP[$package:snap]}" ]]; then
+		echo "${PACKAGE_MAP[$package:snap]}"
+	else
+		echo "$package"
+	fi
+}
+
+# Map snap names back to their original package names (reverse of map_to_snap_name)
+map_from_snap_name() {
+	local snap_name="$1"
+	if [[ -n "${REVERSE_SNAP_MAP[$snap_name]}" ]]; then
+		echo "${REVERSE_SNAP_MAP[$snap_name]}"
+	else
+		echo "$snap_name"
+	fi
 }
 
 # Map package names to their command names (if different)
 map_to_cmd_name() {
-    local package="$1"
-    case "$package" in
-        neovim) echo "nvim" ;;
-        bat) echo "batcat" ;;
-        *) echo "$package" ;;
-    esac
+	local package="$1"
+	if [[ -n "${PACKAGE_MAP[$package:cmd]}" ]]; then
+		echo "${PACKAGE_MAP[$package:cmd]}"
+	else
+		echo "$package"
+	fi
 }
 
 # Check if a package is in an array
@@ -303,7 +339,7 @@ install_packages() {
         is_installed_via_snap "$snap_name" && installed_via_snap_mapped=true
         debug_echo "  installed_via_snap (mapped name): $installed_via_snap_mapped"
         
-        is_available_via_snap "$package" && available_via_snap=true
+        is_available_via_snap "$snap_name" && available_via_snap=true
         debug_echo "  available_via_snap: $available_via_snap"
         
         command_available "$cmd_name" && cmd_available=true
@@ -330,12 +366,12 @@ install_packages() {
                         debug_echo "        Action: Replace apt with snap (remove_from_apt=true)"
                         # Replace apt with snap
                         packages_to_remove_via_apt+=("$package")
-                        packages_to_install_via_snap+=("$package")
+                        packages_to_install_via_snap+=("$snap_name")
                         debug_echo "        Added to remove_apt and install_snap arrays"
                     elif [[ "$cmd_available" == "false" ]]; then
                         debug_echo "        Action: Install via snap (cmd not available)"
                         # Command not available, install via snap
-                        packages_to_install_via_snap+=("$package")
+                        packages_to_install_via_snap+=("$snap_name")
                         debug_echo "        Added to install_snap array"
                     else
                         debug_echo "        SKIP: cmd is available, no action needed"
@@ -343,7 +379,7 @@ install_packages() {
                 elif [[ "$cmd_available" == "false" ]]; then
                     debug_echo "      Branch: Not installed, cmd not available"
                     # Not installed, command not available, install via snap
-                    packages_to_install_via_snap+=("$package")
+                    packages_to_install_via_snap+=("$snap_name")
                     debug_echo "      Added to install_snap array"
                 else
                     debug_echo "      SKIP: cmd is available, no action needed"
@@ -445,11 +481,12 @@ install_packages() {
         if [ ${#failed_snap_packages[@]} -gt 0 ]; then
             debug_echo "Processing ${#failed_snap_packages[@]} failed snap packages for apt fallback"
             local packages_to_install_via_apt_fallback=()
-            for package in "${failed_snap_packages[@]}"; do
-                debug_echo "  Checking $package for apt fallback..."
-                if ! is_installed_via_apt "$package" && ! is_installed_via_snap "$package"; then
+            for snap_name in "${failed_snap_packages[@]}"; do
+                local original_package=$(map_from_snap_name "$snap_name")
+                debug_echo "  Checking $snap_name (original: $original_package) for apt fallback..."
+                if ! is_installed_via_apt "$original_package" && ! is_installed_via_snap "$snap_name"; then
                     debug_echo "    Package not installed via apt or snap, adding to fallback list"
-                    packages_to_install_via_apt_fallback+=("$package")
+                    packages_to_install_via_apt_fallback+=("$original_package")
                 else
                     debug_echo "    Package already installed, skipping fallback"
                 fi
