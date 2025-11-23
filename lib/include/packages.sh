@@ -238,24 +238,33 @@ install_packages() {
     local use_snap=false
     local remove_from_apt=false
 
-    debug_echo "Prompting for snap usage preference"
-    read_with_default "Use snap for available packages? (Y/n) " "Y"
-    debug_echo "User reply for snap usage: '$REPLY'"
-    if [[ -z "$REPLY" || $REPLY =~ ^[Yy]$ ]]; then
-        color_echo GREEN "OK will use snap for available packages"
+    # Check if USE_DEFAULTS is set (from defaults.sh or environment)
+    if [[ "${USE_DEFAULTS:-false}" == "true" ]]; then
+        debug_echo "USE_DEFAULTS is true, using default values without prompting"
         use_snap=true
-        debug_echo "use_snap set to true"
-        read_with_default "Remove packages from apt if available via snap? [Y/n] " "Y"
-        debug_echo "User reply for remove_from_apt: '$REPLY'"
-        if [[ -z "$REPLY" || $REPLY =~ ^[Yy]$ ]]; then
-            color_echo GREEN "OK will remove packages from apt if available via snap"
-            remove_from_apt=true
-            debug_echo "remove_from_apt set to true"
-        else
-            debug_echo "remove_from_apt remains false"
-        fi
+        remove_from_apt=true
+        color_echo GREEN "Using defaults: snap enabled, removing from apt if available via snap"
+        debug_echo "use_snap set to true (default), remove_from_apt set to true (default)"
     else
-        debug_echo "use_snap remains false"
+        debug_echo "Prompting for snap usage preference"
+        read_with_default "Use snap for available packages? (Y/n) " "Y"
+        debug_echo "User reply for snap usage: '$REPLY'"
+        if [[ -z "$REPLY" || $REPLY =~ ^[Yy]$ ]]; then
+            color_echo GREEN "OK will use snap for available packages"
+            use_snap=true
+            debug_echo "use_snap set to true"
+            read_with_default "Remove packages from apt if available via snap? [Y/n] " "Y"
+            debug_echo "User reply for remove_from_apt: '$REPLY'"
+            if [[ -z "$REPLY" || $REPLY =~ ^[Yy]$ ]]; then
+                color_echo GREEN "OK will remove packages from apt if available via snap"
+                remove_from_apt=true
+                debug_echo "remove_from_apt set to true"
+            else
+                debug_echo "remove_from_apt remains false"
+            fi
+        else
+            debug_echo "use_snap remains false"
+        fi
     fi
 
     debug_echo "Configuration: use_snap=$use_snap, remove_from_apt=$remove_from_apt"
