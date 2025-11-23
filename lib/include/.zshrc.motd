@@ -75,8 +75,24 @@ function motd {
   done
 }
 
+# Always show login info (replaces default "Last login" message)
+LOGININFO_SCRIPT="$DOTDOTFILES/lib/motd/80-logininfo"
+if [[ -f "$LOGININFO_SCRIPT" ]] && [[ -x "$LOGININFO_SCRIPT" ]]; then
+    "$LOGININFO_SCRIPT"
+fi
+
 if [[ "$should_show_motd" == "true" ]]; then
-  motd
+  # Show full MOTD (excluding logininfo since we already showed it)
+  MOTD_DIR="$DOTDOTFILES/lib/motd"
+  if [ -d "$MOTD_DIR" ]; then
+      for script in "$MOTD_DIR"/*; do
+          # Skip logininfo since we already showed it above
+          [[ "$script" == "$LOGININFO_SCRIPT" ]] && continue
+          if [ -f "$script" ] && [ -x "$script" ]; then
+              "$script"
+          fi
+      done
+  fi
 
   # Update timestamp after showing (respects interval for future sessions)
   touch "$MOTD_CACHE_FILE"

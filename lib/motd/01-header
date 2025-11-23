@@ -24,7 +24,8 @@ if command -v fastfetch &> /dev/null; then
     "memory",
     "swap",
     "disk",
-    "users"
+    "users",
+    "battery"
   ]
 }
 EOF
