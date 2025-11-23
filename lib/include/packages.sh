@@ -209,18 +209,27 @@ is_available_via_snap() {
     # Check if package is available on stable channel
     local package="$1"
     local info_output=$(snap info "$package" 2>&1)
-    if [ $? -ne 0 ]; then
-        return 1  # Not available
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        return 1  # Not available (snap info failed)
     fi
     # Check if stable channel has a version (not just "–" or empty)
-    local stable_line=$(echo "$info_output" | grep "latest/stable:" | head -1)
+    local stable_line=$(echo "$info_output" | grep -i "latest/stable:" | head -1)
     if [ -z "$stable_line" ]; then
+        # Try checking for any channel with a version
+        if echo "$info_output" | grep -qiE "(latest/stable|latest/candidate|latest/beta|latest/edge):\s+[0-9]"; then
+            return 0  # Available on some channel
+        fi
         return 1  # No stable channel line found
     fi
     # If the stable line contains a version number pattern (e.g., "3.30 2020-12-09"), it's available
     # If it only contains "–" or "-" or is empty, it's not available
     if echo "$stable_line" | grep -qE "latest/stable:\s+[0-9]"; then
         return 0  # Available on stable (has version number)
+    fi
+    # Also check if it shows a version in a different format
+    if echo "$stable_line" | grep -qiE "[0-9]+\.[0-9]+"; then
+        return 0  # Has version number pattern
     fi
     return 1  # Not available on stable (shows "–" or no version)
 }
@@ -339,8 +348,13 @@ install_packages() {
         is_installed_via_snap "$snap_name" && installed_via_snap_mapped=true
         debug_echo "  installed_via_snap (mapped name): $installed_via_snap_mapped"
         
-        is_available_via_snap "$snap_name" && available_via_snap=true
-        debug_echo "  available_via_snap: $available_via_snap"
+        if is_available_via_snap "$snap_name"; then
+            available_via_snap=true
+            debug_echo "  available_via_snap: true (checked snap name: $snap_name)"
+        else
+            available_via_snap=false
+            debug_echo "  available_via_snap: false (checked snap name: $snap_name)"
+        fi
         
         command_available "$cmd_name" && cmd_available=true
         debug_echo "  cmd_available: $cmd_available"
@@ -361,20 +375,20 @@ install_packages() {
                 # Available via snap
                 if [[ "$installed_via_apt" == "true" ]]; then
                     debug_echo "      Branch: installed_via_apt is true"
-                    # Installed via apt, available via snap
+                    # Installed via apt, available via snap - always replace if remove_from_apt is true
                     if [[ "$remove_from_apt" == "true" ]]; then
                         debug_echo "        Action: Replace apt with snap (remove_from_apt=true)"
-                        # Replace apt with snap
+                        # Replace apt with snap (always do this when available via snap and remove_from_apt is true)
                         packages_to_remove_via_apt+=("$package")
                         packages_to_install_via_snap+=("$snap_name")
                         debug_echo "        Added to remove_apt and install_snap arrays"
                     elif [[ "$cmd_available" == "false" ]]; then
-                        debug_echo "        Action: Install via snap (cmd not available)"
-                        # Command not available, install via snap
+                        debug_echo "        Action: Install via snap (cmd not available, remove_from_apt=false)"
+                        # Command not available, install via snap (but don't remove from apt)
                         packages_to_install_via_snap+=("$snap_name")
                         debug_echo "        Added to install_snap array"
                     else
-                        debug_echo "        SKIP: cmd is available, no action needed"
+                        debug_echo "        SKIP: cmd is available and remove_from_apt=false, no action needed"
                     fi
                 elif [[ "$cmd_available" == "false" ]]; then
                     debug_echo "      Branch: Not installed, cmd not available"
