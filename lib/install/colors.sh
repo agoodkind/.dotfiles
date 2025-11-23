@@ -6,6 +6,9 @@ export RED='\033[0;31m'
 export GREEN='\033[0;32m'
 export YELLOW='\033[1;33m'
 export BLUE='\033[0;34m'
+export MAGENTA='\033[0;35m'
+export CYAN='\033[0;36m'
+export GRAY='\033[0;37m'
 export NC='\033[0m' # No Color
 
 # Print colored output
@@ -15,3 +18,10 @@ color_echo() {
     printf "%b%s%b\n" "${!color}" "$*" "${NC}"
 }
 
+# print [DEBUG] message if DEBUG is true
+# Usage: debug_echo "message"
+debug_echo() {
+    if [[ "${DEBUG:-false}" == "true" ]]; then
+        printf "%b[DEBUG]%b %s%b\n" "${GRAY}" "${NC}" "$*" "${NC}"
+    fi
+}

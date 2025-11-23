@@ -3,21 +3,21 @@
 # Provides --use-defaults/-d flag parsing and read_with_default helper
 
 # Parse command line flags (if not already set via environment)
+# When sourced, $@ refers to the parent script's arguments
 if [[ -z "${USE_DEFAULTS:-}" ]]; then
     USE_DEFAULTS=false
+    # Check parent script's arguments for --use-defaults or -d flag
     for arg in "$@"; do
         case $arg in
             --use-defaults|-d)
                 USE_DEFAULTS=true
                 export USE_DEFAULTS
-                shift
-                ;;
-            *)
+                break
                 ;;
         esac
     done
 else
-    # Use exported value if available
+    # Use exported value if already set (from parent script or environment)
     USE_DEFAULTS="${USE_DEFAULTS}"
 fi
 
