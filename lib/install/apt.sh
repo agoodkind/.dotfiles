@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 
+export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
+
 # Source utilities
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/../include/defaults.sh"
-source "${SCRIPT_DIR}/packages.sh"
-source "${SCRIPT_DIR}/../include/colors.sh"
+source "${DOTDOTFILES}/lib/include/defaults.sh"
+source "${DOTDOTFILES}/lib/include/colors.sh"
+source "${DOTDOTFILES}/lib/include/packages.sh"
 
 # Install zoxide if not installed
 if ! command -v zoxide &>/dev/null; then

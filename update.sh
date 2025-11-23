@@ -2,12 +2,12 @@
 
 timestamp=$(date +"%Y%m%d_%H%M%S")
 
-DOTDOTFILES="$(dirname "$(readlink -f "$0")")"
-export DOTDOTFILES
+export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
 # Source utilities
 source "${DOTDOTFILES}/lib/include/defaults.sh"
 source "${DOTDOTFILES}/lib/include/colors.sh"
+source "${DOTDOTFILES}/lib/include/packages.sh"
 
 color_echo BLUE "🔄  Updating plugins and submodules..."
 # Check is git is locked
