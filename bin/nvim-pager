@@ -3,28 +3,37 @@
 
 exec nvim -R \
   -c "lua \
-    -- Ensure plugin is loaded first \
-    local ok, lazy = pcall(require, 'lazy') \
-    if ok then \
-      lazy.load({plugins = {'powerman/vim-plugin-AnsiEsc'}}) \
+    -- Function to process ANSI codes \
+    local function process_ansi() \
+      local buf = vim.api.nvim_get_current_buf() \
+      local line_count = vim.api.nvim_buf_line_count(buf) \
+      if line_count == 0 then return end \
+      -- Check if buffer has ANSI codes \
+      local first_line = vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1] or '' \
+      if not first_line:match('\\027%[') then return end \
+      -- Try to run AnsiEsc \
+      if pcall(vim.cmd, 'AnsiEsc') then return true end \
+      -- Load plugin if needed \
+      local ok, lazy = pcall(require, 'lazy') \
+      if ok then \
+        lazy.load({plugins = {'powerman/vim-plugin-AnsiEsc'}}) \
+        vim.defer_fn(function() pcall(vim.cmd, 'AnsiEsc') end, 300) \
+        return true \
+      end \
+      return false \
     end \
-    -- Set up autocmd for stdin \
+    -- Try processing immediately and with delays \
+    vim.defer_fn(process_ansi, 100) \
+    vim.defer_fn(process_ansi, 300) \
+    vim.defer_fn(process_ansi, 600) \
+    -- Also set up autocmd for stdin \
     vim.api.nvim_create_autocmd('StdinReadPost', { \
       pattern = '*', \
-      callback = function() \
-        vim.defer_fn(function() \
-          if pcall(vim.cmd, 'AnsiEsc') then \
-            -- Success \
-          else \
-            -- Try loading plugin again if command not found \
-            local ok2, lazy2 = pcall(require, 'lazy') \
-            if ok2 then \
-              lazy2.load({plugins = {'powerman/vim-plugin-AnsiEsc'}}) \
-              vim.defer_fn(function() pcall(vim.cmd, 'AnsiEsc') end, 200) \
-            end \
-          end \
-        end, 50) \
-      end, \
+      callback = function() vim.defer_fn(process_ansi, 100) end, \
+    }) \
+    -- And on buffer enter \
+    vim.api.nvim_create_autocmd('BufEnter', { \
+      callback = function() vim.defer_fn(process_ansi, 50) end, \
     }) \
   " \
   "$@"

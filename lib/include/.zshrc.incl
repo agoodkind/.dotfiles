@@ -26,21 +26,9 @@ source "$DOTDOTFILES/lib/include/.zshrc.motd"
 # Load local zshrc customizations that are not to be tracked by git
 [[ ! -f "$DOTDOTFILES/.zshrc.local" ]] || source "$DOTDOTFILES/.zshrc.local"
 
-# if ~/.cache/dotfiles_update_next exists
-# interactively ask if user wants to update
-# if yes, run config update and then reload
-# if no, make another file ~/.cache/dotfiles_update_skipped to avoid asking again
-# Skip update check if we're already in the middle of a reload
 if [[ -f ~/.cache/dotfiles_update_next ]] && [[ ! -f ~/.cache/dotfiles_update_skipped ]] && [[ -z "$_RELOADING" ]]; then
-    # printf "Dotfiles update available. Do you want to update now? (y/n) "
-    # read answer
-    # if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
-        rm ~/.cache/dotfiles_update_next
-        echo "Dotfiles update detected."
-        config update --use-defaults --background
-    # else 
-    #     touch ~/.cache/dotfiles_update_skipped
-    #     echo "Dotfiles update skipped."
-    # fi
+    rm ~/.cache/dotfiles_update_next
+    echo "Dotfiles update detected."
+    config update --use-defaults --background
 fi
 
