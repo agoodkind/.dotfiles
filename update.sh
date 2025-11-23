@@ -87,11 +87,11 @@ for script in $scripts; do
 done
 
 
-# Initialize neovim plugins
+# Initialize and update neovim plugins
 if command -v nvim >/dev/null 2>&1; then
     color_echo YELLOW "📦  Installing/updating Neovim plugins..."
-    nvim --headless -c "quit" 2>/dev/null || true
-    color_echo GREEN "  ✅  Neovim plugins initialized"
+    nvim --headless -c "lua require('lazy').sync()" -c "qa" 2>/dev/null || true
+    color_echo GREEN "  ✅  Neovim plugins updated"
 fi
 
 # remove zcompdump files only if ZSH_COMPDUMP is set
@@ -106,12 +106,20 @@ if is_macos; then
     brew cleanup
 
     color_echo BLUE "💡  Running macOS setup script..."
-    run_with_defaults "$DOTDOTFILES/lib/install/mac.sh"
+    if [[ "$USE_DEFAULTS" == "true" ]]; then
+        "$DOTDOTFILES/lib/install/mac.sh" --use-defaults "$@"
+    else
+        "$DOTDOTFILES/lib/install/mac.sh" "$@"
+    fi
 fi
 
 if is_ubuntu; then
     color_echo BLUE "💡  Running Ubuntu setup script..."
-    run_with_defaults "$DOTDOTFILES/lib/install/ubuntu.sh"
+    if [[ "$USE_DEFAULTS" == "true" ]]; then
+        "$DOTDOTFILES/lib/install/ubuntu.sh" --use-defaults "$@"
+    else
+        "$DOTDOTFILES/lib/install/ubuntu.sh" "$@"
+    fi
 fi
 
 if [[ ! -f "$HOME/.hushlogin" ]]; then
