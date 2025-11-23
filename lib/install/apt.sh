@@ -35,6 +35,22 @@ is_installed_via_apt() {
     return $?
 }
 
+# Check if a command/binary is already available in PATH
+# This helps avoid installing via apt when already installed via snap with different name
+command_available() {
+    command -v "$1" &>/dev/null
+    return $?
+}
+
+# Map package names to their snap equivalents (if different)
+map_to_snap_name() {
+    local package="$1"
+    case "$package" in
+        neovim) echo "nvim" ;;
+        *) echo "$package" ;;
+    esac
+}
+
 requires_classic_confinement() {
     local package="$1"
     local info_output=$(snap info "$package" 2>/dev/null)
@@ -119,7 +135,26 @@ install_packages() {
     color_echo YELLOW "Processing $# packages..."
     
     for package in "$@"; do
+        # Determine command name and snap name (may differ from package name)
+        local snap_name=$(map_to_snap_name "$package")
+        local cmd_name="$package"
+        # For some packages, the command name differs (e.g., neovim -> nvim, bat -> batcat)
+        case "$package" in
+            neovim) cmd_name="nvim" ;;
+            bat) cmd_name="batcat" ;;
+        esac
+        
+        # Check if command is already available (might be installed via snap with different name)
+        if command_available "$cmd_name"; then
+            continue  # Command already available, skip installation
+        fi
+        
         if [[ "$use_snap" == "true" ]]; then
+            # Check if snap package (with mapped name) is already installed
+            if is_installed_via_snap "$snap_name"; then
+                continue  # Already installed via snap, skip
+            fi
+            
             if is_available_via_snap "$package"; then
                 if is_installed_via_snap "$package"; then
                     continue
@@ -132,12 +167,16 @@ install_packages() {
                     packages_to_install_via_snap+=("$package")
                 fi
             else
+                # Not available via snap, check apt
                 if ! is_installed_via_apt "$package"; then
                     packages_to_install_via_apt+=("$package")
                 fi
             fi
-        elif ! is_installed_via_apt "$package"; then
-            packages_to_install_via_apt+=("$package")
+        else
+            # Not using snap, check apt
+            if ! is_installed_via_apt "$package"; then
+                packages_to_install_via_apt+=("$package")
+            fi
         fi
     done
 
