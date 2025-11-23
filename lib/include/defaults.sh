@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # Defaults handling module for install/update scripts
 # Provides --use-defaults/-d flag parsing and read_with_default helper
 

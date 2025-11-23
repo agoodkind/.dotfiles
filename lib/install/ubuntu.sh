@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 
+export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
+
 # Source utilities
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/../include/defaults.sh"
+source "${DOTDOTFILES}/lib/include/defaults.sh"
+source "${DOTDOTFILES}/lib/include/colors.sh"
+source "${DOTDOTFILES}/lib/include/packages.sh"
 
 # Apt-based installation script for Ubuntu systems
 # if not skip install is set, skip installation of packages, --skip-install
@@ -35,8 +38,6 @@ fi
 # Script to configure MOTD (Message of the Day) on Ubuntu systems
 # Disables default MOTD scripts and optionally sets a custom MOTD
 
-DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
-
 echo "Configuring MOTD..."
 
 # Disable all default MOTD scripts except ours
@@ -60,7 +61,7 @@ fi
 # Copy our custom MOTD entrypoint
 echo "Installing custom MOTD entrypoint..."
 sudo rm -f /etc/update-motd.d/00-motd-entrypoint.sh
-sudo cp "$DOTFILES_DIR/lib/include/.zshrc.motd" /etc/update-motd.d/00-motd-entrypoint.sh
+sudo cp "$DOTDOTFILES/lib/include/.zshrc.motd" /etc/update-motd.d/00-motd-entrypoint.sh
 sudo chmod +x /etc/update-motd.d/00-motd-entrypoint.sh
 
 echo "MOTD configuration complete."

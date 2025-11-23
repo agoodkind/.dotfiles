@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
+
+# Source utilities
+source "${DOTDOTFILES}/lib/include/defaults.sh"
+source "${DOTDOTFILES}/lib/include/colors.sh"
+source "${DOTDOTFILES}/lib/include/packages.sh"
+
 if [[ " $* " != *" --skip-install "* ]]; then
     "$DOTDOTFILES/lib/install/brew.sh"
 fi

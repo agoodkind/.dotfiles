@@ -1,16 +1,11 @@
 #!/usr/bin/env bash
 
-export DOTDOTFILES="$HOME/.dotfiles"
+export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
 # Source utilities
 source "${DOTDOTFILES}/lib/include/defaults.sh"
 source "${DOTDOTFILES}/lib/include/colors.sh"
-
-color_echo BLUE "🔧  Making scripts executable..."
-chmod +x "$DOTDOTFILES/update.sh"
-chmod +x "$DOTDOTFILES/repair.sh"
-find "$DOTDOTFILES/lib/install" -name "*.sh" -type f -exec chmod +x {} \;
-color_echo GREEN "  ✅  All install scripts are now executable"
+source "${DOTDOTFILES}/lib/include/packages.sh"
 
 color_echo BLUE "📁  Creating SSH sockets directory..."
 mkdir -p "$HOME/.ssh/sockets"

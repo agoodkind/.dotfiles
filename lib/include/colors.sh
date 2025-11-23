@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # Color utilities for consistent output across dotfiles
 
 # Color codes (exported for use in sourcing scripts)

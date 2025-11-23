@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 
-# Source centralized package list
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/packages.sh"
-source "${SCRIPT_DIR}/../include/colors.sh"
+export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
+
+# Source utilities
+source "${DOTDOTFILES}/lib/include/defaults.sh"
+source "${DOTDOTFILES}/lib/include/colors.sh"
+source "${DOTDOTFILES}/lib/include/packages.sh"
 
 # Install Homebrew if not present
 if ! /usr/bin/which -s brew; then

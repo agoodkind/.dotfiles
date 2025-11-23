@@ -1,9 +1,3 @@
-#!/usr/bin/env bash
-
-# Source defaults module
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/../include/defaults.sh"
-
 # Centralized package list for both apt and brew installations
 
 # Common packages across both package managers
