@@ -2,7 +2,8 @@
 
 export DOTDOTFILES="$HOME/.dotfiles"
 
-# Source color utilities
+# Source utilities
+source "${DOTDOTFILES}/lib/include/defaults.sh"
 source "${DOTDOTFILES}/lib/include/colors.sh"
 
 color_echo BLUE "🔧  Making scripts executable..."
@@ -23,10 +24,10 @@ ssh-add -l  || true
 ssh-add ~/.ssh/id_ed25519 || true
 
 color_echo BLUE "🔧  Setting up git configuration..."
-"$DOTDOTFILES/lib/install/git.sh"
+run_with_defaults "$DOTDOTFILES/lib/install/git.sh"
 
 color_echo BLUE "🛠️  Running repair script..."
-"$DOTDOTFILES/update.sh"
+run_with_defaults "$DOTDOTFILES/update.sh"
 
 # Set up passwordless sudo for current user (macOS and Ubuntu)
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -35,8 +36,7 @@ else
     SUDOERS_FILE="/etc/sudoers.d/$(whoami)"
 fi
 # ask user if they want to configure passwordless sudo
-read -p "Configure passwordless sudo? (y/n) " -n 1 -r
-echo
+read_with_default "Configure passwordless sudo? (y/n) " "n"
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     if [[ -f "$SUDOERS_FILE" ]]; then
         color_echo GREEN "🔓  Sudo already passwordless for $(whoami)"

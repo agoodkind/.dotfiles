@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Source defaults module
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/../include/defaults.sh"
+
 # Centralized package list for both apt and brew installations
 
 # Common packages across both package managers
@@ -102,6 +106,9 @@ export BREW_CASKS=(
 	pingplotter
 )
 
+# Add all APT_SPECIFIC packages (no need to check for duplicates since we excluded them above)
+ALL_APT_PACKAGES+=("${APT_SPECIFIC[@]}")
+
 # Map common package names to APT package names
 # Packages that map to something already in APT_SPECIFIC will be skipped later
 map_to_apt_name() {
@@ -111,6 +118,25 @@ map_to_apt_name() {
 		openssh) echo "openssh-client openssh-server" ;;
 		*) echo "$package" ;;
 	esac
+}
+
+# Map package names to their snap equivalents (if different)
+map_to_snap_name() {
+    local package="$1"
+    case "$package" in
+        neovim) echo "nvim" ;;
+        *) echo "$package" ;;
+    esac
+}
+
+# Map package names to their command names (if different)
+map_to_cmd_name() {
+    local package="$1"
+    case "$package" in
+        neovim) echo "nvim" ;;
+        bat) echo "batcat" ;;
+        *) echo "$package" ;;
+    esac
 }
 
 # Check if a package is in an array
@@ -144,7 +170,203 @@ for package in "${COMMON_PACKAGES[@]}"; do
 	done
 done
 
-# Add all APT_SPECIFIC packages (no need to check for duplicates since we excluded them above)
-ALL_APT_PACKAGES+=("${APT_SPECIFIC[@]}")
+is_installed_via_snap() {
+    snap list "$1" &>/dev/null
+    return $?
+}
+
+is_available_via_snap() {
+    # Check if package is available on stable channel
+    local package="$1"
+    local info_output=$(snap info "$package" 2>&1)
+    if [ $? -ne 0 ]; then
+        return 1  # Not available
+    fi
+    # Check if stable channel has a version (not just "–" or empty)
+    local stable_line=$(echo "$info_output" | grep "latest/stable:" | head -1)
+    if [ -z "$stable_line" ]; then
+        return 1  # No stable channel line found
+    fi
+    # If the stable line contains a version number pattern (e.g., "3.30 2020-12-09"), it's available
+    # If it only contains "–" or "-" or is empty, it's not available
+    if echo "$stable_line" | grep -qE "latest/stable:\s+[0-9]"; then
+        return 0  # Available on stable (has version number)
+    fi
+    return 1  # Not available on stable (shows "–" or no version)
+}
+
+is_installed_via_apt() {
+    dpkg -s "$1" &>/dev/null
+    return $?
+}
+
+is_available_via_apt() {
+    apt-cache show "$1" &>/dev/null
+    return $?
+}
+
+# Check if a command/binary is already available in PATH
+# This helps avoid installing via apt when already installed via snap with different name
+command_available() {
+    command -v "$1" &>/dev/null
+    return $?
+}
+
+requires_classic_confinement() {
+    local package="$1"
+    local info_output=$(snap info "$package" 2>/dev/null)
+    if [ $? -ne 0 ]; then
+        return 1  # Can't determine, assume not classic
+    fi
+    # Check top-level confinement field first
+    local confinement=$(echo "$info_output" | grep "^confinement:" | awk '{print $2}')
+    if [ "$confinement" = "classic" ]; then
+        return 0  # true - requires classic
+    fi
+    # Also check channels section for classic (some snaps show it there, e.g., "latest/beta: 3.30 ... classic")
+    if echo "$info_output" | grep -qE "latest/[^:]+:\s+[0-9].*\s+classic"; then
+        return 0  # true - requires classic
+    fi
+    return 1  # false - doesn't require classic
+}
+
+
+# Install packages if any are missing
+install_packages() {
+    # Build list of packages to install
+    local packages_to_install_via_apt=()
+    local packages_to_remove_via_apt=()
+    local packages_to_install_via_snap=()
+
+    # Ask if user wants to use snap for available packages
+    local use_snap=false
+    local remove_from_apt=false
+
+    read_with_default "Use snap for available packages? (Y/n) " "Y"
+    if [[ -z "$REPLY" || $REPLY =~ ^[Yy]$ ]]; then
+        color_echo GREEN "OK will use snap for available packages"
+        use_snap=true
+        read_with_default "Remove packages from apt if available via snap? [Y/n] " "Y"
+        if [[ -z "$REPLY" || $REPLY =~ ^[Yy]$ ]]; then
+            color_echo GREEN "OK will remove packages from apt if available via snap"
+            remove_from_apt=true
+        fi
+    fi
+
+    # DEBUG: Show what packages we're processing
+    color_echo YELLOW "Processing $# packages..."
+    
+    for package in "$@"; do
+        # Determine command name and snap name (may differ from package name)
+        local snap_name=$(map_to_snap_name "$package")
+        local cmd_name=$(map_to_cmd_name "$package")
+        
+        # Perform all checks upfront
+        local installed_via_apt=false
+        local available_via_apt=false
+        local installed_via_snap_pkg=false
+        local installed_via_snap_mapped=false
+        local available_via_snap=false
+        local cmd_available=false
+        
+        is_installed_via_apt "$package" && installed_via_apt=true
+        is_available_via_apt "$package" && available_via_apt=true
+        is_installed_via_snap "$package" && installed_via_snap_pkg=true
+        is_installed_via_snap "$snap_name" && installed_via_snap_mapped=true
+        is_available_via_snap "$package" && available_via_snap=true
+        command_available "$cmd_name" && cmd_available=true
+        
+        # Skip if already installed via snap (either name)
+        if [[ "$installed_via_snap_pkg" == "true" || "$installed_via_snap_mapped" == "true" ]]; then
+            continue
+        fi
+        
+        # Truth table evaluation based on use_snap and remove_from_apt flags
+        if [[ "$use_snap" == "true" ]]; then
+            if [[ "$available_via_snap" == "true" ]]; then
+                # Available via snap
+                if [[ "$installed_via_apt" == "true" ]]; then
+                    # Installed via apt, available via snap
+                    if [[ "$remove_from_apt" == "true" ]]; then
+                        # Replace apt with snap
+                        packages_to_remove_via_apt+=("$package")
+                        packages_to_install_via_snap+=("$package")
+                    elif [[ "$cmd_available" == "false" ]]; then
+                        # Command not available, install via snap
+                        packages_to_install_via_snap+=("$package")
+                    fi
+                elif [[ "$cmd_available" == "false" ]]; then
+                    # Not installed, command not available, install via snap
+                    packages_to_install_via_snap+=("$package")
+                fi
+            elif [[ "$installed_via_apt" == "false" && "$available_via_apt" == "true" && "$cmd_available" == "false" ]]; then
+                # Not available via snap, but available via apt and not installed
+                packages_to_install_via_apt+=("$package")
+            fi
+        elif [[ "$installed_via_apt" == "false" && "$available_via_apt" == "true" && "$cmd_available" == "false" ]]; then
+            # Not using snap, install via apt if available and needed
+            packages_to_install_via_apt+=("$package")
+        fi
+    done
+
+    if [ ${#packages_to_install_via_apt[@]} -gt 0 ]; then
+        color_echo YELLOW "Installing ${#packages_to_install_via_apt[@]} apt packages..."
+        sudo apt-get install -y -qq "${packages_to_install_via_apt[@]}"
+    fi
+
+    if [ ${#packages_to_remove_via_apt[@]} -gt 0 ]; then
+        color_echo YELLOW "Removing ${#packages_to_remove_via_apt[@]} apt packages..."
+        sudo apt-get remove -y -qq "${packages_to_remove_via_apt[@]}"
+    fi
+
+    if [ ${#packages_to_install_via_snap[@]} -gt 0 ]; then
+        color_echo YELLOW "Installing ${#packages_to_install_via_snap[@]} snap packages..."
+        local failed_snap_packages=()
+        for package in "${packages_to_install_via_snap[@]}"; do
+            color_echo CYAN "Installing $package via snap..."
+            local install_output
+            local install_status
+            
+            # Try installing, checking if classic is needed
+            if requires_classic_confinement "$package"; then
+                install_output=$(sudo snap install --classic "$package" 2>&1)
+                install_status=$?
+            else
+                install_output=$(sudo snap install "$package" 2>&1)
+                install_status=$?
+                
+                # If it failed and error mentions classic confinement, retry with --classic
+                if [ $install_status -ne 0 ] && echo "$install_output" | grep -qi "classic confinement"; then
+                    color_echo YELLOW "  -> Retrying $package with --classic flag..."
+                    install_output=$(sudo snap install --classic "$package" 2>&1)
+                    install_status=$?
+                fi
+            fi
+            
+            if [ $install_status -eq 0 ]; then
+                color_echo GREEN "  -> Successfully installed $package via snap"
+            else
+                # Show the error message
+                echo "$install_output" | grep -v "^$" || true
+                color_echo YELLOW "  -> Failed to install $package via snap, will try apt"
+                failed_snap_packages+=("$package")
+            fi
+        done
+        
+        # Try to install failed snap packages via apt if available
+        if [ ${#failed_snap_packages[@]} -gt 0 ]; then
+            local packages_to_install_via_apt_fallback=()
+            for package in "${failed_snap_packages[@]}"; do
+                if ! is_installed_via_apt "$package" && ! is_installed_via_snap "$package"; then
+                    packages_to_install_via_apt_fallback+=("$package")
+                fi
+            done
+            if [ ${#packages_to_install_via_apt_fallback[@]} -gt 0 ]; then
+                color_echo YELLOW "Installing ${#packages_to_install_via_apt_fallback[@]} packages via apt (snap fallback)..."
+                sudo apt-get install -y -qq "${packages_to_install_via_apt_fallback[@]}" || true
+            fi
+        fi
+    fi
+}
 
 export ALL_APT_PACKAGES

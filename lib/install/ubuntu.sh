@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 
+# Source utilities
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/../include/defaults.sh"
+
 # Apt-based installation script for Ubuntu systems
 # if not skip install is set, skip installation of packages, --skip-install
 if [[ " $* " != *" --skip-install "* ]]; then
     sudo dpkg-reconfigure tzdata
-    "$DOTDOTFILES/lib/install/apt.sh"
+    run_with_defaults "$DOTDOTFILES/lib/install/apt.sh"
 fi
 
 # Script to configure MOTD (Message of the Day) on Ubuntu systems
