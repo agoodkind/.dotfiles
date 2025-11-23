@@ -239,6 +239,7 @@ install_packages() {
     local remove_from_apt=false
 
     # Check if USE_DEFAULTS is set (from defaults.sh or environment)
+    debug_echo "Checking USE_DEFAULTS: value='${USE_DEFAULTS:-}' (unset)"
     if [[ "${USE_DEFAULTS:-false}" == "true" ]]; then
         debug_echo "USE_DEFAULTS is true, using default values without prompting"
         use_snap=true
@@ -246,7 +247,7 @@ install_packages() {
         color_echo GREEN "Using defaults: snap enabled, removing from apt if available via snap"
         debug_echo "use_snap set to true (default), remove_from_apt set to true (default)"
     else
-        debug_echo "Prompting for snap usage preference"
+        debug_echo "USE_DEFAULTS is not true (value: '${USE_DEFAULTS:-unset}'), prompting for snap usage preference"
         read_with_default "Use snap for available packages? (Y/n) " "Y"
         debug_echo "User reply for snap usage: '$REPLY'"
         if [[ -z "$REPLY" || $REPLY =~ ^[Yy]$ ]]; then
