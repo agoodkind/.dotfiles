@@ -71,7 +71,7 @@ alias isinstalled="which -s"
 if isinstalled nvim; then
     export SUDO_EDITOR=nvim
     export MANPAGER='nvim +Man!'
-    export PAGER='nvim -R'
+    export PAGER="$DOTDOTFILES/bin/nvim-pager"
     export MANWIDTH=999
     alias vim="$(command -v nvim)"
 elif isinstalled vim; then

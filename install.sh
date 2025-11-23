@@ -30,6 +30,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 else
     SUDOERS_FILE="/etc/sudoers.d/$(whoami)"
 fi
+
 # ask user if they want to configure passwordless sudo
 read_with_default "Configure passwordless sudo? (y/n) " "n"
 if [[ $REPLY =~ ^[Yy]$ ]]; then

@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Wrapper script for nvim as a pager that processes ANSI escape codes
+
+exec nvim -R \
+  -c "lua \
+    -- Ensure plugin is loaded first \
+    local ok, lazy = pcall(require, 'lazy') \
+    if ok then \
+      lazy.load({plugins = {'powerman/vim-plugin-AnsiEsc'}}) \
+    end \
+    -- Set up autocmd for stdin \
+    vim.api.nvim_create_autocmd('StdinReadPost', { \
+      pattern = '*', \
+      callback = function() \
+        vim.defer_fn(function() \
+          if pcall(vim.cmd, 'AnsiEsc') then \
+            -- Success \
+          else \
+            -- Try loading plugin again if command not found \
+            local ok2, lazy2 = pcall(require, 'lazy') \
+            if ok2 then \
+              lazy2.load({plugins = {'powerman/vim-plugin-AnsiEsc'}}) \
+              vim.defer_fn(function() pcall(vim.cmd, 'AnsiEsc') end, 200) \
+            end \
+          end \
+        end, 50) \
+      end, \
+    }) \
+  " \
+  "$@"
+

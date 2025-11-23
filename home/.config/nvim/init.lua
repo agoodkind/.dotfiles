@@ -78,6 +78,10 @@ require("lazy").setup({
                     end,
                 })
             end,
+        },
+        {
+            'powerman/vim-plugin-AnsiEsc',
+            lazy = false,
         }
     },
     -- Configure any other settings here. See the documentation for more details.
@@ -177,5 +181,29 @@ vim.api.nvim_create_autocmd('FileType', {
         vim.opt_local.number = false
         vim.opt_local.relativenumber = false
         vim.opt_local.signcolumn = 'no'
+    end,
+})
+
+-- =============================================================================
+-- Pager Mode: ANSI Escape Code Processing
+-- =============================================================================
+-- Process ANSI escape codes when nvim is used as a pager (reading from stdin)
+vim.api.nvim_create_autocmd('StdinReadPost', {
+    pattern = '*',
+    callback = function()
+        vim.defer_fn(function()
+            if pcall(vim.cmd, 'AnsiEsc') then
+                -- Successfully processed ANSI codes
+            else
+                -- Try loading plugin if not available
+                local ok, lazy = pcall(require, 'lazy')
+                if ok then
+                    lazy.load({ plugins = { 'powerman/vim-plugin-AnsiEsc' } })
+                    vim.defer_fn(function()
+                        pcall(vim.cmd, 'AnsiEsc')
+                    end, 200)
+                end
+            end
+        end, 50)
     end,
 })
