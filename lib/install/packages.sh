@@ -108,7 +108,6 @@ map_to_apt_name() {
 	local package="$1"
 	case "$package" in
 		ack) echo "ack-grep" ;;
-		neovim) echo "neovim" ;;
 		openssh) echo "openssh-client openssh-server" ;;
 		*) echo "$package" ;;
 	esac
