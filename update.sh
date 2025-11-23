@@ -114,4 +114,9 @@ if is_ubuntu; then
     run_with_defaults "$DOTDOTFILES/lib/install/ubuntu.sh"
 fi
 
+if [[ ! -f "$HOME/.hushlogin" ]]; then
+    color_echo BLUE "🔇  Suppressing default last login message..."
+    touch "$HOME/.hushlogin"
+fi
+
 color_echo GREEN "✅  .zshrc has been repaired and relinked"

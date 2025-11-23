@@ -10,9 +10,6 @@ source "${DOTDOTFILES}/lib/include/packages.sh"
 color_echo BLUE "📁  Creating SSH sockets directory..."
 mkdir -p "$HOME/.ssh/sockets"
 
-color_echo BLUE "🔇  Suppressing default last login message..."
-touch "$HOME/.hushlogin"
-
 color_echo BLUE "🗝️  Starting SSH agent..."
 eval "$(ssh-agent -s)"
 
