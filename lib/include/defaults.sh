@@ -59,3 +59,18 @@ run_with_defaults() {
     fi
 }
 
+# print [DEBUG] message if DEBUG is true
+# Usage: debug_echo "message"
+debug_echo() {
+    if [[ -f ~/.cache/dotfiles_debug_enabled ]] || [[ "${DEBUG:-false}" == "true" ]]; then
+        printf "%b[DEBUG]%b %s%b\n" "${GRAY}" "${NC}" "$*" "${NC}"
+    fi
+}
+
+enable_debug() {
+    touch ~/.cache/dotfiles_debug_enabled
+}
+
+disable_debug() {
+    rm -f ~/.cache/dotfiles_debug_enabled
+}
