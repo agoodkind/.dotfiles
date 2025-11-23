@@ -90,31 +90,69 @@ reload() {
 }
 
 repair() {
+    local use_defaults=""
+    # Check if --use-defaults or -d is in the arguments
+    for arg in "$@"; do
+        case $arg in
+            --use-defaults|-d)
+                use_defaults="--use-defaults"
+                break
+                ;;
+        esac
+    done
+    
     echo "Repairing dotfiles..."
     config checkout main
     config pull
     (cd "$DOTDOTFILES" && git submodule update --init --recursive --remote)
-    "$DOTDOTFILES/update.sh"
+    if [[ -n "$use_defaults" ]]; then
+        "$DOTDOTFILES/update.sh" --use-defaults
+    else
+        "$DOTDOTFILES/update.sh"
+    fi
     reload
 }
 
 # dotfile management
 config() {
-    case $1 in
+    local subcommand="$1"
+    shift  # Remove subcommand from arguments
+    
+    local use_defaults=""
+    # Check if --use-defaults or -d is in the remaining arguments
+    for arg in "$@"; do
+        case $arg in
+            --use-defaults|-d)
+                use_defaults="--use-defaults"
+                break
+                ;;
+        esac
+    done
+    
+    case "$subcommand" in
         update)
             git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" pull
             (cd "$DOTDOTFILES" && git submodule update --init --recursive)
-            config repair
+            if [[ -n "$use_defaults" ]]; then
+                config repair --use-defaults
+            else
+                config repair
+            fi
             # repair already calls reload, no need to call it again
             ;;
         reload)
             reload
             ;;
         repair)
-            repair
+            if [[ -n "$use_defaults" ]]; then
+                repair --use-defaults
+            else
+                repair
+            fi
             ;;
         *)
-            git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" "$@"
+            # Restore original arguments for git command (subcommand + remaining args)
+            git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" "$subcommand" "$@"
             ;;
     esac
 }

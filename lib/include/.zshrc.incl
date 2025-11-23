@@ -37,7 +37,7 @@ if [[ -f ~/.cache/dotfiles_update_next ]] && [[ ! -f ~/.cache/dotfiles_update_sk
     # if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
         rm ~/.cache/dotfiles_update_next
         echo "Dotfiles update detected."
-        config update
+        config update --use-defaults
     # else 
     #     touch ~/.cache/dotfiles_update_skipped
     #     echo "Dotfiles update skipped."

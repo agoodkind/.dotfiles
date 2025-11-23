@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# Source utilities
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/../include/defaults.sh"
+source "${SCRIPT_DIR}/../include/colors.sh"
+
 # include the global gitconfig
 echo "Including global gitconfig from $DOTDOTFILES/lib/.gitconfig_incl"
 git config --global include.path "$DOTDOTFILES/lib/.gitconfig_incl"
@@ -7,13 +12,27 @@ git config --global include.path "$DOTDOTFILES/lib/.gitconfig_incl"
 # Set git user name and email
 echo "Setting up git user name and email"
 if [[ -z "$(git config --global user.name)" ]]; then
-    read -r -p "Enter your name for git (First Last): " git_user_name
-    git config --global user.name "$git_user_name"
+    if [[ "$USE_DEFAULTS" == "true" ]]; then
+        color_echo YELLOW "Skipping git user name (use defaults mode)"
+    else
+        read_with_default_multiline "Enter your name for git (First Last): " ""
+        git_user_name="$REPLY"
+        if [[ -n "$git_user_name" ]]; then
+            git config --global user.name "$git_user_name"
+        fi
+    fi
 fi
 
 if [[ -z "$(git config --global user.email)" ]]; then
-    read -r -p "Enter your git email: " git_user_email
-    git config --global user.email "$git_user_email"
+    if [[ "$USE_DEFAULTS" == "true" ]]; then
+        color_echo YELLOW "Skipping git user email (use defaults mode)"
+    else
+        read_with_default_multiline "Enter your git email: " ""
+        git_user_email="$REPLY"
+        if [[ -n "$git_user_email" ]]; then
+            git config --global user.email "$git_user_email"
+        fi
+    fi
 fi
 
 # set up gpg ssh key
@@ -31,10 +50,15 @@ if [[ -z "$(git config --global gpg.ssh.defaultKeyCommand)" ]]; then
         git config --global user.signingKey "key::$git_ssh_key_full"
     else
     # if not, prompt for path to key
-        read -r -p "Enter path to your SSH public key (or leave empty to skip): " git_ssh_key_path
-        if [[ -n "$git_ssh_key_path" && -f "$git_ssh_key_path" ]]; then
-            git_ssh_key_full=$(cat "$git_ssh_key_path")
-            git config --global user.signingKey "key::$git_ssh_key_full"
+        if [[ "$USE_DEFAULTS" == "true" ]]; then
+            color_echo YELLOW "Skipping SSH key setup (use defaults mode)"
+        else
+            read_with_default_multiline "Enter path to your SSH public key (or leave empty to skip): " ""
+            git_ssh_key_path="$REPLY"
+            if [[ -n "$git_ssh_key_path" && -f "$git_ssh_key_path" ]]; then
+                git_ssh_key_full=$(cat "$git_ssh_key_path")
+                git config --global user.signingKey "key::$git_ssh_key_full"
+            fi
         fi
     fi
 fi

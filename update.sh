@@ -5,7 +5,8 @@ timestamp=$(date +"%Y%m%d_%H%M%S")
 DOTDOTFILES="$(dirname "$(readlink -f "$0")")"
 export DOTDOTFILES
 
-# Source color utilities
+# Source utilities
+source "${DOTDOTFILES}/lib/include/defaults.sh"
 source "${DOTDOTFILES}/lib/include/colors.sh"
 
 color_echo BLUE "🔄  Updating plugins and submodules..."
@@ -13,8 +14,7 @@ color_echo BLUE "🔄  Updating plugins and submodules..."
 # and ask if force unlock is desired
 if [ -f "$DOTDOTFILES/.git/objects/info/commit-graphs/commit-graph-chain.lock" ]; then
     color_echo RED "🔒  Git is locked, do you want to force unlock it?"
-    read -p "Unlock? (y/n) " -n 1 -r
-    echo
+    read_with_default "Unlock? (y/n) " "n"
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         sudo rm -f "$DOTDOTFILES/.git/objects/info/commit-graphs/commit-graph-chain.lock"
         color_echo GREEN "🔓  Git unlocked"
@@ -106,12 +106,12 @@ if is_macos; then
     brew cleanup
 
     color_echo BLUE "💡  Running macOS setup script..."
-    "$DOTDOTFILES/lib/install/mac.sh"
+    run_with_defaults "$DOTDOTFILES/lib/install/mac.sh"
 fi
 
 if is_ubuntu; then
     color_echo BLUE "💡  Running Ubuntu setup script..."
-    "$DOTDOTFILES/lib/install/ubuntu.sh"
+    run_with_defaults "$DOTDOTFILES/lib/install/ubuntu.sh"
 fi
 
 color_echo GREEN "✅  .zshrc has been repaired and relinked"
