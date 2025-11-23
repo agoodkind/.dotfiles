@@ -17,10 +17,3 @@ color_echo() {
     printf "%b%s%b\n" "${!color}" "$*" "${NC}"
 }
 
-# print [DEBUG] message if DEBUG is true
-# Usage: debug_echo "message"
-debug_echo() {
-    if [[ "${DEBUG:-false}" == "true" ]]; then
-        printf "%b[DEBUG]%b %s%b\n" "${GRAY}" "${NC}" "$*" "${NC}"
-    fi
-}
