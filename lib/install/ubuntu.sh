@@ -7,7 +7,28 @@ source "${SCRIPT_DIR}/../include/defaults.sh"
 # Apt-based installation script for Ubuntu systems
 # if not skip install is set, skip installation of packages, --skip-install
 if [[ " $* " != *" --skip-install "* ]]; then
-    sudo dpkg-reconfigure tzdata
+    # Check if timezone is already configured
+    # A timezone is considered configured if /etc/localtime is a symlink (not a regular file)
+    # or if /etc/timezone exists and contains a non-empty value
+    TZ_CONFIGURED=false
+    if [[ -L /etc/localtime ]]; then
+        # /etc/localtime is a symlink, timezone has been configured
+        TZ_CONFIGURED=true
+    elif [[ -f /etc/timezone ]]; then
+        TZ_VALUE=$(cat /etc/timezone 2>/dev/null | tr -d '\n' | tr -d '[:space:]' || echo "")
+        if [[ -n "$TZ_VALUE" ]]; then
+            TZ_CONFIGURED=true
+        fi
+    fi
+    
+    # Only reconfigure timezone if not already configured
+    if [[ "$TZ_CONFIGURED" == "false" ]]; then
+        sudo dpkg-reconfigure tzdata
+    else
+        CURRENT_TZ=$(timedatectl show -p Timezone --value 2>/dev/null || cat /etc/timezone 2>/dev/null | tr -d '\n' || echo "unknown")
+        echo "Timezone already configured: $CURRENT_TZ (skipping reconfiguration)"
+    fi
+    
     run_with_defaults "$DOTDOTFILES/lib/install/apt.sh"
 fi
 
