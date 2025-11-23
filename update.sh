@@ -100,25 +100,64 @@ if [ -n "${ZSH_COMPDUMP:-}" ]; then
     rm -f "$ZSH_COMPDUMP"
 fi
 
+# Check for --background or --bg flag
+run_background=false
+for arg in "$@"; do
+    case $arg in
+        --background|--bg)
+            run_background=true
+            break
+            ;;
+    esac
+done
+
 # for macOS clean up brew
 if is_macos; then
     color_echo YELLOW "🧹  Cleaning up Homebrew..."
     brew cleanup
 
     color_echo BLUE "💡  Running macOS setup script..."
-    if [[ "$USE_DEFAULTS" == "true" ]]; then
-        "$DOTDOTFILES/lib/install/mac.sh" --use-defaults "$@"
+    if [[ "$run_background" == "true" ]]; then
+        mkdir -p "$HOME/.cache"
+        log_file="$HOME/.cache/dotfiles_install_${timestamp}.log"
+        color_echo YELLOW "🚀  Running package installation in background..."
+        color_echo CYAN "   Log file: $log_file"
+        if [[ "$USE_DEFAULTS" == "true" ]]; then
+            nohup "$DOTDOTFILES/lib/install/mac.sh" --use-defaults "$@" > "$log_file" 2>&1 &
+        else
+            nohup "$DOTDOTFILES/lib/install/mac.sh" "$@" > "$log_file" 2>&1 &
+        fi
+        color_echo GREEN "   Background process started (PID: $!)"
+        color_echo CYAN "   Monitor with: tail -f $log_file"
     else
-        "$DOTDOTFILES/lib/install/mac.sh" "$@"
+        if [[ "$USE_DEFAULTS" == "true" ]]; then
+            "$DOTDOTFILES/lib/install/mac.sh" --use-defaults "$@"
+        else
+            "$DOTDOTFILES/lib/install/mac.sh" "$@"
+        fi
     fi
 fi
 
 if is_ubuntu; then
     color_echo BLUE "💡  Running Ubuntu setup script..."
-    if [[ "$USE_DEFAULTS" == "true" ]]; then
-        "$DOTDOTFILES/lib/install/ubuntu.sh" --use-defaults "$@"
+    if [[ "$run_background" == "true" ]]; then
+        mkdir -p "$HOME/.cache"
+        log_file="$HOME/.cache/dotfiles_install_${timestamp}.log"
+        color_echo YELLOW "🚀  Running package installation in background..."
+        color_echo CYAN "   Log file: $log_file"
+        if [[ "$USE_DEFAULTS" == "true" ]]; then
+            nohup "$DOTDOTFILES/lib/install/ubuntu.sh" --use-defaults "$@" > "$log_file" 2>&1 &
+        else
+            nohup "$DOTDOTFILES/lib/install/ubuntu.sh" "$@" > "$log_file" 2>&1 &
+        fi
+        color_echo GREEN "   Background process started (PID: $!)"
+        color_echo CYAN "   Monitor with: tail -f $log_file"
     else
-        "$DOTDOTFILES/lib/install/ubuntu.sh" "$@"
+        if [[ "$USE_DEFAULTS" == "true" ]]; then
+            "$DOTDOTFILES/lib/install/ubuntu.sh" --use-defaults "$@"
+        else
+            "$DOTDOTFILES/lib/install/ubuntu.sh" "$@"
+        fi
     fi
 fi
 
