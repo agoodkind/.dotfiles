@@ -5,6 +5,10 @@
 # When sourced, $@ refers to the parent script's arguments
 # Always check command-line arguments first, as they take precedence
 found_use_defaults=false
+# Debug: show what arguments we're checking
+if [[ -f "$HOME/.cache/dotfiles_debug_enabled" ]] || [[ "${DEBUG:-false}" == "true" ]]; then
+    printf "[DEBUG] defaults.sh: checking arguments: %s\n" "$*"
+fi
 for arg in "$@"; do
     case $arg in
         --use-defaults|-d)
@@ -17,9 +21,15 @@ done
 if [[ "$found_use_defaults" == "true" ]]; then
     USE_DEFAULTS=true
     export USE_DEFAULTS
+    if [[ -f "$HOME/.cache/dotfiles_debug_enabled" ]] || [[ "${DEBUG:-false}" == "true" ]]; then
+        printf "[DEBUG] defaults.sh: found --use-defaults flag, setting USE_DEFAULTS=true\n"
+    fi
 elif [[ -z "${USE_DEFAULTS:-}" ]]; then
     USE_DEFAULTS=false
     export USE_DEFAULTS
+    if [[ -f "$HOME/.cache/dotfiles_debug_enabled" ]] || [[ "${DEBUG:-false}" == "true" ]]; then
+        printf "[DEBUG] defaults.sh: no --use-defaults flag found, setting USE_DEFAULTS=false\n"
+    fi
 fi
 # If USE_DEFAULTS was already set and we didn't find --use-defaults in args, keep existing value
 unset found_use_defaults
