@@ -69,11 +69,13 @@ run_with_defaults() {
     fi
 }
 
+export MAGENTA='\033[0;35m'
+export GRAY='\033[0;37m'
 # print [DEBUG] message if DEBUG is true
 # Usage: debug_echo "message"
 debug_echo() {
     if [[ -f "$HOME/.cache/dotfiles_debug_enabled" ]] || [[ "${DEBUG:-false}" == "true" ]]; then
-        printf "%b[DEBUG]%b %s%b\n" "${GRAY}" "${NC}" "$*" "${NC}"
+        printf "%b[DEBUG]%b %s%b\n" "${MAGENTA}" "${GRAY}" "$*" "${NC}"
     fi
 }
 
