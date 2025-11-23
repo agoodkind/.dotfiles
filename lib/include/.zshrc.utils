@@ -90,26 +90,11 @@ reload() {
 }
 
 repair() {
-    local use_defaults=""
-    # Check if --use-defaults or -d is in the arguments
-    for arg in "$@"; do
-        case $arg in
-            --use-defaults|-d)
-                use_defaults="--use-defaults"
-                break
-                ;;
-        esac
-    done
-    
     echo "Repairing dotfiles..."
     config checkout main
     config pull
     (cd "$DOTDOTFILES" && git submodule update --init --recursive --remote)
-    if [[ -n "$use_defaults" ]]; then
-        "$DOTDOTFILES/update.sh" --use-defaults
-    else
-        "$DOTDOTFILES/update.sh"
-    fi
+    "$DOTDOTFILES/update.sh" "$@"
     reload
 }
 
@@ -118,37 +103,18 @@ config() {
     local subcommand="$1"
     shift  # Remove subcommand from arguments
     
-    local use_defaults=""
-    # Check if --use-defaults or -d is in the remaining arguments
-    for arg in "$@"; do
-        case $arg in
-            --use-defaults|-d)
-                use_defaults="--use-defaults"
-                break
-                ;;
-        esac
-    done
-    
     case "$subcommand" in
         update)
             git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" pull
             (cd "$DOTDOTFILES" && git submodule update --init --recursive)
-            if [[ -n "$use_defaults" ]]; then
-                config repair --use-defaults
-            else
-                config repair
-            fi
+            config repair "$@"
             # repair already calls reload, no need to call it again
             ;;
         reload)
-            reload
+            reload "$@"
             ;;
         repair)
-            if [[ -n "$use_defaults" ]]; then
-                repair --use-defaults
-            else
-                repair
-            fi
+            repair "$@"
             ;;
         *)
             # Restore original arguments for git command (subcommand + remaining args)
