@@ -16,10 +16,11 @@ else
 fi
 
 # Setup GitHub CLI repository if not already configured
-if [ ! -f /etc/apt/sources.list.d/github-cli.list ]; then
+if [ ! -f /etc/apt/sources.list.d/github-cli.list ] || [ ! -f /usr/share/keyrings/githubcli-archive-keyring.gpg ]; then
     color_echo BLUE "Setting up GitHub CLI repository..."
     curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
+    color_echo GREEN "GitHub CLI repository configured"
 else
     color_echo GREEN "GitHub CLI repository already configured, skipping..."
 fi
@@ -33,13 +34,18 @@ else
 fi
 
 # Add backports repository if not already added
-color_echo BLUE "Adding backports repository..."
-if ! sudo add-apt-repository \
-    "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc)-backports \
-    main restricted universe multiverse" -y; then
-    color_echo RED "Failed to add backports repository, skipping..."
+RELEASE_CODENAME=$(lsb_release -sc)
+if ! grep -qE "$RELEASE_CODENAME-backports" /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null; then
+    color_echo BLUE "Adding backports repository..."
+    if sudo add-apt-repository \
+        "deb http://archive.ubuntu.com/ubuntu $RELEASE_CODENAME-backports \
+        main restricted universe multiverse" -y; then
+        color_echo GREEN "backports repository added"
+    else
+        color_echo RED "Failed to add backports repository, skipping..."
+    fi
 else
-    color_echo GREEN "backports repository added"
+    color_echo GREEN "backports repository already added, skipping..."
 fi
 
 color_echo YELLOW "Updating package lists..."
