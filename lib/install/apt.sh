@@ -26,7 +26,8 @@ else
 fi
 
 # Add sasl-xoauth2 PPA if not already added
-if ! grep -q "^deb .*sasl-xoauth2/stable" /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null; then
+if ! compgen -G "/etc/apt/sources.list.d/*sasl-xoauth2*stable*.list" >/dev/null 2>&1 && \
+   ! grep -qE "sasl-xoauth2.*stable|ppa\.launchpadcontent\.net/sasl-xoauth2/stable" /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null; then
     color_echo BLUE "Adding sasl-xoauth2 PPA..."
     sudo add-apt-repository ppa:sasl-xoauth2/stable -y
 else
