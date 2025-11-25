@@ -94,7 +94,7 @@ repair() {
     config checkout main
     config pull
     (cd "$DOTDOTFILES" && git submodule update --init --recursive --remote)
-    "$DOTDOTFILES/update.sh" "$@"
+    "$DOTDOTFILES/sync.sh" --repair "$@"
     reload
 }
 

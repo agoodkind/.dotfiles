@@ -9,6 +9,46 @@ source "${DOTDOTFILES}/lib/include/defaults.sh"
 source "${DOTDOTFILES}/lib/include/colors.sh"
 source "${DOTDOTFILES}/lib/include/packages.sh"
 
+# Parse flags
+run_background=false
+repair_mode=false
+for arg in "$@"; do
+    case $arg in
+        --background|--bg)
+            run_background=true
+            ;;
+        --repair)
+            repair_mode=true
+            ;;
+    esac
+done
+
+NVIM_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/nvim"
+LAZY_DIR="$NVIM_DATA/lazy"
+
+# Aggressive cleanup in repair mode
+if [[ "$repair_mode" == "true" ]]; then
+    color_echo YELLOW "🔧  Repair mode: aggressive cleanup..."
+    
+    if [ -d "$LAZY_DIR" ]; then
+        find "$LAZY_DIR" -maxdepth 1 -name "*.cloning" -delete 2>/dev/null
+        
+        # Remove failed/partial plugin directories (empty or missing .git)
+        for dir in "$LAZY_DIR"/*/; do
+            [ -d "$dir" ] || continue
+            if [ ! -d "$dir/.git" ] || [ -z "$(ls -A "$dir" 2>/dev/null)" ]; then
+                color_echo YELLOW "  🗑️  Removing incomplete plugin: $(basename "$dir")"
+                rm -rf "$dir"
+            fi
+        done
+    fi
+    
+    if [ -d "$NVIM_DATA" ]; then
+        find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*-tmp" -type d -exec rm -rf {} + 2>/dev/null
+        find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*" -type d ! -name "*.so" -exec rm -rf {} + 2>/dev/null
+    fi
+fi
+
 color_echo BLUE "🔄  Updating plugins and submodules..."
 # Check is git is locked
 # and ask if force unlock is desired
@@ -90,6 +130,17 @@ done
 # Initialize and update neovim plugins
 if command -v nvim >/dev/null 2>&1; then
     color_echo YELLOW "📦  Installing/updating Neovim plugins..."
+    
+    # Clean up stale lazy.nvim lock files that can cause SIGKILL failures
+    if [ -d "$LAZY_DIR" ]; then
+        find "$LAZY_DIR" -maxdepth 1 -name "*.cloning" -delete 2>/dev/null
+    fi
+    
+    # Clean up stale treesitter temp directories
+    if [ -d "$NVIM_DATA" ]; then
+        find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*-tmp" -type d -exec rm -rf {} + 2>/dev/null
+    fi
+    
     nvim --headless -c "lua require('lazy').sync()" -c "qa" 2>/dev/null || true
     color_echo GREEN "  ✅  Neovim plugins updated"
 fi
@@ -99,17 +150,6 @@ if [ -n "${ZSH_COMPDUMP:-}" ]; then
     color_echo YELLOW "🧹  Removing zcompdump file: $ZSH_COMPDUMP"
     rm -f "$ZSH_COMPDUMP"
 fi
-
-# Check for --background or --bg flag
-run_background=false
-for arg in "$@"; do
-    case $arg in
-        --background|--bg)
-            run_background=true
-            break
-            ;;
-    esac
-done
 
 # for macOS clean up brew
 if is_macos; then
@@ -166,4 +206,5 @@ if [[ ! -f "$HOME/.hushlogin" ]]; then
     touch "$HOME/.hushlogin"
 fi
 
-color_echo GREEN "✅  .zshrc has been repaired and relinked"
+color_echo GREEN "✅  Dotfiles synced"
+
