@@ -45,6 +45,11 @@ local colors = {
     warning = '#ffca58',
     info = '#49cae4',
     hint = '#aee8f4',
+
+    -- Config file colors (Ubuntu default theme)
+    config_section = '#875faf', -- Purple for section headers like [warm_storage]
+    config_keyword = '#5fd7ff', -- Light blue for keywords like path, browseable
+    config_value = '#fcfcfa',   -- White for values
 }
 
 local function highlight(group, opts)
@@ -199,3 +204,14 @@ highlight('@type', { link = 'Type' })
 highlight('@variable', { link = 'Identifier' })
 highlight('@constant', { link = 'Constant' })
 highlight('@operator', { link = 'Operator' })
+
+-- Config file specific highlights (Ubuntu default theme colors)
+highlight('@punctuation.bracket', { fg = colors.config_section }) -- Section headers [warm_storage]
+highlight('@field', { fg = colors.config_keyword })               -- Config keywords (path, browseable, etc.)
+highlight('@property', { fg = colors.config_keyword })            -- Config properties
+highlight('@punctuation.delimiter', { fg = colors.fg })           -- Delimiters like =, :
+
+-- Samba/config file syntax groups (for traditional syntax highlighting)
+highlight('sambaSection', { fg = colors.config_section, bold = true })
+highlight('sambaOption', { fg = colors.config_keyword })
+highlight('sambaValue', { fg = colors.config_value })
