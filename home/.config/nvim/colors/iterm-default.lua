@@ -50,6 +50,24 @@ local colors = {
     config_section = '#875faf', -- Purple for section headers like [warm_storage]
     config_keyword = '#5fd7ff', -- Light blue for keywords like path, browseable
     config_value = '#fcfcfa',   -- White for values
+
+    -- Default vim colorscheme colors (from syncolor.vim)
+    -- These are the standard vim default colors for dark background
+    vim_comment = '#80a0ff',    -- Light blue for comments
+    vim_constant = '#ffa0a0',   -- Light red/pink for constants
+    vim_special = '#ffa500',    -- Orange for special characters
+    vim_identifier = '#40ffff', -- Cyan for identifiers
+    vim_statement = '#ffff60',  -- Yellow for statements (bold)
+    vim_preproc = '#ff80ff',    -- Magenta for preprocessor
+    vim_type = '#60ff60',       -- Light green for types (bold)
+    vim_underlined = '#80a0ff', -- Light blue for underlined
+    vim_added = '#32cd32',      -- LimeGreen for added lines
+    vim_changed = '#1e90ff',    -- DodgerBlue for changed lines
+    vim_removed = '#ff0000',    -- Red for removed lines
+    vim_error_bg = '#ff0000',   -- Red background for errors
+    vim_error_fg = '#ffffff',   -- White foreground for errors
+    vim_todo_fg = '#0000ff',    -- Blue foreground for todos
+    vim_todo_bg = '#ffff00',    -- Yellow background for todos
 }
 
 local function highlight(group, opts)
@@ -76,54 +94,61 @@ highlight('EndOfBuffer', { fg = colors.bright_black, bg = colors.bg })
 -- =============================================================================
 -- Syntax highlights
 -- =============================================================================
-highlight('Comment', { fg = colors.comment, italic = true })
+-- Using default vim comment color for better visibility
+highlight('Comment', { fg = colors.vim_comment, italic = true, bold = true })
 
 -- Constants and literals
-highlight('Constant', { fg = colors.yellow })
-highlight('String', { fg = colors.green })
-highlight('Character', { fg = colors.green })
-highlight('Number', { fg = colors.yellow })
-highlight('Boolean', { fg = colors.magenta })
-highlight('Float', { fg = colors.yellow })
+-- Using default vim colors for better visibility
+highlight('Constant', { fg = colors.vim_constant })
+highlight('String', { fg = colors.vim_constant })
+highlight('Character', { fg = colors.vim_constant })
+highlight('Number', { fg = colors.vim_constant })
+highlight('Boolean', { fg = colors.vim_constant })
+highlight('Float', { fg = colors.vim_constant })
 
 -- Identifiers and functions
-highlight('Identifier', { fg = colors.fg })
-highlight('Function', { fg = colors.blue })
+-- Using default vim colors for better visibility
+highlight('Identifier', { fg = colors.vim_identifier, bold = true })
+highlight('Function', { fg = colors.vim_identifier, bold = true })
 
 -- Statements and keywords
-highlight('Statement', { fg = colors.magenta })
-highlight('Conditional', { fg = colors.magenta })
-highlight('Repeat', { fg = colors.magenta })
-highlight('Label', { fg = colors.magenta })
-highlight('Operator', { fg = colors.fg })
-highlight('Keyword', { fg = colors.magenta })
-highlight('Exception', { fg = colors.red })
+-- Using default vim colors for better visibility
+highlight('Statement', { fg = colors.vim_statement, bold = true })
+highlight('Conditional', { fg = colors.vim_statement, bold = true })
+highlight('Repeat', { fg = colors.vim_statement, bold = true })
+highlight('Label', { fg = colors.vim_statement, bold = true })
+highlight('Operator', { fg = colors.vim_statement, bold = true })
+highlight('Keyword', { fg = colors.vim_statement, bold = true })
+highlight('Exception', { fg = colors.vim_statement, bold = true })
 
 -- Preprocessor
-highlight('PreProc', { fg = colors.cyan })
-highlight('Include', { fg = colors.cyan })
-highlight('Define', { fg = colors.cyan })
-highlight('Macro', { fg = colors.cyan })
-highlight('PreCondit', { fg = colors.cyan })
+-- Using default vim colors for better visibility
+highlight('PreProc', { fg = colors.vim_preproc })
+highlight('Include', { fg = colors.vim_preproc })
+highlight('Define', { fg = colors.vim_preproc })
+highlight('Macro', { fg = colors.vim_preproc })
+highlight('PreCondit', { fg = colors.vim_preproc })
 
 -- Types
-highlight('Type', { fg = colors.blue })
-highlight('StorageClass', { fg = colors.magenta })
-highlight('Structure', { fg = colors.blue })
-highlight('Typedef', { fg = colors.blue })
+-- Using default vim colors for better visibility
+highlight('Type', { fg = colors.vim_type, bold = true })
+highlight('StorageClass', { fg = colors.vim_type, bold = true })
+highlight('Structure', { fg = colors.vim_type, bold = true })
+highlight('Typedef', { fg = colors.vim_type, bold = true })
 
 -- Special
-highlight('Special', { fg = colors.cyan })
-highlight('SpecialChar', { fg = colors.red })
-highlight('Tag', { fg = colors.red })
-highlight('Delimiter', { fg = colors.fg })
-highlight('SpecialComment', { fg = colors.comment })
-highlight('Debug', { fg = colors.red })
+-- Using default vim colors for better visibility
+highlight('Special', { fg = colors.vim_special, bold = true })
+highlight('SpecialChar', { fg = colors.vim_special, bold = true })
+highlight('Tag', { fg = colors.vim_special, bold = true })
+highlight('Delimiter', { fg = colors.vim_special, bold = true })
+highlight('SpecialComment', { fg = colors.vim_special, bold = true })
+highlight('Debug', { fg = colors.vim_special, bold = true })
 
-highlight('Underlined', { underline = true })
+highlight('Underlined', { fg = colors.vim_underlined, underline = true })
 highlight('Ignore', { fg = colors.comment })
-highlight('Error', { fg = colors.error, bg = colors.bg, bold = true })
-highlight('Todo', { fg = colors.yellow, bg = colors.bg, bold = true })
+highlight('Error', { fg = colors.vim_error_fg, bg = colors.vim_error_bg, bold = true })
+highlight('Todo', { fg = colors.vim_todo_fg, bg = colors.vim_todo_bg, bold = true })
 
 -- =============================================================================
 -- UI highlights
@@ -162,10 +187,15 @@ highlight('WildMenu', { fg = colors.bg, bg = colors.blue })
 highlight('Folded', { fg = colors.comment, bg = colors.cursor_line })
 highlight('FoldColumn', { fg = colors.comment, bg = colors.bg })
 
-highlight('DiffAdd', { fg = colors.green, bg = colors.bg })
-highlight('DiffChange', { fg = colors.yellow, bg = colors.bg })
-highlight('DiffDelete', { fg = colors.red, bg = colors.bg })
+highlight('DiffAdd', { fg = colors.vim_added, bg = colors.bg })
+highlight('DiffChange', { fg = colors.vim_changed, bg = colors.bg })
+highlight('DiffDelete', { fg = colors.vim_removed, bg = colors.bg })
 highlight('DiffText', { fg = colors.blue, bg = colors.bg })
+
+-- Additional diff highlights from default vim
+highlight('Added', { fg = colors.vim_added, bg = colors.bg })
+highlight('Changed', { fg = colors.vim_changed, bg = colors.bg })
+highlight('Removed', { fg = colors.vim_removed, bg = colors.bg })
 
 highlight('SpellBad', { sp = colors.error, undercurl = true })
 highlight('SpellCap', { sp = colors.warning, undercurl = true })
