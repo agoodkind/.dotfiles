@@ -92,7 +92,9 @@ export EDITOR="nvim"
 
 # sudo
 alias please="sudo"
-alias sudoedit="sudo -e"
+sudoedit() {
+    SUDO_EDITOR="nvim -u $HOME/.config/nvim/init.lua" sudo -e "$@"
+}
 
 # clear screen
 alias c="clear"
