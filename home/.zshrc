@@ -69,7 +69,7 @@ alias isinstalled="which -s"
 
 # vim/nvim editor setup
 if isinstalled nvim; then
-    export SUDO_EDITOR=nvim
+    export SUDO_EDITOR="nvim -u $HOME/.config/nvim/init.lua"
     export MANPAGER='nvim +Man!'
     export PAGER="$DOTDOTFILES/bin/nvim-pager"
     export MANWIDTH=999
@@ -92,7 +92,7 @@ export EDITOR="nvim"
 
 # sudo
 alias please="sudo"
-alias sudoedit="SUDO_EDITOR=\"nvim -u $HOME/.config/nvim/init.lua\" sudo -e"
+alias sudoedit="sudo -e"
 
 # clear screen
 alias c="clear"
