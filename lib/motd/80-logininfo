@@ -28,17 +28,20 @@ if [[ -z "$current_line" ]]; then
 fi
 
 # Parse current session
-current_fields=($current_line)
-current_terminal="${current_fields[1]}"
+# Handle both formats:
+# - user terminal date time (ip)
+# - user terminal date time ip (without parentheses)
+current_terminal=$(echo "$current_line" | awk '{print $2}')
 current_ip=""
 
-# Extract IP from remaining fields (field 4+ with parentheses)
-for field in "${current_fields[@]:4}"; do
-    if [[ "$field" =~ ^\( ]]; then
-        current_ip="${field//[()]/}"
-        break
-    fi
-done
+# Extract IP - could be in parentheses or as a separate field
+# Try to find IP pattern in the line (IPv4 or IPv6)
+# Remove parentheses if present
+# IPv6 patterns: can have :: compression, multiple colons, and be in parentheses
+ip_match=$(echo "$current_line" | grep -oE '\([0-9a-fA-F:.]+\)|\([0-9a-fA-F:]+\)|[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+|([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}' | head -1)
+if [[ -n "$ip_match" ]]; then
+    current_ip="${ip_match//[()]/}"
+fi
 
 current_src=$(format_source "$current_terminal" "$current_ip")
 
@@ -50,8 +53,27 @@ first_line=$(echo "$last_output" | head -1)
 second_line=$(echo "$last_output" | tail -1)
 
 # Check if first entry matches current session
+# Compare both terminal and IP to avoid showing current session as "last login"
 first_terminal=$(echo "$first_line" | awk '{print $2}')
-if [[ "$first_terminal" == "$current_terminal" ]]; then
+first_ip_match=$(echo "$first_line" | grep -oE '\([0-9a-fA-F:.]+\)|\([0-9a-fA-F:]+\)|[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+|([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}' | head -1)
+first_ip="${first_ip_match//[()]/}"
+
+# Normalize IPs for comparison (remove leading zeros, lowercase)
+normalize_ip() {
+    local ip="$1"
+    [[ -z "$ip" ]] && return
+    # For IPv6, convert to lowercase and handle compressed format
+    if [[ "$ip" =~ : ]]; then
+        echo "$ip" | tr '[:upper:]' '[:lower:]'
+    else
+        echo "$ip"
+    fi
+}
+
+current_ip_normalized=$(normalize_ip "$current_ip")
+first_ip_normalized=$(normalize_ip "$first_ip")
+
+if [[ "$first_terminal" == "$current_terminal" ]] && [[ "$first_ip_normalized" == "$current_ip_normalized" ]]; then
     # First entry is current session, use second entry for previous login
     last_line="$second_line"
 else
@@ -66,7 +88,7 @@ if [[ -n "$last_line" ]]; then
     # Parse last login line
     # Format: agoodkind  ttys010                         Sun Nov 23 14:24 - 14:24  (00:00)
     # or:     agoodkind  pts/0       192.168.1.1        Mon Nov 22 10:30 - 10:45  (00:15)
-    last_fields=($last_line)
+    read -ra last_fields <<< "$last_line"
     last_terminal="${last_fields[1]}"
     
     # Find the date/time fields (skip terminal, find day of week)
@@ -87,13 +109,12 @@ if [[ -n "$last_line" ]]; then
         last_time="${last_fields[$((day_idx+3))]}"
         
         # Try to extract IP (might be between terminal and date)
+        # Use grep to find IP pattern in the line, handling IPv4, IPv6, and parentheses
+        last_ip_match=$(echo "$last_line" | grep -oE '\([0-9a-fA-F:.]+\)|\([0-9a-fA-F:]+\)|[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+|([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}' | head -1)
         last_ip=""
-        for ((i=2; i<day_idx; i++)); do
-            if [[ "${last_fields[$i]}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || [[ "${last_fields[$i]}" =~ ^[0-9a-fA-F:]+$ ]]; then
-                last_ip="${last_fields[$i]}"
-                break
-            fi
-        done
+        if [[ -n "$last_ip_match" ]]; then
+            last_ip="${last_ip_match//[()]/}"
+        fi
         
         # Build datetime string for parsing
         # macOS last format: "Sun Nov 23 14:24"
@@ -104,6 +125,12 @@ if [[ -n "$last_line" ]]; then
         
         if [[ $last_epoch -gt 0 ]]; then
             last_src=$(format_source "$last_terminal" "$last_ip")
+            # Double-check: if last login matches current session, don't show it
+            last_ip_normalized=$(normalize_ip "$last_ip")
+            if [[ "$last_terminal" == "$current_terminal" ]] && [[ "$last_ip_normalized" == "$current_ip_normalized" ]]; then
+                last_epoch=0
+                last_src=""
+            fi
         fi
     fi
 fi
