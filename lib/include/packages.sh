@@ -1,5 +1,10 @@
 # Centralized package list for both apt and brew installations
 
+# Packages that should always be installed via snap (on Linux)
+export SNAP_PACKAGES=(
+	neovim
+)
+
 # Common packages across both package managers
 export COMMON_PACKAGES=(
 	ack
@@ -29,7 +34,6 @@ export COMMON_PACKAGES=(
 	less
 	most
 	moreutils
-	neovim
 	openssh
 	pandoc
 	python3
@@ -116,18 +120,6 @@ PACKAGE_MAP[openssh:apt]="openssh-client openssh-server"
 # snap mappings
 PACKAGE_MAP[neovim:snap]="nvim"
 
-# cmd mappings (package name -> command name)
-PACKAGE_MAP[neovim:cmd]="nvim"
-PACKAGE_MAP[bat:cmd]="batcat"
-PACKAGE_MAP[git-delta:cmd]="delta"
-PACKAGE_MAP[golang-go:cmd]="go"
-PACKAGE_MAP[thefuck:cmd]="fuck"
-PACKAGE_MAP[tree-sitter-cli:cmd]="tree-sitter"
-
-# Reverse snap mapping (snap_name -> original package name)
-declare -A REVERSE_SNAP_MAP
-REVERSE_SNAP_MAP[nvim]="neovim"
-
 # Map common package names to APT package names
 # Packages that map to something already in APT_SPECIFIC will be skipped later
 map_to_apt_name() {
@@ -149,25 +141,6 @@ map_to_snap_name() {
 	fi
 }
 
-# Map snap names back to their original package names (reverse of map_to_snap_name)
-map_from_snap_name() {
-	local snap_name="$1"
-	if [[ -n "${REVERSE_SNAP_MAP[$snap_name]}" ]]; then
-		echo "${REVERSE_SNAP_MAP[$snap_name]}"
-	else
-		echo "$snap_name"
-	fi
-}
-
-# Map package names to their command names (if different)
-map_to_cmd_name() {
-	local package="$1"
-	if [[ -n "${PACKAGE_MAP[$package:cmd]}" ]]; then
-		echo "${PACKAGE_MAP[$package:cmd]}"
-	else
-		echo "$package"
-	fi
-}
 
 # Check if a package is in an array
 is_in_array() {
@@ -185,8 +158,13 @@ is_in_array() {
 # Build ALL_APT_PACKAGES array with mapped names
 ALL_APT_PACKAGES=()
 
-# Add mapped common packages (skip duplicates that are in APT_SPECIFIC)
+# Add mapped common packages (skip duplicates that are in APT_SPECIFIC or SNAP_PACKAGES)
 for package in "${COMMON_PACKAGES[@]}"; do
+	# Skip packages that should be installed via snap
+	if is_in_array "$package" "${SNAP_PACKAGES[@]}"; then
+		continue
+	fi
+	
 	mapped=$(map_to_apt_name "$package")
 	# Handle multi-word output (like openssh -> openssh-client openssh-server)
 	for pkg in $mapped; do
@@ -205,49 +183,8 @@ is_installed_via_snap() {
     return $?
 }
 
-is_available_via_snap() {
-    # Check if package is available on stable channel
-    local package="$1"
-    local info_output=$(snap info "$package" 2>&1)
-    local exit_code=$?
-    if [ $exit_code -ne 0 ]; then
-        return 1  # Not available (snap info failed)
-    fi
-    # Check if stable channel has a version (not just "–" or empty)
-    local stable_line=$(echo "$info_output" | grep -i "latest/stable:" | head -1)
-    if [ -z "$stable_line" ]; then
-        # Try checking for any channel with a version
-        if echo "$info_output" | grep -qiE "(latest/stable|latest/candidate|latest/beta|latest/edge):\s+[0-9]"; then
-            return 0  # Available on some channel
-        fi
-        return 1  # No stable channel line found
-    fi
-    # If the stable line contains a version number pattern (e.g., "3.30 2020-12-09"), it's available
-    # If it only contains "–" or "-" or is empty, it's not available
-    if echo "$stable_line" | grep -qE "latest/stable:\s+[0-9]"; then
-        return 0  # Available on stable (has version number)
-    fi
-    # Also check if it shows a version in a different format
-    if echo "$stable_line" | grep -qiE "[0-9]+\.[0-9]+"; then
-        return 0  # Has version number pattern
-    fi
-    return 1  # Not available on stable (shows "–" or no version)
-}
-
 is_installed_via_apt() {
     dpkg -s "$1" &>/dev/null
-    return $?
-}
-
-is_available_via_apt() {
-    apt-cache show "$1" &>/dev/null
-    return $?
-}
-
-# Check if a command/binary is already available in PATH
-# This helps avoid installing via apt when already installed via snap with different name
-command_available() {
-    command -v "$1" &>/dev/null
     return $?
 }
 
@@ -274,154 +211,45 @@ requires_classic_confinement() {
 install_packages() {
     debug_echo "install_packages() called with $# package(s)"
     
-    # Build list of packages to install
+    # Separate packages into apt and snap lists
     local packages_to_install_via_apt=()
-    local packages_to_remove_via_apt=()
     local packages_to_install_via_snap=()
-
-    # Ask if user wants to use snap for available packages
-    local use_snap=false
-    local remove_from_apt=false
-
-    # Check if USE_DEFAULTS is set (from defaults.sh or environment)
-    debug_echo "Checking USE_DEFAULTS: value='${USE_DEFAULTS:-}' (unset)"
-    if [[ "${USE_DEFAULTS:-false}" == "true" ]]; then
-        debug_echo "USE_DEFAULTS is true, using default values without prompting"
-        use_snap=true
-        remove_from_apt=true
-        color_echo GREEN "Using defaults: snap enabled, removing from apt if available via snap"
-        debug_echo "use_snap set to true (default), remove_from_apt set to true (default)"
-    else
-        debug_echo "USE_DEFAULTS is not true (value: '${USE_DEFAULTS:-unset}'), prompting for snap usage preference"
-        read_with_default "Use snap for available packages? (Y/n) " "Y"
-        debug_echo "User reply for snap usage: '$REPLY'"
-        if [[ -z "$REPLY" || $REPLY =~ ^[Yy]$ ]]; then
-            color_echo GREEN "OK will use snap for available packages"
-            use_snap=true
-            debug_echo "use_snap set to true"
-            read_with_default "Remove packages from apt if available via snap? [Y/n] " "Y"
-            debug_echo "User reply for remove_from_apt: '$REPLY'"
-            if [[ -z "$REPLY" || $REPLY =~ ^[Yy]$ ]]; then
-                color_echo GREEN "OK will remove packages from apt if available via snap"
-                remove_from_apt=true
-                debug_echo "remove_from_apt set to true"
-            else
-                debug_echo "remove_from_apt remains false"
-            fi
-        else
-            debug_echo "use_snap remains false"
-        fi
-    fi
-
-    debug_echo "Configuration: use_snap=$use_snap, remove_from_apt=$remove_from_apt"
     
-    # DEBUG: Show what packages we're processing
-    color_echo YELLOW "Processing $# packages..."
+    debug_echo "Processing $# packages..."
     debug_echo "Package list: $*"
     
     for package in "$@"; do
         debug_echo "--- Processing package: $package ---"
         
-        # Determine command name and snap name (may differ from package name)
-        local snap_name=$(map_to_snap_name "$package")
-        local cmd_name=$(map_to_cmd_name "$package")
-        debug_echo "Mapped names - snap: '$snap_name', cmd: '$cmd_name'"
-        
-        # Perform all checks upfront
-        local installed_via_apt=false
-        local available_via_apt=false
-        local installed_via_snap_pkg=false
-        local installed_via_snap_mapped=false
-        local available_via_snap=false
-        local cmd_available=false
-        
-        debug_echo "Running checks for $package..."
-        is_installed_via_apt "$package" && installed_via_apt=true
-        debug_echo "  installed_via_apt: $installed_via_apt"
-        
-        is_available_via_apt "$package" && available_via_apt=true
-        debug_echo "  available_via_apt: $available_via_apt"
-        
-        is_installed_via_snap "$package" && installed_via_snap_pkg=true
-        debug_echo "  installed_via_snap (package name): $installed_via_snap_pkg"
-        
-        is_installed_via_snap "$snap_name" && installed_via_snap_mapped=true
-        debug_echo "  installed_via_snap (mapped name): $installed_via_snap_mapped"
-        
-        if is_available_via_snap "$snap_name"; then
-            available_via_snap=true
-            debug_echo "  available_via_snap: true (checked snap name: $snap_name)"
-        else
-            available_via_snap=false
-            debug_echo "  available_via_snap: false (checked snap name: $snap_name)"
-        fi
-        
-        command_available "$cmd_name" && cmd_available=true
-        debug_echo "  cmd_available: $cmd_available"
-        
-        # Skip if already installed via snap (either name)
-        if [[ "$installed_via_snap_pkg" == "true" || "$installed_via_snap_mapped" == "true" ]]; then
-            debug_echo "SKIP: Package already installed via snap, continuing to next package"
-            continue
-        fi
-        
-        debug_echo "Entering decision logic: use_snap=$use_snap"
-        
-        # Truth table evaluation based on use_snap and remove_from_apt flags
-        if [[ "$use_snap" == "true" ]]; then
-            debug_echo "  Branch: use_snap is true"
-            if [[ "$available_via_snap" == "true" ]]; then
-                debug_echo "    Branch: available_via_snap is true"
-                # Available via snap
-                if [[ "$installed_via_apt" == "true" ]]; then
-                    debug_echo "      Branch: installed_via_apt is true"
-                    # Installed via apt, available via snap - always replace if remove_from_apt is true
-                    if [[ "$remove_from_apt" == "true" ]]; then
-                        debug_echo "        Action: Replace apt with snap (remove_from_apt=true)"
-                        # Replace apt with snap (always do this when available via snap and remove_from_apt is true)
-                        packages_to_remove_via_apt+=("$package")
-                        packages_to_install_via_snap+=("$snap_name")
-                        debug_echo "        Added to remove_apt and install_snap arrays"
-                    elif [[ "$cmd_available" == "false" ]]; then
-                        debug_echo "        Action: Install via snap (cmd not available, remove_from_apt=false)"
-                        # Command not available, install via snap (but don't remove from apt)
-                        packages_to_install_via_snap+=("$snap_name")
-                        debug_echo "        Added to install_snap array"
-                    else
-                        debug_echo "        SKIP: cmd is available and remove_from_apt=false, no action needed"
-                    fi
-                elif [[ "$cmd_available" == "false" ]]; then
-                    debug_echo "      Branch: Not installed, cmd not available"
-                    # Not installed, command not available, install via snap
-                    packages_to_install_via_snap+=("$snap_name")
-                    debug_echo "      Added to install_snap array"
-                else
-                    debug_echo "      SKIP: cmd is available, no action needed"
-                fi
-            elif [[ "$installed_via_apt" == "false" && "$available_via_apt" == "true" && "$cmd_available" == "false" ]]; then
-                debug_echo "    Branch: Not available via snap, but available via apt and not installed"
-                # Not available via snap, but available via apt and not installed
-                packages_to_install_via_apt+=("$package")
-                debug_echo "    Added to install_apt array"
+        # Check if this package should be installed via snap
+        if is_in_array "$package" "${SNAP_PACKAGES[@]}"; then
+            debug_echo "  Package $package is in SNAP_PACKAGES, will install via snap"
+            local snap_name=$(map_to_snap_name "$package")
+            
+            # Check if already installed via snap
+            if is_installed_via_snap "$snap_name"; then
+                debug_echo "  SKIP: $snap_name already installed via snap"
             else
-                debug_echo "    SKIP: Conditions not met for apt install (installed=$installed_via_apt, available=$available_via_apt, cmd=$cmd_available)"
+                debug_echo "  Added $snap_name to snap install list"
+                packages_to_install_via_snap+=("$snap_name")
             fi
-        elif [[ "$installed_via_apt" == "false" && "$available_via_apt" == "true" && "$cmd_available" == "false" ]]; then
-            debug_echo "  Branch: Not using snap, install via apt if available and needed"
-            # Not using snap, install via apt if available and needed
-            packages_to_install_via_apt+=("$package")
-            debug_echo "  Added to install_apt array"
         else
-            debug_echo "  SKIP: No action needed (installed=$installed_via_apt, available=$available_via_apt, cmd=$cmd_available)"
+            debug_echo "  Package $package will be installed via apt"
+            # Check if already installed via apt
+            if is_installed_via_apt "$package"; then
+                debug_echo "  SKIP: $package already installed via apt"
+            else
+                debug_echo "  Added $package to apt install list"
+                packages_to_install_via_apt+=("$package")
+            fi
         fi
-        debug_echo "Finished processing $package"
     done
     
-    debug_echo "Loop complete. Summary:"
+    debug_echo "Summary:"
     debug_echo "  packages_to_install_via_apt: ${#packages_to_install_via_apt[@]} packages"
-    debug_echo "  packages_to_remove_via_apt: ${#packages_to_remove_via_apt[@]} packages"
     debug_echo "  packages_to_install_via_snap: ${#packages_to_install_via_snap[@]} packages"
 
+    # Install apt packages
     if [ ${#packages_to_install_via_apt[@]} -gt 0 ]; then
         debug_echo "Installing ${#packages_to_install_via_apt[@]} apt packages: ${packages_to_install_via_apt[*]}"
         color_echo YELLOW "Installing ${#packages_to_install_via_apt[@]} apt packages..."
@@ -431,92 +259,69 @@ install_packages() {
         debug_echo "No apt packages to install"
     fi
 
-    if [ ${#packages_to_remove_via_apt[@]} -gt 0 ]; then
-        debug_echo "Removing ${#packages_to_remove_via_apt[@]} apt packages: ${packages_to_remove_via_apt[*]}"
-        color_echo YELLOW "Removing ${#packages_to_remove_via_apt[@]} apt packages..."
-        sudo apt-get remove -y -qq "${packages_to_remove_via_apt[@]}"
-        debug_echo "apt-get remove completed with exit code: $?"
-    else
-        debug_echo "No apt packages to remove"
-    fi
-
+    # Install snap packages
     if [ ${#packages_to_install_via_snap[@]} -gt 0 ]; then
         debug_echo "Installing ${#packages_to_install_via_snap[@]} snap packages: ${packages_to_install_via_snap[*]}"
         color_echo YELLOW "Installing ${#packages_to_install_via_snap[@]} snap packages..."
-        local failed_snap_packages=()
-        for package in "${packages_to_install_via_snap[@]}"; do
-            debug_echo "--- Installing snap package: $package ---"
-            color_echo CYAN "Installing $package via snap..."
+        for snap_package in "${packages_to_install_via_snap[@]}"; do
+            debug_echo "--- Installing snap package: $snap_package ---"
+            color_echo CYAN "Installing $snap_package via snap..."
+            
+            # Find the original package name from SNAP_PACKAGES that maps to this snap name
+            local original_package=""
+            for pkg in "${SNAP_PACKAGES[@]}"; do
+                if [ "$(map_to_snap_name "$pkg")" = "$snap_package" ]; then
+                    original_package="$pkg"
+                    break
+                fi
+            done
+            
+            # Remove apt equivalent if installed
+            if [ -n "$original_package" ]; then
+                local apt_name=$(map_to_apt_name "$original_package")
+                # Handle multi-word output (like openssh -> openssh-client openssh-server)
+                for apt_pkg in $apt_name; do
+                    if is_installed_via_apt "$apt_pkg"; then
+                        debug_echo "  Removing apt package $apt_pkg (replacing with snap $snap_package)..."
+                        color_echo YELLOW "  -> Removing $apt_pkg from apt..."
+                        sudo apt-get remove -y -qq "$apt_pkg" 2>&1 | grep -v "^$" || true
+                        debug_echo "  Removed $apt_pkg via apt"
+                    fi
+                done
+            fi
+            
             local install_output
             local install_status
             
-            # Try installing, checking if classic is needed
-            if requires_classic_confinement "$package"; then
+            # Check if classic confinement is needed
+            if requires_classic_confinement "$snap_package"; then
                 debug_echo "  Package requires classic confinement, installing with --classic"
-                install_output=$(sudo snap install --classic "$package" 2>&1)
+                install_output=$(sudo snap install --classic "$snap_package" 2>&1)
                 install_status=$?
-                debug_echo "  snap install --classic exit code: $install_status"
             else
                 debug_echo "  Package does not require classic confinement, installing normally"
-                install_output=$(sudo snap install "$package" 2>&1)
+                install_output=$(sudo snap install "$snap_package" 2>&1)
                 install_status=$?
-                debug_echo "  snap install exit code: $install_status"
                 
                 # If it failed and error mentions classic confinement, retry with --classic
                 if [ $install_status -ne 0 ] && echo "$install_output" | grep -qi "classic confinement"; then
                     debug_echo "  Installation failed, error mentions classic confinement, retrying with --classic"
-                    color_echo YELLOW "  -> Retrying $package with --classic flag..."
-                    install_output=$(sudo snap install --classic "$package" 2>&1)
+                    color_echo YELLOW "  -> Retrying $snap_package with --classic flag..."
+                    install_output=$(sudo snap install --classic "$snap_package" 2>&1)
                     install_status=$?
-                    debug_echo "  Retry with --classic exit code: $install_status"
                 fi
             fi
             
             if [ $install_status -eq 0 ]; then
-                debug_echo "  SUCCESS: $package installed via snap"
-                color_echo GREEN "  -> Successfully installed $package via snap"
+                debug_echo "  SUCCESS: $snap_package installed via snap"
+                color_echo GREEN "  -> Successfully installed $snap_package via snap"
             else
-                debug_echo "  FAILED: $package installation failed, exit code: $install_status"
+                debug_echo "  FAILED: $snap_package installation failed, exit code: $install_status"
                 debug_echo "  Error output: $install_output"
-                # Show the error message
                 echo "$install_output" | grep -v "^$" || true
-                color_echo YELLOW "  -> Failed to install $package via snap, will try apt"
-                failed_snap_packages+=("$package")
-                debug_echo "  Added $package to failed_snap_packages array"
+                color_echo RED "  -> Failed to install $snap_package via snap"
             fi
         done
-        
-        debug_echo "Snap installation loop complete. Failed packages: ${#failed_snap_packages[@]}"
-        if [ ${#failed_snap_packages[@]} -gt 0 ]; then
-            debug_echo "Failed snap packages: ${failed_snap_packages[*]}"
-        fi
-        
-        # Try to install failed snap packages via apt if available
-        if [ ${#failed_snap_packages[@]} -gt 0 ]; then
-            debug_echo "Processing ${#failed_snap_packages[@]} failed snap packages for apt fallback"
-            local packages_to_install_via_apt_fallback=()
-            for snap_name in "${failed_snap_packages[@]}"; do
-                local original_package=$(map_from_snap_name "$snap_name")
-                debug_echo "  Checking $snap_name (original: $original_package) for apt fallback..."
-                if ! is_installed_via_apt "$original_package" && ! is_installed_via_snap "$snap_name"; then
-                    debug_echo "    Package not installed via apt or snap, adding to fallback list"
-                    packages_to_install_via_apt_fallback+=("$original_package")
-                else
-                    debug_echo "    Package already installed, skipping fallback"
-                fi
-            done
-            debug_echo "  Fallback packages to install via apt: ${#packages_to_install_via_apt_fallback[@]}"
-            if [ ${#packages_to_install_via_apt_fallback[@]} -gt 0 ]; then
-                debug_echo "  Installing fallback packages: ${packages_to_install_via_apt_fallback[*]}"
-                color_echo YELLOW "Installing ${#packages_to_install_via_apt_fallback[@]} packages via apt (snap fallback)..."
-                sudo apt-get install -y -qq "${packages_to_install_via_apt_fallback[@]}" || true
-                debug_echo "  apt-get install fallback completed with exit code: $?"
-            else
-                debug_echo "  No packages need apt fallback installation"
-            fi
-        else
-            debug_echo "No failed snap packages, skipping fallback"
-        fi
     else
         debug_echo "No snap packages to install"
     fi
