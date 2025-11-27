@@ -12,13 +12,18 @@ source "${DOTDOTFILES}/lib/include/packages.sh"
 # Parse flags
 run_background=false
 repair_mode=false
+non_interactive=false
 for arg in "$@"; do
     case $arg in
         --background|--bg)
             run_background=true
+            non_interactive=true
             ;;
         --repair)
             repair_mode=true
+            ;;
+        --non-interactive)
+            non_interactive=true
             ;;
     esac
 done
@@ -50,17 +55,24 @@ if [[ "$repair_mode" == "true" ]]; then
 fi
 
 color_echo BLUE "🔄  Updating plugins and submodules..."
-# Check is git is locked
-# and ask if force unlock is desired
+# Check if git is locked
 if [ -f "$DOTDOTFILES/.git/objects/info/commit-graphs/commit-graph-chain.lock" ]; then
-    color_echo RED "🔒  Git is locked, do you want to force unlock it?"
-    read_with_default "Unlock? (y/n) " "n"
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        sudo rm -f "$DOTDOTFILES/.git/objects/info/commit-graphs/commit-graph-chain.lock"
+    if [[ "$non_interactive" == "true" ]]; then
+        # In non-interactive mode, force unlock
+        color_echo YELLOW "🔒  Git is locked, force unlocking..."
+        rm -f "$DOTDOTFILES/.git/objects/info/commit-graphs/commit-graph-chain.lock" 2>/dev/null || \
+            sudo rm -f "$DOTDOTFILES/.git/objects/info/commit-graphs/commit-graph-chain.lock" 2>/dev/null
         color_echo GREEN "🔓  Git unlocked"
     else
-        color_echo RED "🔒  Git is locked, skipping update..."
-        exit 1
+        color_echo RED "🔒  Git is locked, do you want to force unlock it?"
+        read_with_default "Unlock? (y/n) " "n"
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            sudo rm -f "$DOTDOTFILES/.git/objects/info/commit-graphs/commit-graph-chain.lock"
+            color_echo GREEN "🔓  Git unlocked"
+        else
+            color_echo RED "🔒  Git is locked, skipping update..."
+            exit 1
+        fi
     fi
 fi
 
