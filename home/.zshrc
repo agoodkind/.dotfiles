@@ -2,7 +2,8 @@
 
 ###############################################################################
 ###############################################################################    
-export START_TIME=$(date +%s%N) 
+zmodload zsh/datetime
+START_TIME=$EPOCHREALTIME 
 export DOTDOTFILES="$HOME/.dotfiles"
 export PATH="$PATH:$HOME/.local/bin:$HOME/.local/bin/scripts"
 export NVM_LAZY_LOAD=true
@@ -37,8 +38,6 @@ GREEN='%F{green}'    # Green
 CYAN='%F{cyan}'      # Cyan
 R='%f'                # Reset
 
-CUSTOM_PROMPT=
-
 # Build Prompt with iTerm2 integration
 if [[ -n "$ITERM_SESSION_ID" && -n "$(iterm2_prompt_mark &> /dev/null)" ]]; then
     # iTerm2 integration - include prompt mark for shell integration features
@@ -63,22 +62,22 @@ setopt share_history
 # Aliases #####################################################################
 ###############################################################################
 
-# use system `which` and not built in since system supports -s arg
-alias which="$(which -a which | tail -n 1)"
-alias isinstalled="which -s"
+# use system `which` for -s support
+alias which="/usr/bin/which"
+alias isinstalled="/usr/bin/which -s"
 
-# vim/nvim editor setup
+# vim/nvim editor setup (use zsh builtin command check)
 if isinstalled nvim; then
     export SUDO_EDITOR="nvim -u $HOME/.config/nvim/init.lua"
     export MANPAGER='nvim +Man!'
     export PAGER="$DOTDOTFILES/bin/nvim-pager"
     export MANWIDTH=999
-    alias vim="$(command -v nvim)"
+    alias vim="nvim"
 elif isinstalled vim; then
     export MANPAGER="vim -M +MANPAGER --not-a-term -"
     export PAGER=$MANPAGER
     export SUDO_EDITOR=vim
-    alias nvim="$(command -v vim)"
+    alias nvim="vim"
 else
     export SUDO_EDITOR=vi
     alias vim="vi"
@@ -101,10 +100,10 @@ alias c="clear"
 
 # ls
 LS_ARGS="-lah --color=auto -G --group-directories-first"
-if isinstalled -s gls; then
-    alias ll="$(which gls) $LS_ARGS"
+if isinstalled gls; then
+    alias ll="gls $LS_ARGS"
 else
-    alias ll="$(which ls) $LS_ARGS"
+    alias ll="ls $LS_ARGS"
 fi
 alias ls=ll
 

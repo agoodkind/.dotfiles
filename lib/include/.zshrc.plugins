@@ -2,8 +2,9 @@
 # plugins #####################################################################
 ###############################################################################
 
-# Add before loading zinit
-# ZINIT[OPTIMIZE_OUT_DISK_ACCESSES]=1
+# Reduce disk access for faster startup
+typeset -A ZINIT
+ZINIT[OPTIMIZE_OUT_DISK_ACCESSES]=1
 
 ### Zinit
 source "$DOTDOTFILES/lib/zinit/zinit.zsh"

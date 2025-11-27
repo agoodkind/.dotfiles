@@ -16,7 +16,8 @@ if [[ ! -f ~/.cache/os-type.cache ]]; then
     fi
 fi
 
-export OS_TYPE=$(cat ~/.cache/os-type.cache)
+read -r OS_TYPE < ~/.cache/os-type.cache
+export OS_TYPE
 
 is_macos() {
     [[ "$OS_TYPE" == "mac" ]]
@@ -137,3 +138,6 @@ flush_dns() {
         return 1
     fi
 }
+
+# portable command existence check (zsh builtin, no fork)
+isinstalled() { (( $+commands[$1] )); }

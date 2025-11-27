@@ -9,20 +9,17 @@ if [[ -f ~/.cache/zsh_profile_next ]]; then
     do_profile() {
         echo "Zsh performance profiling results:"
         zprof
-        echo "Zsh initialization time: $(( ($(date +%s%N) - START_TIME) / 1000000 )) ms"
+        printf "Zsh initialization time: %.0f ms\n" "$(( (EPOCHREALTIME - START_TIME) * 1000 ))"
     }
 fi
 export SHOULD_PROFILE
 
 source "$DOTDOTFILES/lib/include/.zshrc.plugins"
-
 # Dotfiles async update - source directly to avoid zinit plugin management
 source "$DOTDOTFILES/lib/include/.zshrc.utils"
 (zsh "$DOTDOTFILES/lib/include/.zshrc.updater" >/dev/null 2>&1 &)
 source "$DOTDOTFILES/lib/include/.zshrc.zoxide"
 source "$DOTDOTFILES/lib/include/.zshrc.motd"
-
-
 # Load local zshrc customizations that are not to be tracked by git
 [[ ! -f "$DOTDOTFILES/.zshrc.local" ]] || source "$DOTDOTFILES/.zshrc.local"
 
