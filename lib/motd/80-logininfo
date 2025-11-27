@@ -1,139 +1,41 @@
 #!/usr/bin/env bash
 # Display current login sessions with source and readable timestamp
 
-command -v who >/dev/null 2>&1 || { echo "ERROR: 'who' command not found" >&2; exit 1; }
-command -v last >/dev/null 2>&1 || { echo "ERROR: 'last' command not found" >&2; exit 1; }
+CACHE_FILE="$HOME/.cache/logininfo_session"
 
 # Use gdate on macOS, date on Linux
 DATE=$(command -v gdate 2>/dev/null || echo date)
-user=$(whoami)
 now=$($DATE +%s)
+this_year=$($DATE +"%Y")
 
-# Format source: use IP if available, otherwise terminal name
-format_source() {
-    echo "${2:-$1}"
+# Extract remote source from a line (IP or hostname in parentheses)
+extract_source() {
+    local match
+    # First try: anything in parentheses at end of line (most reliable)
+    match=$(grep -oE '\([^)]+\)' <<< "$1" | tail -1)
+    [[ -n "$match" ]] && { echo "${match//[()]/}"; return; }
+    # Fallback: bare IPv4 or IPv6 without parentheses
+    match=$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+|([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}' <<< "$1" | head -1)
+    echo "$match"
 }
 
-# Get current session from 'who am i' or current TTY
-# Format: user terminal date time (ip)
-current_line=$(who am i 2>/dev/null || who -m 2>/dev/null || echo "")
-if [[ -z "$current_line" ]]; then
-    # Fallback: try to get from who output
-    current_line=$(who | grep "$user" | tail -1)
+# Get current session
+current_line=$(who am i 2>/dev/null || who -m 2>/dev/null)
+[[ -z "$current_line" ]] && exit 0
+
+current_terminal=$(awk '{print $2}' <<< "$current_line")
+current_remote=$(extract_source "$current_line")
+current_src="${current_remote:-$current_terminal}"
+
+# Read last login from cache (previous session wrote this)
+last_terminal="" last_remote="" last_epoch=0
+if [[ -f "$CACHE_FILE" ]]; then
+    IFS='|' read -r last_terminal last_remote last_epoch < "$CACHE_FILE"
 fi
+last_src="${last_remote:-$last_terminal}"
 
-if [[ -z "$current_line" ]]; then
-
-    exit 0
-fi
-
-# Parse current session
-# Handle both formats:
-# - user terminal date time (ip)
-# - user terminal date time ip (without parentheses)
-current_terminal=$(echo "$current_line" | awk '{print $2}')
-current_ip=""
-
-# Extract IP - could be in parentheses or as a separate field
-# Try to find IP pattern in the line (IPv4 or IPv6)
-# Remove parentheses if present
-# IPv6 patterns: can have :: compression, multiple colons, and be in parentheses
-ip_match=$(echo "$current_line" | grep -oE '\([0-9a-fA-F:.]+\)|\([0-9a-fA-F:]+\)|[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+|([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}' | head -1)
-if [[ -n "$ip_match" ]]; then
-    current_ip="${ip_match//[()]/}"
-fi
-
-current_src=$(format_source "$current_terminal" "$current_ip")
-
-# Get last login from 'last' command
-# 'last' shows most recent entries first
-# Use the first entry, but if it matches current session, use the second entry
-last_output=$(last "$user" 2>/dev/null | head -2)
-first_line=$(echo "$last_output" | head -1)
-second_line=$(echo "$last_output" | tail -1)
-
-# Check if first entry matches current session
-# Compare both terminal and IP to avoid showing current session as "last login"
-first_terminal=$(echo "$first_line" | awk '{print $2}')
-first_ip_match=$(echo "$first_line" | grep -oE '\([0-9a-fA-F:.]+\)|\([0-9a-fA-F:]+\)|[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+|([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}' | head -1)
-first_ip="${first_ip_match//[()]/}"
-
-# Normalize IPs for comparison (remove leading zeros, lowercase)
-normalize_ip() {
-    local ip="$1"
-    [[ -z "$ip" ]] && return
-    # For IPv6, convert to lowercase and handle compressed format
-    if [[ "$ip" =~ : ]]; then
-        echo "$ip" | tr '[:upper:]' '[:lower:]'
-    else
-        echo "$ip"
-    fi
-}
-
-current_ip_normalized=$(normalize_ip "$current_ip")
-first_ip_normalized=$(normalize_ip "$first_ip")
-
-if [[ "$first_terminal" == "$current_terminal" ]] && [[ "$first_ip_normalized" == "$current_ip_normalized" ]]; then
-    # First entry is current session, use second entry for previous login
-    last_line="$second_line"
-else
-    # First entry is a previous login, use it
-    last_line="$first_line"
-fi
-
-last_epoch=0
-last_src=""
-
-if [[ -n "$last_line" ]]; then
-    # Parse last login line
-    # Format: agoodkind  ttys010                         Sun Nov 23 14:24 - 14:24  (00:00)
-    # or:     agoodkind  pts/0       192.168.1.1        Mon Nov 22 10:30 - 10:45  (00:15)
-    read -ra last_fields <<< "$last_line"
-    last_terminal="${last_fields[1]}"
-    
-    # Find the date/time fields (skip terminal, find day of week)
-    # Day of week is typically field 2, but terminal might have spaces
-    # Look for pattern: Day Month DD HH:MM
-    day_idx=2
-    while [[ $day_idx -lt ${#last_fields[@]} ]]; do
-        if [[ "${last_fields[$day_idx]}" =~ ^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)$ ]]; then
-            break
-        fi
-        ((day_idx++))
-    done
-    
-    if [[ $day_idx -lt ${#last_fields[@]} ]]; then
-        last_day="${last_fields[$day_idx]}"
-        last_month="${last_fields[$((day_idx+1))]}"
-        last_date="${last_fields[$((day_idx+2))]}"
-        last_time="${last_fields[$((day_idx+3))]}"
-        
-        # Try to extract IP (might be between terminal and date)
-        # Use grep to find IP pattern in the line, handling IPv4, IPv6, and parentheses
-        last_ip_match=$(echo "$last_line" | grep -oE '\([0-9a-fA-F:.]+\)|\([0-9a-fA-F:]+\)|[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+|([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}' | head -1)
-        last_ip=""
-        if [[ -n "$last_ip_match" ]]; then
-            last_ip="${last_ip_match//[()]/}"
-        fi
-        
-        # Build datetime string for parsing
-        # macOS last format: "Sun Nov 23 14:24"
-        last_datetime="$last_day $last_month $last_date $last_time"
-        
-        # Parse to epoch (handle both macOS and Linux formats)
-        last_epoch=$($DATE -d "$last_datetime" +%s 2>/dev/null || $DATE -j -f "%a %b %d %H:%M" "$last_datetime" +%s 2>/dev/null || echo "0")
-        
-        if [[ $last_epoch -gt 0 ]]; then
-            last_src=$(format_source "$last_terminal" "$last_ip")
-            # Double-check: if last login matches current session, don't show it
-            last_ip_normalized=$(normalize_ip "$last_ip")
-            if [[ "$last_terminal" == "$current_terminal" ]] && [[ "$last_ip_normalized" == "$current_ip_normalized" ]]; then
-                last_epoch=0
-                last_src=""
-            fi
-        fi
-    fi
-fi
+# Background: cache current session for next load
+( echo "$current_terminal|$current_remote|$now" > "$CACHE_FILE" & )
 
 # Format time difference conversationally
 format_relative_time() {
@@ -145,24 +47,25 @@ format_relative_time() {
         echo "1 minute ago"
     elif (( diff < 3600 )); then
         echo "$((diff / 60)) minutes ago"
-    elif (( diff < 86400 )); then
-        echo "at $($DATE -d "@$epoch" +"%H:%M")"
     elif (( diff < 172800 )); then
-        echo "at $($DATE -d "@$epoch" +"%H:%M") yesterday"
+        local time_str=$($DATE -d "@$epoch" +"%H:%M" 2>/dev/null || $DATE -r "$epoch" +"%H:%M" 2>/dev/null)
+        if (( diff < 86400 )); then
+            echo "at $time_str"
+        else
+            echo "at $time_str yesterday"
+        fi
     else
-        local day=$($DATE -d "@$epoch" +"%d" | sed 's/^0*//')
+        local date_parts
+        date_parts=$($DATE -d "@$epoch" +"%d %A %b %H:%M %Y" 2>/dev/null || $DATE -r "$epoch" +"%d %A %b %H:%M %Y" 2>/dev/null)
+        read -r day weekday month time login_year <<< "$date_parts"
+        day=${day#0}
+        
         local suffix="th"
         case $day in
             1|21|31) suffix="st";;
             2|22) suffix="nd";;
             3|23) suffix="rd";;
         esac
-        
-        local weekday=$($DATE -d "@$epoch" +"%A")
-        local month=$($DATE -d "@$epoch" +"%b")
-        local time=$($DATE -d "@$epoch" +"%H:%M")
-        local login_year=$($DATE -d "@$epoch" +"%Y")
-        local this_year=$($DATE +"%Y")
         
         if [[ "$login_year" == "$this_year" ]]; then
             echo "on $weekday $month ${day}${suffix} at $time"
@@ -180,12 +83,10 @@ if [[ $last_epoch -gt 0 ]]; then
     diff=$((now - last_epoch))
     when=$(format_relative_time "$diff" "$last_epoch")
     if [[ "$current_src" == "$last_src" ]]; then
-        # Same location - don't repeat it
         printf "%bCurrently logged in from%b %b%s%b, %blast logged in%b %b%s%b\n" \
             "$CYAN" "$RESET" "$GREEN" "$current_src" "$RESET" \
             "$CYAN" "$RESET" "$YELLOW" "$when" "$RESET"
     else
-        # Different location - show both
         printf "%bCurrently logged in from%b %b%s%b, %blast logged in from%b %b%s%b %b%s%b\n" \
             "$CYAN" "$RESET" "$GREEN" "$current_src" "$RESET" \
             "$CYAN" "$RESET" "$GREEN" "$last_src" "$RESET" "$YELLOW" "$when" "$RESET"
