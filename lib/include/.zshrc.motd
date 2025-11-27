@@ -36,74 +36,92 @@ fi
 
 
 
+# Login info styling helpers
+_li_label() { print -Pn "%B%F{cyan}${1}%f%b"; }
+_li_location() { print -Pn "%B%F{green}${1}%f%b"; }
+_li_time() { print -Pn "%B%F{yellow}${1}%f%b"; }
+
+# Format relative time
+_li_relative_time() {
+  local diff=$1 epoch=$2 this_year=$3
+  if (( diff < 60 )); then
+    echo "just now"
+  elif (( diff < 120 )); then
+    echo "1 minute ago"
+  elif (( diff < 3600 )); then
+    echo "$((diff / 60)) minutes ago"
+  elif (( diff < 172800 )); then
+    local time_str
+    strftime -s time_str "%H:%M" $epoch
+    (( diff < 86400 )) && echo "at $time_str" || echo "at $time_str yesterday"
+  else
+    local day weekday month time login_year suffix="th"
+    strftime -s day "%d" $epoch
+    strftime -s weekday "%A" $epoch
+    strftime -s month "%b" $epoch
+    strftime -s time "%H:%M" $epoch
+    strftime -s login_year "%Y" $epoch
+    day=${day#0}
+    case $day in
+      1|21|31) suffix="st";; 2|22) suffix="nd";; 3|23) suffix="rd";;
+    esac
+    [[ "$login_year" == "$this_year" ]] \
+      && echo "on $weekday $month ${day}${suffix} at $time" \
+      || echo "on $weekday $month ${day}${suffix}, $login_year at $time"
+  fi
+}
+
 # Inline logininfo using zsh builtins (no bash fork)
 function _logininfo {
   local CACHE_FILE="$HOME/.cache/logininfo_session"
   local now=$EPOCHSECONDS this_year
   strftime -s this_year "%Y" $now
 
-  # Get current session (who is still needed)
+  # Read cache first
+  local last_terminal="" last_remote="" last_epoch=0
+  [[ -f "$CACHE_FILE" ]] && IFS='|' read -r last_terminal last_remote last_epoch < "$CACHE_FILE"
+
+  local current_terminal current_remote current_src
+
+  # Rate limit: if cache is < 5 seconds old, skip slow `who` call, just show last login
+  if (( last_epoch > 0 && (now - last_epoch) < 5 )); then
+    local last_src="${last_remote:-$last_terminal}"
+    _li_label "Last logged in from "; _li_location "$last_src"; echo -n " "; _li_time "just now"; echo
+    return 0
+  fi
+
+  # Get current session (who is slow ~50ms)
   local current_line=$(who am i 2>/dev/null || who -m 2>/dev/null)
   [[ -z "$current_line" ]] && return 0
 
   # Extract terminal using zsh word splitting
   local -a words=(${=current_line})
-  local current_terminal=${words[2]}
+  current_terminal=${words[2]}
 
   # Extract source from parentheses using zsh regex
-  local current_remote=""
+  current_remote=""
   if [[ "$current_line" =~ '\(([^)]+)\)' ]]; then
     current_remote=${match[1]}
   fi
-  local current_src="${current_remote:-$current_terminal}"
+  current_src="${current_remote:-$current_terminal}"
 
-  # Read last login from cache
-  local last_terminal="" last_remote="" last_epoch=0
-  [[ -f "$CACHE_FILE" ]] && IFS='|' read -r last_terminal last_remote last_epoch < "$CACHE_FILE"
   local last_src="${last_remote:-$last_terminal}"
 
   # Background: cache current session
-  ( print -r "$current_terminal|$current_remote|$now" > "$CACHE_FILE" & )
-
-  # Color codes
-  local CYAN=$'\033[1;36m' GREEN=$'\033[1;32m' YELLOW=$'\033[1;33m' RESET=$'\033[0m'
+  print -r "$current_terminal|$current_remote|$now" > "$CACHE_FILE" &!
 
   if [[ $last_epoch -gt 0 ]]; then
-    local diff=$((now - last_epoch)) when
-
-    if (( diff < 60 )); then
-      when="just now"
-    elif (( diff < 120 )); then
-      when="1 minute ago"
-    elif (( diff < 3600 )); then
-      when="$((diff / 60)) minutes ago"
-    elif (( diff < 172800 )); then
-      local time_str
-      strftime -s time_str "%H:%M" $last_epoch
-      (( diff < 86400 )) && when="at $time_str" || when="at $time_str yesterday"
-    else
-      local day weekday month time login_year suffix="th"
-      strftime -s day "%d" $last_epoch
-      strftime -s weekday "%A" $last_epoch
-      strftime -s month "%b" $last_epoch
-      strftime -s time "%H:%M" $last_epoch
-      strftime -s login_year "%Y" $last_epoch
-      day=${day#0}
-      case $day in
-        1|21|31) suffix="st";; 2|22) suffix="nd";; 3|23) suffix="rd";;
-      esac
-      [[ "$login_year" == "$this_year" ]] \
-        && when="on $weekday $month ${day}${suffix} at $time" \
-        || when="on $weekday $month ${day}${suffix}, $login_year at $time"
-    fi
-
+    local when=$(_li_relative_time $((now - last_epoch)) $last_epoch $this_year)
+    
+    _li_label "Currently logged in from "; _li_location "$current_src"
     if [[ "$current_src" == "$last_src" ]]; then
-      print -P "%F{cyan}Currently logged in from%f %F{green}${current_src}%f, %F{cyan}last logged in%f %F{yellow}${when}%f"
+      echo -n ", "; _li_label "last logged in "; _li_time "$when"
     else
-      print -P "%F{cyan}Currently logged in from%f %F{green}${current_src}%f, %F{cyan}last logged in from%f %F{green}${last_src}%f %F{yellow}${when}%f"
+      echo -n ", "; _li_label "last logged in from "; _li_location "$last_src"; echo -n " "; _li_time "$when"
     fi
+    echo
   else
-    print -P "%F{cyan}Currently logged in from%f %F{green}${current_src}%f"
+    _li_label "Currently logged in from "; _li_location "$current_src"; echo
   fi
 }
 
