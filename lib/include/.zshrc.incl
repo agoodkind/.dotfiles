@@ -23,9 +23,12 @@ source "$DOTDOTFILES/lib/include/.zshrc.motd"
 # Load local zshrc customizations that are not to be tracked by git
 [[ ! -f "$DOTDOTFILES/.zshrc.local" ]] || source "$DOTDOTFILES/.zshrc.local"
 
-if [[ -f ~/.cache/dotfiles_update_next ]] && [[ ! -f ~/.cache/dotfiles_update_skipped ]] && [[ -z "$_RELOADING" ]]; then
-    rm ~/.cache/dotfiles_update_next
-    echo "Dotfiles update detected."
-    config update --use-defaults --background
+# Check for update status from background updater
+if [[ -f ~/.cache/dotfiles_update_error ]]; then
+    print -P "%F{red}⚠️  Dotfiles update failed. See: ~/.cache/dotfiles_update.log%f"
+    rm -f ~/.cache/dotfiles_update_error
+elif [[ -f ~/.cache/dotfiles_update_success ]]; then
+    print -P "%F{green}✓ Dotfiles updated in background%f"
+    rm -f ~/.cache/dotfiles_update_success
 fi
 
