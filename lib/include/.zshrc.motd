@@ -25,16 +25,87 @@ else
     zstat -A last_shown +mtime "$MOTD_CACHE_FILE"
     now=$EPOCHSECONDS
     last_date=${(%):-"%D{%Y-%m-%d}"}
-    # Get last shown date using strftime
     strftime -s last_shown_date "%Y-%m-%d" "$last_shown"
     if [[ "$last_shown_date" != "$last_date" ]] || (( (now - last_shown) / 3600 >= MOTD_INTERVAL_HOURS )); then
       should_show_motd=true
     fi
   else
-    # Fallback for missing zstat
     should_show_motd=true
   fi
 fi
+
+
+
+# Inline logininfo using zsh builtins (no bash fork)
+function _logininfo {
+  local CACHE_FILE="$HOME/.cache/logininfo_session"
+  local now=$EPOCHSECONDS this_year
+  strftime -s this_year "%Y" $now
+
+  # Get current session (who is still needed)
+  local current_line=$(who am i 2>/dev/null || who -m 2>/dev/null)
+  [[ -z "$current_line" ]] && return 0
+
+  # Extract terminal using zsh word splitting
+  local -a words=(${=current_line})
+  local current_terminal=${words[2]}
+
+  # Extract source from parentheses using zsh regex
+  local current_remote=""
+  if [[ "$current_line" =~ '\(([^)]+)\)' ]]; then
+    current_remote=${match[1]}
+  fi
+  local current_src="${current_remote:-$current_terminal}"
+
+  # Read last login from cache
+  local last_terminal="" last_remote="" last_epoch=0
+  [[ -f "$CACHE_FILE" ]] && IFS='|' read -r last_terminal last_remote last_epoch < "$CACHE_FILE"
+  local last_src="${last_remote:-$last_terminal}"
+
+  # Background: cache current session
+  ( print -r "$current_terminal|$current_remote|$now" > "$CACHE_FILE" & )
+
+  # Color codes
+  local CYAN=$'\033[1;36m' GREEN=$'\033[1;32m' YELLOW=$'\033[1;33m' RESET=$'\033[0m'
+
+  if [[ $last_epoch -gt 0 ]]; then
+    local diff=$((now - last_epoch)) when
+
+    if (( diff < 60 )); then
+      when="just now"
+    elif (( diff < 120 )); then
+      when="1 minute ago"
+    elif (( diff < 3600 )); then
+      when="$((diff / 60)) minutes ago"
+    elif (( diff < 172800 )); then
+      local time_str
+      strftime -s time_str "%H:%M" $last_epoch
+      (( diff < 86400 )) && when="at $time_str" || when="at $time_str yesterday"
+    else
+      local day weekday month time login_year suffix="th"
+      strftime -s day "%d" $last_epoch
+      strftime -s weekday "%A" $last_epoch
+      strftime -s month "%b" $last_epoch
+      strftime -s time "%H:%M" $last_epoch
+      strftime -s login_year "%Y" $last_epoch
+      day=${day#0}
+      case $day in
+        1|21|31) suffix="st";; 2|22) suffix="nd";; 3|23) suffix="rd";;
+      esac
+      [[ "$login_year" == "$this_year" ]] \
+        && when="on $weekday $month ${day}${suffix} at $time" \
+        || when="on $weekday $month ${day}${suffix}, $login_year at $time"
+    fi
+
+    if [[ "$current_src" == "$last_src" ]]; then
+      print -P "%F{cyan}Currently logged in from%f %F{green}${current_src}%f, %F{cyan}last logged in%f %F{yellow}${when}%f"
+    else
+      print -P "%F{cyan}Currently logged in from%f %F{green}${current_src}%f, %F{cyan}last logged in from%f %F{green}${last_src}%f %F{yellow}${when}%f"
+    fi
+  else
+    print -P "%F{cyan}Currently logged in from%f %F{green}${current_src}%f"
+  fi
+}
 
 function motd {
   local MOTD_DIR="$DOTDOTFILES/lib/motd"
@@ -44,17 +115,15 @@ function motd {
   done
 }
 
-# Show login info
-LOGININFO_SCRIPT="$DOTDOTFILES/lib/motd/80-logininfo"
-[[ -f "$LOGININFO_SCRIPT" && -x "$LOGININFO_SCRIPT" ]] && "$LOGININFO_SCRIPT"
-
 if [[ "$should_show_motd" == "true" ]]; then
   MOTD_DIR="$DOTDOTFILES/lib/motd"
   if [[ -d "$MOTD_DIR" ]]; then
     for script in "$MOTD_DIR"/*; do
-      [[ "$script" == "$LOGININFO_SCRIPT" ]] && continue
       [[ -f "$script" && -x "$script" ]] && "$script"
     done
   fi
   touch "$MOTD_CACHE_FILE"
 fi
+
+# Show login info (inline, no fork)
+_logininfo
