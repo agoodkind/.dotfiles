@@ -1,102 +1,60 @@
 # shellcheck shell=bash
 ###############################################################################
 # MOTD
-# Show MOTD:
-#   1. Every 12 hours (configurable via MOTD_INTERVAL_HOURS)
-#   2. Always on SSH connections
-#   3. On first shell of each day
-#   4. If forced via flag file (touch ~/.cache/motd_show_next)
-# Set MOTD_INTERVAL_HOURS to change the interval (e.g., 12 for twice daily, 168 for weekly)
-# To force show next time: touch ~/.cache/motd_show_next
-# To disable showing: rm ~/.cache/motd_show_next (if it exists)
 MOTD_INTERVAL_HOURS="${MOTD_INTERVAL_HOURS:-12}"
-
-should_show_motd=false
 MOTD_CACHE_FILE="$HOME/.cache/motd_last_shown"
 MOTD_FORCE_FILE="$HOME/.cache/motd_show_next"
-mkdir -p "$HOME/.cache"
 
-# Check for force flag (highest priority - overrides all other checks)
+should_show_motd=false
+
+# Force flag (highest priority)
 if [[ -f "$MOTD_FORCE_FILE" ]]; then
   should_show_motd=true
-  # Remove flag after using it (one-time use)
   rm -f "$MOTD_FORCE_FILE"
-fi
-
-# Always show on SSH connections (unless explicitly disabled)
-if [[ -n "$SSH_CONNECTION" ]] || [[ -n "$SSH_CLIENT" ]]; then
-  # Check if MOTD is explicitly disabled for SSH
-  if [[ ! -f "$HOME/.cache/motd_disable_ssh" ]]; then
-    should_show_motd=true
-  fi
-fi
-
-# Check periodic display (only if not already set to show)
-if [[ "$should_show_motd" != "true" ]]; then
-  if [[ ! -f "$MOTD_CACHE_FILE" ]]; then
-    # First time - show it
-    should_show_motd=true
-  else
-    # Get last shown timestamp and current time
-    last_shown=$(stat -c %Y "$MOTD_CACHE_FILE" 2>/dev/null || stat -f %m "$MOTD_CACHE_FILE" 2>/dev/null || echo "0")
-    now=$(date +%s)
-    
-    # Check if it's a different day (first shell of day)
-    last_date=$(date -d "@$last_shown" +%Y-%m-%d 2>/dev/null || date -r "$last_shown" +%Y-%m-%d 2>/dev/null || echo "")
-    today=$(date +%Y-%m-%d)
-    
-    if [[ "$last_date" != "$today" ]]; then
-      # Different day - show it (first shell of day)
+# SSH connections
+elif [[ -n "$SSH_CONNECTION$SSH_CLIENT" ]] && [[ ! -f "$HOME/.cache/motd_disable_ssh" ]]; then
+  should_show_motd=true
+# First run or periodic check
+elif [[ ! -f "$MOTD_CACHE_FILE" ]]; then
+  mkdir -p "$HOME/.cache"
+  should_show_motd=true
+else
+  # Use zsh builtins for timestamps
+  zmodload -F zsh/stat b:zstat 2>/dev/null
+  if (( $+builtins[zstat] )); then
+    zstat -A last_shown +mtime "$MOTD_CACHE_FILE"
+    now=$EPOCHSECONDS
+    last_date=${(%):-"%D{%Y-%m-%d}"}
+    # Get last shown date using strftime
+    strftime -s last_shown_date "%Y-%m-%d" "$last_shown"
+    if [[ "$last_shown_date" != "$last_date" ]] || (( (now - last_shown) / 3600 >= MOTD_INTERVAL_HOURS )); then
       should_show_motd=true
-    else
-      # Same day - check if interval has passed
-      hours_since=$(( (now - last_shown) / 3600 ))
-      
-      if [[ $hours_since -ge $MOTD_INTERVAL_HOURS ]]; then
-        should_show_motd=true
-      fi
     fi
+  else
+    # Fallback for missing zstat
+    should_show_motd=true
   fi
 fi
 
 function motd {
   local MOTD_DIR="$DOTDOTFILES/lib/motd"
-
-      # Check if directory exists
-  if [ ! -d "$MOTD_DIR" ]; then
-      exit 0
-  fi
-
-  # Execute all files in the motd directory in sorted order
+  [[ -d "$MOTD_DIR" ]] || return 0
   for script in "$MOTD_DIR"/*; do
-      if [ -f "$script" ] && [ -x "$script" ]; then
-          "$script"
-      fi
+    [[ -f "$script" && -x "$script" ]] && "$script"
   done
 }
 
-# Always show login info (replaces default "Last login" message)
+# Show login info
 LOGININFO_SCRIPT="$DOTDOTFILES/lib/motd/80-logininfo"
-if [[ -f "$LOGININFO_SCRIPT" ]] && [[ -x "$LOGININFO_SCRIPT" ]]; then
-    "$LOGININFO_SCRIPT"
-fi
+[[ -f "$LOGININFO_SCRIPT" && -x "$LOGININFO_SCRIPT" ]] && "$LOGININFO_SCRIPT"
 
 if [[ "$should_show_motd" == "true" ]]; then
-  # Show full MOTD (excluding logininfo since we already showed it)
   MOTD_DIR="$DOTDOTFILES/lib/motd"
-  if [ -d "$MOTD_DIR" ]; then
-      for script in "$MOTD_DIR"/*; do
-          # Skip logininfo since we already showed it above
-          [[ "$script" == "$LOGININFO_SCRIPT" ]] && continue
-          if [ -f "$script" ] && [ -x "$script" ]; then
-              "$script"
-          fi
-      done
+  if [[ -d "$MOTD_DIR" ]]; then
+    for script in "$MOTD_DIR"/*; do
+      [[ "$script" == "$LOGININFO_SCRIPT" ]] && continue
+      [[ -f "$script" && -x "$script" ]] && "$script"
+    done
   fi
-
-  # Update timestamp after showing (respects interval for future sessions)
   touch "$MOTD_CACHE_FILE"
-  
-  # Note: MOTD_FORCE_FILE was already removed above if it existed
 fi
-
