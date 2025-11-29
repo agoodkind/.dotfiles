@@ -55,14 +55,6 @@ else
     CURRENT_SHELL=$(getent passwd "$(whoami)" 2>/dev/null | cut -d: -f7 || echo "$SHELL")
 fi
 
-# Check if current shell is zsh (by path match or by basename)
-if [[ "$CURRENT_SHELL" == "$ZSH_PATH" ]] || [[ "$(basename "$CURRENT_SHELL")" == "zsh" ]]; then
-    color_echo GREEN "  ✅  Shell is already zsh"
-else
-    chsh -s "$ZSH_PATH"
-    color_echo GREEN "  ✅  Shell changed to zsh, you may need to restart your terminal or log out and back in to use it"
-fi
-
 # force zinit to update and install
 color_echo BLUE "🔧  Initializing zinit..."
 (cd "$HOME" && \
@@ -71,5 +63,22 @@ color_echo BLUE "🔧  Initializing zinit..."
  zinit self-update && \
  zinit update) || color_echo RED "Failed to initialize zinit" && exit 1
 
-color_echo GREEN "✅  Installation complete!"
+ # Check if current shell is zsh (by path match or by basename)
+if [[ "$CURRENT_SHELL" == "$ZSH_PATH" ]] || [[ "$(basename "$CURRENT_SHELL")" == "zsh" ]]; then
+    color_echo GREEN "  ✅  Shell is already zsh"
+else
+    chsh -s "$ZSH_PATH"
+    color_echo GREEN "  ✅  Shell changed to zsh, you may need to restart your terminal or log out and back in to use it"
+fi
 
+color_echo GREEN "✅  Installation complete!"
+color_echo YELLOW "Will attempt to reload shell in 5 seconds... (press Ctrl+C to cancel)"
+# count down from 5
+for i in {5..1}; do
+    printf "\r%s" "$i"
+    sleep 1
+done
+color_echo YELLOW "Reloading shell..."
+
+# attempt to reload shell
+exec zsh || color_echo RED "Failed to reload shell" && exit 1
