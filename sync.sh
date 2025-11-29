@@ -204,24 +204,24 @@ if is_macos; then
 fi
 
 if is_ubuntu; then
-    color_echo BLUE "💡  Running Ubuntu setup script..."
+    color_echo BLUE "💡  Running Debian/Ubuntu/Proxmox setup script..."
     if [[ "$run_background" == "true" ]]; then
         mkdir -p "$HOME/.cache"
         log_file="$HOME/.cache/dotfiles_install_${timestamp}.log"
         color_echo YELLOW "🚀  Running package installation in background..."
         color_echo CYAN "   Log file: $log_file"
         if [[ "$USE_DEFAULTS" == "true" ]]; then
-            nohup "$DOTDOTFILES/lib/install/ubuntu.sh" --use-defaults "$@" > "$log_file" 2>&1 &
+            nohup "$DOTDOTFILES/lib/install/debian.sh" --use-defaults "$@" > "$log_file" 2>&1 &
         else
-            nohup "$DOTDOTFILES/lib/install/ubuntu.sh" "$@" > "$log_file" 2>&1 &
+            nohup "$DOTDOTFILES/lib/install/debian.sh" "$@" > "$log_file" 2>&1 &
         fi
         color_echo GREEN "   Background process started (PID: $!)"
         color_echo CYAN "   Monitor with: tail -f $log_file"
     else
         if [[ "$USE_DEFAULTS" == "true" ]]; then
-            "$DOTDOTFILES/lib/install/ubuntu.sh" --use-defaults "$@"
+            "$DOTDOTFILES/lib/install/debian.sh" --use-defaults "$@"
         else
-            "$DOTDOTFILES/lib/install/ubuntu.sh" "$@"
+            "$DOTDOTFILES/lib/install/debian.sh" "$@"
         fi
     fi
 fi
