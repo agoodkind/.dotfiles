@@ -7,7 +7,7 @@ source "${DOTDOTFILES}/lib/include/defaults.sh"
 source "${DOTDOTFILES}/lib/include/colors.sh"
 source "${DOTDOTFILES}/lib/include/packages.sh"
 
-# Apt-based installation script for Ubuntu systems
+# Apt-based installation script for Ubuntu, Debian, and Proxmox systems
 # if not skip install is set, skip installation of packages, --skip-install
 if [[ " $* " != *" --skip-install "* ]]; then
     # Check if timezone is already configured
@@ -35,7 +35,7 @@ if [[ " $* " != *" --skip-install "* ]]; then
     run_with_defaults "$DOTDOTFILES/lib/install/apt.sh"
 fi
 
-# Script to configure MOTD (Message of the Day) on Ubuntu systems
+# Script to configure MOTD (Message of the Day) on Ubuntu, Debian, and Proxmox systems
 # Disables default MOTD scripts and optionally sets a custom MOTD
 
 echo "Configuring MOTD..."
@@ -52,7 +52,7 @@ if [ -d /etc/update-motd.d/ ]; then
 fi
 
 
-# Disable motd-news (Ubuntu's dynamic MOTD messages)
+# Disable motd-news (Ubuntu-specific dynamic MOTD messages, skipped on Debian/Proxmox)
 if [ -f /etc/default/motd-news ]; then
     echo "Disabling motd-news..."
     sudo sed -i 's/^ENABLED=.*/ENABLED=0/' /etc/default/motd-news
