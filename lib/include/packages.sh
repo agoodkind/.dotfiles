@@ -67,6 +67,7 @@ export APT_SPECIFIC=(
 	nodejs
 	openssh-client
 	openssh-server
+    parted
 	postfix
 	rbenv
 	rsyslog
