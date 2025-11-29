@@ -14,23 +14,15 @@ autoload -Uz _zinit
 # Completions with custom fpath
 fpath=("$DOTDOTFILES/lib/completions" $fpath)
 
-# Explicitly prevent git from completing gcp
-# This must be set early, before git completion loads
-# Note: Using compdef directly instead of zstyle to avoid globbing issues
-
 # Core plugins with staggered loading
 # shellcheck disable=SC2016
 zinit wait lucid atload'
-    # Fix gcp completion immediately after git plugin loads
-    compdef -d gcp 2>/dev/null
+    # OMZP::git creates gcp alias for git cherry-pick
+    # Remove it so the real gcp command is used on Linux
     if (( $+commands[gcp] )); then
-        local gcp_comp="$DOTDOTFILES/lib/completions/_gcp"
-        if [[ -f "$gcp_comp" ]]; then
-            autoload -Uz _gcp
-            compdef _gcp gcp 2>/dev/null || compdef _files gcp 2>/dev/null
-        else
-            compdef _files gcp 2>/dev/null
-        fi
+        unalias gcp 2>/dev/null
+        compdef -d gcp 2>/dev/null
+        compdef _files gcp 2>/dev/null
     fi
 ' for \
     OMZP::git
@@ -47,18 +39,11 @@ zinit wait lucid atinit'
     ZINIT[COMPINIT_OPTS]=-C
     zicompinit
     zicdreplay
-    # Force gcp completion - remove any git completion and set ours
-    compdef -d gcp 2>/dev/null
+    # Ensure gcp uses file completion (not git)
     if (( $+commands[gcp] )); then
-        # Try to load our completion function first
-        # Explicitly check if completion file exists and load it
-        local gcp_comp="$DOTDOTFILES/lib/completions/_gcp"
-        if [[ -f "$gcp_comp" ]]; then
-            autoload -Uz _gcp
-            compdef _gcp gcp 2>/dev/null || compdef _files gcp 2>/dev/null
-        else
-            compdef _files gcp 2>/dev/null
-        fi
+        unalias gcp 2>/dev/null
+        compdef -d gcp 2>/dev/null
+        compdef _files gcp 2>/dev/null
     fi
 ' for \
     zdharma-continuum/fast-syntax-highlighting
@@ -70,17 +55,11 @@ zinit wait'1' lucid atload'
     zstyle ":fzf-tab:complete:git-(add|diff|restore):*" fzf-preview "git diff \$word | delta"
     zstyle ":completion:*" list-colors ${(s.:.)LS_COLORS}
     zstyle ":completion:*" menu no
-    # Fix gcp completion - prevent git from hijacking it
-    compdef -d gcp 2>/dev/null
-    # Explicitly set gcp to use file completion (override any git completion)
+    # Ensure gcp uses file completion (not git)
     if (( $+commands[gcp] )); then
-        local gcp_comp="$DOTDOTFILES/lib/completions/_gcp"
-        if [[ -f "$gcp_comp" ]]; then
-            autoload -Uz _gcp
-            compdef _gcp gcp 2>/dev/null || compdef _files gcp 2>/dev/null
-        else
-            compdef _files gcp 2>/dev/null
-        fi
+        unalias gcp 2>/dev/null
+        compdef -d gcp 2>/dev/null
+        compdef _files gcp 2>/dev/null
     fi
 ' for \
     Aloxaf/fzf-tab \
