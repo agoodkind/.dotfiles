@@ -1,0 +1,11 @@
+#compdef gcp
+
+# Completion for gcp (file copy utility)
+# Prevents git completion from hijacking this command
+
+_gcp() {
+    _files
+}
+
+_gcp "$@"
+

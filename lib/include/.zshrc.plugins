@@ -25,10 +25,17 @@ zinit wait lucid atload'_zsh_autosuggest_start' for \
     zsh-users/zsh-autosuggestions
 
 # Syntax highlighting with compinit (must run before zicdreplay)
-zinit wait lucid atinit'ZINIT[COMPINIT_OPTS]=-C; zicompinit; zicdreplay' for \
+zinit wait lucid atinit'
+    ZINIT[COMPINIT_OPTS]=-C
+    zicompinit
+    zicdreplay
+    compdef -d gcp 2>/dev/null
+    (( $+commands[gcp] )) && compdef _files gcp 2>/dev/null
+' for \
     zdharma-continuum/fast-syntax-highlighting
 
 # fzf-tab with configuration
+# shellcheck disable=SC2016
 zinit wait'1' lucid atload'
     zstyle ":fzf-tab:complete:cd:*" fzf-preview "eza -1 --color=always \$realpath"
     zstyle ":fzf-tab:complete:git-(add|diff|restore):*" fzf-preview "git diff \$word | delta"
@@ -36,6 +43,10 @@ zinit wait'1' lucid atload'
     zstyle ":completion:*" menu no
     # Fix gcp completion - prevent git from hijacking it
     compdef -d gcp 2>/dev/null
+    # Explicitly set gcp to use file completion (override any git completion)
+    if (( $+commands[gcp] )); then
+        compdef _files gcp 2>/dev/null
+    fi
 ' for \
     Aloxaf/fzf-tab \
     Freed-Wu/fzf-tab-source
