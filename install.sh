@@ -2,6 +2,7 @@
 
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
+echo "Installing dotfiles to $DOTDOTFILES"
 cd "$DOTDOTFILES" || echo "Failed to cd to $DOTDOTFILES" && exit 1
 
 # Source utilities
