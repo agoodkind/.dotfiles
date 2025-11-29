@@ -2,10 +2,15 @@
 
 # Completion for gcp (file copy utility)
 # Prevents git completion from hijacking this command
+#
+# This completion explicitly uses file completion to prevent git
+# completion from intercepting gcp commands
 
 _gcp() {
-    _files
+    # Use standard file completion, ignoring any git completion
+    _files "$@"
 }
 
+# Explicitly call the function
 _gcp "$@"
 
