@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 
 if command -v fastfetch &> /dev/null; then
-    fastfetch --config - <<'EOF'
+    # Create temporary config file for fastfetch
+    # Using /tmp instead of stdin for better compatibility
+    FASTFETCH_CONFIG=$(mktemp /tmp/fastfetch-config-XXXXXX.json)
+    
+    cat > "$FASTFETCH_CONFIG" <<'EOF'
 {
   "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
   "logo": {
@@ -29,4 +33,7 @@ if command -v fastfetch &> /dev/null; then
   ]
 }
 EOF
+    
+    fastfetch --config "$FASTFETCH_CONFIG" 2>/dev/null || true
+    rm -f "$FASTFETCH_CONFIG"
 fi
