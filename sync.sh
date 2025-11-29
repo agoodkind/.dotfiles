@@ -28,32 +28,6 @@ for arg in "$@"; do
     esac
 done
 
-NVIM_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/nvim"
-LAZY_DIR="$NVIM_DATA/lazy"
-
-# Aggressive cleanup in repair mode
-if [[ "$repair_mode" == "true" ]]; then
-    color_echo YELLOW "🔧  Repair mode: aggressive cleanup..."
-    
-    if [ -d "$LAZY_DIR" ]; then
-        find "$LAZY_DIR" -maxdepth 1 -name "*.cloning" -delete 2>/dev/null
-        
-        # Remove failed/partial plugin directories (empty or missing .git)
-        for dir in "$LAZY_DIR"/*/; do
-            [ -d "$dir" ] || continue
-            if [ ! -d "$dir/.git" ] || [ -z "$(ls -A "$dir" 2>/dev/null)" ]; then
-                color_echo YELLOW "  🗑️  Removing incomplete plugin: $(basename "$dir")"
-                rm -rf "$dir"
-            fi
-        done
-    fi
-    
-    if [ -d "$NVIM_DATA" ]; then
-        find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*-tmp" -type d -exec rm -rf {} + 2>/dev/null
-        find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*" -type d ! -name "*.so" -exec rm -rf {} + 2>/dev/null
-    fi
-fi
-
 color_echo BLUE "🔄  Updating plugins and submodules..."
 # Check if git is locked
 if [ -f "$DOTDOTFILES/.git/objects/info/commit-graphs/commit-graph-chain.lock" ]; then
@@ -148,6 +122,31 @@ for script in $scripts; do
     color_echo GREEN "  🔗  Linked script: $script_name"
 done
 
+NVIM_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/nvim"
+LAZY_DIR="$NVIM_DATA/lazy"
+
+# Aggressive cleanup in repair mode
+if [[ "$repair_mode" == "true" ]]; then
+    color_echo YELLOW "🔧  Repair mode: aggressive cleanup..."
+    
+    if [ -d "$LAZY_DIR" ]; then
+        find "$LAZY_DIR" -maxdepth 1 -name "*.cloning" -delete 2>/dev/null
+        
+        # Remove failed/partial plugin directories (empty or missing .git)
+        for dir in "$LAZY_DIR"/*/; do
+            [ -d "$dir" ] || continue
+            if [ ! -d "$dir/.git" ] || [ -z "$(ls -A "$dir" 2>/dev/null)" ]; then
+                color_echo YELLOW "  🗑️  Removing incomplete plugin: $(basename "$dir")"
+                rm -rf "$dir"
+            fi
+        done
+    fi
+    
+    if [ -d "$NVIM_DATA" ]; then
+        find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*-tmp" -type d -exec rm -rf {} + 2>/dev/null
+        find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*" -type d ! -name "*.so" -exec rm -rf {} + 2>/dev/null
+    fi
+fi
 
 # Initialize and update neovim plugins
 if command -v nvim >/dev/null 2>&1; then

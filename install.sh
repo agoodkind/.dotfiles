@@ -2,6 +2,8 @@
 
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
+cd "$DOTDOTFILES" || echo "Failed to cd to $DOTDOTFILES" && exit 1
+
 # Source utilities
 source "${DOTDOTFILES}/lib/include/defaults.sh"
 source "${DOTDOTFILES}/lib/include/colors.sh"
@@ -58,8 +60,16 @@ if [[ "$CURRENT_SHELL" == "$ZSH_PATH" ]] || [[ "$(basename "$CURRENT_SHELL")" ==
     color_echo GREEN "  ✅  Shell is already zsh"
 else
     chsh -s "$ZSH_PATH"
-    color_echo GREEN "  ✅  Shell changed to zsh"
+    color_echo GREEN "  ✅  Shell changed to zsh, you may need to restart your terminal or log out and back in to use it"
 fi
+
+# force zinit to update and install
+color_echo BLUE "🔧  Initializing zinit..."
+(cd "$HOME" && \
+ PAGER=cat GIT_PAGER=cat \
+ source "$DOTDOTFILES/lib/zinit/zinit-install.zsh" && \
+ zinit self-update && \
+ zinit update) || color_echo RED "Failed to initialize zinit" && exit 1
 
 color_echo GREEN "✅  Installation complete!"
 
