@@ -62,10 +62,6 @@ setopt share_history
 # Aliases #####################################################################
 ###############################################################################
 
-# use system `which` for -s support
-alias which="/usr/bin/which"
-alias isinstalled="/usr/bin/which -s"
-
 # vim/nvim editor setup (use zsh builtin command check)
 if isinstalled nvim; then
     export SUDO_EDITOR="nvim -u $HOME/.config/nvim/init.lua"
