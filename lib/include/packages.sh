@@ -58,6 +58,7 @@ export APT_SPECIFIC=(
 	ack-grep
 	fzf
 	golang-go
+    golang
 	gpg
 	locales
 	net-tools
@@ -84,6 +85,7 @@ export BREW_SPECIFIC=(
 	ssh-copy-id
 	wireguard-tools
 	zoxide
+    discord
 )
 
 # Brew cask applications
