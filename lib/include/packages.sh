@@ -59,7 +59,6 @@ export COMMON_PACKAGES=(
 # APT-specific packages (different names or apt-only)
 export APT_SPECIFIC=(
 	ack-grep
-    gcp
 	golang-go
     golang
 	gpg
