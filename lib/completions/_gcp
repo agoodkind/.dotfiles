@@ -11,6 +11,6 @@ _gcp() {
     _files "$@"
 }
 
-# Explicitly call the function
+# Register the completion function
 _gcp "$@"
 
