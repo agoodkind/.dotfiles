@@ -42,15 +42,15 @@ function __zoxide_doctor() {
     [[ ${chpwd_functions[(Ie)__zoxide_hook]:-} -eq 0 ]] || return 0
 
     _ZO_DOCTOR=0
-    # \builtin printf '%s\n' \
-    #     'zoxide: detected a possible configuration issue.' \
-    #     'Please ensure that zoxide is initialized right at the end of your shell configuration file (usually ~/.zshrc).' \
-    #     '' \
-    #     'If the issue persists, consider filing an issue at:' \
-    #     'https://github.com/ajeetdsouza/zoxide/issues' \
-    #     '' \
-    #     'Disable this message by setting _ZO_DOCTOR=0.' \
-    #     '' >&2
+    \builtin printf '%s\n' \
+        'zoxide: detected a possible configuration issue.' \
+        'Please ensure that zoxide is initialized right at the end of your shell configuration file (usually ~/.zshrc).' \
+        '' \
+        'If the issue persists, consider filing an issue at:' \
+        'https://github.com/ajeetdsouza/zoxide/issues' \
+        '' \
+        'Disable this message by setting _ZO_DOCTOR=0.' \
+        '' >&2
 }
 
 # =============================================================================
@@ -68,14 +68,9 @@ function __zoxide_z() {
     elif [[ "$#" -eq 2 ]] && [[ "$1" = "--" ]]; then
         __zoxide_cd "$2"
     else
-        \builtin local result current_pwd
-        current_pwd="$(__zoxide_pwd)"
+        \builtin local result
         # shellcheck disable=SC2312
-        result="$(\command zoxide query --exclude "${current_pwd}" -- "$@" 2>/dev/null)"
-        # Only cd if we got a result and it's different from current directory
-        if [[ -n "${result}" ]] && [[ "${result}" != "${current_pwd}" ]]; then
-            __zoxide_cd "${result}"
-        fi
+        result="$(\command zoxide query --exclude "$(__zoxide_pwd)" -- "$@")" && __zoxide_cd "${result}"
     fi
 }
 
@@ -91,12 +86,18 @@ function __zoxide_zi() {
 # Commands for zoxide. Disable these using --no-cmd.
 #
 
-function cd() {
+function z() {
     __zoxide_z "$@"
 }
 
-function cdi() {
+function zi() {
     __zoxide_zi "$@"
+}
+
+# Override cd to use zoxide's smart directory jumping.
+# The original cd builtin is still available via \builtin cd if needed.
+function cd() {
+    __zoxide_z "$@"
 }
 
 # Completions.
@@ -134,7 +135,7 @@ if [[ -o zle ]]; then
     function __zoxide_z_complete_helper() {
         if [[ -n "${__zoxide_result}" ]]; then
             # shellcheck disable=SC2034,SC2296
-            BUFFER="cd ${(q-)__zoxide_result}"
+            BUFFER="z ${(q-)__zoxide_result}"
             __zoxide_result=''
             \builtin zle reset-prompt
             \builtin zle accept-line
@@ -144,7 +145,7 @@ if [[ -o zle ]]; then
     }
     \builtin zle -N __zoxide_z_complete_helper
 
-    [[ "${+functions[compdef]}" -ne 0 ]] && \compdef __zoxide_z_complete cd
+    [[ "${+functions[compdef]}" -ne 0 ]] && \compdef __zoxide_z_complete z cd
 fi
 
 # =============================================================================
