@@ -34,9 +34,10 @@ zinit wait'1' lucid atload'
     zstyle ":fzf-tab:complete:git-(add|diff|restore):*" fzf-preview "git diff \$word | delta"
     zstyle ":completion:*" list-colors ${(s.:.)LS_COLORS}
     zstyle ":completion:*" menu no
+    # Fix gcp completion - prevent git from hijacking it
+    compdef -d gcp 2>/dev/null
 ' for \
     Aloxaf/fzf-tab \
     Freed-Wu/fzf-tab-source
-
 
 ###############################################################################

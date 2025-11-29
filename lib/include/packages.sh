@@ -21,6 +21,7 @@ export COMMON_PACKAGES=(
 	ffmpeg
 	figlet
 	fping
+    fzf
 	gh
 	git
 	git-delta
@@ -36,6 +37,8 @@ export COMMON_PACKAGES=(
 	moreutils
 	openssh
 	pandoc
+    pigz
+    pv
 	python3
 	rename
 	rsync
@@ -56,7 +59,7 @@ export COMMON_PACKAGES=(
 # APT-specific packages (different names or apt-only)
 export APT_SPECIFIC=(
 	ack-grep
-	fzf
+    gcp
 	golang-go
     golang
 	gpg
