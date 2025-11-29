@@ -123,6 +123,16 @@ for source_file in $files; do
     color_echo GREEN "  🔗  Linked: $relative_path"
 done
 
+# Use github authorized keys to add to ~/.ssh/authorized_keys
+wget https://github.com/agoodkind.keys -O "$HOME"/.ssh/authorized_keys.tmp
+# append missing keys to ~/.ssh/authorized_keys
+touch "$HOME"/.ssh/authorized_keys  # Ensure file exists
+while IFS= read -r key || [ -n "$key" ]; do
+    if ! grep -q "$key" "$HOME"/.ssh/authorized_keys; then
+        echo "$key" >> "$HOME"/.ssh/authorized_keys
+    fi
+done < "$HOME"/.ssh/authorized_keys.tmp
+rm -f "$HOME"/.ssh/authorized_keys.tmp
 
 # Symlink all .sh scripts to ~/.local/bin without .sh extension
 color_echo YELLOW "🔗 Linking scripts to ~/.local/bin..."
@@ -163,7 +173,6 @@ if [ -n "${ZSH_COMPDUMP:-}" ]; then
     rm -f "$ZSH_COMPDUMP"
 fi
 
-# for macOS clean up brew
 if is_macos; then
     color_echo YELLOW "🧹  Cleaning up Homebrew..."
     brew cleanup
