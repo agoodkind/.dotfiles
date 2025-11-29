@@ -59,9 +59,10 @@ fi
 color_echo BLUE "🔧  Initializing zinit..."
 (cd "$HOME" && \
  PAGER=cat GIT_PAGER=cat \
- source "$DOTDOTFILES/lib/zinit/zinit-install.zsh" && \
- zinit self-update && \
- zinit update) || color_echo RED "Failed to initialize zinit" && exit 1
+ "$ZSH_PATH" -c \
+   "source \"$DOTDOTFILES/lib/zinit/zinit-install.zsh\" && \
+    zinit self-update && zinit update") || \
+  (color_echo RED "Failed to initialize zinit" && exit 1)
 
  # Check if current shell is zsh (by path match or by basename)
 if [[ "$CURRENT_SHELL" == "$ZSH_PATH" ]] || [[ "$(basename "$CURRENT_SHELL")" == "zsh" ]]; then
