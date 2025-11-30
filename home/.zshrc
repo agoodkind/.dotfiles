@@ -5,7 +5,7 @@
 zmodload zsh/datetime
 START_TIME=$EPOCHREALTIME 
 export DOTDOTFILES="$HOME/.dotfiles"
-export PATH="$PATH:$HOME/.local/bin:$HOME/.local/bin/scripts"
+export PATH="$PATH:$HOME/.local/bin:$HOME/.local/bin/scripts:/opt/scripts"
 export NVM_LAZY_LOAD=true
 ###############################################################################
 # Include OS specific and common zshrc configs ################################
