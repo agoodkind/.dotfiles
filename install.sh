@@ -6,9 +6,9 @@ echo "Installing dotfiles to $DOTDOTFILES"
 cd "$DOTDOTFILES" || { echo "Failed to cd to $DOTDOTFILES" && exit 1; }
 
 # Source utilities
-source "${DOTDOTFILES}/lib/include/defaults.sh"
-source "${DOTDOTFILES}/lib/include/colors.sh"
-source "${DOTDOTFILES}/lib/include/packages.sh"
+source "${DOTDOTFILES}/lib/bash/colors.sh"
+source "${DOTDOTFILES}/lib/bash/defaults.sh"
+source "${DOTDOTFILES}/lib/bash/packages.sh"
 
 color_echo BLUE "📁  Creating SSH sockets directory..."
 mkdir -p "$HOME/.ssh/sockets"

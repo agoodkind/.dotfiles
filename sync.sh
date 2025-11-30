@@ -8,9 +8,9 @@ timestamp=$(date +"%Y%m%d_%H%M%S")
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
 # Source utilities
-source "${DOTDOTFILES}/lib/include/defaults.sh"
-source "${DOTDOTFILES}/lib/include/colors.sh"
-source "${DOTDOTFILES}/lib/include/packages.sh"
+source "${DOTDOTFILES}/lib/bash/colors.sh"
+source "${DOTDOTFILES}/lib/bash/defaults.sh"
+source "${DOTDOTFILES}/lib/bash/packages.sh"
 
 ###############################################################################
 # Utility Functions

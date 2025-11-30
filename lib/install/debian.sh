@@ -3,9 +3,9 @@
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
 # Source utilities
-source "${DOTDOTFILES}/lib/include/defaults.sh"
-source "${DOTDOTFILES}/lib/include/colors.sh"
-source "${DOTDOTFILES}/lib/include/packages.sh"
+source "${DOTDOTFILES}/lib/bash/colors.sh"
+source "${DOTDOTFILES}/lib/bash/defaults.sh"
+source "${DOTDOTFILES}/lib/bash/packages.sh"
 
 # Apt-based installation script for Ubuntu, Debian, and Proxmox systems
 # if not skip install is set, skip installation of packages, --skip-install
@@ -61,7 +61,7 @@ fi
 # Copy our custom MOTD entrypoint
 echo "Installing custom MOTD entrypoint..."
 sudo rm -f /etc/update-motd.d/00-motd-entrypoint.sh
-sudo cp "$DOTDOTFILES/lib/include/.zshrc.motd" /etc/update-motd.d/00-motd-entrypoint.sh
+sudo cp "$DOTDOTFILES/lib/zsh/motd.zsh" /etc/update-motd.d/00-motd-entrypoint.sh
 sudo chmod +x /etc/update-motd.d/00-motd-entrypoint.sh
 
 echo "MOTD configuration complete."

@@ -3,9 +3,9 @@
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
 # Source utilities
-source "${DOTDOTFILES}/lib/include/defaults.sh"
-source "${DOTDOTFILES}/lib/include/colors.sh"
-source "${DOTDOTFILES}/lib/include/packages.sh"
+source "${DOTDOTFILES}/lib/bash/colors.sh"
+source "${DOTDOTFILES}/lib/bash/defaults.sh"
+source "${DOTDOTFILES}/lib/bash/packages.sh"
 
 if [[ " $* " != *" --skip-install "* ]]; then
     "$DOTDOTFILES/lib/install/brew.sh"
