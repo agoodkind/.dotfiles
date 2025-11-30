@@ -51,7 +51,8 @@ export COMMON_PACKAGES=(
 	vim
 	watch
 	wget
-	zsh
+	zoxide
+    zsh
 	yq
 	tree-sitter-cli
 )
@@ -72,7 +73,9 @@ export APT_SPECIFIC=(
 	rbenv
 	rsyslog
 	sasl-xoauth2
+    sudo
 	speedtest-cli
+    ufw
 	wireguard
 )
 
@@ -86,8 +89,8 @@ export BREW_SPECIFIC=(
 	paper
 	pnpm
 	ssh-copy-id
-	wireguard-tools
-	zoxide
+	wireguard-go
+    wireguard-tools
     discord
 )
 
