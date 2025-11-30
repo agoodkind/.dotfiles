@@ -29,10 +29,10 @@ is_ubuntu() {
 
 case "$OS_TYPE" in
     mac)
-        source "$DOTDOTFILES/lib/include/.zshrc.mac"
+        source "$DOTDOTFILES/lib/zsh/mac.zsh"
         ;;
     ubuntu)
-        source "$DOTDOTFILES/lib/include/.zshrc.ubuntu"
+        source "$DOTDOTFILES/lib/zsh/ubuntu.zsh"
         ;;
     *)
         echo 'Unknown OS!'

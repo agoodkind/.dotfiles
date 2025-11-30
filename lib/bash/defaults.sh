@@ -1,5 +1,8 @@
 # Defaults handling module for install/update scripts
 # Provides --use-defaults/-d flag parsing and read_with_default helper
+#
+# Note: This module uses MAGENTA and GRAY from colors.sh.
+# Always source colors.sh before sourcing this file.
 
 # Parse command line flags (if not already set via environment)
 # When sourced, $@ refers to the parent script's arguments
@@ -69,8 +72,6 @@ run_with_defaults() {
     fi
 }
 
-export MAGENTA='\033[0;35m'
-export GRAY='\033[0;37m'
 # print [DEBUG] message if DEBUG is true
 # Usage: debug_echo "message"
 debug_echo() {
