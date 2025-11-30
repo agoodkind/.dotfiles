@@ -60,10 +60,84 @@ reload() {
     exec zsh || color_echo RED "❌  Failed to reload shell" && exit 1
 }
 
+backup_local_changes() {
+    local timestamp=$(date +"%Y%m%d_%H%M%S")
+    local has_changes=false
+    local has_untracked=false
+    local untracked_files
+    
+    # Check for modified tracked files
+    if ! git --git-dir="$DOTDOTFILES/.git" \
+             --work-tree="$DOTDOTFILES" \
+             diff --quiet HEAD 2>/dev/null; then
+        has_changes=true
+    fi
+    
+    # Check for untracked files
+    untracked_files=$(git --git-dir="$DOTDOTFILES/.git" \
+                           --work-tree="$DOTDOTFILES" \
+                           ls-files --others --exclude-standard 2>/dev/null)
+    if [[ -n "$untracked_files" ]]; then
+        has_untracked=true
+    fi
+    
+    if [[ "$has_changes" == "true" ]] || [[ "$has_untracked" == "true" ]]; then
+        echo "📦 Backing up local changes..."
+        
+        # Create backup directory for untracked files
+        local backup_dir="$DOTDOTFILES/backups/git/$timestamp"
+        mkdir -p "$backup_dir"
+        
+        # Backup untracked files
+        if [[ "$has_untracked" == "true" ]]; then
+            echo "$untracked_files" | while IFS= read -r file; do
+                [[ -z "$file" ]] && continue
+                local target_dir="$backup_dir/$(dirname "$file")"
+                mkdir -p "$target_dir" 2>/dev/null || true
+                if [[ -f "$DOTDOTFILES/$file" ]]; then
+                    cp "$DOTDOTFILES/$file" "$backup_dir/$file" 2>/dev/null || true
+                fi
+            done
+            echo "  ✅ Backed up untracked files to $backup_dir/"
+        fi
+        
+        # Stash tracked changes if any
+        if [[ "$has_changes" == "true" ]]; then
+            if git --git-dir="$DOTDOTFILES/.git" \
+                   --work-tree="$DOTDOTFILES" \
+                   stash push -m "backup-before-update-$timestamp" 2>/dev/null; then
+                echo "  ✅ Stashed tracked changes: stash@{0}"
+                echo "  💡 To restore: git stash pop stash@{0}"
+            fi
+        fi
+        
+        echo "📦 Backup complete. Changes saved to:"
+        if [[ "$has_changes" == "true" ]]; then
+            echo "   - Stashed changes: git stash list"
+            echo "     (look for backup-before-update-$timestamp)"
+        fi
+        [[ "$has_untracked" == "true" ]] && echo "   - Untracked files: $backup_dir/"
+    fi
+}
+
 repair() {
     echo "Repairing dotfiles..."
+    # Backup local changes before discarding
+    backup_local_changes
+    
+    # Ensure we're on main branch
     config checkout main
-    config pull
+    # Discard all local changes to tracked files
+    config reset --hard HEAD
+    # Remove untracked files and directories that might conflict
+    config clean -fd
+    # Pull latest changes (will fail if there are conflicts, but we've reset above)
+    config pull || {
+        # If pull fails, force reset to remote
+        git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" fetch origin
+        config reset --hard origin/main
+        config clean -fd
+    }
     (cd "$DOTDOTFILES" && git submodule update --init --recursive --remote)
     "$DOTDOTFILES/sync.sh" --repair "$@"
     reload
@@ -80,8 +154,16 @@ config() {
     
     case "$subcommand" in
         update)
-            git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" pull
-            (cd "$DOTDOTFILES" && git submodule update --init --recursive)
+            # Backup local changes before discarding
+            backup_local_changes
+            
+            # Fetch latest changes first
+            git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" fetch --all
+            # Discard all local changes to tracked files
+            config reset --hard origin/main 2>/dev/null || true
+            # Remove untracked files and directories that might conflict
+            config clean -fd
+            # Now run repair which will sync everything
             config repair "$@"
             # repair already calls reload, no need to call it again
             ;;
@@ -95,8 +177,11 @@ config() {
             sync "$@"
             ;;
         *)
-            # Restore original arguments for git command (subcommand + remaining args)
-            git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" "$subcommand" "$@"
+            # Restore original arguments for git command
+            # (subcommand + remaining args)
+            git --git-dir="$DOTDOTFILES/.git" \
+                --work-tree="$DOTDOTFILES" \
+                "$subcommand" "$@"
             ;;
     esac
 }
