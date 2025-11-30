@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 
-timestamp=$(date +"%Y%m%d_%H%M%S")
+###############################################################################
+# Configuration & Setup
+###############################################################################
 
+timestamp=$(date +"%Y%m%d_%H%M%S")
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
 # Source utilities
@@ -9,55 +12,9 @@ source "${DOTDOTFILES}/lib/include/defaults.sh"
 source "${DOTDOTFILES}/lib/include/colors.sh"
 source "${DOTDOTFILES}/lib/include/packages.sh"
 
-# Parse flags
-run_background=false
-repair_mode=false
-non_interactive=false
-for arg in "$@"; do
-    case $arg in
-        --background|--bg)
-            run_background=true
-            non_interactive=true
-            ;;
-        --repair)
-            repair_mode=true
-            ;;
-        --non-interactive)
-            non_interactive=true
-            ;;
-    esac
-done
-
-color_echo BLUE "🔄  Updating plugins and submodules..."
-# Check if git is locked
-if [ -f "$DOTDOTFILES/.git/objects/info/commit-graphs/commit-graph-chain.lock" ]; then
-    if [[ "$non_interactive" == "true" ]]; then
-        # In non-interactive mode, force unlock
-        color_echo YELLOW "🔒  Git is locked, force unlocking..."
-        rm -f "$DOTDOTFILES/.git/objects/info/commit-graphs/commit-graph-chain.lock" 2>/dev/null || \
-            sudo rm -f "$DOTDOTFILES/.git/objects/info/commit-graphs/commit-graph-chain.lock" 2>/dev/null
-        color_echo GREEN "🔓  Git unlocked"
-    else
-        color_echo RED "🔒  Git is locked, do you want to force unlock it?"
-        read_with_default "Unlock? (y/n) " "n"
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            sudo rm -f "$DOTDOTFILES/.git/objects/info/commit-graphs/commit-graph-chain.lock"
-            color_echo GREEN "🔓  Git unlocked"
-        else
-            color_echo RED "🔒  Git is locked, skipping update..."
-            exit 1
-        fi
-    fi
-fi
-
-# can't use config here since we don't know if its been defined yet
-(cd "$DOTDOTFILES" && git pull)
-(cd "$DOTDOTFILES" && git submodule update --init --recursive)
-
-timestamp=$(date +"%Y%m%d_%H%M%S")
-
-BACKUPS_PATH="$DOTDOTFILES/backups/$timestamp"
-mkdir -p "$BACKUPS_PATH"
+###############################################################################
+# Utility Functions
+###############################################################################
 
 is_macos() {
     [[ "$OSTYPE" == "darwin"* ]]
@@ -75,161 +32,402 @@ realpath_cmd() {
     fi
 }
 
-printf "\nLinking dotfiles to home directory\n"
+get_checksum_cmd() {
+    if command -v shasum >/dev/null 2>&1; then
+        echo "shasum -a 256"
+    else
+        echo "sha256sum"
+    fi
+}
 
-# go through all files in $DOTDOTFILES/home and create symlinks in $HOME
-# make a backup of each file if it exists
-files=$(find "$DOTDOTFILES/home" -type f)
-color_echo YELLOW "🔗 Linking dotfiles to home directory..."
-for source_file in $files; do
-    relative_path=$(realpath_cmd --no-symlinks --relative-to="$DOTDOTFILES/home" "$source_file")
-    backup_file="$BACKUPS_PATH/$relative_path.bak"
-    home_file=$HOME/$relative_path
+calculate_checksum() {
+    local file="$1"
+    local cmd
+    cmd=$(get_checksum_cmd)
+    $cmd "$file" | cut -d' ' -f1
+}
 
-    if [ -e "$home_file" ]; then
-        mkdir -p "$(dirname "$backup_file")"
-        cp -Hr "$home_file" "$backup_file"
-        color_echo YELLOW "  💾  Backed up: $relative_path"
+has_sudo_access() {
+    command -v sudo >/dev/null 2>&1 && (sudo -n true 2>/dev/null || sudo -v 2>/dev/null)
+}
+
+###############################################################################
+# Parse Command Line Flags
+###############################################################################
+
+parse_flags() {
+    run_background=false
+    repair_mode=false
+    non_interactive=false
+    
+    for arg in "$@"; do
+        case $arg in
+            --background|--bg)
+                run_background=true
+                non_interactive=true
+                ;;
+            --repair)
+                repair_mode=true
+                ;;
+            --non-interactive)
+                non_interactive=true
+                ;;
+        esac
+    done
+    
+    # Export for use in other functions
+    export run_background repair_mode non_interactive
+}
+
+###############################################################################
+# Git Operations
+###############################################################################
+
+handle_git_lock() {
+    local lock_file="$DOTDOTFILES/.git/objects/info/commit-graphs/commit-graph-chain.lock"
+    
+    if [[ ! -f "$lock_file" ]]; then
+        return 0
     fi
     
-    mkdir -p "$(dirname "$home_file")"
-    ln -sf "$source_file" "$home_file"
-    color_echo GREEN "  🔗  Linked: $relative_path"
-done
-
-color_echo BLUE "🔧  Updating authorized keys..."
-# Use github authorized keys to add to ~/.ssh/authorized_keys
-if ! wget https://github.com/agoodkind.keys -O "$HOME"/.ssh/authorized_keys.tmp; then
-    color_echo RED "❌  Failed to download authorized keys" && exit 1
-else
-    # append missing keys to ~/.ssh/authorized_keys
-    touch "$HOME"/.ssh/authorized_keys  # Ensure file exists
-    while IFS= read -r key || [ -n "$key" ]; do
-        if ! grep -q "$key" "$HOME"/.ssh/authorized_keys; then
-            echo "$key" >> "$HOME"/.ssh/authorized_keys
+    if [[ "$non_interactive" == "true" ]]; then
+        color_echo YELLOW "🔒  Git is locked, force unlocking..."
+        rm -f "$lock_file" 2>/dev/null || \
+            sudo rm -f "$lock_file" 2>/dev/null
+        color_echo GREEN "🔓  Git unlocked"
+    else
+        color_echo RED "🔒  Git is locked, do you want to force unlock it?"
+        read_with_default "Unlock? (y/n) " "n"
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            sudo rm -f "$lock_file"
+            color_echo GREEN "🔓  Git unlocked"
+        else
+            color_echo RED "🔒  Git is locked, skipping update..."
+            exit 1
         fi
-    done < "$HOME"/.ssh/authorized_keys.tmp
-    rm -f "$HOME"/.ssh/authorized_keys.tmp
+    fi
+}
+
+update_git_repo() {
+    color_echo BLUE "🔄  Updating plugins and submodules..."
+    
+    handle_git_lock
+    
+    # can't use config here since we don't know if its been defined yet
+    (cd "$DOTDOTFILES" && git pull)
+    (cd "$DOTDOTFILES" && git submodule update --init --recursive)
+    
+    # Update timestamp after git operations (matches original behavior)
+    timestamp=$(date +"%Y%m%d_%H%M%S")
+}
+
+###############################################################################
+# Dotfile Linking
+###############################################################################
+
+link_dotfiles() {
+    printf "\nLinking dotfiles to home directory\n"
+    
+    local BACKUPS_PATH="$DOTDOTFILES/backups/$timestamp"
+    mkdir -p "$BACKUPS_PATH"
+    
+    local files
+    files=$(find "$DOTDOTFILES/home" -type f)
+    color_echo YELLOW "🔗 Linking dotfiles to home directory..."
+    
+    for source_file in $files; do
+        local relative_path
+        relative_path=$(realpath_cmd --no-symlinks --relative-to="$DOTDOTFILES/home" "$source_file")
+        local backup_file="$BACKUPS_PATH/$relative_path.bak"
+        local home_file="$HOME/$relative_path"
+
+        if [[ -e "$home_file" ]]; then
+            mkdir -p "$(dirname "$backup_file")"
+            cp -Hr "$home_file" "$backup_file"
+            color_echo YELLOW "  💾  Backed up: $relative_path"
+        fi
+        
+        mkdir -p "$(dirname "$home_file")"
+        ln -sf "$source_file" "$home_file"
+        color_echo GREEN "  🔗  Linked: $relative_path"
+    done
+}
+
+###############################################################################
+# Authorized Keys
+###############################################################################
+
+update_authorized_keys() {
+    color_echo BLUE "🔧  Updating authorized keys..."
+    
+    if ! wget https://github.com/agoodkind.keys -O "$HOME/.ssh/authorized_keys.tmp"; then
+        color_echo RED "❌  Failed to download authorized keys" && exit 1
+    fi
+    
+    # Append missing keys to ~/.ssh/authorized_keys
+    touch "$HOME/.ssh/authorized_keys"
+    while IFS= read -r key || [[ -n "$key" ]]; do
+        if ! grep -q "$key" "$HOME/.ssh/authorized_keys"; then
+            echo "$key" >> "$HOME/.ssh/authorized_keys"
+        fi
+    done < "$HOME/.ssh/authorized_keys.tmp"
+    
+    rm -f "$HOME/.ssh/authorized_keys.tmp"
     color_echo GREEN "  ✅  Authorized keys updated"
-fi
+}
 
-# Symlink all .sh scripts to ~/.local/bin without .sh extension
-color_echo YELLOW "🔗 Linking scripts to ~/.local/bin..."
-rm -rf "$HOME/.local/bin/scripts" 2>/dev/null || true
-mkdir -p "$HOME/.local/bin/scripts"
-scripts=$(find "$DOTDOTFILES/lib/scripts" -maxdepth 1 -type f -name "*.sh")
-for script in $scripts; do
-    script_name=$(basename "$script" .sh)
-    target="$HOME/.local/bin/scripts/$script_name"
+###############################################################################
+# Script Synchronization
+###############################################################################
 
-    ln -sf "$script" "$target"
+sync_script_with_checksum() {
+    local src="$1"
+    local dst="$2"
+    local mode="$3"  # "link" or "copy"
+    local script_name
+    script_name=$(basename "$src" .sh)
+    local target="$dst/$script_name"
+    
+    local src_sum
+    src_sum=$(calculate_checksum "$src")
+    
+    # Check if target exists and compare checksums
+    if [[ -e "$target" ]] || [[ -L "$target" ]]; then
+        local dst_file="$target"
+        
+        # Resolve symlink if it is one
+        if [[ -L "$target" ]]; then
+            if [[ "$mode" == "link" ]]; then
+                # For symlinks, check if it points to the right file
+                local current_link
+                current_link=$(readlink "$target" 2>/dev/null || echo "")
+                if [[ "$current_link" == "$src" ]] && [[ -e "$src" ]]; then
+                    return 0  # Symlink is already correct
+                fi
+            else
+                # For copy mode, resolve to actual file
+                dst_file=$(readlink -f "$target" 2>/dev/null || echo "$target")
+            fi
+        fi
+        
+        # Compare checksums if target file exists
+        if [[ -f "$dst_file" ]]; then
+            local dst_sum
+            dst_sum=$(calculate_checksum "$dst_file")
+            if [[ "$src_sum" == "$dst_sum" ]]; then
+                return 0  # Already up to date
+            fi
+        fi
+    fi
+    
+    # Perform sync based on mode
+    if [[ "$mode" == "link" ]]; then
+        ln -sf "$src" "$target"
+        color_echo GREEN "  🔗  Linked: $script_name"
+    else
+        cp -f "$src" "$target"
+        chmod +x "$target"
+        color_echo GREEN "  📋  Copied: $script_name"
+    fi
+}
 
-    color_echo GREEN "  🔗  Linked script: $script_name"
-done
+sync_scripts_to_local() {
+    color_echo YELLOW "🔗 Syncing scripts to ~/.local/bin/scripts..."
+    
+    mkdir -p "$HOME/.local/bin/scripts"
+    local scripts
+    scripts=$(find "$DOTDOTFILES/lib/scripts" -maxdepth 1 -type f -name "*.sh")
+    
+    for script in $scripts; do
+        sync_script_with_checksum "$script" "$HOME/.local/bin/scripts" "link"
+    done
+}
 
-NVIM_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/nvim"
-LAZY_DIR="$NVIM_DATA/lazy"
+sync_scripts_to_opt() {
+    color_echo YELLOW "📋 Syncing scripts to /opt/scripts..."
+    
+    if ! has_sudo_access; then
+        color_echo RED "  ⚠️  Skipping /opt/scripts (no sudo access)"
+        return
+    fi
+    
+    sudo mkdir -p /opt/scripts
+    
+    local scripts
+    scripts=$(find "$DOTDOTFILES/lib/scripts" -maxdepth 1 -type f -name "*.sh")
+    
+    for script in $scripts; do
+        local script_name
+        script_name=$(basename "$script" .sh)
+        local target="/opt/scripts/$script_name"
+        local src_sum
+        src_sum=$(calculate_checksum "$script")
+        
+        # Check if copy needs updating
+        local needs_copy=true
+        if [[ -f "$target" ]]; then
+            local dst_sum
+            if command -v shasum >/dev/null 2>&1; then
+                dst_sum=$(sudo shasum -a 256 "$target" 2>/dev/null | cut -d' ' -f1)
+            else
+                dst_sum=$(sudo sha256sum "$target" 2>/dev/null | cut -d' ' -f1)
+            fi
+            if [[ "$src_sum" == "$dst_sum" ]]; then
+                needs_copy=false
+            fi
+        fi
+        
+        if [[ "$needs_copy" == "true" ]]; then
+            sudo cp -f "$script" "$target"
+            sudo chmod +x "$target"
+            color_echo GREEN "  📋  Copied to /opt: $script_name"
+        fi
+    done
+}
 
-# Aggressive cleanup in repair mode
-if [[ "$repair_mode" == "true" ]]; then
+sync_all_scripts() {
+    sync_scripts_to_local
+    sync_scripts_to_opt
+}
+
+###############################################################################
+# Neovim Operations
+###############################################################################
+
+cleanup_neovim_repair() {
+    if [[ "$repair_mode" != "true" ]]; then
+        return 0
+    fi
+    
     color_echo YELLOW "🔧  Repair mode: aggressive cleanup..."
     
-    if [ -d "$LAZY_DIR" ]; then
+    local NVIM_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/nvim"
+    local LAZY_DIR="$NVIM_DATA/lazy"
+    
+    if [[ -d "$LAZY_DIR" ]]; then
         find "$LAZY_DIR" -maxdepth 1 -name "*.cloning" -delete 2>/dev/null
         
         # Remove failed/partial plugin directories (empty or missing .git)
+        local dir
         for dir in "$LAZY_DIR"/*/; do
-            [ -d "$dir" ] || continue
-            if [ ! -d "$dir/.git" ] || [ -z "$(ls -A "$dir" 2>/dev/null)" ]; then
+            [[ -d "$dir" ]] || continue
+            if [[ ! -d "$dir/.git" ]] || [[ -z "$(ls -A "$dir" 2>/dev/null)" ]]; then
                 color_echo YELLOW "  🗑️  Removing incomplete plugin: $(basename "$dir")"
                 rm -rf "$dir"
             fi
         done
     fi
     
-    if [ -d "$NVIM_DATA" ]; then
+    if [[ -d "$NVIM_DATA" ]]; then
         find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*-tmp" -type d -exec rm -rf {} + 2>/dev/null
         find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*" -type d ! -name "*.so" -exec rm -rf {} + 2>/dev/null
     fi
-fi
+}
 
-# Initialize and update neovim plugins
-if command -v nvim >/dev/null 2>&1; then
+update_neovim_plugins() {
+    if ! command -v nvim >/dev/null 2>&1; then
+        return 0
+    fi
+    
     color_echo YELLOW "📦  Installing/updating Neovim plugins..."
     
+    local NVIM_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/nvim"
+    local LAZY_DIR="$NVIM_DATA/lazy"
+    
     # Clean up stale lazy.nvim lock files that can cause SIGKILL failures
-    if [ -d "$LAZY_DIR" ]; then
+    if [[ -d "$LAZY_DIR" ]]; then
         find "$LAZY_DIR" -maxdepth 1 -name "*.cloning" -delete 2>/dev/null
     fi
     
     # Clean up stale treesitter temp directories
-    if [ -d "$NVIM_DATA" ]; then
+    if [[ -d "$NVIM_DATA" ]]; then
         find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*-tmp" -type d -exec rm -rf {} + 2>/dev/null
     fi
     
     nvim --headless -c "lua require('lazy').sync()" -c "qa" 2>/dev/null || true
     color_echo GREEN "  ✅  Neovim plugins updated"
-fi
+}
 
-# remove zcompdump files only if ZSH_COMPDUMP is set
-if [ -n "${ZSH_COMPDUMP:-}" ]; then
-    color_echo YELLOW "🧹  Removing zcompdump file: $ZSH_COMPDUMP"
-    rm -f "$ZSH_COMPDUMP"
-fi
+###############################################################################
+# Cleanup Operations
+###############################################################################
 
-if is_macos; then
-    color_echo YELLOW "🧹  Cleaning up Homebrew..."
-    brew cleanup
+cleanup_zcompdump() {
+    if [[ -n "${ZSH_COMPDUMP:-}" ]]; then
+        color_echo YELLOW "🧹  Removing zcompdump file: $ZSH_COMPDUMP"
+        rm -f "$ZSH_COMPDUMP"
+    fi
+}
 
-    color_echo BLUE "💡  Running macOS setup script..."
+create_hushlogin() {
+    if [[ ! -f "$HOME/.hushlogin" ]]; then
+        color_echo BLUE "🔇  Suppressing default last login message..."
+        touch "$HOME/.hushlogin"
+    fi
+}
+
+###############################################################################
+# OS-Specific Installation
+###############################################################################
+
+run_os_install() {
+    local install_script=""
+    local os_type=""
+    
+    if is_macos; then
+        os_type="macOS"
+        install_script="$DOTDOTFILES/lib/install/mac.sh"
+        color_echo YELLOW "🧹  Cleaning up Homebrew..."
+        brew cleanup
+    elif is_ubuntu; then
+        os_type="Debian/Ubuntu/Proxmox"
+        install_script="$DOTDOTFILES/lib/install/debian.sh"
+    else
+        return 0
+    fi
+    
+    color_echo BLUE "💡  Running $os_type setup script..."
+    
     if [[ "$run_background" == "true" ]]; then
         mkdir -p "$HOME/.cache"
-        log_file="$HOME/.cache/dotfiles_install_${timestamp}.log"
+        local log_file="$HOME/.cache/dotfiles_install_${timestamp}.log"
         color_echo YELLOW "🚀  Running package installation in background..."
         color_echo CYAN "   Log file: $log_file"
-        if [[ "$USE_DEFAULTS" == "true" ]]; then
-            nohup "$DOTDOTFILES/lib/install/mac.sh" --use-defaults "$@" > "$log_file" 2>&1 &
+        
+        if [[ "${USE_DEFAULTS:-false}" == "true" ]]; then
+            nohup "$install_script" --use-defaults "$@" > "$log_file" 2>&1 &
         else
-            nohup "$DOTDOTFILES/lib/install/mac.sh" "$@" > "$log_file" 2>&1 &
+            nohup "$install_script" "$@" > "$log_file" 2>&1 &
         fi
+        
         color_echo GREEN "   Background process started (PID: $!)"
         color_echo CYAN "   Monitor with: tail -f $log_file"
     else
-        if [[ "$USE_DEFAULTS" == "true" ]]; then
-            "$DOTDOTFILES/lib/install/mac.sh" --use-defaults "$@"
+        if [[ "${USE_DEFAULTS:-false}" == "true" ]]; then
+            "$install_script" --use-defaults "$@"
         else
-            "$DOTDOTFILES/lib/install/mac.sh" "$@"
+            "$install_script" "$@"
         fi
     fi
-fi
+}
 
-if is_ubuntu; then
-    color_echo BLUE "💡  Running Debian/Ubuntu/Proxmox setup script..."
-    if [[ "$run_background" == "true" ]]; then
-        mkdir -p "$HOME/.cache"
-        log_file="$HOME/.cache/dotfiles_install_${timestamp}.log"
-        color_echo YELLOW "🚀  Running package installation in background..."
-        color_echo CYAN "   Log file: $log_file"
-        if [[ "$USE_DEFAULTS" == "true" ]]; then
-            nohup "$DOTDOTFILES/lib/install/debian.sh" --use-defaults "$@" > "$log_file" 2>&1 &
-        else
-            nohup "$DOTDOTFILES/lib/install/debian.sh" "$@" > "$log_file" 2>&1 &
-        fi
-        color_echo GREEN "   Background process started (PID: $!)"
-        color_echo CYAN "   Monitor with: tail -f $log_file"
-    else
-        if [[ "$USE_DEFAULTS" == "true" ]]; then
-            "$DOTDOTFILES/lib/install/debian.sh" --use-defaults "$@"
-        else
-            "$DOTDOTFILES/lib/install/debian.sh" "$@"
-        fi
-    fi
-fi
+###############################################################################
+# Main Execution
+###############################################################################
 
-if [[ ! -f "$HOME/.hushlogin" ]]; then
-    color_echo BLUE "🔇  Suppressing default last login message..."
-    touch "$HOME/.hushlogin"
-fi
+main() {
+    parse_flags "$@"
+    update_git_repo
+    link_dotfiles
+    update_authorized_keys
+    sync_all_scripts
+    cleanup_neovim_repair
+    update_neovim_plugins
+    cleanup_zcompdump
+    run_os_install "$@"
+    create_hushlogin
+    color_echo GREEN "✅  Dotfiles synced"
+}
 
-color_echo GREEN "✅  Dotfiles synced"
-
+# Execute main function
+main "$@"
