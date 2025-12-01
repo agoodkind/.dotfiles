@@ -68,7 +68,13 @@ do_update() {
     fi
     
     # Run sync (non-interactive)
-    if ! USE_DEFAULTS=true "$DOTDOTFILES/sync.sh" --non-interactive --quick >> "$LOG_FILE" 2>&1; then
+    log "Running sync.sh"
+    local sync_output
+    sync_output=$(USE_DEFAULTS=true "$DOTDOTFILES/sync.sh" --non-interactive --quick 2>&1)
+    local sync_exit=$?
+    echo "$sync_output" >> "$LOG_FILE"
+    log "sync.sh exited with code $sync_exit"
+    if [[ $sync_exit -ne 0 ]]; then
         error "sync.sh failed"
         return 1
     fi
