@@ -68,7 +68,7 @@ do_update() {
     fi
     
     # Run sync (non-interactive)
-    if ! USE_DEFAULTS=true "$DOTDOTFILES/sync.sh" --non-interactive >> "$LOG_FILE" 2>&1; then
+    if ! USE_DEFAULTS=true "$DOTDOTFILES/sync.sh" --non-interactive --quick >> "$LOG_FILE" 2>&1; then
         error "sync.sh failed"
         return 1
     fi

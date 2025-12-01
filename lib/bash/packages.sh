@@ -94,22 +94,22 @@ export BREW_SPECIFIC=(
     discord
 )
 
-# Brew cask applications
-export BREW_CASKS=(
-	1password
-	1password-cli
-	iterm2
-	keycastr
-	visual-studio-code
-	google-chrome
-	font-jetbrains-mono-nerd-font
-	font-jetbrains-mono
-	cyberduck
-	utm
-	vlc
-	stats
-	xcodes-app
-	pingplotter
+# Brew casks: [cask-name]="App Name" (empty = CLI/font, no .app)
+declare -A BREW_CASKS=(
+    [1password]="1Password"
+    [1password-cli]=""
+    [iterm2]="iTerm"
+    [keycastr]="KeyCastr"
+    [visual-studio-code]="Visual Studio Code"
+    [google-chrome]="Google Chrome"
+    [font-jetbrains-mono-nerd-font]=""
+    [font-jetbrains-mono]=""
+    [cyberduck]="Cyberduck"
+    [utm]="UTM"
+    [vlc]="VLC"
+    [stats]="Stats"
+    [xcodes-app]="Xcodes"
+    [pingplotter]="PingPlotter"
 )
 
 # Add all APT_SPECIFIC packages (no need to check for duplicates since we excluded them above)
@@ -127,6 +127,15 @@ PACKAGE_MAP[openssh:apt]="openssh-client openssh-server"
 
 # snap mappings
 PACKAGE_MAP[neovim:snap]="nvim"
+
+# Get app name for a cask (returns empty if unknown or no .app)
+get_cask_app_name() {
+    local cask="$1"
+    if [[ -v "BREW_CASKS[$cask]" ]]; then
+        local name="${BREW_CASKS[$cask]}"
+        [[ -n "$name" ]] && echo "${name}.app"
+    fi
+}
 
 # Map common package names to APT package names
 # Packages that map to something already in APT_SPECIFIC will be skipped later
