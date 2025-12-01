@@ -15,25 +15,62 @@ else
 	color_echo GREEN "Homebrew already installed, skipping..."
 fi
 
-# Check if a brew package/formula is installed
+# Fast check if command exists (no brew calls)
+cmd_exists() {
+	command -v "$1" &>/dev/null
+}
+
+# Fast check if cask app exists (no brew calls)
+# Uses CASK_APP_MAP from packages.sh
+app_exists() {
+	local cask="$1"
+	local app_name
+	app_name=$(get_cask_app_name "$cask")
+	
+	# Empty app_name means CLI-only or font (check via brew as fallback)
+	[[ -z "$app_name" ]] && return 1
+	
+	[[ -d "/Applications/${app_name}" ]] || [[ -d "$HOME/Applications/${app_name}" ]]
+}
+
+# Slow but thorough brew checks
 is_brew_installed() {
 	brew list --formula "$1" &>/dev/null
 }
 
-# Check if a cask is installed
 is_cask_installed() {
 	brew list --cask "$1" &>/dev/null
 }
 
+# Check if formula is installed (fast or slow based on quick_mode)
+check_formula_installed() {
+	local pkg="$1"
+	if [[ "${quick_mode:-false}" == "true" ]]; then
+		cmd_exists "$pkg"
+	else
+		is_brew_installed "$pkg"
+	fi
+}
+
+# Check if cask is installed (fast or slow based on quick_mode)
+check_cask_installed() {
+	local cask="$1"
+	if [[ "${quick_mode:-false}" == "true" ]]; then
+		app_exists "$cask"
+	else
+		is_cask_installed "$cask"
+	fi
+}
+
 # Install special tap packages if not installed
-if ! is_brew_installed xcodes; then
+if ! check_formula_installed xcodes; then
 	color_echo BLUE "Installing xcodes..."
 	brew install xcodes
 else
 	color_echo GREEN "xcodes already installed, skipping..."
 fi
 
-if ! is_brew_installed speedtest; then
+if ! check_formula_installed speedtest; then
 	color_echo BLUE "Installing speedtest..."
 	brew install showwin/speedtest/speedtest
 else
@@ -48,7 +85,7 @@ ALL_BREW_PACKAGES=("${COMMON_PACKAGES[@]}" "${BREW_SPECIFIC[@]}")
 
 color_echo YELLOW "Checking formula packages..."
 for package in "${ALL_BREW_PACKAGES[@]}"; do
-	if ! is_brew_installed "$package"; then
+	if ! check_formula_installed "$package"; then
 		PACKAGES_TO_INSTALL+=("$package")
 	fi
 done
@@ -65,8 +102,8 @@ fi
 CASKS_TO_INSTALL=()
 
 color_echo YELLOW "Checking cask applications..."
-for cask in "${BREW_CASKS[@]}"; do
-	if ! is_cask_installed "$cask"; then
+for cask in "${!BREW_CASKS[@]}"; do
+	if ! check_cask_installed "$cask"; then
 		CASKS_TO_INSTALL+=("$cask")
 	fi
 done

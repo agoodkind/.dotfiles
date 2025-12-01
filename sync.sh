@@ -59,6 +59,7 @@ parse_flags() {
     run_background=false
     repair_mode=false
     non_interactive=false
+    quick_mode=false
     
     for arg in "$@"; do
         case $arg in
@@ -72,11 +73,14 @@ parse_flags() {
             --non-interactive)
                 non_interactive=true
                 ;;
+            --quick)
+                quick_mode=true
+                ;;
         esac
     done
     
-    # Export for use in other functions
-    export run_background repair_mode non_interactive
+    # Export for use in other functions and subscripts
+    export run_background repair_mode non_interactive quick_mode
 }
 
 ###############################################################################
