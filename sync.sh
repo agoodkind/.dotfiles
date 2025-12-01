@@ -158,6 +158,26 @@ link_dotfiles() {
 }
 
 ###############################################################################
+# SSH Configuration
+###############################################################################
+
+sync_ssh_config() {
+    color_echo BLUE "🔧  Syncing SSH config..."
+    
+    mkdir -p "$HOME/.ssh"
+    chmod 700 "$HOME/.ssh"
+    
+    local src="$DOTDOTFILES/lib/ssh/config"
+    local dst="$HOME/.ssh/config"
+    
+    if [[ -f "$src" ]]; then
+        cp -f "$src" "$dst"
+        chmod 600 "$dst"
+        color_echo GREEN "  ✅  SSH config synced"
+    fi
+}
+
+###############################################################################
 # Authorized Keys
 ###############################################################################
 
@@ -423,6 +443,7 @@ main() {
     parse_flags "$@"
     update_git_repo
     link_dotfiles
+    sync_ssh_config
     update_authorized_keys
     sync_all_scripts
     cleanup_neovim_repair
