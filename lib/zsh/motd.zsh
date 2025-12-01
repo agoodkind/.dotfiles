@@ -125,7 +125,7 @@ function _logininfo {
   fi
 }
 
-function motd {
+motd() {
   local MOTD_DIR="$DOTDOTFILES/lib/motd"
   [[ -d "$MOTD_DIR" ]] || return 0
   for script in "$MOTD_DIR"/*; do
