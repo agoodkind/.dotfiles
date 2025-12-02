@@ -7,13 +7,13 @@
 timestamp=$(date +"%Y%m%d_%H%M%S")
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
+# Source local config if it exists (machine-specific settings)
+[[ -f "$HOME/.overrides.local" ]] && source "$HOME/.overrides.local"
+
 # Source utilities
 source "${DOTDOTFILES}/lib/bash/colors.sh"
 source "${DOTDOTFILES}/lib/bash/defaults.sh"
 source "${DOTDOTFILES}/lib/bash/packages.sh"
-
-# Source local config if it exists (machine-specific settings)
-[[ -f "$HOME/.overrides.local" ]] && source "$HOME/.overrides.local"
 
 ###############################################################################
 # Utility Functions
