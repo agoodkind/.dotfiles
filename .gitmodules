@@ -4,3 +4,4 @@
 [submodule "lib/scripts"]
 	path = lib/scripts
 	url = https://github.com/agoodkind/scripts.git
+	branch = main
