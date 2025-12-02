@@ -13,7 +13,7 @@ source "${DOTDOTFILES}/lib/bash/defaults.sh"
 source "${DOTDOTFILES}/lib/bash/packages.sh"
 
 # Source local config if it exists (machine-specific settings)
-[[ -f "$HOME/.dotfiles_override.local" ]] && source "$HOME/.dotfiles_override.local"
+[[ -f "$HOME/.overrides.local" ]] && source "$HOME/.overrides.local"
 
 ###############################################################################
 # Utility Functions
