@@ -67,6 +67,9 @@ do_update() {
         return 1
     fi
     
+    # Checkout main branch in scripts submodule so it's not detached
+    git -C "$DOTDOTFILES/lib/scripts" checkout main --quiet 2>/dev/null || true
+    
     # Run sync (non-interactive)
     log "Running sync.sh"
     local sync_output

@@ -189,6 +189,7 @@ update_authorized_keys() {
     fi
     
     # Append missing keys to ~/.ssh/authorized_keys
+    mkdir -p "$HOME/.ssh"
     touch "$HOME/.ssh/authorized_keys"
     while IFS= read -r key || [[ -n "$key" ]]; do
         if ! grep -q "$key" "$HOME/.ssh/authorized_keys"; then
