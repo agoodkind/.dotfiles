@@ -283,6 +283,11 @@ sync_scripts_to_local() {
 
 sync_scripts_to_opt() {
     color_echo YELLOW "📋 Syncing scripts to /opt/scripts..."
+
+    if [[ -n "$WORK_DIR_PATH" ]]; then
+        color_echo YELLOW "⏭️  Skipping /opt/scripts update on work laptop"
+        return 0
+    fi
     
     if ! has_sudo_access; then
         color_echo RED "  ⚠️  Skipping /opt/scripts (no sudo access)"
