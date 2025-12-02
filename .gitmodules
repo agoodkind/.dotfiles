@@ -1,6 +1,7 @@
 [submodule "lib/zinit"]
 	path = lib/zinit
 	url = https://github.com/zdharma-continuum/zinit.git
+	branch = main
 [submodule "lib/scripts"]
 	path = lib/scripts
 	url = https://github.com/agoodkind/scripts.git
