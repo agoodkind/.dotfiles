@@ -166,6 +166,11 @@ link_dotfiles() {
 
 sync_ssh_config() {
     color_echo BLUE "🔧  Syncing SSH config..."
+
+    if [[ -n "$WORK_DIR_PATH" ]]; then
+        color_echo YELLOW "⏭️  Skipping SSH config update on work laptop"
+        return 0
+    fi
     
     mkdir -p "$HOME/.ssh"
     chmod 700 "$HOME/.ssh"
