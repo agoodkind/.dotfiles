@@ -27,6 +27,14 @@ is_ubuntu() {
     [[ -f /etc/os-release ]] && grep -qiE 'ubuntu|debian' /etc/os-release
 }
 
+is_work_laptop() {
+    [[ -n "$WORK_DIR_PATH" ]]
+}
+
+skip_on_work_laptop() {
+    is_work_laptop && color_echo YELLOW "⏭️  Skipping $1 on work laptop"
+}
+
 realpath_cmd() {
     if is_macos && command -v grealpath >/dev/null; then
         grealpath "$@"
@@ -59,17 +67,12 @@ has_sudo_access() {
 ###############################################################################
 
 parse_flags() {
-    run_background=false
     repair_mode=false
     non_interactive=false
     quick_mode=false
     
     for arg in "$@"; do
         case $arg in
-            --background|--bg)
-                run_background=true
-                non_interactive=true
-                ;;
             --repair)
                 repair_mode=true
                 ;;
@@ -83,7 +86,7 @@ parse_flags() {
     done
     
     # Export for use in other functions and subscripts
-    export run_background repair_mode non_interactive quick_mode
+    export repair_mode non_interactive quick_mode
 }
 
 ###############################################################################
@@ -167,10 +170,7 @@ link_dotfiles() {
 sync_ssh_config() {
     color_echo BLUE "🔧  Syncing SSH config..."
 
-    if [[ -n "$WORK_DIR_PATH" ]]; then
-        color_echo YELLOW "⏭️  Skipping SSH config update on work laptop"
-        return 0
-    fi
+    skip_on_work_laptop "SSH config" && return 0
     
     mkdir -p "$HOME/.ssh"
     chmod 700 "$HOME/.ssh"
@@ -190,10 +190,7 @@ sync_ssh_config() {
 ###############################################################################
 
 update_authorized_keys() {
-    if [[ -n "$WORK_DIR_PATH" ]]; then
-        color_echo YELLOW "⏭️  Skipping authorized keys update on work laptop"
-        return 0
-    fi
+    skip_on_work_laptop "authorized keys" && return 0
     
     color_echo BLUE "🔧  Updating authorized keys..."
     
@@ -284,10 +281,7 @@ sync_scripts_to_local() {
 sync_scripts_to_opt() {
     color_echo YELLOW "📋 Syncing scripts to /opt/scripts..."
 
-    if [[ -n "$WORK_DIR_PATH" ]]; then
-        color_echo YELLOW "⏭️  Skipping /opt/scripts update on work laptop"
-        return 0
-    fi
+    skip_on_work_laptop "/opt/scripts" && return 0
     
     if ! has_sudo_access; then
         color_echo RED "  ⚠️  Skipping /opt/scripts (no sudo access)"
@@ -431,26 +425,10 @@ run_os_install() {
     
     color_echo BLUE "💡  Running $os_type setup script..."
     
-    if [[ "$run_background" == "true" ]]; then
-        mkdir -p "$HOME/.cache"
-        local log_file="$HOME/.cache/dotfiles_install_${timestamp}.log"
-        color_echo YELLOW "🚀  Running package installation in background..."
-        color_echo CYAN "   Log file: $log_file"
-        
-        if [[ "${USE_DEFAULTS:-false}" == "true" ]]; then
-            nohup "$install_script" --use-defaults "$@" > "$log_file" 2>&1 &
-        else
-            nohup "$install_script" "$@" > "$log_file" 2>&1 &
-        fi
-        
-        color_echo GREEN "   Background process started (PID: $!)"
-        color_echo CYAN "   Monitor with: tail -f $log_file"
+    if [[ "${USE_DEFAULTS:-false}" == "true" ]]; then
+        "$install_script" --use-defaults "$@"
     else
-        if [[ "${USE_DEFAULTS:-false}" == "true" ]]; then
-            "$install_script" --use-defaults "$@"
-        else
-            "$install_script" "$@"
-        fi
+        "$install_script" "$@"
     fi
 }
 
@@ -459,7 +437,6 @@ run_os_install() {
 ###############################################################################
 
 main() {
-    parse_flags "$@"
     update_git_repo
     link_dotfiles
     sync_ssh_config
@@ -473,5 +450,5 @@ main() {
     color_echo GREEN "✅  Dotfiles synced"
 }
 
-# Execute main function
+parse_flags "$@"
 main "$@"
