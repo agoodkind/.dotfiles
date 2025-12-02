@@ -92,6 +92,7 @@ export BREW_SPECIFIC=(
 	wireguard-go
     wireguard-tools
     discord
+    iproute2mac
 )
 
 # Brew casks: [cask-name]="App Name" (empty = CLI/font, no .app)
