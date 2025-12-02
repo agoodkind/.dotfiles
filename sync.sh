@@ -12,6 +12,9 @@ source "${DOTDOTFILES}/lib/bash/colors.sh"
 source "${DOTDOTFILES}/lib/bash/defaults.sh"
 source "${DOTDOTFILES}/lib/bash/packages.sh"
 
+# Source local config if it exists (machine-specific settings)
+[[ -f "$HOME/.dotfiles_override.local" ]] && source "$HOME/.dotfiles_override.local"
+
 ###############################################################################
 # Utility Functions
 ###############################################################################
@@ -182,6 +185,11 @@ sync_ssh_config() {
 ###############################################################################
 
 update_authorized_keys() {
+    if [[ -n "$WORK_DIR_PATH" ]]; then
+        color_echo YELLOW "⏭️  Skipping authorized keys update on work laptop"
+        return 0
+    fi
+    
     color_echo BLUE "🔧  Updating authorized keys..."
     
     if ! wget https://github.com/agoodkind.keys -O "$HOME/.ssh/authorized_keys.tmp"; then
