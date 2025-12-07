@@ -16,11 +16,6 @@ mkdir -p "$HOME/.ssh/sockets"
 color_echo BLUE "🗝️  Starting SSH agent..."
 eval "$(ssh-agent -s)"
 
-color_echo BLUE "➕  Adding SSH keys..."
-# Auto-add SSH key if not already in agent
-ssh-add -l  || true
-ssh-add ~/.ssh/id_ed25519 || true
-
 color_echo BLUE "🔧  Setting up git configuration..."
 run_with_defaults "$DOTDOTFILES/lib/install/git.sh"
 

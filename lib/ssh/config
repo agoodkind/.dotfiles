@@ -8,6 +8,7 @@ Include ~/.dotfiles/.ssh_config.local
 # Automatically add keys to the agent and use system keychain
 Host *
   AddKeysToAgent yes
+  UseKeychain yes
   IdentityFile ~/.ssh/id_ed25519
 
 Host home

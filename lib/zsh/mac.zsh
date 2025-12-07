@@ -1,6 +1,17 @@
 # shellcheck shell=bash
 
 ########################
+# SSH key persistence  #
+# Ensure SSH key is loaded in agent after reboot (uses Apple keychain)
+# Run in background to not block shell startup
+{
+    if ! /usr/bin/ssh-add -l 2>/dev/null | grep -q "id_ed25519"; then
+        /usr/bin/ssh-add --apple-use-keychain ~/.ssh/id_ed25519
+    fi
+} >> ~/.cache/ssh-add.log 2>&1 &!
+########################
+
+########################
 # iterm customizations #
 # ITERM2_SQUELCH_MARK=1
 test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
