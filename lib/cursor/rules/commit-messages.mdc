@@ -55,7 +55,7 @@ alwaysApply: true
 ✅ Good:
 
 - "Remove unused import"
-- "Add amount validation to transaction creation"
+- "Add amount validation to silver processor"
 - "Add retry mechanism for failed requests"
 - "Refactor error handling in GraphQL resolver"
 - "Update syslog_message field in unbound Logstash filter and adjust field removal"
@@ -78,7 +78,7 @@ alwaysApply: true
 - "Fix bug" (too vague)
 - "Update logic" (too vague)
 - "Refactor code" (too vague)
-- "Update transaction validation logic" (too vague)
+- "Update silver validation logic" (too vague)
 - "Reintroduce VM existence check in Debian playbook with improved clarity. Uncommented tasks for setting facts about existing VMs, while temporarily commenting out VM stop and destroy tasks to streamline the redeployment process. This change enhances the overall flow and maintainability of the playbook."
 - "Refactor deploy-mwan.yml to streamline service management and enhance clarity. Removed redundant notifications for service reloads and restarts, and added explicit service start commands based on certificate checks. Improved overall flow by consolidating service enabling and starting tasks."
 - "Update VM creation condition in Debian playbook to check for undefined VMID. This change ensures that the VM creation block is only executed when a new VMID is available, improving the logic and flow of the playbook."

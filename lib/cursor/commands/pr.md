@@ -33,6 +33,14 @@ Analyze the branch changes and create a pull request using the GitHub CLI, follo
 - Filler phrases like "improves the user experience"
 - Purpose clauses explaining why ("to improve...", "for better...")
 
+## Branch Naming Convention
+
+Branches must follow: `username/TICKET-NUMBER/descriptive-name` (with slashes, not dashes)
+
+Examples:
+- ✅ `agoodkind/AG-10677/fix-silver-shimmer`
+- ❌ `agoodkind-AG-10677-fix-silver-shimmer` (wrong: uses dashes)
+
 ## Steps
 
 1. Check for ticket number in this order:
@@ -60,7 +68,7 @@ Ticket: https://ag.atlassian.net/browse/AG-1234"
 
 ❌ Bad Title:
 - "fix: Fix silver bug"
-- "[AG-1234] fix: Update transaction logic to improve reliability"
+- "[AG-1234] fix: Update silver logic to improve reliability"
 - "Update silver logic" (missing ticket)
 
 ❌ Bad Description:
@@ -75,8 +83,13 @@ Create a PR with a single-line title and 2-3 paragraph prose description. If the
 After PR creation succeeds, output a Slack message for the code review channel:
 
 ```
-[TICKET-123] <Brief description>: <PR_URL>
+<Symptom/benefit> by <action>: <PR_URL>
 ```
 
-Keep it concise - one line with ticket, description, and URL. The description should be similar to the PR title (without the ticket prefix repeated).
+Keep it concise - one line with symptom/action format and URL. Start with the observable benefit or problem being solved, followed by "by" and the action taken. Examples:
+- "Speed up CI checks by combining sorbet steps: https://..."
+- "Fix duplicate silver entries by resetting list state on refresh: https://..."
+- "Reduce memory usage by lazy loading images: https://..."
+
+If there's a ticket, optionally prefix with `[TICKET-123]` but keep the symptom/action format.
 

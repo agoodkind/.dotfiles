@@ -6,6 +6,16 @@ alwaysApply: true
 
 # PR Description Standards
 
+## Branch Naming Convention
+
+Branches must follow: `username/TICKET-NUMBER/descriptive-name` (with slashes, not dashes)
+
+**Examples:**
+- ✅ `agoodkind/AG-10677/fix-silver-shimmer`
+- ✅ `jsmith/PA-1234/add-silver-filter`
+- ❌ `agoodkind-AG-10677-fix-silver-shimmer` (wrong: uses dashes)
+- ❌ `AG-10677-fix-silver-shimmer` (wrong: missing username)
+
 ## Critical Rules
 
 - **Prose Paragraphs**: Write descriptions as concise prose, NOT bullet lists
@@ -40,15 +50,15 @@ alwaysApply: true
 ## Examples
 
 ✅ Good Title:
-- "Add amount validation to transaction creation"
+- "Add amount validation to silver processor"
 - "Reset list state on pull-to-refresh"
 
 ✅ Good Description:
-"The transaction list was showing duplicate entries after pull-to-refresh. The issue was that fetchTransactions was appending results instead of replacing them when the offset was zero. This PR resets the list state before fetching when triggered by refresh."
+"The silver elemental list was showing duplicate entries after pull-to-refresh. The issue was that fetchSilver was appending results instead of replacing them when the offset was zero. This PR resets the list state before fetching when triggered by refresh."
 
 ❌ Bad Title:
-- "fix: Fix transaction bug"
-- "Update transaction logic to improve reliability"
+- "fix: Fix silver bug"
+- "Update silver logic to improve reliability"
 
 ❌ Bad Description:
-"This PR fixes a bug in the transaction fetching logic. Previously the code was appending results incorrectly. Now it properly resets state. This improves the user experience by preventing confusion from duplicate items."
+"This PR fixes a bug in the silver fetching logic. Previously the code was appending results incorrectly. Now it properly resets state. This improves the user experience by preventing confusion from duplicate items."
