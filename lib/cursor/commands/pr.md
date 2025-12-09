@@ -35,29 +35,48 @@ Analyze the branch changes and create a pull request using the GitHub CLI, follo
 
 ## Steps
 
-1. Run `git log main..HEAD --oneline` to see commits on the branch
-2. Run `git diff main...HEAD` to analyze all changes
-3. Craft a concise PR title (imperative mood, no prefixes)
-4. Write 2-3 paragraph description following the flow: symptom → root cause → fix
-5. Execute `gh pr create --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
+1. Check for ticket number in this order:
+   - First check current branch name (e.g. `agoodkind/AG-12345/fix-bug` → `AG-12345`)
+   - Then check commit messages for ticket references
+   - If not found, ask the user for the ticket number
+2. Run `git log main..HEAD --oneline` to see commits on the branch
+3. Run `git diff main...HEAD` to analyze all changes
+4. Craft a concise PR title with ticket prefix: `[AG-12345] Your title here` (imperative mood, no feat/fix prefixes)
+5. Write 2-3 paragraph description following the flow: symptom → root cause → fix
+6. Add ticket link at the end of description: `Ticket: https://ag.atlassian.net/browse/AG-12345` (infer the correct alassian subdomain from context or company)
+7. Execute `gh pr create --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
+8. After PR is created, output a Slack message for the review request channel
 
 ## Examples
 
 ✅ Good Title:
-- "Add amount validation to transaction creation"
-- "Reset list state on pull-to-refresh"
+- "[AG-1234] Add amount validation to silver processor
+- "[PLAT-567] Reset list state on pull-to-refresh"
 
 ✅ Good Description:
-"The transaction list was showing duplicate entries after pull-to-refresh. The issue was that fetchTransactions was appending results instead of replacing them when the offset was zero. This PR resets the list state before fetching when triggered by refresh."
+"The silver list was showing duplicate entries after pull-to-refresh. The issue was that fetchSilverElectrons was appending results instead of replacing them when the offset was zero. This PR resets the list state before fetching when triggered by refresh.
+
+Ticket: https://ag.atlassian.net/browse/AG-1234"
 
 ❌ Bad Title:
-- "fix: Fix transaction bug"
-- "Update transaction logic to improve reliability"
+- "fix: Fix silver bug"
+- "[AG-1234] fix: Update transaction logic to improve reliability"
+- "Update silver logic" (missing ticket)
 
 ❌ Bad Description:
-"This PR fixes a bug in the transaction fetching logic. Previously the code was appending results incorrectly. Now it properly resets state. This improves the user experience by preventing confusion from duplicate items."
+"This PR fixes a bug in the silver fetching logic. Previously the code was appending results incorrectly. Now it properly resets state. This improves the user experience by preventing confusion from duplicate items."
+
+(Missing ticket link at the end)
 
 ## Output Format
 
 Create a PR with a single-line title and 2-3 paragraph prose description. If the PR creation fails, report the error. No bullet lists, no prefix labels, no benefit statements.
+
+After PR creation succeeds, output a Slack message for the code review channel:
+
+```
+[TICKET-123] <Brief description>: <PR_URL>
+```
+
+Keep it concise - one line with ticket, description, and URL. The description should be similar to the PR title (without the ticket prefix repeated).
 
