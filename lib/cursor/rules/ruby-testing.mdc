@@ -1,0 +1,28 @@
+---
+description: Ruby testing standards - RSpec, Sorbet, RuboCop
+globs: "**/*.rb"
+alwaysApply: false
+---
+
+# Ruby Testing Standards
+
+## Type Safety
+
+- Always add Sorbet `sig` blocks when adding new methods
+
+## Linting
+
+- Fix all RuboCop errors
+- Avoid disabling RuboCop rules
+
+## Test Quality
+
+- Ensure tests run successfully
+- Run broader test suite to verify no regressions
+- Use `SecureRandom.uuid` or `Faker::Internet.uuid` for ID fields in tests
+- Keep tests DRY - extract shared setup and data to helpers or `let` blocks
+
+## Test Coverage
+
+- Include end-to-end tests that execute through the full code path
+- Avoid over-mocking internal methods that would bypass critical execution paths

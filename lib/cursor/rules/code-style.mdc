@@ -1,0 +1,39 @@
+---
+description: Language-specific code conventions
+globs: **/*
+alwaysApply: true
+---
+
+# Code Style Conventions
+
+## General
+
+- Keep lines under 90 columns
+
+## JavaScript / TypeScript
+
+- Always use function definitions instead of arrow functions
+
+```typescript
+// ✅ Good
+function handleClick(event) {
+  // ...
+}
+
+// ❌ Bad
+const handleClick = (event) => {
+  // ...
+}
+```
+
+## Shell Scripts
+
+- Always use the env form of the shebang
+
+```bash
+# ✅ Good
+#!/usr/bin/env bash
+
+# ❌ Bad
+#!/bin/bash
+```
