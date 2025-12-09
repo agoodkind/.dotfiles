@@ -144,7 +144,7 @@ repair() {
 }
 
 sync() {
-    "$DOTDOTFILES/sync.sh" "$@"
+    "$DOTDOTFILES/sync.sh" --quick "$@"
 }
 
 # dotfile management
