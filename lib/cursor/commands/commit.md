@@ -46,17 +46,35 @@ Stage all changes and commit them with a generated commit message, following the
 - "updates" (as a prefix)
 - Any justification or explanation of why the change was made
 
+## Commit Scope & Splitting
+
+**Default behavior**: If there's no prior conversation context (blank chat), commit all staged/unstaged changes together.
+
+**With conversation context**: If we discussed specific changes, evaluate which files belong:
+
+- **Relevance Check**: Only commit files related to the task discussed
+- **Unrelated Changes**: If unrelated files were modified, exclude them or commit separately
+- **Logical Units**: Each commit should represent one logical change
+- **Ask When Uncertain**: If it's unclear whether a file should be included, ask before committing
+
+Signs you should split commits:
+- Changes affect unrelated features or systems
+- The commit message would need "and" to describe all changes
+- Some files are cleanup/refactoring while others are new functionality
+
 ## Steps
 
 1. Run `git status` to check for unstaged and staged changes
-2. If there are unstaged changes, stage them with `git add`
-3. Run `git diff --staged` to analyze what was modified
-4. Craft a single, concise subject line that states what changed
-5. Be specific about what changed and where (file names, functions, etc.)
-6. Use imperative mood
-7. Do NOT include explanations, justifications, or benefit statements
-8. Avoid all prohibited patterns listed above
-9. Execute `git commit -m "<message>"` with the generated message (use `required_permissions: ["git_write"]`)
+2. If there's prior conversation context, review changed files for relevance; otherwise, include all changes
+3. Stage files with `git add` (all files if no context, or specific files if filtering)
+4. Run `git diff --staged` to analyze what was modified
+5. Craft a single, concise subject line that states what changed
+6. Be specific about what changed and where (file names, functions, etc.)
+7. Use imperative mood
+8. Do NOT include explanations, justifications, or benefit statements
+9. Avoid all prohibited patterns listed above
+10. Execute `git commit -m "<message>"` with the generated message (use `required_permissions: ["git_write"]`)
+11. If there are remaining relevant changes, repeat for the next logical commit
 
 ## Examples
 
