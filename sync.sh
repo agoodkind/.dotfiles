@@ -267,20 +267,44 @@ sync_script_with_checksum() {
 }
 
 sync_scripts_to_local() {
+    # Only sync to local on macOS (Debian uses systemd installer to /opt/scripts)
+    if ! is_macos; then
+        return 0
+    fi
+    
     color_echo YELLOW "🔗 Syncing scripts to ~/.local/bin/scripts..."
     
     mkdir -p "$HOME/.local/bin/scripts"
     local scripts
-    scripts=$(find "$DOTDOTFILES/lib/scripts" -maxdepth 1 -type f -name "*.sh")
+    # Find executable files (excluding hidden files and specific non-script files)
+    scripts=$(find "$DOTDOTFILES/lib/scripts" -maxdepth 1 -type f -executable \
+        ! -name ".*" ! -name "LICENSE" ! -name "*.md" ! -name "*.txt")
     
     for script in $scripts; do
-        sync_script_with_checksum "$script" "$HOME/.local/bin/scripts" "link"
+        local script_name
+        script_name=$(basename "$script")
+        local target="$HOME/.local/bin/scripts/$script_name"
+        
+        # Check if symlink already points to correct location
+        if [[ -L "$target" ]]; then
+            local current_link
+            current_link=$(readlink "$target" 2>/dev/null || echo "")
+            if [[ "$current_link" == "$script" ]]; then
+                continue  # Already correct
+            fi
+        fi
+        
+        ln -sf "$script" "$target"
+        color_echo GREEN "  🔗  Linked: $script_name"
     done
 }
 
 sync_scripts_to_opt() {
-    color_echo YELLOW "📋 Syncing scripts to /opt/scripts..."
-
+    # Only run on Debian/Ubuntu (macOS uses local symlinks)
+    if ! is_ubuntu; then
+        return 0
+    fi
+    
     skip_on_work_laptop "/opt/scripts" && return 0
     
     if ! has_sudo_access; then
@@ -288,38 +312,23 @@ sync_scripts_to_opt() {
         return
     fi
     
-    sudo mkdir -p /opt/scripts
+    # Check if systemd updater is already installed
+    if systemctl is-enabled scripts-updater.timer &>/dev/null; then
+        color_echo GREEN "✅  scripts-updater systemd timer already installed"
+        # Just trigger an update
+        sudo systemctl start scripts-updater.service 2>/dev/null || true
+        return 0
+    fi
     
-    local scripts
-    scripts=$(find "$DOTDOTFILES/lib/scripts" -maxdepth 1 -type f -name "*.sh")
+    # Check if /opt/scripts exists but is not a git repo (old copy-based install)
+    if [[ -d "/opt/scripts" ]] && [[ ! -d "/opt/scripts/.git" ]]; then
+        color_echo YELLOW "🔄  Migrating /opt/scripts to git-based systemd updater..."
+    else
+        color_echo YELLOW "📦  Installing scripts-updater systemd timer..."
+    fi
     
-    for script in $scripts; do
-        local script_name
-        script_name=$(basename "$script" .sh)
-        local target="/opt/scripts/$script_name"
-        local src_sum
-        src_sum=$(calculate_checksum "$script")
-        
-        # Check if copy needs updating
-        local needs_copy=true
-        if [[ -f "$target" ]]; then
-            local dst_sum
-            if command -v shasum >/dev/null 2>&1; then
-                dst_sum=$(sudo shasum -a 256 "$target" 2>/dev/null | cut -d' ' -f1)
-            else
-                dst_sum=$(sudo sha256sum "$target" 2>/dev/null | cut -d' ' -f1)
-            fi
-            if [[ "$src_sum" == "$dst_sum" ]]; then
-                needs_copy=false
-            fi
-        fi
-        
-        if [[ "$needs_copy" == "true" ]]; then
-            sudo cp -f "$script" "$target"
-            sudo chmod +x "$target"
-            color_echo GREEN "  📋  Copied to /opt: $script_name"
-        fi
-    done
+    # Run the installer script
+    sudo "$DOTDOTFILES/lib/scripts/install-updater"
 }
 
 sync_all_scripts() {
