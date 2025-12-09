@@ -1,0 +1,11 @@
+---
+description: Sensitive data handling - never expose keys or tokens
+globs: **/*
+alwaysApply: true
+---
+
+# Security - Sensitive Data Handling
+
+- Never expose keys or tokens, even in chat
+- Always work indirectly with sensitive data via environment variables or file references
+- Do not echo, print, or display secret values

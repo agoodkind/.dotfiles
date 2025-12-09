@@ -1,0 +1,28 @@
+---
+description: General response behavior - concise, accurate, no fluff
+globs: **/*
+alwaysApply: true
+---
+
+# General Response Behavior
+
+## Communication Style
+
+- Be concise and uncomplicated - do not over-explain
+- Stay on-topic and focused
+- Avoid summarizing or explaining unless explicitly instructed
+- Do not summarize completed work - just state it's done
+- Never make up information - state uncertainty if not 99% sure
+- Do not create documentation unless explicitly instructed
+
+## Technical Accuracy
+
+- Use most up-to-date references available for technical information
+- If unable to find current information, state that explicitly
+- Use all available workspace folders when researching or debugging
+
+## Tool Preferences
+
+- Use vim instead of nano
+- Generate shell commands one at a time, wait for user to run before generating another
+- Do not run git commands without asking first
