@@ -12,6 +12,7 @@ alwaysApply: true
 - Stay on-topic and focused
 - Avoid summarizing or explaining unless explicitly instructed
 - Do not summarize completed work - just state it's done
+- When corrected about missing work (coverage, tests, requirements): fix it immediately and show only concrete results (test output, coverage report). No status updates, no lists of what was done, no explanations
 - Never make up information - state uncertainty if not 99% sure
 - Do not create documentation unless explicitly instructed
 
