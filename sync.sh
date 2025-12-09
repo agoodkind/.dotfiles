@@ -328,6 +328,42 @@ sync_all_scripts() {
 }
 
 ###############################################################################
+# Cursor Configuration
+###############################################################################
+
+sync_cursor_config() {
+    color_echo BLUE "🔧  Syncing Cursor configuration..."
+    
+    local cursor_dir="$HOME/.cursor"
+    local src_rules="$DOTDOTFILES/lib/cursor/rules"
+    local src_commands="$DOTDOTFILES/lib/cursor/commands"
+    
+    # Sync rules
+    if [[ -d "$src_rules" ]]; then
+        mkdir -p "$cursor_dir/rules"
+        for rule in "$src_rules"/*; do
+            [[ -f "$rule" ]] || continue
+            local rule_name
+            rule_name=$(basename "$rule")
+            ln -sf "$rule" "$cursor_dir/rules/$rule_name"
+            color_echo GREEN "  🔗  Linked rule: $rule_name"
+        done
+    fi
+    
+    # Sync commands
+    if [[ -d "$src_commands" ]]; then
+        mkdir -p "$cursor_dir/commands"
+        for cmd in "$src_commands"/*; do
+            [[ -f "$cmd" ]] || continue
+            local cmd_name
+            cmd_name=$(basename "$cmd")
+            ln -sf "$cmd" "$cursor_dir/commands/$cmd_name"
+            color_echo GREEN "  🔗  Linked command: $cmd_name"
+        done
+    fi
+}
+
+###############################################################################
 # Neovim Operations
 ###############################################################################
 
@@ -442,6 +478,7 @@ main() {
     sync_ssh_config
     update_authorized_keys
     sync_all_scripts
+    sync_cursor_config
     cleanup_neovim_repair
     update_neovim_plugins
     cleanup_zcompdump
