@@ -1,6 +1,6 @@
 # Stage and Commit Changes
 
-Commit already-staged changes with a generated commit message. Also check for unstaged files that should be included, following these strict guidelines:
+Commit changes with a generated commit message. If files are already staged, commit those. If nothing is staged, stage and commit all unstaged changes. Follow these strict guidelines:
 
 ## Critical Rules
 
@@ -62,18 +62,32 @@ Signs you should split commits:
 - The commit message would need "and" to describe all changes
 - Some files are cleanup/refactoring while others are new functionality
 
+## Files to Skip
+
+Use common sense to exclude files that shouldn't be committed:
+
+- Log files (*.log, debug output, etc.)
+- Build artifacts and compiled output
+- Temporary files and caches
+- IDE/editor-generated files not in .gitignore
+- Lock files that weren't intentionally changed
+- Large binary files accidentally created
+
+When in doubt, ask before including a suspicious file.
+
 ## Steps
 
 1. Run `git status` to check for staged and unstaged changes
-2. Run `git diff --staged` to analyze what's already staged
-3. Check unstaged changes - if any should be included with the staged changes, stage them with `git add`
-4. Craft a single, concise subject line that states what changed
-5. Be specific about what changed and where (file names, functions, etc.)
-6. Use imperative mood
-7. Do NOT include explanations, justifications, or benefit statements
-8. Avoid all prohibited patterns listed above
-9. Execute `git commit -m "<message>"` with the generated message (use `required_permissions: ["all"]`)
-10. If there are remaining relevant changes, repeat for the next logical commit
+2. Review the changed files - skip any that shouldn't be committed (logs, artifacts, etc.)
+3. If files are staged, run `git diff --staged` to analyze them
+4. If nothing is staged but unstaged changes exist, stage appropriate files with `git add` (skip files that shouldn't be committed)
+5. Craft a single, concise subject line that states what changed
+6. Be specific about what changed and where (file names, functions, etc.)
+7. Use imperative mood
+8. Do NOT include explanations, justifications, or benefit statements
+9. Avoid all prohibited patterns listed above
+10. Execute `git commit -m "<message>"` with the generated message (use `required_permissions: ["all"]`)
+11. If there are remaining relevant changes, repeat for the next logical commit
 
 ## Examples
 
@@ -112,4 +126,4 @@ Signs you should split commits:
 
 ## Output Format
 
-Commit staged changes, check for unstaged files that should be included, generate a single-line commit message, and execute the commit. If ESLint or other pre-commit hooks fail, fix the issues and retry. No prefix labels, no explanations, no multi-line format.
+Commit staged changes (or stage and commit all unstaged changes if nothing is staged), generate a single-line commit message, and execute the commit. If ESLint or other pre-commit hooks fail, fix the issues and retry. No prefix labels, no explanations, no multi-line format.
