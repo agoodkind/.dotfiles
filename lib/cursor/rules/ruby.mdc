@@ -1,0 +1,17 @@
+---
+description: Ruby development standards
+globs: "**/*.rb"
+alwaysApply: false
+---
+
+# Ruby Development Standards
+
+## Before Pushing
+
+After all changes are made and before pushing, run RuboCop on all files:
+
+```bash
+bundle install && bundle exec rubocop --parallel --disable-pending-cops --display-style-guide -A
+```
+
+Fix any remaining issues before pushing.
