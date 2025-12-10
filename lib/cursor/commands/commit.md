@@ -1,6 +1,6 @@
 # Stage and Commit Changes
 
-Stage all changes and commit them with a generated commit message, following these strict guidelines:
+Commit already-staged changes with a generated commit message. Also check for unstaged files that should be included, following these strict guidelines:
 
 ## Critical Rules
 
@@ -64,17 +64,16 @@ Signs you should split commits:
 
 ## Steps
 
-1. Run `git status` to check for unstaged and staged changes
-2. If there's prior conversation context, review changed files for relevance; otherwise, include all changes
-3. Stage files with `git add` (all files if no context, or specific files if filtering)
-4. Run `git diff --staged` to analyze what was modified
-5. Craft a single, concise subject line that states what changed
-6. Be specific about what changed and where (file names, functions, etc.)
-7. Use imperative mood
-8. Do NOT include explanations, justifications, or benefit statements
-9. Avoid all prohibited patterns listed above
-10. Execute `git commit -m "<message>"` with the generated message (use `required_permissions: ["git_write"]`)
-11. If there are remaining relevant changes, repeat for the next logical commit
+1. Run `git status` to check for staged and unstaged changes
+2. Run `git diff --staged` to analyze what's already staged
+3. Check unstaged changes - if any should be included with the staged changes, stage them with `git add`
+4. Craft a single, concise subject line that states what changed
+5. Be specific about what changed and where (file names, functions, etc.)
+6. Use imperative mood
+7. Do NOT include explanations, justifications, or benefit statements
+8. Avoid all prohibited patterns listed above
+9. Execute `git commit -m "<message>"` with the generated message (use `required_permissions: ["all"]`)
+10. If there are remaining relevant changes, repeat for the next logical commit
 
 ## Examples
 
@@ -113,4 +112,4 @@ Signs you should split commits:
 
 ## Output Format
 
-Stage all changes, generate a single-line commit message, and execute the commit. If ESLint or other pre-commit hooks fail, fix the issues and retry. No prefix labels, no explanations, no multi-line format.
+Commit staged changes, check for unstaged files that should be included, generate a single-line commit message, and execute the commit. If ESLint or other pre-commit hooks fail, fix the issues and retry. No prefix labels, no explanations, no multi-line format.
