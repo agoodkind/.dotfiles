@@ -14,6 +14,7 @@ Analyze the branch changes and create a pull request using the GitHub CLI, follo
 - **No Prefix Labels**: Avoid feat, refactor, fix, etc.
 - **Direct Statement**: Use imperative mood, state what changed
 - **Specific**: Be specific about what changed and where
+- **Ticket Optional**: Include the ticket prefix when one exists; omit it if the user confirms there is no ticket
 
 ## Description Structure
 
@@ -46,12 +47,12 @@ Examples:
 1. Check for ticket number in this order:
    - First check current branch name (e.g. `agoodkind/AG-12345/fix-bug` → `AG-12345`)
    - Then check commit messages for ticket references
-   - If not found, ask the user for the ticket number
+   - If not found, ask the user for the ticket number; if the user confirms there is no ticket, proceed without one
 2. Run `git log main..HEAD --oneline` to see commits on the branch
 3. Run `git diff main...HEAD` to analyze all changes
-4. Craft a concise PR title with ticket prefix: `[AG-12345] Your title here` (imperative mood, no feat/fix prefixes)
+4. Craft a concise PR title with ticket prefix when available: `[AG-12345] Your title here` (imperative mood, no feat/fix prefixes); if no ticket, skip the prefix
 5. Write 2-3 paragraph description following the flow: symptom → root cause → fix
-6. Add ticket link at the end of description: `Ticket: https://ag.atlassian.net/browse/AG-12345` (infer the correct alassian subdomain from context or company)
+6. Add ticket link at the end of description when a ticket exists: `Ticket: https://ag.atlassian.net/browse/AG-12345` (infer the correct alassian subdomain from context or company); omit if no ticket
 7. Execute `gh pr create --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
 8. After PR is created, output a Slack message for the review request channel
 
@@ -83,13 +84,13 @@ Create a PR with a single-line title and 2-3 paragraph prose description. If the
 After PR creation succeeds, output a Slack message for the code review channel:
 
 ```
-<Symptom/benefit> by <action>: <PR_URL>
+<Symptom/benefit> <PR_URL>
 ```
 
-Keep it concise - one line with symptom/action format and URL. Start with the observable benefit or problem being solved, followed by "by" and the action taken. Examples:
-- "Speed up CI checks by combining sorbet steps: https://..."
-- "Fix duplicate silver entries by resetting list state on refresh: https://..."
-- "Reduce memory usage by lazy loading images: https://..."
+Keep it concise—one line with the symptom or benefit followed by the URL. If calling out the action materially clarifies what changed, you can append “by <action>” before the URL. Examples:
+- "Add JIRA PR badge https://..."
+- "Fix duplicate silver entries by resetting list state: https://..."
+- "Reduce memory usage https://..."
 
-If there's a ticket, optionally prefix with `[TICKET-123]` but keep the symptom/action format.
+If there's a ticket, optionally prefix with `[TICKET-123]` but keep the symptom/benefit (+ optional “by <action>”) + URL format.
 
