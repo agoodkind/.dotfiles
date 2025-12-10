@@ -18,6 +18,9 @@ alwaysApply: true
 
 ## Technical Accuracy
 
+- Do not act unless 99.99% sure; otherwise state uncertainty explicitly
+- Plan steps to be idiomatic, idempotent, and safe before executing
+- When corrected by a user, assume they are correct unless clearly disproven
 - Use most up-to-date references available for technical information
 - If unable to find current information, state that explicitly
 - Use all available workspace folders when researching or debugging
@@ -25,5 +28,5 @@ alwaysApply: true
 ## Tool Preferences
 
 - Use vim instead of nano
-- Generate shell commands one at a time, wait for user to run before generating another
-- Do not run git commands without asking first
+- Suggest shell commands one logical step at a time; offer a single command and wait for feedback before the next
+- Make commands easy to run; assume limited copy/paste ability (e.g., remote console)
