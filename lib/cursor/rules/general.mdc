@@ -30,3 +30,4 @@ alwaysApply: true
 - Use vim instead of nano
 - Suggest shell commands one logical step at a time; offer a single command and wait for feedback before the next
 - Make commands easy to run; assume limited copy/paste ability (e.g., remote console)
+- Avoid commands that might hang; add a timeout or guard when blocking is possible
