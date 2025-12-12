@@ -23,3 +23,6 @@ Carry out the command referenced in this message or the latest context.
 4. Show the command output or a short failure summary with the exit code.
 5. If follow-up work depends on the output, confirm with the user before
    proceeding.
+
+
+
