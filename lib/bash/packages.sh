@@ -41,6 +41,7 @@ export COMMON_PACKAGES=(
     pv
 	python3
 	rename
+	rg
 	rsync
 	ruby
 	screen
