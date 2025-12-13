@@ -1,4 +1,4 @@
-# Run Mentioned Command
+# Run Command
 
 Carry out the command referenced in this message or the latest context.
 
@@ -18,11 +18,4 @@ Carry out the command referenced in this message or the latest context.
 1. Identify the command(s) from the latest instruction or context; if phrased
    loosely, restate the exact command back unless already confirmed.
 2. If multiple commands are possible or details are unclear, ask which to run.
-3. Run each command exactly as provided, in order; avoid backgrounding unless
-   requested.
-4. Show the command output or a short failure summary with the exit code.
-5. If follow-up work depends on the output, confirm with the user before
-   proceeding.
-
-
-
+3. Show the command output or a short failure summary with the exit code.
