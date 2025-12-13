@@ -71,6 +71,11 @@ Host debianct
   User root
   ForwardAgent yes
 
+Host vault
+  Hostname vault.home.goodkind.io
+  User root
+  ForwardAgent yes
+
 Host vault-jetkvm
   Hostname vault-jetkvm.goodkind.io
   User root
