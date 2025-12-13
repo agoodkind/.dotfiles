@@ -100,21 +100,13 @@ sudoedit() {
 # clear screen
 c() { command clear; }
 
-# ls defaults (GNU ls preferred when available)
-LS_ARGS=(-lah --color=auto -G --group-directories-first)
-LS_BIN=ls
-if isinstalled gls; then
-    LS_BIN=gls
-fi
-ll() { command "$LS_BIN" "${LS_ARGS[@]}" "$@"; }
-ls() { ll "$@"; }
-
 # Prefer enhanced replacements when the binaries exist
-prefer ls eza --icons --git --group-directories-first
-prefer ll eza -lah --icons --git --group-directories-first
-prefer la eza -a --icons --git --group-directories-first
-prefer lt eza --tree --level=2 --icons --git
-prefer llt eza -lah --tree --level=2 --icons --git
+prefer ls eza --icons  --group-directories-first
+prefer ll eza -lah --icons --group-directories-first
+prefer la eza -a --icons --group-directories-first
+prefer lt eza --tree --level=2 --icons
+prefer llt eza -lah --tree --level=2 --icons
+ls() { ll "$@"; }
 
 # cat / find / grep
 prefer_tty cat bat --style=auto --paging=never
