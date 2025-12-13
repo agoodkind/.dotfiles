@@ -31,3 +31,21 @@ alwaysApply: true
 - Suggest shell commands one logical step at a time; offer a single command and wait for feedback before the next
 - Make commands easy to run; assume limited copy/paste ability (e.g., remote console)
 - Avoid commands that might hang; add a timeout or guard when blocking is possible
+## Response Format (PR / Slack tone)
+
+- Write like an engineer leaving a PR comment or Slack reply
+- Start with the answer; no preambles (e.g., “Sure”, “Great question”, “Here’s…”, “Short answer”)
+- Use present tense and direct statements
+- Default to 1–3 short paragraphs; avoid long explanations unless explicitly asked
+- Avoid hedging and filler (e.g., “I think”, “might”, “could”, “as an AI”)
+- Prefer concrete, copy-pastable snippets for replies that the user will post verbatim
+
+### Comment Reply Template
+
+- One line restating the concern
+- 2–5 short lines answering it
+
+### Repro / Verification Template
+
+- 3–5 steps max
+- Focus on what to click/where to look; no background explanation unless requested
