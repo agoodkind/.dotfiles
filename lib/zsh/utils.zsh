@@ -204,6 +204,48 @@ flush_dns() {
 # portable command existence check (zsh builtin, no fork)
 isinstalled() { (( $+commands[$1] )); }
 
+# Prefer running an alternate binary for a command when available
+prefer() {
+    local name="$1"
+    local binary="$2"
+    shift 2 || true
+    local args=("$@")
+
+    if ! isinstalled "$binary"; then
+        return
+    fi
+
+    local qargs=""
+    local arg
+    for arg in "${args[@]}"; do
+        [[ -z "$arg" ]] && continue
+        qargs+=" $(printf '%q' "$arg")"
+    done
+
+    eval "$name() { command $binary$qargs \"\$@\"; }"
+}
+
+# Prefer an alternate binary only when writing to a terminal (fallback otherwise)
+prefer_tty() {
+    local name="$1"
+    local binary="$2"
+    shift 2 || true
+    local args=("$@")
+
+    if ! isinstalled "$binary"; then
+        return
+    fi
+
+    local qargs=""
+    local arg
+    for arg in "${args[@]}"; do
+        [[ -z "$arg" ]] && continue
+        qargs+=" $(printf '%q' "$arg")"
+    done
+
+    eval "$name() { if [[ -t 1 ]]; then command $binary$qargs \"\$@\"; else command $name \"\$@\"; fi; }"
+}
+
 # pbcopy wrapper: on macOS use native, otherwise ssh to source host
 pbcopy() {
     if is_macos; then

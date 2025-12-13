@@ -1,9 +1,9 @@
 # shellcheck shell=bash
 
 ###############################################################################
-###############################################################################    
+###############################################################################
 zmodload zsh/datetime
-START_TIME=$EPOCHREALTIME 
+START_TIME=$EPOCHREALTIME
 export DOTDOTFILES="$HOME/.dotfiles"
 export PATH="$PATH:$HOME/.local/bin:$HOME/.local/bin/scripts:/opt/scripts"
 export NVM_LAZY_LOAD=true
@@ -28,15 +28,16 @@ source ~/.cache/dircolors.cache
 
 ###############################################################################
 # Prompt ######################################################################
+###############################################################################
 setopt PROMPT_SUBST
 
 # Prompt Components & Colors
 NL=$'\n'
-ORANGE='%F{214}'      # Orange
-GRAY='%F{250}'    # Light gray
-GREEN='%F{green}'    # Green
-CYAN='%F{cyan}'      # Cyan
-R='%f'                # Reset
+ORANGE='%F{214}'
+GRAY='%F{250}'
+GREEN='%F{green}'
+CYAN='%F{cyan}'
+R='%f'
 
 # Build Prompt with iTerm2 integration
 if [[ -n "$ITERM_SESSION_ID" && -n "$(iterm2_prompt_mark &> /dev/null)" ]]; then
@@ -62,52 +63,85 @@ setopt share_history
 # Aliases #####################################################################
 ###############################################################################
 
-# vim/nvim editor setup (use zsh builtin command check)
+# Editor preference: nvim > vim > vi
+EDITOR_BIN=
 if isinstalled nvim; then
+    EDITOR_BIN=nvim
     export SUDO_EDITOR="nvim -u $HOME/.config/nvim/init.lua"
     export MANPAGER='nvim +Man!'
     export PAGER="$DOTDOTFILES/bin/nvim-pager"
     export MANWIDTH=999
-    alias vim="nvim"
+    prefer vim nvim
 elif isinstalled vim; then
+    EDITOR_BIN=vim
     export MANPAGER="vim -M +MANPAGER --not-a-term -"
     export PAGER=$MANPAGER
     export SUDO_EDITOR=vim
-    alias nvim="vim"
+    prefer nvim vim
 else
+    EDITOR_BIN=vi
     export SUDO_EDITOR=vi
-    alias vim="vi"
-    alias nvim="vi"
 fi
 
-alias edit="nvim"
-alias nano="nvim"
-alias emacs="nvim"
-export EDITOR="nvim"
+# Fallback if nothing above matched
+[[ -z "$EDITOR_BIN" ]] && EDITOR_BIN=vi
+export EDITOR="$EDITOR_BIN"
+
+edit() { command "$EDITOR_BIN" "$@"; }
+nano() { edit "$@"; }
+emacs() { edit "$@"; }
 
 # sudo
-alias please="sudo"
+please() { command sudo "$@"; }
 sudoedit() {
     SUDO_EDITOR="nvim -u $HOME/.config/nvim/init.lua" sudo -e "$@"
 }
 
 # clear screen
-alias c="clear"
+c() { command clear; }
 
-# ls
-LS_ARGS="-lah --color=auto -G --group-directories-first"
+# ls defaults (GNU ls preferred when available)
+LS_ARGS=(-lah --color=auto -G --group-directories-first)
+LS_BIN=ls
 if isinstalled gls; then
-    alias ll="gls $LS_ARGS"
-else
-    alias ll="ls $LS_ARGS"
+    LS_BIN=gls
 fi
-alias ls=ll
+ll() { command "$LS_BIN" "${LS_ARGS[@]}" "$@"; }
+ls() { ll "$@"; }
 
-# npm
-alias npm="pnpm"
+# Prefer enhanced replacements when the binaries exist
+prefer ls eza --icons --git --group-directories-first
+prefer ll eza -lah --icons --git --group-directories-first
+prefer la eza -a --icons --git --group-directories-first
+prefer lt eza --tree --level=2 --icons --git
+prefer llt eza -lah --tree --level=2 --icons --git
 
-# ssh
-alias sshrm="ssh-keygen -R" # remove ssh host from known hosts
+# cat / find / grep
+prefer_tty cat bat --style=auto --paging=never
+prefer catt bat --style=auto
+prefer find fd
+prefer grep rg
+prefer rgi rg -i
+prefer rgl rg -l
+
+# disk + process tools
+prefer du dust
+prefer df duf
+prefer ps procs
+prefer top btop
+prefer htop btop
+
+# helper CLIs
+prefer help tldr
+prefer dig dog
+prefer curl curlie
+prefer lg lazygit
+
+# npm wrapper prefers pnpm implementation
+npm() { command pnpm "$@"; }
+
+# ssh helper
+sshrm() { command ssh-keygen -R "$@"; }
 
 # Show profiling results if module was loaded
 if [[ "${SHOULD_PROFILE:-false}" == "true" ]]; then

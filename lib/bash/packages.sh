@@ -11,13 +11,17 @@ export COMMON_PACKAGES=(
 	ansible
 	ansible-lint
 	aria2
+	atuin
 	bat
 	bash
+	btop
 	coreutils
 	curl
+	duf
 	eza
 	fail2ban
 	fastfetch
+	fd
 	ffmpeg
 	figlet
 	fping
@@ -30,14 +34,17 @@ export COMMON_PACKAGES=(
 	grc
 	grep
 	htop
+	hyperfine
 	imagemagick
 	jq
+	lazygit
 	less
 	most
 	moreutils
 	openssh
 	pandoc
     pigz
+	procs
     pv
 	python3
 	rename
@@ -45,13 +52,19 @@ export COMMON_PACKAGES=(
 	rsync
 	ruby
 	screen
+	sd
 	smartmontools
 	sshuttle
+	starship
+	tealdeer
 	thefuck
+	tldr
+	tokei
 	tree
 	vim
 	watch
 	wget
+	xh
 	zoxide
     zsh
 	yq
@@ -83,17 +96,24 @@ export APT_SPECIFIC=(
 # Brew-specific packages (different names or brew-only)
 export BREW_SPECIFIC=(
 	ast-grep
+	bandwhich
+	bottom
+	curlie
+	dog
+	dust
+	gitui
 	glow
 	mdless
+	navi
 	node
 	nvim
 	paper
 	pnpm
+	ripgrep-all
 	ssh-copy-id
 	wireguard-go
     wireguard-tools
     discord
-    iproute2mac
 )
 
 # Brew casks: [cask-name]="App Name" (empty = CLI/font, no .app)
@@ -125,6 +145,7 @@ declare -A PACKAGE_MAP
 # Initialize package mappings
 # apt mappings
 PACKAGE_MAP[ack:apt]="ack-grep"
+PACKAGE_MAP[fd:apt]="fd-find"
 PACKAGE_MAP[openssh:apt]="openssh-client openssh-server"
 
 # snap mappings
