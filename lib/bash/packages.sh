@@ -99,7 +99,7 @@ export BREW_SPECIFIC=(
 	bandwhich
 	bottom
 	curlie
-	dog
+	doggo
 	dust
 	gitui
 	glow

@@ -15,6 +15,9 @@ else
 	color_echo GREEN "Homebrew already installed, skipping..."
 fi
 
+color_echo YELLOW "Updating Homebrew metadata..."
+brew update --quiet
+
 # Fast check if command exists (no brew calls)
 cmd_exists() {
 	command -v "$1" &>/dev/null
@@ -33,13 +36,55 @@ app_exists() {
 	[[ -d "/Applications/${app_name}" ]] || [[ -d "$HOME/Applications/${app_name}" ]]
 }
 
-# Slow but thorough brew checks
+# Cached Homebrew state
+declare -A INSTALLED_FORMULAE_MAP=()
+declare -A OUTDATED_FORMULAE_MAP=()
+declare -A INSTALLED_CASKS_MAP=()
+declare -A OUTDATED_CASKS_MAP=()
+
+refresh_brew_state() {
+	INSTALLED_FORMULAE_MAP=()
+	while IFS= read -r formula; do
+		[[ -z "$formula" ]] && continue
+		INSTALLED_FORMULAE_MAP["$formula"]=1
+	done < <(brew list --formula)
+
+	OUTDATED_FORMULAE_MAP=()
+	while IFS= read -r formula; do
+		[[ -z "$formula" ]] && continue
+		OUTDATED_FORMULAE_MAP["$formula"]=1
+	done < <(brew outdated --formula --quiet || true)
+
+	INSTALLED_CASKS_MAP=()
+	while IFS= read -r cask; do
+		[[ -z "$cask" ]] && continue
+		INSTALLED_CASKS_MAP["$cask"]=1
+	done < <(brew list --cask)
+
+	OUTDATED_CASKS_MAP=()
+	while IFS= read -r cask; do
+		[[ -z "$cask" ]] && continue
+		OUTDATED_CASKS_MAP["$cask"]=1
+	done < <(brew outdated --cask --quiet || true)
+}
+
+refresh_brew_state
+
+# Slow but thorough brew checks that rely on cached state
 is_brew_installed() {
-	brew list --formula "$1" &>/dev/null
+	[[ -n "${INSTALLED_FORMULAE_MAP[$1]:-}" ]]
 }
 
 is_cask_installed() {
-	brew list --cask "$1" &>/dev/null
+	[[ -n "${INSTALLED_CASKS_MAP[$1]:-}" ]]
+}
+
+is_formula_outdated() {
+	[[ -n "${OUTDATED_FORMULAE_MAP[$1]:-}" ]]
+}
+
+is_cask_outdated() {
+	[[ -n "${OUTDATED_CASKS_MAP[$1]:-}" ]]
 }
 
 # Check if formula is installed (fast or slow based on quick_mode)
@@ -77,8 +122,11 @@ else
 	color_echo GREEN "speedtest already installed, skipping..."
 fi
 
+refresh_brew_state
+
 # Build list of packages to install
 PACKAGES_TO_INSTALL=()
+PACKAGES_TO_UPGRADE=()
 
 # Combine common and brew-specific packages
 ALL_BREW_PACKAGES=("${COMMON_PACKAGES[@]}" "${BREW_SPECIFIC[@]}")
@@ -87,6 +135,11 @@ color_echo YELLOW "Checking formula packages..."
 for package in "${ALL_BREW_PACKAGES[@]}"; do
 	if ! check_formula_installed "$package"; then
 		PACKAGES_TO_INSTALL+=("$package")
+		continue
+	fi
+
+	if is_formula_outdated "$package"; then
+		PACKAGES_TO_UPGRADE+=("$package")
 	fi
 done
 
@@ -98,13 +151,28 @@ else
 	color_echo GREEN "All formula packages already installed!"
 fi
 
+if [ ${#PACKAGES_TO_UPGRADE[@]} -gt 0 ]; then
+	color_echo YELLOW "Upgrading ${#PACKAGES_TO_UPGRADE[@]} formula packages..."
+	brew upgrade "${PACKAGES_TO_UPGRADE[@]}"
+else
+	color_echo GREEN "No formula upgrades needed!"
+fi
+
+refresh_brew_state
+
 # Install cask applications
 CASKS_TO_INSTALL=()
+CASKS_TO_UPGRADE=()
 
 color_echo YELLOW "Checking cask applications..."
 for cask in "${!BREW_CASKS[@]}"; do
 	if ! check_cask_installed "$cask"; then
 		CASKS_TO_INSTALL+=("$cask")
+		continue
+	fi
+
+	if is_cask_outdated "$cask"; then
+		CASKS_TO_UPGRADE+=("$cask")
 	fi
 done
 
@@ -114,6 +182,13 @@ if [ ${#CASKS_TO_INSTALL[@]} -gt 0 ]; then
 	brew install --cask "${CASKS_TO_INSTALL[@]}"
 else
 	color_echo GREEN "All cask applications already installed!"
+fi
+
+if [ ${#CASKS_TO_UPGRADE[@]} -gt 0 ]; then
+	color_echo YELLOW "Upgrading ${#CASKS_TO_UPGRADE[@]} cask applications..."
+	brew upgrade --cask "${CASKS_TO_UPGRADE[@]}"
+else
+	color_echo GREEN "No cask upgrades needed!"
 fi
 
 color_echo GREEN "All done!"
