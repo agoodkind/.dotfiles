@@ -125,7 +125,7 @@ prefer htop btop
 
 # helper CLIs
 prefer help tldr
-prefer dig dog
+prefer dig doggo
 prefer curl curlie
 prefer lg lazygit
 
