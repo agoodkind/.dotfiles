@@ -82,3 +82,7 @@ Host nas-kvm
   User root
   ForwardAgent yes
   LocalForward 80 localhost:8082
+
+Host mwan
+  Hostname mwan.home.goodkind.io
+  User root
