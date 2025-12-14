@@ -8,7 +8,6 @@ Include ~/.dotfiles/.ssh_config.local
 # Automatically add keys to the agent and use system keychain
 Host *
   AddKeysToAgent yes
-  UseKeychain yes
   IdentityFile ~/.ssh/id_ed25519
 
 Host home
@@ -18,10 +17,6 @@ Host home
 Host router
   User agoodkind
   HostName router.home.goodkind.io
-
-Host vault
-  User agoodkind
-  HostName vault.home.goodkind.io
 
 Host suburban
   User agoodkind
@@ -72,18 +67,18 @@ Host debianct
   ForwardAgent yes
 
 Host vault
-  Hostname vault.home.goodkind.io
+  HostName vault.home.goodkind.io
   User root
   ForwardAgent yes
 
 Host vault-jetkvm
-  Hostname vault-jetkvm.goodkind.io
+  HostName vault-jetkvm.goodkind.io
   User root
   ForwardAgent yes
   LocalForward 80 localhost:8081
 
 Host nas-kvm
-  Hostname nas-jetkvm.goodkind.io
+  HostName nas-jetkvm.goodkind.io
   User root
   ForwardAgent yes
   LocalForward 80 localhost:8082

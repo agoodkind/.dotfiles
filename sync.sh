@@ -179,8 +179,8 @@ sync_ssh_config() {
     local dst="$HOME/.ssh/config"
     
     if [[ -f "$src" ]]; then
-        cp -f "$src" "$dst"
-        chmod 600 "$dst"
+        ln -sf "$src" "$dst"
+        chmod 600 "$src"
         color_echo GREEN "  ✅  SSH config synced"
     fi
 }
