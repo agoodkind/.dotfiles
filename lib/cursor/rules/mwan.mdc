@@ -11,7 +11,7 @@ alwaysApply: false
 ## SSH + host access patterns
 
 - Use **jump hosts explicitly** when required by the environment.
-  - Typical chain we used: `ssh agoodkind@10.250.0.1` (OPNsense) → `ssh root@vault` (Proxmox host) → VM/host.
+  - Typical chain we used: `ssh agoodkind@10.250.0.1` (OPNsense) → `ssh root@10.250.0.254` (Proxmox host) → VM/host.
 - When instructed, disable strict host key checking for automation/diagnostics only:
 
 ```bash
