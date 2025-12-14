@@ -71,7 +71,7 @@ _li_relative_time() {
   fi
 }
 
-# Inline logininfo using zsh builtins (no bash fork)
+# Inline logininfo using zsh builtins
 function _logininfo {
   local CACHE_FILE="$HOME/.cache/logininfo_session"
   local now=$EPOCHSECONDS this_year
@@ -143,5 +143,5 @@ if [[ "$should_show_motd" == "true" ]]; then
   touch "$MOTD_CACHE_FILE"
 fi
 
-# Show login info (inline, no fork)
+# Show login info
 _logininfo

@@ -42,6 +42,7 @@ export COMMON_PACKAGES=(
 	less
 	most
 	moreutils
+	ncdu
 	openssh
 	pandoc
     pigz
