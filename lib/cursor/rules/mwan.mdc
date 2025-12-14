@@ -1,0 +1,69 @@
+---
+description: MWAN/OPNsense multi-WAN conventions (routing, logging, SSH, formatting)
+globs:
+  - "**/mwan/**"
+  - "**/deploy-mwan.yml"
+alwaysApply: false
+---
+
+# MWAN / OPNsense Working Rules
+
+## SSH + host access patterns
+
+- Use **jump hosts explicitly** when required by the environment.
+  - Typical chain we used: `ssh agoodkind@10.250.0.1` (OPNsense) → `ssh root@vault` (Proxmox host) → VM/host.
+- When instructed, disable strict host key checking for automation/diagnostics only:
+
+```bash
+ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ...
+```
+
+- Prefer **non-disruptive actions** on the MWAN VM (avoid `systemctl restart systemd-networkd` unless necessary).
+
+## Deterministic convergence (no races)
+
+- Scripts/services must be **idempotent** and tolerate partial boot ordering.
+- Any script that mutates shared kernel state must be **serialized** with a lock:
+  - `flock` lock in `/run/...` for `ip rule/ip route` writers and `nft` writers.
+- When a service can run before prerequisites are ready, gate it with an `ExecStartPre` wait script and add retries (`Restart=on-failure`).
+
+## WAN state terminology
+
+- Use **healthy / unhealthy / unknown** for WAN health.
+- Do not use **up/down** for health (confusable with `ip link` state).
+
+## Logging + JSON
+
+- Prefer **structured JSON logs** to `/var/log/mwan-debug.log`.
+- Use `jq -cn` for JSON generation; avoid `printf`-built JSON.
+- Avoid embedded Python for JSON or parsing; prefer `jq`, `ipcalc-ng -j`, `ip -j`, `nft -j`.
+- Include `traceId` in logs when available (`MWAN_TRACE_ID`).
+
+## Parsing + tooling preferences
+
+- Prefer machine-readable outputs:
+  - `ip -j ... | jq` over `ip ... | awk/sed`
+  - `networkctl ... --json=short | jq` over text parsing
+  - `ipcalc-ng --all-info -j ... | jq` over bespoke IPv6 math
+  - `nft -j` for inspection where feasible
+- Keep scripts portable across Debian base utilities (avoid GNU-only flags unless already assumed/installed).
+
+## Shell style + safety
+
+- Use `set -euo pipefail` for scripts that mutate state.
+- Keep lines reasonably short; wrap long `{ ... }` blocks with newlines after `{`.
+- For every MWAN script/hook, include a top comment block describing:
+  - what it does (symptoms + technical)
+  - where it sits in the dependency graph
+
+## nftables + runtime rules
+
+- Assume `nftables` reload flushes runtime rules. Any dynamic runtime rule programming (e.g. NPT) must be re-applied via:
+  - `networkd-dispatcher` hooks, and
+  - a boot/deploy safety-net systemd unit.
+
+## Documentation constraints
+
+- Do not add new docs unless asked.
+- When updating existing docs, avoid giant pasted code blocks; prefer short excerpts and direct pointers to files.
+
