@@ -82,12 +82,13 @@ export APT_SPECIFIC=(
 	ipcalc-ng
 	ipcalc
 	locales
+	msmtp
+	msmtp-mta
 	net-tools
 	nodejs
 	openssh-client
 	openssh-server
     parted
-	postfix
 	rbenv
 	ripcalc
 	rsyslog
