@@ -94,7 +94,74 @@ emacs() { edit "$@"; }
 # sudo
 please() { command sudo "$@"; }
 sudoedit() {
-    SUDO_EDITOR="nvim -u $HOME/.config/nvim/init.lua" sudo -e "$@"
+    command sudo -e "$@"
+}
+
+# When you type `sudo vim/nvim/vi/nano <file>`, use sudoedit instead.
+# This avoids running an editor as root, and ensures proper temp-file flow.
+sudo() {
+    emulate -L zsh
+    setopt localoptions noshwordsplit
+
+    local -a sudo_opts rest editor_args
+    local cmd
+
+    sudo_opts=()
+    rest=("$@")
+
+    # Parse a small, safe subset of sudo flags so we can preserve them when
+    # rewriting to `sudo -e`. If we see an unknown flag, fall back to real sudo.
+    while (( ${#rest[@]} > 0 )); do
+        case "${rest[1]}" in
+            --)
+                rest=("${rest[@]:1}")
+                break
+                ;;
+            -u|-g|-h|-p|-C|-T|-t|-U)
+                if (( ${#rest[@]} < 2 )); then
+                    command sudo "$@"
+                    return $?
+                fi
+                sudo_opts+=("${rest[1]}" "${rest[2]}")
+                rest=("${rest[@]:2}")
+                ;;
+            -[AbEHnSsvVikKlL])
+                sudo_opts+=("${rest[1]}")
+                rest=("${rest[@]:1}")
+                ;;
+            -?*)
+                command sudo "$@"
+                return $?
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+
+    cmd="${rest[1]:-}"
+    editor_args=("${rest[@]:1}")
+
+    # Only rewrite known editor invocations (with file args). Keep it
+    # conservative to avoid swallowing editor flags like `+123` or `-u NORC`.
+    if [[ -n "$cmd" ]] && (( ${#editor_args[@]} > 0 )); then
+        case "$cmd" in
+            nano|vim|vi|nvim)
+                local a
+                for a in "${editor_args[@]}"; do
+                    if [[ "$a" == -* || "$a" == +* ]]; then
+                        command sudo "$@"
+                        return $?
+                    fi
+                done
+
+                command sudo "${sudo_opts[@]}" -e -- "${editor_args[@]}"
+                return $?
+                ;;
+        esac
+    fi
+
+    command sudo "$@"
 }
 
 # clear screen
