@@ -36,6 +36,7 @@ export COMMON_PACKAGES=(
 	htop
 	hyperfine
 	imagemagick
+	ipv6calc
 	jq
 	lazygit
 	less
@@ -88,6 +89,7 @@ export APT_SPECIFIC=(
     parted
 	postfix
 	rbenv
+	ripcalc
 	rsyslog
 	sasl-xoauth2
     sudo
