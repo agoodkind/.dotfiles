@@ -53,6 +53,7 @@ export COMMON_PACKAGES=(
 	ruby
 	screen
 	sd
+	sipcalc
 	smartmontools
 	sshuttle
 	starship
@@ -77,6 +78,8 @@ export APT_SPECIFIC=(
 	golang-go
     golang
 	gpg
+	ipcalc-ng
+	ipcalc
 	locales
 	net-tools
 	nodejs
