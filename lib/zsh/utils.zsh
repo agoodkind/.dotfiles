@@ -9,8 +9,32 @@ if [[ ! -f ~/.cache/os-type.cache ]]; then
     mkdir -p ~/.cache
     if [[ $(uname) == "Darwin" ]]; then
         echo "mac" > ~/.cache/os-type.cache
+    elif [[ -f /etc/os-release ]]; then
+        os_id=""
+        os_like=""
+        while IFS='=' read -r key value; do
+            [[ -n "$key" ]] || continue
+            value="${value%\"}"
+            value="${value#\"}"
+            case "$key" in
+                ID) os_id="$value" ;;
+                ID_LIKE) os_like="$value" ;;
+            esac
+        done < /etc/os-release
+
+        case "$os_id" in
+            ubuntu) echo "ubuntu" > ~/.cache/os-type.cache ;;
+            debian) echo "debian" > ~/.cache/os-type.cache ;;
+            *)
+                if [[ " $os_like " == *" debian "* ]]; then
+                    echo "debian" > ~/.cache/os-type.cache
+                else
+                    echo "unknown" > ~/.cache/os-type.cache
+                fi
+                ;;
+        esac
     elif command -v apt >/dev/null; then
-        echo "ubuntu" > ~/.cache/os-type.cache
+        echo "debian" > ~/.cache/os-type.cache
     else
         echo "unknown" > ~/.cache/os-type.cache
     fi
@@ -23,15 +47,19 @@ is_macos() {
     [[ "$OS_TYPE" == "mac" ]]
 }
 
+is_debian_based() {
+    [[ "$OS_TYPE" == "ubuntu" || "$OS_TYPE" == "debian" ]]
+}
+
 is_ubuntu() {
-    [[ "$OS_TYPE" == "ubuntu" ]]
+    is_debian_based
 }
 
 case "$OS_TYPE" in
     mac)
         source "$DOTDOTFILES/lib/zsh/mac.zsh"
         ;;
-    ubuntu)
+    ubuntu|debian)
         source "$DOTDOTFILES/lib/zsh/ubuntu.zsh"
         ;;
     *)
@@ -192,9 +220,36 @@ flush_dns() {
     if is_macos; then
         sudo dscacheutil -flushcache
         sudo killall -HUP mDNSResponder
-    elif is_ubuntu; then
-        sudo systemd-resolve --flush-caches
-        sudo systemctl restart systemd-resolved
+    elif is_debian_based; then
+        local did_any=false
+
+        if command -v resolvectl >/dev/null 2>&1; then
+            sudo resolvectl flush-caches >/dev/null 2>&1 && did_any=true
+        fi
+
+        if command -v systemd-resolve >/dev/null 2>&1; then
+            sudo systemd-resolve --flush-caches >/dev/null 2>&1 && did_any=true
+        fi
+
+        if command -v systemctl >/dev/null 2>&1; then
+            local svc
+            for svc in systemd-resolved NetworkManager network-manager nscd \
+                dnsmasq unbound bind9 named; do
+                if systemctl cat "$svc" >/dev/null 2>&1; then
+                    sudo systemctl restart "$svc" >/dev/null 2>&1 && did_any=true
+                fi
+            done
+        elif command -v service >/dev/null 2>&1; then
+            local svc
+            for svc in network-manager nscd dnsmasq unbound bind9 named; do
+                sudo service "$svc" restart >/dev/null 2>&1 && did_any=true
+            done
+        fi
+
+        if [[ "$did_any" != "true" ]]; then
+            echo "No DNS cache service detected" >&2
+            return 0
+        fi
     else
         echo "Unsupported OS"
         return 1
@@ -333,16 +388,14 @@ function _git_wtk() {
     # Worktrees are created as siblings of the main worktree root.
     base_dir="$(cd "$(dirname "$main_root")" && pwd -P)" || return 1
 
+    # Find an existing worktree path for the branch regardless of directory
+    # name, using porcelain output (stable for parsing).
     local existing_wt_path
-    existing_wt_path=$(
-        # Find an existing worktree path for `<branch>` regardless of directory
-        # name, using porcelain output (stable for parsing).
-        command git "${git_prefix[@]}" worktree list --porcelain \
-            | awk -v branch="$branch_name" '
-                /^worktree/ { path=$2 }
-                $1 == "branch" && $2 == "refs/heads/" branch { print path; exit }
-            '
-    )
+    existing_wt_path="$(command git "${git_prefix[@]}" worktree list --porcelain \
+        | awk -v branch="$branch_name" '
+            /^worktree/ { path=$2 }
+            $1 == "branch" && $2 == "refs/heads/" branch { print path; exit }
+        ')"
 
     if [[ -n "$existing_wt_path" ]]; then
         echo "Worktree for '$branch_name' found at $existing_wt_path."
@@ -358,16 +411,28 @@ function _git_wtk() {
     if command git "${git_prefix[@]}" rev-parse \
         --verify "origin/$branch_name" >/dev/null 2>&1; then
         echo "Branch '$branch_name' found on origin. Creating worktree."
-        command git "${git_prefix[@]}" worktree add --track -b "$branch_name" \
-            "$worktree_path" "origin/$branch_name"
+        if command git "${git_prefix[@]}" show-ref --verify --quiet \
+            "refs/heads/$branch_name"; then
+            command git "${git_prefix[@]}" worktree add \
+                "$worktree_path" "$branch_name" || return $?
+        else
+            command git "${git_prefix[@]}" worktree add --track -b "$branch_name" \
+                "$worktree_path" "origin/$branch_name" || return $?
+        fi
     else
         echo "Branch '$branch_name' not found. Creating branch and worktree."
-        command git "${git_prefix[@]}" worktree add -b "$branch_name" \
-            "$worktree_path"
+        if command git "${git_prefix[@]}" show-ref --verify --quiet \
+            "refs/heads/$branch_name"; then
+            command git "${git_prefix[@]}" worktree add \
+                "$worktree_path" "$branch_name" || return $?
+        else
+            command git "${git_prefix[@]}" worktree add -b "$branch_name" \
+                "$worktree_path" || return $?
+        fi
         (
             builtin cd "$worktree_path" \
                 && command git push -u origin "$branch_name"
-        )
+        ) || return $?
     fi
 
     builtin cd "$worktree_path" || return 1
@@ -404,7 +469,8 @@ function _git_wtk_candidates() {
         local start_realtime="${EPOCHREALTIME:-}"
 
         local child
-        for child in "$parent_dir"/*(/NOM); do
+        # Newest-first ordering by directory mtime.
+        for child in "$parent_dir"/*(/Nom); do
             (( scanned++ ))
             if (( scanned > scan_limit )); then
                 break
