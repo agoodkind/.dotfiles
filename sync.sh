@@ -344,8 +344,8 @@ sync_cursor_config() {
     color_echo BLUE "🔧  Syncing Cursor configuration..."
     
     local cursor_dir="$HOME/.cursor"
-    local src_rules="$DOTDOTFILES/lib/cursor/rules"
-    local src_commands="$DOTDOTFILES/lib/cursor/commands"
+    local src_rules="$DOTDOTFILES/.cursor/rules"
+    local src_commands="$DOTDOTFILES/.cursor/commands"
     
     # Sync rules
     if [[ -d "$src_rules" ]]; then
