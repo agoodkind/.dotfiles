@@ -25,6 +25,15 @@ alwaysApply: true
 - If unable to find current information, state that explicitly
 - Use all available workspace folders when researching or debugging
 
+## Code Quality Learnings (Close the Loop)
+
+- If a new code-quality issue is discovered (lint failure, formatter edge case, template/YAML pitfall, etc.):
+  - Fix it and **verify** the fix (lint/test output, or other concrete signal)
+  - After the user confirms the fix is correct, **record what we learned** by:
+    - updating an existing relevant rule file (preferred), or
+    - creating a new focused rule file when no existing rule fits
+  - Keep the rule entry practical: **what failed**, **how to detect it**, and **the safe pattern**
+
 ## Code Comments
 
 - Do not add comments that reference conversation context or chat history
