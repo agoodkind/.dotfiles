@@ -384,9 +384,14 @@ function _git_wtk() {
             --show-toplevel 2>/dev/null)" || return 1
     fi
 
-    local base_dir
-    # Worktrees are created as siblings of the main worktree root.
-    base_dir="$(cd "$(dirname "$main_root")" && pwd -P)" || return 1
+    # Worktrees are created under a sibling directory next to the main checkout:
+    #   /path/to/repo
+    #   /path/to/repo-worktrees/<branch>
+    local base_dir="${main_root}-worktrees"
+    if ! mkdir -p "$base_dir" 2>/dev/null; then
+        echo "git wtk: cannot create worktree dir: $base_dir" >&2
+        return 1
+    fi
 
     # Find an existing worktree path for the branch regardless of directory
     # name, using porcelain output (stable for parsing).
@@ -408,27 +413,23 @@ function _git_wtk() {
 
     command git "${git_prefix[@]}" fetch origin >/dev/null 2>&1
 
-    if command git "${git_prefix[@]}" rev-parse \
-        --verify "origin/$branch_name" >/dev/null 2>&1; then
+    local origin_ref="origin/$branch_name"
+    local has_origin_branch=false
+
+    if command git "${git_prefix[@]}" show-ref --verify --quiet \
+        "refs/remotes/$origin_ref"; then
+        has_origin_branch=true
+    fi
+
+    if [[ "$has_origin_branch" == "true" ]]; then
         echo "Branch '$branch_name' found on origin. Creating worktree."
-        if command git "${git_prefix[@]}" show-ref --verify --quiet \
-            "refs/heads/$branch_name"; then
-            command git "${git_prefix[@]}" worktree add \
-                "$worktree_path" "$branch_name" || return $?
-        else
-            command git "${git_prefix[@]}" worktree add --track -b "$branch_name" \
-                "$worktree_path" "origin/$branch_name" || return $?
-        fi
+        command git "${git_prefix[@]}" worktree add --track -B "$branch_name" \
+            "$worktree_path" "$origin_ref" || return $?
     else
-        echo "Branch '$branch_name' not found. Creating branch and worktree."
-        if command git "${git_prefix[@]}" show-ref --verify --quiet \
-            "refs/heads/$branch_name"; then
-            command git "${git_prefix[@]}" worktree add \
-                "$worktree_path" "$branch_name" || return $?
-        else
-            command git "${git_prefix[@]}" worktree add -b "$branch_name" \
-                "$worktree_path" || return $?
-        fi
+        echo "Branch '$branch_name' not found on origin. Creating worktree."
+        command git "${git_prefix[@]}" worktree add -B "$branch_name" \
+            "$worktree_path" || return $?
+
         (
             builtin cd "$worktree_path" \
                 && command git push -u origin "$branch_name"
@@ -521,10 +522,7 @@ function _git_wtk_guess_repo() {
         command git -C "$repo" rev-parse --is-inside-work-tree \
             >/dev/null 2>&1 || continue
 
-        # A repo "matches" if the branch exists locally or on origin.
-        command git -C "$repo" show-ref --verify --quiet \
-            "refs/heads/$branch_name" && matches+=("$repo") && continue
-
+        # A repo "matches" if the branch exists on origin.
         command git -C "$repo" show-ref --verify --quiet \
             "refs/remotes/origin/$branch_name" && matches+=("$repo")
     done
@@ -549,42 +547,70 @@ function git() {
         return $?
     fi
 
-    local -a git_prefix
-    git_prefix=()
-
-    if [[ "$1" == "-C" && -n "${2:-}" ]]; then
-        # Preserve `git -C <path> ...` behavior for all subcommands.
-        git_prefix=(-C "$2")
-        shift 2
-    fi
-
     local subcmd="$1"
     shift
 
     case "$subcmd" in
         wtk|wkt|wk|wt)
-            if (( ${#git_prefix[@]} > 0 )); then
-                _git_wtk --git-c "${git_prefix[2]}" "$@"
+            local branch_name=""
+            local repo_override=""
+
+            # Support `-C` both before and after the branch:
+            # - `git -C repo wk <branch>`
+            # - `git wk <branch> -C repo`
+            while (( $# > 0 )); do
+                case "$1" in
+                    -C)
+                        repo_override="${2:-}"
+                        shift 2 || break
+                        ;;
+                    *)
+                        if [[ -z "$branch_name" ]]; then
+                            branch_name="$1"
+                        fi
+                        shift
+                        ;;
+                esac
+            done
+
+            if [[ -z "$branch_name" ]]; then
+                _git_wtk
                 return $?
             fi
 
-            # Without `-C`, try to guess the intended repo from configured
-            # candidates; if guessing doesn't produce exactly one match, fall
-            # back to operating on the current directory.
-            local guessed_repo=""
-            guessed_repo="$(_git_wtk_guess_repo "${1:-}")"
-            if [[ -n "$guessed_repo" ]]; then
-                _git_wtk --git-c "$guessed_repo" "$@"
-            else
-                _git_wtk "$@"
+            if [[ -n "$repo_override" ]]; then
+                local repo_path="$repo_override"
+
+                # Treat repo_override as a name under GIT_WTK_PARENT_DIR if the
+                # directory doesn't exist as-is.
+                if [[ ! -d "$repo_path" && -n "${GIT_WTK_PARENT_DIR:-}" ]]; then
+                    if [[ -d "$GIT_WTK_PARENT_DIR/$repo_path" ]]; then
+                        repo_path="$GIT_WTK_PARENT_DIR/$repo_path"
+                    fi
+                fi
+
+                if [[ -d "$repo_path" ]]; then
+                    repo_path="$(cd "$repo_path" 2>/dev/null && pwd -P)" \
+                        || return 1
+                    _git_wtk --git-c "$repo_path" "$branch_name"
+                    return $?
+                fi
+
+                echo "git wtk: repo not found: $repo_override" >&2
+                return 1
             fi
+
+            local guessed_repo=""
+            guessed_repo="$(_git_wtk_guess_repo "$branch_name")"
+            if [[ -n "$guessed_repo" ]]; then
+                _git_wtk --git-c "$guessed_repo" "$branch_name"
+                return $?
+            fi
+
+            _git_wtk "$branch_name"
             ;;
         *)
-            if (( ${#git_prefix[@]} > 0 )); then
-                command git "${git_prefix[@]}" "$subcmd" "$@"
-            else
-                command git "$subcmd" "$@"
-            fi
+            command git "$subcmd" "$@"
             ;;
     esac
 }
