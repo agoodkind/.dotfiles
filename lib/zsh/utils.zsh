@@ -267,45 +267,214 @@ pbcopy() {
     fi
 }
 
+###############################################################################
+# git worktree shortcut: `git wtk|wkt|wk|wt <branch>`
+#
+# - If `GIT_WTK_REPOS=(/repo/a /repo/b ...)` and/or `GIT_WTK_PARENT_DIR=/parent`
+#   is set, we try to guess the intended repo by checking which candidate repos
+#   already have `<branch>` (either `refs/heads/<branch>` or `origin/<branch>`).
+#   `GIT_WTK_PARENT_DIR` is searched 1 level deep (`$parent/*` only).
+# - If exactly one repo matches, we run the worktree command against that repo
+#   (equivalent to `git -C <repo> worktree ...`).
+# - If multiple repos match, we print candidates and fall back.
+# - If no repo matches (or no candidates configured), we fall back to the current
+#   directory and require it to be a git repo.
+# - On success (existing or created worktree), we `cd` into the worktree path.
+###############################################################################
 function _git_wtk() {
+    local repo_cwd="$PWD"
+    local -a git_prefix
+    git_prefix=()
+
+    if [[ "$1" == "--git-c" ]]; then
+        # Internal helper to emulate `git -C <repo>` while still `cd`'ing into
+        # the resulting worktree at the end.
+        repo_cwd="$2"
+        git_prefix=(-C "$repo_cwd")
+        shift 2
+    fi
+
     local branch_name="$1"
     if [[ -z "$branch_name" ]]; then
-        echo "Usage: git wtk <branch-name>"
+        echo "Usage: git wtk <branch-name>" >&2
         return 1
     fi
 
-    # Check if worktree for the branch already exists (regardless of directory name)
+    if ! command git "${git_prefix[@]}" rev-parse \
+        --is-inside-work-tree >/dev/null 2>&1; then
+        echo "git wtk: not in a git repo" >&2
+        echo "try: git -C /path/to/repo wtk <branch>" >&2
+        return 1
+    fi
+
+    local common_dir
+    # `--git-common-dir` is stable across worktrees; use it to find the main
+    # worktree root, even when invoked inside a worktree.
+    common_dir="$(command git "${git_prefix[@]}" rev-parse \
+        --git-common-dir 2>/dev/null)" || return 1
+
+    if [[ "$common_dir" != /* ]]; then
+        # `--git-common-dir` can be relative to the current working directory.
+        common_dir="$repo_cwd/$common_dir"
+    fi
+    common_dir="$(cd "$common_dir" 2>/dev/null && pwd -P)" || return 1
+
+    local main_root
+    if [[ "$(basename "$common_dir")" == ".git" ]]; then
+        # Normal repo: common dir is `<root>/.git`.
+        main_root="$(cd "$(dirname "$common_dir")" && pwd -P)" || return 1
+    else
+        # Worktree: common dir is usually `<root>/.git/worktrees/<name>`.
+        main_root="$(command git "${git_prefix[@]}" rev-parse \
+            --show-toplevel 2>/dev/null)" || return 1
+    fi
+
+    local base_dir
+    # Worktrees are created as siblings of the main worktree root.
+    base_dir="$(cd "$(dirname "$main_root")" && pwd -P)" || return 1
+
     local existing_wt_path
     existing_wt_path=$(
-        command git worktree list --porcelain | awk -v branch="$branch_name" '
-            /^worktree/ { path=$2 }
-            $1 == "branch" && $2 == "refs/heads/" branch { print path; exit }
-        '
+        # Find an existing worktree path for `<branch>` regardless of directory
+        # name, using porcelain output (stable for parsing).
+        command git "${git_prefix[@]}" worktree list --porcelain \
+            | awk -v branch="$branch_name" '
+                /^worktree/ { path=$2 }
+                $1 == "branch" && $2 == "refs/heads/" branch { print path; exit }
+            '
     )
 
     if [[ -n "$existing_wt_path" ]]; then
-        echo "Worktree for branch '$branch_name' found at $existing_wt_path."
+        echo "Worktree for '$branch_name' found at $existing_wt_path."
         builtin cd "$existing_wt_path" || return 1
         return 0
     fi
 
     local dir_name="${branch_name//\//-}"
-    local worktree_path="../$dir_name"
+    local worktree_path="$base_dir/$dir_name"
 
-    # Ensure local remote branches are updated
-    command git fetch origin >/dev/null 2>&1
+    command git "${git_prefix[@]}" fetch origin >/dev/null 2>&1
 
-    if command git rev-parse --verify "origin/$branch_name" >/dev/null 2>&1; then
-        echo "Branch '$branch_name' found on remote. Creating new worktree."
-        command git worktree add --track -b "$branch_name" \
+    if command git "${git_prefix[@]}" rev-parse \
+        --verify "origin/$branch_name" >/dev/null 2>&1; then
+        echo "Branch '$branch_name' found on origin. Creating worktree."
+        command git "${git_prefix[@]}" worktree add --track -b "$branch_name" \
             "$worktree_path" "origin/$branch_name"
     else
-        echo "Branch '$branch_name' not found locally or on remote."
-        command git worktree add -b "$branch_name" "$worktree_path"
-        (builtin cd "$worktree_path" && command git push -u origin "$branch_name")
+        echo "Branch '$branch_name' not found. Creating branch and worktree."
+        command git "${git_prefix[@]}" worktree add -b "$branch_name" \
+            "$worktree_path"
+        (
+            builtin cd "$worktree_path" \
+                && command git push -u origin "$branch_name"
+        )
     fi
 
     builtin cd "$worktree_path" || return 1
+}
+
+function _git_wtk_candidates() {
+    emulate -L zsh
+    setopt localoptions no_unset null_glob
+
+    local -A seen
+    local -a repos unique
+    repos=()
+    unique=()
+
+    if (( ${+GIT_WTK_REPOS} )); then
+        # Explicit list of repo roots; no traversal.
+        repos+=("${(@)GIT_WTK_REPOS}")
+    fi
+
+    local parent_dir="${GIT_WTK_PARENT_DIR:-}"
+    if [[ -n "$parent_dir" && -d "$parent_dir" ]]; then
+        # Search 1 level deep (`$parent_dir/*` only). A repo can have `.git` as
+        # a directory or a file (e.g. some worktree and submodule setups).
+        #
+        # Heuristics:
+        # - Scan most-recently-modified directories first.
+        # - Optionally cap work by count and/or time.
+        local scan_limit="${GIT_WTK_PARENT_SCAN_LIMIT:-500}"
+        local scan_seconds="${GIT_WTK_PARENT_SCAN_SECONDS:-0}"
+        local scanned=0
+
+        zmodload zsh/datetime >/dev/null 2>&1 || true
+        local start_seconds="${SECONDS}"
+        local start_realtime="${EPOCHREALTIME:-}"
+
+        local child
+        for child in "$parent_dir"/*(/NOM); do
+            (( scanned++ ))
+            if (( scanned > scan_limit )); then
+                break
+            fi
+
+            if (( scan_seconds > 0 )); then
+                if [[ -n "$start_realtime" && -n "${EPOCHREALTIME:-}" ]]; then
+                    if (( EPOCHREALTIME - start_realtime > scan_seconds )); then
+                        break
+                    fi
+                else
+                    if (( SECONDS - start_seconds > scan_seconds )); then
+                        break
+                    fi
+                fi
+            fi
+
+            [[ -e "$child/.git" ]] || continue
+            repos+=("$child")
+        done
+    fi
+
+    local repo
+    for repo in "${repos[@]}"; do
+        [[ -n "$repo" ]] || continue
+        [[ -d "$repo" ]] || continue
+        if [[ -z "${seen[$repo]:-}" ]]; then
+            unique+=("$repo")
+            seen[$repo]=1
+        fi
+    done
+
+    printf '%s\n' "${unique[@]}"
+}
+
+function _git_wtk_guess_repo() {
+    emulate -L zsh
+    setopt localoptions no_unset
+
+    local branch_name="$1"
+    [[ -n "$branch_name" ]] || return 1
+
+    local -a matches
+    matches=()
+
+    local repo
+    for repo in "${(@f)$(_git_wtk_candidates)}"; do
+        command git -C "$repo" rev-parse --is-inside-work-tree \
+            >/dev/null 2>&1 || continue
+
+        # A repo "matches" if the branch exists locally or on origin.
+        command git -C "$repo" show-ref --verify --quiet \
+            "refs/heads/$branch_name" && matches+=("$repo") && continue
+
+        command git -C "$repo" show-ref --verify --quiet \
+            "refs/remotes/origin/$branch_name" && matches+=("$repo")
+    done
+
+    if (( ${#matches[@]} == 1 )); then
+        echo "${matches[1]}"
+        return 0
+    fi
+
+    if (( ${#matches[@]} > 1 )); then
+        echo "git wtk: multiple repos match '$branch_name'; use -C" >&2
+        printf '%s\n' "${matches[@]}" >&2
+        return 2
+    fi
+
+    return 1
 }
 
 function git() {
@@ -314,15 +483,42 @@ function git() {
         return $?
     fi
 
+    local -a git_prefix
+    git_prefix=()
+
+    if [[ "$1" == "-C" && -n "${2:-}" ]]; then
+        # Preserve `git -C <path> ...` behavior for all subcommands.
+        git_prefix=(-C "$2")
+        shift 2
+    fi
+
     local subcmd="$1"
     shift
 
     case "$subcmd" in
         wtk|wkt|wk|wt)
-            _git_wtk "$@"
+            if (( ${#git_prefix[@]} > 0 )); then
+                _git_wtk --git-c "${git_prefix[2]}" "$@"
+                return $?
+            fi
+
+            # Without `-C`, try to guess the intended repo from configured
+            # candidates; if guessing doesn't produce exactly one match, fall
+            # back to operating on the current directory.
+            local guessed_repo=""
+            guessed_repo="$(_git_wtk_guess_repo "${1:-}")"
+            if [[ -n "$guessed_repo" ]]; then
+                _git_wtk --git-c "$guessed_repo" "$@"
+            else
+                _git_wtk "$@"
+            fi
             ;;
         *)
-            command git "$subcmd" "$@"
+            if (( ${#git_prefix[@]} > 0 )); then
+                command git "${git_prefix[@]}" "$subcmd" "$@"
+            else
+                command git "$subcmd" "$@"
+            fi
             ;;
     esac
 }
