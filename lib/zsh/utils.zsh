@@ -266,3 +266,63 @@ pbcopy() {
         fi
     fi
 }
+
+function _git_wtk() {
+    local branch_name="$1"
+    if [[ -z "$branch_name" ]]; then
+        echo "Usage: git wtk <branch-name>"
+        return 1
+    fi
+
+    # Check if worktree for the branch already exists (regardless of directory name)
+    local existing_wt_path
+    existing_wt_path=$(
+        command git worktree list --porcelain | awk -v branch="$branch_name" '
+            /^worktree/ { path=$2 }
+            $1 == "branch" && $2 == "refs/heads/" branch { print path; exit }
+        '
+    )
+
+    if [[ -n "$existing_wt_path" ]]; then
+        echo "Worktree for branch '$branch_name' found at $existing_wt_path."
+        builtin cd "$existing_wt_path" || return 1
+        return 0
+    fi
+
+    local dir_name="${branch_name//\//-}"
+    local worktree_path="../$dir_name"
+
+    # Ensure local remote branches are updated
+    command git fetch origin >/dev/null 2>&1
+
+    if command git rev-parse --verify "origin/$branch_name" >/dev/null 2>&1; then
+        echo "Branch '$branch_name' found on remote. Creating new worktree."
+        command git worktree add --track -b "$branch_name" \
+            "$worktree_path" "origin/$branch_name"
+    else
+        echo "Branch '$branch_name' not found locally or on remote."
+        command git worktree add -b "$branch_name" "$worktree_path"
+        (builtin cd "$worktree_path" && command git push -u origin "$branch_name")
+    fi
+
+    builtin cd "$worktree_path" || return 1
+}
+
+function git() {
+    if [[ $# -eq 0 ]]; then
+        command git
+        return $?
+    fi
+
+    local subcmd="$1"
+    shift
+
+    case "$subcmd" in
+        wtk|wkt|wk|wt)
+            _git_wtk "$@"
+            ;;
+        *)
+            command git "$subcmd" "$@"
+            ;;
+    esac
+}
