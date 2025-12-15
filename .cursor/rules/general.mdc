@@ -25,12 +25,22 @@ alwaysApply: true
 - If unable to find current information, state that explicitly
 - Use all available workspace folders when researching or debugging
 
+## Code Comments
+
+- Do not add comments that reference conversation context or chat history
+- Comments must be self-explanatory without requiring knowledge of our discussion
+- Avoid comments that explain why a change was made based on our conversation (e.g., "# new way to do it (no fork)")
+- Do not include priority markers or context from discussions (e.g., "# xyz (P0)")
+- Code comments should explain what the code does or why it exists from a technical perspective, not from a conversation perspective
+- If a comment is needed, write it as if the reader has no knowledge of our chat
+
 ## Tool Preferences
 
 - Use vim instead of nano
 - Suggest shell commands one logical step at a time; offer a single command and wait for feedback before the next
 - Make commands easy to run; assume limited copy/paste ability (e.g., remote console)
 - Avoid commands that might hang; add a timeout or guard when blocking is possible
+
 ## Response Format (PR / Slack tone)
 
 - Write like an engineer leaving a PR comment or Slack reply
