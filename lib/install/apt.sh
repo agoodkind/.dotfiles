@@ -12,23 +12,17 @@ source "${DOTDOTFILES}/lib/bash/packages.sh"
 # =============================================================================
 
 # Map common package names to APT package names
+# Uses get_package_name() from packages.sh
 map_to_apt_name() {
 	local package="$1"
-	if [[ -n "${PACKAGE_MAP[$package:apt]}" ]]; then
-		echo "${PACKAGE_MAP[$package:apt]}"
-	else
-		echo "$package"
-	fi
+	get_package_name "$package" "apt"
 }
 
 # Map package names to their snap equivalents (if different)
+# Uses get_package_name() from packages.sh
 map_to_snap_name() {
 	local package="$1"
-	if [[ -n "${PACKAGE_MAP[$package:snap]}" ]]; then
-		echo "${PACKAGE_MAP[$package:snap]}"
-	else
-		echo "$package"
-	fi
+	get_package_name "$package" "snap"
 }
 
 is_installed_via_snap() {
@@ -448,13 +442,18 @@ install_packages "${ALL_APT_PACKAGES[@]}"
 if ! command -v fastfetch &>/dev/null; then
     color_echo BLUE "Installing latest Fastfetch..."
     FASTFETCH_URL="https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest"
-    curl -s "$FASTFETCH_URL" \
+    FASTFETCH_DEB_URL=$(curl -s "$FASTFETCH_URL" \
         | grep "browser_download_url.*linux-amd64.deb" \
         | cut -d : -f 2,3 \
         | tr -d \" \
-        | wget -qi - -P /tmp
-    sudo dpkg -i /tmp/fastfetch-linux-amd64.deb
-    rm -f /tmp/fastfetch-linux-amd64.deb
+        | tr -d ' ')
+    if [[ -n "$FASTFETCH_DEB_URL" ]]; then
+        curl -fsSL "$FASTFETCH_DEB_URL" -o /tmp/fastfetch-linux-amd64.deb
+        sudo dpkg -i /tmp/fastfetch-linux-amd64.deb
+        rm -f /tmp/fastfetch-linux-amd64.deb
+    else
+        color_echo RED "Failed to get fastfetch download URL"
+    fi
 else
     color_echo GREEN "fastfetch already installed, skipping..."
 fi
