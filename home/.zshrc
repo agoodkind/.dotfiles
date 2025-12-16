@@ -87,7 +87,11 @@ fi
 [[ -z "$EDITOR_BIN" ]] && EDITOR_BIN=vi
 export EDITOR="$EDITOR_BIN"
 
-edit() { command "$EDITOR_BIN" "$@"; }
+vim() { _edit_maybe_sudoedit "$EDITOR_BIN" "$@"; }
+vi() { _edit_maybe_sudoedit "$EDITOR_BIN" "$@"; }
+nvim() { _edit_maybe_sudoedit nvim "$@"; }
+
+edit() { "$EDITOR_BIN" "$@"; }
 nano() { edit "$@"; }
 emacs() { edit "$@"; }
 

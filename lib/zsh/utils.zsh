@@ -259,6 +259,61 @@ flush_dns() {
 # portable command existence check (zsh builtin, no fork)
 isinstalled() { (( $+commands[$1] )); }
 
+_needs_sudoedit_for_any_path() {
+    emulate -L zsh
+    setopt localoptions no_unset
+
+    local p parent
+    for p in "$@"; do
+        [[ -n "$p" ]] || continue
+
+        # If the file exists and isn't writable, it will fail without sudo.
+        if [[ -e "$p" ]]; then
+            [[ -w "$p" ]] || return 0
+            continue
+        fi
+
+        # If creating a new file, parent dir must be writable.
+        parent="${p:h}"
+        [[ -n "$parent" ]] || parent="."
+        if [[ -d "$parent" ]] && [[ ! -w "$parent" ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+_edit_maybe_sudoedit() {
+    emulate -L zsh
+    setopt localoptions noshwordsplit
+
+    local editor_bin="$1"
+    shift || true
+
+    if (( $# == 0 )); then
+        command "$editor_bin"
+        return $?
+    fi
+
+    # Keep this conservative: if any editor flags are present, don't rewrite.
+    # Users can still do `sudo vim ...` (sudo wrapper rewrites that to sudoedit).
+    local a
+    for a in "$@"; do
+        if [[ "$a" == -* || "$a" == +* ]]; then
+            command "$editor_bin" "$@"
+            return $?
+        fi
+    done
+
+    if _needs_sudoedit_for_any_path "$@"; then
+        command sudo -e -- "$@"
+        return $?
+    fi
+
+    command "$editor_bin" "$@"
+}
+
 # Prefer running an alternate binary for a command when available
 prefer() {
     local name="$1"
