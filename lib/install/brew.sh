@@ -55,7 +55,9 @@ cleanup_stale_brew_locks() {
 cleanup_stale_brew_locks
 
 color_echo YELLOW "Updating Homebrew metadata..."
-brew update --quiet
+if ! brew update --quiet 2>&1 | grep -v "already locked"; then
+	color_echo YELLOW "Brew update had issues, continuing anyway..."
+fi
 
 # Fast check if command exists (no brew calls)
 cmd_exists() {
@@ -81,7 +83,17 @@ INSTALLED_CASKS_LIST=""
 OUTDATED_CASKS_LIST=""
 
 refresh_brew_state() {
-	INSTALLED_FORMULAE_LIST=$(brew list --formula 2>/dev/null | tr '\n' ' ')
+	# Retry up to 3 times if brew list fails (might be locked)
+	local attempts=0
+	while [[ $attempts -lt 3 ]]; do
+		INSTALLED_FORMULAE_LIST=$(brew list --formula 2>/dev/null | tr '\n' ' ')
+		if [[ -n "$INSTALLED_FORMULAE_LIST" ]]; then
+			break
+		fi
+		attempts=$((attempts + 1))
+		sleep 1
+	done
+	
 	OUTDATED_FORMULAE_LIST=$(brew outdated --formula --quiet 2>/dev/null | tr '\n' ' ')
 	INSTALLED_CASKS_LIST=$(brew list --cask 2>/dev/null | tr '\n' ' ')
 	OUTDATED_CASKS_LIST=$(brew outdated --cask --quiet 2>/dev/null | tr '\n' ' ')
