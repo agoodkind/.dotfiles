@@ -24,6 +24,36 @@ else
 	color_echo GREEN "Homebrew already installed, skipping..."
 fi
 
+# Check for and clean up STALE brew locks (only if owning process is dead)
+cleanup_stale_brew_locks() {
+	local lock_dir
+	lock_dir="$(brew --prefix)/var/homebrew/locks" 2>/dev/null || return 0
+	
+	[[ -d "$lock_dir" ]] || return 0
+	
+	for lock_file in "$lock_dir"/*.lock 2>/dev/null; do
+		[[ -f "$lock_file" ]] || continue
+		
+		# Extract PID from lock file (format: pid on first line)
+		local pid
+		pid=$(head -1 "$lock_file" 2>/dev/null | grep -oE '[0-9]+' | head -1)
+		
+		if [[ -n "$pid" ]]; then
+			# Check if process is still running
+			if ! kill -0 "$pid" 2>/dev/null; then
+				color_echo YELLOW "Removing stale lock (PID $pid no longer running): $(basename "$lock_file")"
+				rm -f "$lock_file" 2>/dev/null || true
+			fi
+		else
+			# No PID found, lock file might be corrupted - remove it
+			color_echo YELLOW "Removing corrupted lock: $(basename "$lock_file")"
+			rm -f "$lock_file" 2>/dev/null || true
+		fi
+	done
+}
+
+cleanup_stale_brew_locks
+
 color_echo YELLOW "Updating Homebrew metadata..."
 brew update --quiet
 
