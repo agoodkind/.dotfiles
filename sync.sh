@@ -315,21 +315,52 @@ sync_script_with_checksum() {
 }
 
 sync_scripts_to_local() {
-    # Only sync to local on macOS (Debian uses systemd installer to /opt/scripts)
+    # macOS only
     if ! is_macos; then
         return 0
     fi
     
-    color_echo YELLOW "🔗 Syncing scripts to ~/.local/bin/scripts..."
+    # Work laptop: use simple ~/.local/bin/scripts symlinks (no sudo, no launchd)
+    if is_work_laptop; then
+        sync_scripts_to_local_symlinks
+        return 0
+    fi
+    
+    # Personal Mac: install launchd agent to auto-update /usr/local/opt/scripts
+    local AGENT_NAME="com.agoodkind.scripts-updater"
+    local SCRIPTS_DIR="/usr/local/opt/scripts"
+    
+    # Check if launchd agent is already installed
+    if launchctl print "gui/$(id -u)/${AGENT_NAME}" &>/dev/null; then
+        color_echo GREEN "✅  scripts-updater launchd agent already installed"
+        # Trigger an update
+        launchctl kickstart "gui/$(id -u)/${AGENT_NAME}" 2>/dev/null || true
+        return 0
+    fi
+    
+    # Check if /usr/local/opt/scripts exists but is not a git repo
+    if [[ -d "$SCRIPTS_DIR" ]] && [[ ! -d "$SCRIPTS_DIR/.git" ]]; then
+        color_echo YELLOW "🔄  Migrating to git-based launchd updater..."
+    else
+        color_echo YELLOW "📦  Installing scripts-updater launchd agent..."
+    fi
+    
+    # Run the macOS installer script
+    "$DOTDOTFILES/lib/scripts/install-updater-mac"
+}
+
+# Simple symlink method for work laptops (no sudo required)
+sync_scripts_to_local_symlinks() {
+    color_echo YELLOW "🔗 Syncing scripts to ~/.local/bin/scripts (work laptop mode)..."
     
     mkdir -p "$HOME/.local/bin/scripts"
     local scripts
     # Find executable files (excluding hidden files and specific non-script files)
-    # Use -perm for portability (BSD find doesn't support -executable)
     scripts=$(find "$DOTDOTFILES/lib/scripts" -maxdepth 1 -type f \
         \( -perm -u=x -o -perm -g=x -o -perm -o=x \) \
         ! -name ".*" ! -name "LICENSE" ! -name "*.md" ! -name "*.txt")
     
+    local linked_count=0
     for script in $scripts; do
         local script_name
         script_name=$(basename "$script")
@@ -345,8 +376,14 @@ sync_scripts_to_local() {
         fi
         
         ln -sf "$script" "$target"
-        color_echo GREEN "  🔗  Linked: $script_name"
+        linked_count=$((linked_count + 1))
     done
+    
+    if [[ $linked_count -gt 0 ]]; then
+        color_echo GREEN "  ✅  $linked_count script(s) linked"
+    else
+        color_echo GREEN "  ✅  All scripts already linked"
+    fi
 }
 
 sync_scripts_to_opt() {

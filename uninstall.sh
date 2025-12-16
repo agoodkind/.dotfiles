@@ -96,18 +96,59 @@ remove_cursor_config() {
     fi
 }
 
-# Remove scripts symlinks
+# Remove scripts and updater
 remove_scripts() {
-    info "Removing script symlinks..."
+    info "Removing scripts updater..."
     
-    local scripts_dir="$HOME/.local/bin/scripts"
-    if [[ -d "$scripts_dir" ]]; then
-        for script in "$scripts_dir"/*; do
-            [[ -e "$script" ]] || continue
-            remove_dotfiles_symlink "$script"
-        done
-        # Remove directory if empty
-        rmdir "$scripts_dir" 2>/dev/null && log "Removed empty: $scripts_dir" || true
+    if is_macos; then
+        # macOS: remove launchd agent and symlinks
+        local AGENT_NAME="com.agoodkind.scripts-updater"
+        local AGENT_PLIST="$HOME/Library/LaunchAgents/${AGENT_NAME}.plist"
+        local SCRIPTS_DIR="/usr/local/opt/scripts"
+        
+        # Unload launchd agent
+        launchctl bootout "gui/$(id -u)/${AGENT_NAME}" 2>/dev/null || true
+        [[ -f "$AGENT_PLIST" ]] && rm "$AGENT_PLIST" && log "Removed: $AGENT_PLIST"
+        
+        # Remove /etc/paths.d entry
+        [[ -f "/etc/paths.d/scripts" ]] && sudo rm "/etc/paths.d/scripts" 2>/dev/null && \
+            log "Removed: /etc/paths.d/scripts"
+        
+        # Remove symlinks from /usr/local/bin
+        if [[ -d "$SCRIPTS_DIR" ]]; then
+            for script in "$SCRIPTS_DIR"/*; do
+                [[ -f "$script" ]] || continue
+                local name
+                name=$(basename "$script")
+                local target="/usr/local/bin/$name"
+                if [[ -L "$target" ]] && [[ "$(readlink "$target")" == "$script" ]]; then
+                    sudo rm "$target" && log "Removed symlink: $target"
+                fi
+            done
+        fi
+        
+        # Remove scripts repo
+        [[ -d "$SCRIPTS_DIR" ]] && rm -rf "$SCRIPTS_DIR" && log "Removed: $SCRIPTS_DIR"
+        
+        # Also clean up old ~/.local/bin/scripts if it exists
+        local old_scripts_dir="$HOME/.local/bin/scripts"
+        if [[ -d "$old_scripts_dir" ]]; then
+            for script in "$old_scripts_dir"/*; do
+                [[ -e "$script" ]] || continue
+                remove_dotfiles_symlink "$script"
+            done
+            rmdir "$old_scripts_dir" 2>/dev/null && log "Removed empty: $old_scripts_dir" || true
+        fi
+    else
+        # Linux: handled by remove_systemd_updater
+        local scripts_dir="$HOME/.local/bin/scripts"
+        if [[ -d "$scripts_dir" ]]; then
+            for script in "$scripts_dir"/*; do
+                [[ -e "$script" ]] || continue
+                remove_dotfiles_symlink "$script"
+            done
+            rmdir "$scripts_dir" 2>/dev/null && log "Removed empty: $scripts_dir" || true
+        fi
     fi
 }
 
