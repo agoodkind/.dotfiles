@@ -36,10 +36,27 @@ skip_on_work_laptop() {
 }
 
 realpath_cmd() {
-    if is_macos && command -v grealpath >/dev/null; then
+    if command -v grealpath >/dev/null; then
         grealpath "$@"
-    else
+    elif [[ "$OSTYPE" != "darwin"* ]]; then
         realpath "$@"
+    else
+        # macOS realpath doesn't support GNU options; provide fallback
+        echo "realpath_cmd: macOS fallback not available for: $*" >&2
+        return 1
+    fi
+}
+
+# Get path relative to a base directory (works without GNU coreutils)
+relative_path_from() {
+    local base="$1"
+    local target="$2"
+    # Simple case: target is under base - just strip the prefix
+    if [[ "$target" == "$base"/* ]]; then
+        echo "${target#"$base"/}"
+    else
+        # Fall back to realpath if available
+        realpath_cmd --relative-to="$base" "$target"
     fi
 }
 
@@ -140,21 +157,45 @@ link_dotfiles() {
     
     local BACKUPS_PATH="$DOTDOTFILES/backups/$timestamp"
     mkdir -p "$BACKUPS_PATH"
+    color_echo YELLOW "  📁  Backup dir: $BACKUPS_PATH"
     
     local files
     files=$(find "$DOTDOTFILES/home" -type f)
+    
+    # Debug: show what files we found
+    color_echo YELLOW "  📋  Files to process:"
+    for f in $files; do
+        color_echo YELLOW "      - $f"
+    done
+    
     color_echo YELLOW "🔗 Linking dotfiles to home directory..."
     
     for source_file in $files; do
         local relative_path
-        relative_path=$(realpath_cmd --no-symlinks --relative-to="$DOTDOTFILES/home" "$source_file")
+        relative_path=$(relative_path_from "$DOTDOTFILES/home" "$source_file")
         local backup_file="$BACKUPS_PATH/$relative_path.bak"
         local home_file="$HOME/$relative_path"
 
+        color_echo YELLOW "  📄  Processing: $relative_path"
+        color_echo YELLOW "      source: $source_file"
+        color_echo YELLOW "      home:   $home_file"
+
         if [[ -e "$home_file" ]]; then
+            color_echo YELLOW "      ⚠️  Exists at home, backing up..."
+            # Check if it's a symlink
+            if [[ -L "$home_file" ]]; then
+                local link_target
+                link_target=$(readlink "$home_file" 2>/dev/null || echo "<unreadable>")
+                color_echo YELLOW "      🔗  Is symlink -> $link_target"
+            fi
             mkdir -p "$(dirname "$backup_file")"
-            cp -Hr "$home_file" "$backup_file"
+            color_echo YELLOW "      📦  Running: cp -Hr \"$home_file\" \"$backup_file\""
+            if ! cp -Hr "$home_file" "$backup_file"; then
+                color_echo RED "      ❌  cp failed for: $home_file"
+            fi
             color_echo YELLOW "  💾  Backed up: $relative_path"
+        else
+            color_echo YELLOW "      ✨  No existing file, skipping backup"
         fi
         
         mkdir -p "$(dirname "$home_file")"
@@ -482,18 +523,64 @@ run_os_install() {
 ###############################################################################
 
 main() {
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    color_echo BLUE "[1/11] Updating git repo..."
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     update_git_repo
+
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    color_echo BLUE "[2/11] Linking dotfiles..."
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     link_dotfiles
+
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    color_echo BLUE "[3/11] Syncing SSH config..."
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     sync_ssh_config
+
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    color_echo BLUE "[4/11] Updating authorized keys..."
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     update_authorized_keys
+
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    color_echo BLUE "[5/11] Syncing scripts..."
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     sync_all_scripts
+
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    color_echo BLUE "[6/11] Syncing Cursor config..."
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     sync_cursor_config
+
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    color_echo BLUE "[7/11] Neovim repair cleanup..."
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     cleanup_neovim_repair
+
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    color_echo BLUE "[8/11] Updating Neovim plugins..."
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     update_neovim_plugins
+
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    color_echo BLUE "[9/11] Cleaning up zcompdump..."
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     cleanup_zcompdump
+
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    color_echo BLUE "[10/11] Running OS-specific install..."
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     run_os_install "$@"
+
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    color_echo BLUE "[11/11] Creating hushlogin..."
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     create_hushlogin
+
+    color_echo GREEN "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     color_echo GREEN "✅  Dotfiles synced"
+    color_echo GREEN "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 }
 
 parse_flags "$@"
