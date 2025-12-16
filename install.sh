@@ -57,21 +57,35 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     fi
 fi
 
-color_echo BLUE "🔧  Changing shell to zsh..."
-ZSH_PATH=$(which zsh)
+color_echo BLUE "🔧  Checking login shell..."
+ZSH_PATH=$(command -v zsh)
+
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    CURRENT_SHELL=$(dscl . -read "/Users/$(whoami)" UserShell 2>/dev/null | cut -d' ' -f2 || echo "$SHELL")
+    # macOS: use dscl to get login shell, extract path after "UserShell: "
+    CURRENT_SHELL=$(dscl . -read "/Users/$(whoami)" UserShell 2>/dev/null | awk '{print $2}')
 else
-    CURRENT_SHELL=$(getent passwd "$(whoami)" 2>/dev/null | cut -d: -f7 || echo "$SHELL")
+    # Linux: use getent to get login shell from passwd
+    CURRENT_SHELL=$(getent passwd "$(whoami)" 2>/dev/null | cut -d: -f7)
 fi
 
- # Check if current shell is zsh (by path match or by basename)
-if [[ "$CURRENT_SHELL" == "$ZSH_PATH" ]] || [[ "$(basename "$CURRENT_SHELL")" == "zsh" ]]; then
+# Fallback if detection failed
+if [[ -z "$CURRENT_SHELL" ]]; then
+    CURRENT_SHELL="unknown"
+fi
+
+color_echo YELLOW "  📍  Current login shell: $CURRENT_SHELL"
+color_echo YELLOW "  📍  Target zsh path: $ZSH_PATH"
+
+# Check if current shell is zsh (by path match or by basename)
+if [[ "$CURRENT_SHELL" == "$ZSH_PATH" ]] || [[ "$(basename "$CURRENT_SHELL" 2>/dev/null)" == "zsh" ]]; then
     color_echo GREEN "  ✅  Shell is already zsh"
     color_echo GREEN "  ✅  Installation complete!"
 else
-    chsh -s "$ZSH_PATH"
-    color_echo GREEN "  ✅  Login shell changed to zsh"
-    # attempt to reload shell, this will also initialize zinit
-    exec zsh || color_echo RED "    ❌  Failed to reload shell" && exit 1
+    color_echo YELLOW "  🔄  Changing login shell to zsh..."
+    if chsh -s "$ZSH_PATH"; then
+        color_echo GREEN "  ✅  Login shell changed to zsh"
+        color_echo YELLOW "  💡  Log out and back in, or run: exec zsh"
+    else
+        color_echo RED "  ❌  Failed to change shell (may need sudo)"
+    fi
 fi
