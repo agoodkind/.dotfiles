@@ -235,7 +235,8 @@ update_authorized_keys() {
     
     color_echo BLUE "🔧  Updating authorized keys..."
     
-    if ! wget https://github.com/agoodkind.keys -O "$HOME/.ssh/authorized_keys.tmp"; then
+    # Use curl (available on fresh macOS) instead of wget
+    if ! curl -fsSL https://github.com/agoodkind.keys -o "$HOME/.ssh/authorized_keys.tmp"; then
         color_echo RED "❌  Failed to download authorized keys" && exit 1
     fi
     
@@ -500,8 +501,11 @@ run_os_install() {
     if is_macos; then
         os_type="macOS"
         install_script="$DOTDOTFILES/lib/install/mac.sh"
-        color_echo YELLOW "🧹  Cleaning up Homebrew..."
-        brew cleanup
+        # Only cleanup if brew is already installed
+        if command -v brew >/dev/null 2>&1; then
+            color_echo YELLOW "🧹  Cleaning up Homebrew..."
+            brew cleanup
+        fi
     elif is_ubuntu; then
         os_type="Debian/Ubuntu/Proxmox"
         install_script="$DOTDOTFILES/lib/install/debian.sh"
