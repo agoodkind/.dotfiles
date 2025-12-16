@@ -328,13 +328,14 @@ sync_scripts_to_local() {
     
     # Personal Mac: install launchd agent to auto-update /usr/local/opt/scripts
     local AGENT_NAME="com.agoodkind.scripts-updater"
+    local AGENT_PLIST="$HOME/Library/LaunchAgents/${AGENT_NAME}.plist"
     local SCRIPTS_DIR="/usr/local/opt/scripts"
     
-    # Check if launchd agent is already installed
-    if launchctl print "gui/$(id -u)/${AGENT_NAME}" &>/dev/null; then
+    # Check if launchd agent is already installed (check plist file exists)
+    if [[ -f "$AGENT_PLIST" ]] && [[ -d "$SCRIPTS_DIR/.git" ]]; then
         color_echo GREEN "✅  scripts-updater launchd agent already installed"
         # Trigger an update
-        launchctl kickstart "gui/$(id -u)/${AGENT_NAME}" 2>/dev/null || true
+        launchctl start "${AGENT_NAME}" 2>/dev/null || true
         return 0
     fi
     
