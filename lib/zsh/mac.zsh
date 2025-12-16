@@ -20,23 +20,38 @@ test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell
 
 ############
 # homebrew #
-# Cache brew shellenv to avoid slow eval on every startup
-if [[ ! -f ~/.cache/brew-shellenv.cache ]] || [[ /opt/homebrew/bin/brew -nt ~/.cache/brew-shellenv.cache ]]; then
-    mkdir -p ~/.cache
-    /opt/homebrew/bin/brew shellenv > ~/.cache/brew-shellenv.cache
+# Detect Homebrew path (Apple Silicon vs Intel)
+if [[ -x /opt/homebrew/bin/brew ]]; then
+    HOMEBREW_PREFIX="/opt/homebrew"
+elif [[ -x /usr/local/bin/brew ]]; then
+    HOMEBREW_PREFIX="/usr/local"
+else
+    HOMEBREW_PREFIX=""
 fi
-source "$HOME/.cache/brew-shellenv.cache"
+
+# Cache brew shellenv to avoid slow eval on every startup
+if [[ -n "$HOMEBREW_PREFIX" ]]; then
+    BREW_BIN="$HOMEBREW_PREFIX/bin/brew"
+    if [[ ! -f ~/.cache/brew-shellenv.cache ]] || [[ "$BREW_BIN" -nt ~/.cache/brew-shellenv.cache ]]; then
+        mkdir -p ~/.cache
+        "$BREW_BIN" shellenv > ~/.cache/brew-shellenv.cache
+    fi
+    source "$HOME/.cache/brew-shellenv.cache"
+fi
 ############
 
-# export PATH="/opt/homebrew/bin:$PATH"
 # Commands also provided by macOS and the commands dir, dircolors, vdir have been installed with the prefix "g".
 # If you need to use these commands with their normal names, you can add a "gnubin" directory to your PATH with:
-export PATH="/opt/homebrew/opt/coreutils/libexec/gnubin:$PATH"
+if [[ -n "$HOMEBREW_PREFIX" ]]; then
+    export PATH="$HOMEBREW_PREFIX/opt/coreutils/libexec/gnubin:$PATH"
+fi
 
 ########
 # Ruby
 # fallback to homebrew
-export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
+if [[ -n "$HOMEBREW_PREFIX" ]]; then
+    export PATH="$HOMEBREW_PREFIX/opt/ruby/bin:$PATH"
+fi
 # use rbenv if present
 export PATH="${HOME}/.rbenv/shims:${PATH}"
 export RBENV_SHELL=zsh

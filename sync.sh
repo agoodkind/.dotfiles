@@ -156,52 +156,58 @@ link_dotfiles() {
     printf "\nLinking dotfiles to home directory\n"
     
     local BACKUPS_PATH="$DOTDOTFILES/backups/$timestamp"
-    mkdir -p "$BACKUPS_PATH"
-    color_echo YELLOW "  📁  Backup dir: $BACKUPS_PATH"
-    
     local files
     files=$(find "$DOTDOTFILES/home" -type f)
-    
-    # Debug: show what files we found
-    color_echo YELLOW "  📋  Files to process:"
-    for f in $files; do
-        color_echo YELLOW "      - $f"
-    done
+    local linked_count=0
+    local skipped_count=0
+    local backed_up_count=0
     
     color_echo YELLOW "🔗 Linking dotfiles to home directory..."
     
     for source_file in $files; do
         local relative_path
         relative_path=$(relative_path_from "$DOTDOTFILES/home" "$source_file")
-        local backup_file="$BACKUPS_PATH/$relative_path.bak"
         local home_file="$HOME/$relative_path"
 
-        color_echo YELLOW "  📄  Processing: $relative_path"
-        color_echo YELLOW "      source: $source_file"
-        color_echo YELLOW "      home:   $home_file"
+        # Check if already correctly linked
+        if [[ -L "$home_file" ]]; then
+            local link_target
+            link_target=$(readlink "$home_file" 2>/dev/null || echo "")
+            if [[ "$link_target" == "$source_file" ]]; then
+                # Already correctly linked, skip
+                skipped_count=$((skipped_count + 1))
+                continue
+            fi
+        fi
 
-        if [[ -e "$home_file" ]]; then
-            color_echo YELLOW "      ⚠️  Exists at home, backing up..."
-            # Check if it's a symlink
-            if [[ -L "$home_file" ]]; then
-                local link_target
-                link_target=$(readlink "$home_file" 2>/dev/null || echo "<unreadable>")
-                color_echo YELLOW "      🔗  Is symlink -> $link_target"
-            fi
+        # Need to create or update the link
+        if [[ -e "$home_file" ]] || [[ -L "$home_file" ]]; then
+            # File exists (or is a broken/wrong symlink), back it up
+            mkdir -p "$BACKUPS_PATH"
+            local backup_file="$BACKUPS_PATH/$relative_path.bak"
             mkdir -p "$(dirname "$backup_file")"
-            color_echo YELLOW "      📦  Running: cp -Hr \"$home_file\" \"$backup_file\""
-            if ! cp -Hr "$home_file" "$backup_file"; then
-                color_echo RED "      ❌  cp failed for: $home_file"
+            if cp -Hr "$home_file" "$backup_file" 2>/dev/null; then
+                color_echo YELLOW "  💾  Backed up: $relative_path"
+                backed_up_count=$((backed_up_count + 1))
             fi
-            color_echo YELLOW "  💾  Backed up: $relative_path"
-        else
-            color_echo YELLOW "      ✨  No existing file, skipping backup"
         fi
         
         mkdir -p "$(dirname "$home_file")"
         ln -sf "$source_file" "$home_file"
         color_echo GREEN "  🔗  Linked: $relative_path"
+        linked_count=$((linked_count + 1))
     done
+    
+    # Summary
+    if [[ $skipped_count -gt 0 ]]; then
+        color_echo GREEN "  ✅  $skipped_count file(s) already correctly linked"
+    fi
+    if [[ $linked_count -gt 0 ]]; then
+        color_echo GREEN "  ✅  $linked_count file(s) linked"
+    fi
+    if [[ $backed_up_count -gt 0 ]]; then
+        color_echo YELLOW "  📁  $backed_up_count file(s) backed up to: $BACKUPS_PATH"
+    fi
 }
 
 ###############################################################################
@@ -420,12 +426,42 @@ sync_cursor_config() {
 # Neovim Operations
 ###############################################################################
 
+cleanup_homebrew_repair() {
+    if [[ "$repair_mode" != "true" ]]; then
+        return 0
+    fi
+    
+    if ! is_macos; then
+        return 0
+    fi
+    
+    if ! command -v brew >/dev/null 2>&1; then
+        return 0
+    fi
+    
+    color_echo YELLOW "🔧  Repair mode: cleaning up Homebrew..."
+    
+    # Remove incomplete downloads that can cause lock issues
+    local incomplete_files
+    incomplete_files=$(find "$HOME/Library/Caches/Homebrew/downloads" -name "*.incomplete" 2>/dev/null | wc -l | tr -d ' ')
+    if [[ "$incomplete_files" -gt 0 ]]; then
+        color_echo YELLOW "  🗑️  Removing $incomplete_files incomplete download(s)..."
+        rm -rf "$HOME/Library/Caches/Homebrew/downloads"/*.incomplete 2>/dev/null
+    fi
+    
+    # Run brew cleanup
+    color_echo YELLOW "  🧹  Running brew cleanup..."
+    brew cleanup --prune=all 2>/dev/null || true
+    
+    color_echo GREEN "  ✅  Homebrew cleanup complete"
+}
+
 cleanup_neovim_repair() {
     if [[ "$repair_mode" != "true" ]]; then
         return 0
     fi
     
-    color_echo YELLOW "🔧  Repair mode: aggressive cleanup..."
+    color_echo YELLOW "🔧  Repair mode: cleaning up Neovim..."
     
     local NVIM_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/nvim"
     local LAZY_DIR="$NVIM_DATA/lazy"
@@ -448,6 +484,8 @@ cleanup_neovim_repair() {
         find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*-tmp" -type d -exec rm -rf {} + 2>/dev/null
         find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*" -type d ! -name "*.so" -exec rm -rf {} + 2>/dev/null
     fi
+    
+    color_echo GREEN "  ✅  Neovim cleanup complete"
 }
 
 update_neovim_plugins() {
@@ -560,8 +598,9 @@ main() {
     sync_cursor_config
 
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    color_echo BLUE "[7/11] Neovim repair cleanup..."
+    color_echo BLUE "[7/11] Repair cleanup (if --repair)..."
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    cleanup_homebrew_repair
     cleanup_neovim_repair
 
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
