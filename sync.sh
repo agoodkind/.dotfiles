@@ -326,16 +326,16 @@ sync_scripts_to_local() {
         return 0
     fi
     
-    # Personal Mac: install launchd agent to auto-update /usr/local/opt/scripts
-    local AGENT_NAME="com.agoodkind.scripts-updater"
-    local AGENT_PLIST="$HOME/Library/LaunchAgents/${AGENT_NAME}.plist"
+    # Personal Mac: install launchd daemon to auto-update /usr/local/opt/scripts
+    local DAEMON_NAME="com.agoodkind.scripts-updater"
+    local DAEMON_PLIST="/Library/LaunchDaemons/${DAEMON_NAME}.plist"
     local SCRIPTS_DIR="/usr/local/opt/scripts"
     
-    # Check if launchd agent is already installed (check plist file exists)
-    if [[ -f "$AGENT_PLIST" ]] && [[ -d "$SCRIPTS_DIR/.git" ]]; then
-        color_echo GREEN "✅  scripts-updater launchd agent already installed"
+    # Check if launchd daemon is already installed
+    if [[ -f "$DAEMON_PLIST" ]] && [[ -d "$SCRIPTS_DIR/.git" ]]; then
+        color_echo GREEN "✅  scripts-updater launchd daemon already installed"
         # Trigger an update
-        launchctl start "${AGENT_NAME}" 2>/dev/null || true
+        sudo launchctl start "${DAEMON_NAME}" 2>/dev/null || true
         return 0
     fi
     
@@ -343,7 +343,7 @@ sync_scripts_to_local() {
     if [[ -d "$SCRIPTS_DIR" ]] && [[ ! -d "$SCRIPTS_DIR/.git" ]]; then
         color_echo YELLOW "🔄  Migrating to git-based launchd updater..."
     else
-        color_echo YELLOW "📦  Installing scripts-updater launchd agent..."
+        color_echo YELLOW "📦  Installing scripts-updater launchd daemon..."
     fi
     
     # Run the macOS installer script

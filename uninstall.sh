@@ -101,14 +101,21 @@ remove_scripts() {
     info "Removing scripts updater..."
     
     if is_macos; then
-        # macOS: remove launchd agent and symlinks
-        local AGENT_NAME="com.agoodkind.scripts-updater"
-        local AGENT_PLIST="$HOME/Library/LaunchAgents/${AGENT_NAME}.plist"
+        # macOS: remove launchd daemon and symlinks
+        local DAEMON_NAME="com.agoodkind.scripts-updater"
+        local DAEMON_PLIST="/Library/LaunchDaemons/${DAEMON_NAME}.plist"
+        local OLD_AGENT_PLIST="$HOME/Library/LaunchAgents/${DAEMON_NAME}.plist"
         local SCRIPTS_DIR="/usr/local/opt/scripts"
         
-        # Unload launchd agent
-        launchctl bootout "gui/$(id -u)/${AGENT_NAME}" 2>/dev/null || true
-        [[ -f "$AGENT_PLIST" ]] && rm "$AGENT_PLIST" && log "Removed: $AGENT_PLIST"
+        # Unload launchd daemon
+        sudo launchctl unload "$DAEMON_PLIST" 2>/dev/null || true
+        [[ -f "$DAEMON_PLIST" ]] && sudo rm "$DAEMON_PLIST" && log "Removed: $DAEMON_PLIST"
+        
+        # Also remove old LaunchAgent if present
+        if [[ -f "$OLD_AGENT_PLIST" ]]; then
+            launchctl unload "$OLD_AGENT_PLIST" 2>/dev/null || true
+            rm "$OLD_AGENT_PLIST" && log "Removed old agent: $OLD_AGENT_PLIST"
+        fi
         
         # Remove /etc/paths.d entry
         [[ -f "/etc/paths.d/scripts" ]] && sudo rm "/etc/paths.d/scripts" 2>/dev/null && \
