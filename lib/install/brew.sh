@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# NOTE: This file must be bash 3.2 compatible (macOS default)
 
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
@@ -24,7 +25,6 @@ cmd_exists() {
 }
 
 # Fast check if cask app exists (no brew calls)
-# Uses CASK_APP_MAP from packages.sh
 app_exists() {
 	local cask="$1"
 	local app_name
@@ -36,55 +36,43 @@ app_exists() {
 	[[ -d "/Applications/${app_name}" ]] || [[ -d "$HOME/Applications/${app_name}" ]]
 }
 
-# Cached Homebrew state
-declare -A INSTALLED_FORMULAE_MAP=()
-declare -A OUTDATED_FORMULAE_MAP=()
-declare -A INSTALLED_CASKS_MAP=()
-declare -A OUTDATED_CASKS_MAP=()
+# Cached Homebrew state - using regular arrays for bash 3.2 compatibility
+INSTALLED_FORMULAE_LIST=""
+OUTDATED_FORMULAE_LIST=""
+INSTALLED_CASKS_LIST=""
+OUTDATED_CASKS_LIST=""
 
 refresh_brew_state() {
-	INSTALLED_FORMULAE_MAP=()
-	while IFS= read -r formula; do
-		[[ -z "$formula" ]] && continue
-		INSTALLED_FORMULAE_MAP["$formula"]=1
-	done < <(brew list --formula)
-
-	OUTDATED_FORMULAE_MAP=()
-	while IFS= read -r formula; do
-		[[ -z "$formula" ]] && continue
-		OUTDATED_FORMULAE_MAP["$formula"]=1
-	done < <(brew outdated --formula --quiet || true)
-
-	INSTALLED_CASKS_MAP=()
-	while IFS= read -r cask; do
-		[[ -z "$cask" ]] && continue
-		INSTALLED_CASKS_MAP["$cask"]=1
-	done < <(brew list --cask)
-
-	OUTDATED_CASKS_MAP=()
-	while IFS= read -r cask; do
-		[[ -z "$cask" ]] && continue
-		OUTDATED_CASKS_MAP["$cask"]=1
-	done < <(brew outdated --cask --quiet || true)
+	INSTALLED_FORMULAE_LIST=$(brew list --formula 2>/dev/null | tr '\n' ' ')
+	OUTDATED_FORMULAE_LIST=$(brew outdated --formula --quiet 2>/dev/null | tr '\n' ' ')
+	INSTALLED_CASKS_LIST=$(brew list --cask 2>/dev/null | tr '\n' ' ')
+	OUTDATED_CASKS_LIST=$(brew outdated --cask --quiet 2>/dev/null | tr '\n' ' ')
 }
 
 refresh_brew_state
 
-# Slow but thorough brew checks that rely on cached state
+# Check if formula is in installed list
 is_brew_installed() {
-	[[ -n "${INSTALLED_FORMULAE_MAP[$1]:-}" ]]
+	local pkg="$1"
+	[[ " $INSTALLED_FORMULAE_LIST " == *" $pkg "* ]]
 }
 
+# Check if cask is in installed list
 is_cask_installed() {
-	[[ -n "${INSTALLED_CASKS_MAP[$1]:-}" ]]
+	local cask="$1"
+	[[ " $INSTALLED_CASKS_LIST " == *" $cask "* ]]
 }
 
+# Check if formula is outdated
 is_formula_outdated() {
-	[[ -n "${OUTDATED_FORMULAE_MAP[$1]:-}" ]]
+	local pkg="$1"
+	[[ " $OUTDATED_FORMULAE_LIST " == *" $pkg "* ]]
 }
 
+# Check if cask is outdated
 is_cask_outdated() {
-	[[ -n "${OUTDATED_CASKS_MAP[$1]:-}" ]]
+	local cask="$1"
+	[[ " $OUTDATED_CASKS_LIST " == *" $cask "* ]]
 }
 
 # Check if formula is installed (fast or slow based on quick_mode)
@@ -165,7 +153,7 @@ CASKS_TO_INSTALL=()
 CASKS_TO_UPGRADE=()
 
 color_echo YELLOW "Checking cask applications..."
-for cask in "${!BREW_CASKS[@]}"; do
+for cask in "${BREW_CASK_NAMES[@]}"; do
 	if ! check_cask_installed "$cask"; then
 		CASKS_TO_INSTALL+=("$cask")
 		continue

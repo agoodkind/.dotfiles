@@ -319,7 +319,9 @@ sync_scripts_to_local() {
     mkdir -p "$HOME/.local/bin/scripts"
     local scripts
     # Find executable files (excluding hidden files and specific non-script files)
-    scripts=$(find "$DOTDOTFILES/lib/scripts" -maxdepth 1 -type f -executable \
+    # Use -perm for portability (BSD find doesn't support -executable)
+    scripts=$(find "$DOTDOTFILES/lib/scripts" -maxdepth 1 -type f \
+        \( -perm -u=x -o -perm -g=x -o -perm -o=x \) \
         ! -name ".*" ! -name "LICENSE" ! -name "*.md" ! -name "*.txt")
     
     for script in $scripts; do

@@ -1,4 +1,5 @@
 # Centralized package list for both apt and brew installations
+# NOTE: This file must be bash 3.2 compatible (macOS default)
 
 # Packages that should always be installed via snap (on Linux)
 export SNAP_PACKAGES=(
@@ -25,7 +26,7 @@ export COMMON_PACKAGES=(
 	ffmpeg
 	figlet
 	fping
-    fzf
+	fzf
 	gh
 	git
 	git-delta
@@ -45,9 +46,9 @@ export COMMON_PACKAGES=(
 	ncdu
 	openssh
 	pandoc
-    pigz
+	pigz
 	procs
-    pv
+	pv
 	python3
 	rename
 	rg
@@ -69,7 +70,7 @@ export COMMON_PACKAGES=(
 	wget
 	xh
 	zoxide
-    zsh
+	zsh
 	yq
 	tree-sitter-cli
 )
@@ -78,7 +79,7 @@ export COMMON_PACKAGES=(
 export APT_SPECIFIC=(
 	ack-grep
 	golang-go
-    golang
+	golang
 	gpg
 	ipcalc-ng
 	ipcalc
@@ -89,14 +90,14 @@ export APT_SPECIFIC=(
 	nodejs
 	openssh-client
 	openssh-server
-    parted
+	parted
 	rbenv
 	ripcalc
 	rsyslog
 	sasl-xoauth2
-    sudo
+	sudo
 	speedtest-cli
-    ufw
+	ufw
 	wireguard
 )
 
@@ -119,57 +120,83 @@ export BREW_SPECIFIC=(
 	ripgrep-all
 	ssh-copy-id
 	wireguard-go
-    wireguard-tools
-    discord
+	wireguard-tools
+	discord
 )
 
-# Brew casks: [cask-name]="App Name" (empty = CLI/font, no .app)
-declare -A BREW_CASKS=(
-    [1password]="1Password"
-    [1password-cli]=""
-    [iterm2]="iTerm"
-    [keycastr]="KeyCastr"
-    [visual-studio-code]="Visual Studio Code"
-    [google-chrome]="Google Chrome"
-    [font-jetbrains-mono-nerd-font]=""
-    [font-jetbrains-mono]=""
-    [cyberduck]="Cyberduck"
-    [utm]="UTM"
-    [vlc]="VLC"
-    [stats]="Stats"
-    [xcodes-app]="Xcodes"
-    [pingplotter]="PingPlotter"
+# Brew casks - using parallel arrays for bash 3.2 compatibility
+# BREW_CASK_NAMES[i] corresponds to BREW_CASK_APPS[i]
+# Empty app name means CLI-only or font (no .app to check)
+export BREW_CASK_NAMES=(
+	1password
+	1password-cli
+	iterm2
+	keycastr
+	visual-studio-code
+	google-chrome
+	font-jetbrains-mono-nerd-font
+	font-jetbrains-mono
+	cyberduck
+	utm
+	vlc
+	stats
+	xcodes-app
+	pingplotter
 )
 
-# Centralized package name mappings
-# Format: PACKAGE_MAP[package:type] = "mapped-name"
-# Types: apt, snap, cmd
-declare -A PACKAGE_MAP
-
-# Initialize package mappings
-# apt mappings
-PACKAGE_MAP[ack:apt]="ack-grep"
-PACKAGE_MAP[fd:apt]="fd-find"
-PACKAGE_MAP[openssh:apt]="openssh-client openssh-server"
-
-# snap mappings
-PACKAGE_MAP[neovim:snap]="nvim"
+export BREW_CASK_APPS=(
+	"1Password"
+	""
+	"iTerm"
+	"KeyCastr"
+	"Visual Studio Code"
+	"Google Chrome"
+	""
+	""
+	"Cyberduck"
+	"UTM"
+	"VLC"
+	"Stats"
+	"Xcodes"
+	"PingPlotter"
+)
 
 # Get app name for a cask (returns empty if unknown or no .app)
+# Bash 3.2 compatible - uses parallel arrays
 get_cask_app_name() {
-    local cask="$1"
-    if [[ -v "BREW_CASKS[$cask]" ]]; then
-        local name="${BREW_CASKS[$cask]}"
-        [[ -n "$name" ]] && echo "${name}.app"
-    fi
+	local cask="$1"
+	local i
+	for i in "${!BREW_CASK_NAMES[@]}"; do
+		if [[ "${BREW_CASK_NAMES[$i]}" == "$cask" ]]; then
+			local name="${BREW_CASK_APPS[$i]}"
+			[[ -n "$name" ]] && echo "${name}.app"
+			return 0
+		fi
+	done
+	return 1
+}
+
+# Get mapped package name for a specific package manager
+# Usage: get_package_name "ack" "apt" -> "ack-grep"
+get_package_name() {
+	local pkg="$1"
+	local type="$2"
+	
+	case "${pkg}:${type}" in
+		ack:apt) echo "ack-grep" ;;
+		fd:apt) echo "fd-find" ;;
+		openssh:apt) echo "openssh-client openssh-server" ;;
+		neovim:snap) echo "nvim" ;;
+		*) echo "$pkg" ;;
+	esac
 }
 
 # Check if a package is in an array
 is_in_array() {
 	local search="$1"
 	shift
-	local array=("$@")
-	for item in "${array[@]}"; do
+	local item
+	for item in "$@"; do
 		if [[ "$item" == "$search" ]]; then
 			return 0
 		fi
