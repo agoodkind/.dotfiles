@@ -259,6 +259,12 @@ flush_dns() {
 # portable command existence check (zsh builtin, no fork)
 isinstalled() { (( $+commands[$1] )); }
 
+# Run a command asynchronously in the background
+# - Disowns the job (no "[1] 12345" notifications)
+# - Shell redirections still work: async_run echo "data" > file
+# Usage: async_run <command> [args...]
+async_run() { "$@" &! }
+
 _needs_sudoedit_for_any_path() {
     emulate -L zsh
     setopt localoptions no_unset
