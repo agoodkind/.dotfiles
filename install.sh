@@ -6,6 +6,7 @@ echo "Installing dotfiles to $DOTDOTFILES"
 cd "$DOTDOTFILES" || { echo "Failed to cd to $DOTDOTFILES" && exit 1; }
 
 # Source utilities
+color_echo BLUE "📁  Sourcing utilities..."
 source "${DOTDOTFILES}/lib/bash/colors.sh"
 source "${DOTDOTFILES}/lib/bash/defaults.sh"
 source "${DOTDOTFILES}/lib/bash/packages.sh"
