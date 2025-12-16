@@ -3,6 +3,14 @@
 
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
+# Parse flags
+SKIP_CASKS=false
+for arg in "$@"; do
+	case "$arg" in
+		--skip-casks) SKIP_CASKS=true ;;
+	esac
+done
+
 # Source utilities
 source "${DOTDOTFILES}/lib/bash/colors.sh"
 source "${DOTDOTFILES}/lib/bash/defaults.sh"
@@ -148,35 +156,39 @@ fi
 
 refresh_brew_state
 
-# Install cask applications
-CASKS_TO_INSTALL=()
-CASKS_TO_UPGRADE=()
+# Install cask applications (unless --skip-casks)
+if [[ "$SKIP_CASKS" == "true" ]]; then
+	color_echo YELLOW "Skipping cask applications (--skip-casks)"
+else
+	CASKS_TO_INSTALL=()
+	CASKS_TO_UPGRADE=()
 
-color_echo YELLOW "Checking cask applications..."
-for cask in "${BREW_CASK_NAMES[@]}"; do
-	if ! check_cask_installed "$cask"; then
-		CASKS_TO_INSTALL+=("$cask")
-		continue
+	color_echo YELLOW "Checking cask applications..."
+	for cask in "${BREW_CASK_NAMES[@]}"; do
+		if ! check_cask_installed "$cask"; then
+			CASKS_TO_INSTALL+=("$cask")
+			continue
+		fi
+
+		if is_cask_outdated "$cask"; then
+			CASKS_TO_UPGRADE+=("$cask")
+		fi
+	done
+
+	# Install casks if any are missing
+	if [ ${#CASKS_TO_INSTALL[@]} -gt 0 ]; then
+		color_echo YELLOW "Installing ${#CASKS_TO_INSTALL[@]} cask applications..."
+		brew install --cask "${CASKS_TO_INSTALL[@]}"
+	else
+		color_echo GREEN "All cask applications already installed!"
 	fi
 
-	if is_cask_outdated "$cask"; then
-		CASKS_TO_UPGRADE+=("$cask")
+	if [ ${#CASKS_TO_UPGRADE[@]} -gt 0 ]; then
+		color_echo YELLOW "Upgrading ${#CASKS_TO_UPGRADE[@]} cask applications..."
+		brew upgrade --cask "${CASKS_TO_UPGRADE[@]}"
+	else
+		color_echo GREEN "No cask upgrades needed!"
 	fi
-done
-
-# Install casks if any are missing
-if [ ${#CASKS_TO_INSTALL[@]} -gt 0 ]; then
-	color_echo YELLOW "Installing ${#CASKS_TO_INSTALL[@]} cask applications..."
-	brew install --cask "${CASKS_TO_INSTALL[@]}"
-else
-	color_echo GREEN "All cask applications already installed!"
-fi
-
-if [ ${#CASKS_TO_UPGRADE[@]} -gt 0 ]; then
-	color_echo YELLOW "Upgrading ${#CASKS_TO_UPGRADE[@]} cask applications..."
-	brew upgrade --cask "${CASKS_TO_UPGRADE[@]}"
-else
-	color_echo GREEN "No cask upgrades needed!"
 fi
 
 color_echo GREEN "All done!"

@@ -115,13 +115,11 @@ export BREW_SPECIFIC=(
 	navi
 	node
 	nvim
-	paper
 	pnpm
 	ripgrep-all
 	ssh-copy-id
 	wireguard-go
 	wireguard-tools
-	discord
 )
 
 # Brew casks - using parallel arrays for bash 3.2 compatibility

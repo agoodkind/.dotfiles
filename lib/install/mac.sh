@@ -7,8 +7,16 @@ source "${DOTDOTFILES}/lib/bash/colors.sh"
 source "${DOTDOTFILES}/lib/bash/defaults.sh"
 source "${DOTDOTFILES}/lib/bash/packages.sh"
 
+# Build brew.sh args from passed flags
+BREW_ARGS=()
+for arg in "$@"; do
+    case "$arg" in
+        --skip-casks) BREW_ARGS+=("--skip-casks") ;;
+    esac
+done
+
 if [[ " $* " != *" --skip-install "* ]]; then
-    "$DOTDOTFILES/lib/install/brew.sh"
+    "$DOTDOTFILES/lib/install/brew.sh" "${BREW_ARGS[@]}"
 fi
 
 # # copy MOTD to /etc/motd

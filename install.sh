@@ -21,7 +21,7 @@ color_echo BLUE "🔧  Setting up git configuration..."
 run_with_defaults "$DOTDOTFILES/lib/install/git.sh"
 
 color_echo BLUE "🛠️  Running sync script..."
-run_with_defaults "$DOTDOTFILES/sync.sh"
+run_with_defaults "$DOTDOTFILES/sync.sh" "$@"
 
 # Set up passwordless sudo for current user (macOS and Ubuntu)
 if [[ "$OSTYPE" == "darwin"* ]]; then
