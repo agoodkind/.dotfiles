@@ -55,6 +55,12 @@ alwaysApply: true
 
 - Do not force push (`git push --force` or `git push -f`) unless explicitly instructed
 
+## Repository Access
+
+- If a repo is needed for research or to answer a question, clone it using `gh repo clone <owner>/<repo>`
+- Clone to a sensible location (e.g., same parent directory as current workspace repos)
+- Prefer shallow clones for large repos when only recent history is needed: `gh repo clone <owner>/<repo> -- --depth 1`
+
 ## Response Format (PR / Slack tone)
 
 - Write like an engineer leaving a PR comment or Slack reply
