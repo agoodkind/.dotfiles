@@ -4,6 +4,7 @@ Analyze the branch changes and create a pull request using the GitHub CLI, follo
 
 ## Critical Rules
 
+- **Draft Mode Required**: ALWAYS use `--draft` flag when executing `gh pr create` - never create non-draft PRs
 - **Prose Paragraphs**: Write descriptions as concise prose, NOT bullet lists
 - **Present Tense**: Use present tense throughout
 - **2-3 Paragraphs Max**: Keep descriptions brief and focused
@@ -23,6 +24,18 @@ Analyze the branch changes and create a pull request using the GitHub CLI, follo
 3. Describe what this PR does to fix it
 4. Include implementation details when necessary
 5. Acknowledge friction or concerns where relevant
+
+## Code References
+
+- Use inline code for identifiers: `method_name`, `ClassName`, `variable`
+- Use fenced code blocks for multi-line snippets:
+  ```ruby
+  def example
+    # relevant code
+  end
+  ```
+- Reference specific methods, classes, or values that changed
+- Code references add precision—use them when naming things matters
 
 ## Prohibited Patterns
 
@@ -53,7 +66,7 @@ Examples:
 4. Craft a concise PR title with ticket prefix when available: `[AG-12345] Your title here` (imperative mood, no feat/fix prefixes); if no ticket, skip the prefix
 5. Write 2-3 paragraph description following the flow: symptom → root cause → fix
 6. Add ticket link at the end of description when a ticket exists: `Ticket: https://ag.atlassian.net/browse/AG-12345` (infer the correct alassian subdomain from context or company); omit if no ticket
-7. Execute `gh pr create --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
+7. Execute the command with `--draft` flag (REQUIRED - never omit): `gh pr create --draft --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
 8. After PR is created, output a Slack message for the review request channel
 
 ## Examples
@@ -63,7 +76,7 @@ Examples:
 - "[PLAT-567] Reset list state on pull-to-refresh"
 
 ✅ Good Description:
-"The silver list was showing duplicate entries after pull-to-refresh. The issue was that fetchSilverElectrons was appending results instead of replacing them when the offset was zero. This PR resets the list state before fetching when triggered by refresh.
+"The silver list was showing duplicate entries after pull-to-refresh. The issue was that `fetchSilverElectrons` was appending results instead of replacing them when `offset` was zero. This PR resets the list state before fetching when triggered by refresh.
 
 Ticket: https://ag.atlassian.net/browse/AG-1234"
 

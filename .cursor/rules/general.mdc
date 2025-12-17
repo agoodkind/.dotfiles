@@ -51,6 +51,10 @@ alwaysApply: true
 - Avoid commands that might hang; add a timeout or guard when blocking is possible
 - When running commands, run explicitly in `bash` or ensure compatibility with `zsh` (which parses characters differently)
 
+## Git
+
+- Do not force push (`git push --force` or `git push -f`) unless explicitly instructed
+
 ## Response Format (PR / Slack tone)
 
 - Write like an engineer leaving a PR comment or Slack reply
