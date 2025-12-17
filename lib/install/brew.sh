@@ -96,13 +96,9 @@ refresh_brew_state() {
 
 refresh_brew_state
 
-# Debug: show state
+# Verify we got the formula list
 if [[ -z "$INSTALLED_FORMULAE_LIST" ]]; then
 	color_echo RED "Warning: brew list returned empty"
-else
-	local count
-	count=$(echo "$INSTALLED_FORMULAE_LIST" | wc -w | tr -d ' ')
-	color_echo GREEN "Found $count installed formulae"
 fi
 
 # Check if formula is in installed list
@@ -129,14 +125,12 @@ is_cask_outdated() {
 	[[ " $OUTDATED_CASKS_LIST " == *" $cask "* ]]
 }
 
-# Check if formula is installed (fast or slow based on quick_mode)
+# Check if formula is installed
+# Always use brew list check - cmd_exists is unreliable because
+# formula names don't always match binary names (e.g., coreutils -> gls)
 check_formula_installed() {
 	local pkg="$1"
-	if [[ "${quick_mode:-false}" == "true" ]]; then
-		cmd_exists "$pkg"
-	else
-		is_brew_installed "$pkg"
-	fi
+	is_brew_installed "$pkg"
 }
 
 # Check if cask is installed (fast or slow based on quick_mode)
@@ -174,8 +168,6 @@ PACKAGES_TO_UPGRADE=()
 ALL_BREW_PACKAGES=("${COMMON_PACKAGES[@]}" "${BREW_SPECIFIC[@]}")
 
 color_echo YELLOW "Checking formula packages..."
-# Debug: show quick_mode value
-[[ "${quick_mode:-false}" == "true" ]] && color_echo YELLOW "  (quick_mode enabled)"
 
 for package in "${ALL_BREW_PACKAGES[@]}"; do
 	if ! check_formula_installed "$package"; then
