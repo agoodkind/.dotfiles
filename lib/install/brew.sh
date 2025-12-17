@@ -27,11 +27,15 @@ fi
 # Check for and clean up STALE brew locks (only if owning process is dead)
 cleanup_stale_brew_locks() {
 	local lock_dir
-	lock_dir="$(brew --prefix)/var/homebrew/locks" 2>/dev/null || return 0
+	lock_dir="$(brew --prefix 2>/dev/null)/var/homebrew/locks" || return 0
 	
 	[[ -d "$lock_dir" ]] || return 0
 	
-	for lock_file in "$lock_dir"/*.lock 2>/dev/null; do
+	# Check if any lock files exist
+	local lock_files
+	lock_files=$(ls "$lock_dir"/*.lock 2>/dev/null) || return 0
+	
+	for lock_file in $lock_files; do
 		[[ -f "$lock_file" ]] || continue
 		
 		# Extract PID from lock file (format: pid on first line)
