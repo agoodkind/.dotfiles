@@ -2,6 +2,8 @@
 # shellcheck shell=bash
 # Background dotfiles updater - checks for updates and applies them silently
 
+source "$DOTDOTFILES/lib/zsh/utils.zsh"
+
 # Prevent concurrent runs
 LOCK_FILE="$HOME/.cache/dotfiles_update.lock"
 if [[ -f "$LOCK_FILE" ]]; then
@@ -86,10 +88,58 @@ do_update() {
     touch "$HOME/.cache/dotfiles_update_success"
 }
 
+# Weekly full update (repair + zinit + nvim)
+WEEKLY_TIMESTAMP="$HOME/.cache/dotfiles_weekly_update"
+WEEKLY_SECONDS=$((7 * 24 * 60 * 60))  # 7 days
+
+needs_weekly_update() {
+    [[ ! -f "$WEEKLY_TIMESTAMP" ]] && return 0
+    
+    local last_update now
+    last_update=$(stat -f %m "$WEEKLY_TIMESTAMP" 2>/dev/null) || \
+        last_update=$(stat -c %Y "$WEEKLY_TIMESTAMP" 2>/dev/null) || return 0
+    now=$(date +%s)
+    
+    (( now - last_update > WEEKLY_SECONDS ))
+}
+
+do_weekly_update() {
+    log "Weekly full update started"
+    
+    cd "$DOTDOTFILES" || { error "Failed to cd to dotfiles"; return 1; }
+    
+    # Full sync with repair (not quick)
+    log "Running sync.sh --repair"
+    local sync_output
+    sync_output=$(USE_DEFAULTS=true "$DOTDOTFILES/sync.sh" --non-interactive --repair 2>&1)
+    local sync_exit=$?
+    echo "$sync_output" >> "$LOG_FILE"
+    log "sync.sh --repair exited with code $sync_exit"
+    
+    # Update zinit plugins
+    log "Updating zinit plugins"
+    if (( $+commands[zinit] )) || [[ -f "$DOTDOTFILES/lib/zinit/zinit.zsh" ]]; then
+        source "$DOTDOTFILES/lib/zinit/zinit.zsh" 2>/dev/null
+        zinit update --all --quiet 2>&1 >> "$LOG_FILE" || true
+        log "zinit update completed"
+    fi
+    
+    # Update timestamp
+    touch "$WEEKLY_TIMESTAMP"
+    log "Weekly full update completed"
+    touch "$HOME/.cache/dotfiles_weekly_update_success"
+}
+
 # Main
 fetch_latest || exit 0
 
 if is_behind_remote; then
     do_update
+fi
+
+# Check for weekly full update (independent of git changes)
+# Run async so it doesn't block shell startup
+if needs_weekly_update; then
+    async_run do_weekly_update
 fi
 

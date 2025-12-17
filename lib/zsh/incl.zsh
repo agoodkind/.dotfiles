@@ -27,6 +27,9 @@ source "$DOTDOTFILES/lib/zsh/motd.zsh"
 if [[ -f ~/.cache/dotfiles_update_error ]]; then
     print -P "%F{red}⚠️  Dotfiles update failed. See: ~/.cache/dotfiles_update.log%f"
     rm -f ~/.cache/dotfiles_update_error
+elif [[ -f ~/.cache/dotfiles_weekly_update_success ]]; then
+    print -P "%F{green}✓ Weekly full update completed (zinit, nvim, repair)%f"
+    rm -f ~/.cache/dotfiles_weekly_update_success
 elif [[ -f ~/.cache/dotfiles_update_success ]]; then
     print -P "%F{green}✓ Dotfiles updated in background%f"
     rm -f ~/.cache/dotfiles_update_success
