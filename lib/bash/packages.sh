@@ -43,6 +43,7 @@ export COMMON_PACKAGES=(
 	less
 	most
 	moreutils
+	msmtp
 	ncdu
 	openssh
 	pandoc
@@ -84,7 +85,6 @@ export APT_SPECIFIC=(
 	ipcalc-ng
 	ipcalc
 	locales
-	msmtp
 	msmtp-mta
 	net-tools
 	nodejs
