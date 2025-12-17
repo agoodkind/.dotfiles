@@ -150,4 +150,3 @@ fi
 if needs_weekly_update; then
     async_run do_weekly_update
 fi
-
