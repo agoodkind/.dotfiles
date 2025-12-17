@@ -116,12 +116,20 @@ do_weekly_update() {
     echo "$sync_output" >> "$LOG_FILE"
     log "sync.sh --repair exited with code $sync_exit"
     
-    # Update zinit plugins
-    log "Updating zinit plugins"
+    # Update zinit (self + plugins)
+    log "Updating zinit"
     if (( $+commands[zinit] )) || [[ -f "$DOTDOTFILES/lib/zinit/zinit.zsh" ]]; then
         source "$DOTDOTFILES/lib/zinit/zinit.zsh" 2>/dev/null
+        zinit self-update 2>&1 >> "$LOG_FILE" || true
         zinit update --all --quiet 2>&1 >> "$LOG_FILE" || true
         log "zinit update completed"
+    fi
+    
+    # Homebrew cleanup (macOS only)
+    if [[ "$OSTYPE" == darwin* ]] && (( $+commands[brew] )); then
+        log "Running brew cleanup"
+        brew cleanup --prune=all 2>&1 >> "$LOG_FILE" || true
+        log "brew cleanup completed"
     fi
     
     # Update timestamp
