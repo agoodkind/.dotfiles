@@ -87,23 +87,23 @@ INSTALLED_CASKS_LIST=""
 OUTDATED_CASKS_LIST=""
 
 refresh_brew_state() {
-	# Retry up to 3 times if brew list fails (might be locked)
-	local attempts=0
-	while [[ $attempts -lt 3 ]]; do
-		INSTALLED_FORMULAE_LIST=$(brew list --formula 2>/dev/null | tr '\n' ' ')
-		if [[ -n "$INSTALLED_FORMULAE_LIST" ]]; then
-			break
-		fi
-		attempts=$((attempts + 1))
-		sleep 1
-	done
-	
+	# Get installed formulae
+	INSTALLED_FORMULAE_LIST=$(brew list --formula 2>/dev/null | tr '\n' ' ')
 	OUTDATED_FORMULAE_LIST=$(brew outdated --formula --quiet 2>/dev/null | tr '\n' ' ')
 	INSTALLED_CASKS_LIST=$(brew list --cask 2>/dev/null | tr '\n' ' ')
 	OUTDATED_CASKS_LIST=$(brew outdated --cask --quiet 2>/dev/null | tr '\n' ' ')
 }
 
 refresh_brew_state
+
+# Debug: show state
+if [[ -z "$INSTALLED_FORMULAE_LIST" ]]; then
+	color_echo RED "Warning: brew list returned empty"
+else
+	local count
+	count=$(echo "$INSTALLED_FORMULAE_LIST" | wc -w | tr -d ' ')
+	color_echo GREEN "Found $count installed formulae"
+fi
 
 # Check if formula is in installed list
 is_brew_installed() {
@@ -174,6 +174,9 @@ PACKAGES_TO_UPGRADE=()
 ALL_BREW_PACKAGES=("${COMMON_PACKAGES[@]}" "${BREW_SPECIFIC[@]}")
 
 color_echo YELLOW "Checking formula packages..."
+# Debug: show quick_mode value
+[[ "${quick_mode:-false}" == "true" ]] && color_echo YELLOW "  (quick_mode enabled)"
+
 for package in "${ALL_BREW_PACKAGES[@]}"; do
 	if ! check_formula_installed "$package"; then
 		PACKAGES_TO_INSTALL+=("$package")
