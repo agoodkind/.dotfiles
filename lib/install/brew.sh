@@ -126,11 +126,11 @@ is_cask_outdated() {
 }
 
 # Check if formula is installed
-# Always use brew list check - cmd_exists is unreliable because
-# formula names don't always match binary names (e.g., coreutils -> gls)
+# Fast path: check if command exists in PATH
+# Fallback: check brew list (handles cases where formula != binary name)
 check_formula_installed() {
 	local pkg="$1"
-	is_brew_installed "$pkg"
+	cmd_exists "$pkg" || is_brew_installed "$pkg"
 }
 
 # Check if cask is installed (fast or slow based on quick_mode)
