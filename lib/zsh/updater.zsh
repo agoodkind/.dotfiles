@@ -106,7 +106,10 @@ needs_weekly_update() {
 do_weekly_update() {
     log "Weekly full update started"
     
-    cd "$DOTDOTFILES" || { error "Failed to cd to dotfiles"; return 1; }
+    cd "$DOTDOTFILES" || { 
+        error "Failed to cd to dotfiles"
+        return 1
+    }
     
     # Full sync with repair (not quick)
     log "Running sync.sh --repair"
