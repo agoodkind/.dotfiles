@@ -17,6 +17,7 @@ export SHOULD_PROFILE
 source "$DOTDOTFILES/lib/zsh/plugins.zsh"
 # Dotfiles async update - source directly to avoid zinit plugin management
 source "$DOTDOTFILES/lib/zsh/utils.zsh"
+source "$DOTDOTFILES/lib/zsh/git.zsh"
 (zsh "$DOTDOTFILES/lib/zsh/updater.zsh" >/dev/null 2>&1 &)
 source "$DOTDOTFILES/lib/zsh/zoxide.zsh"
 source "$DOTDOTFILES/lib/zsh/motd.zsh"

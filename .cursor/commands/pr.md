@@ -4,6 +4,7 @@ Analyze the branch changes and create a pull request using the GitHub CLI, follo
 
 ## Critical Rules
 
+- **Check Existing PR First**: ALWAYS run `gh pr view --json body,title` to check for an existing PR description before creating or updating—preserve user content and only enhance it
 - **Draft Mode Required**: ALWAYS use `--draft` flag when executing `gh pr create` - never create non-draft PRs
 - **Prose Paragraphs**: Write descriptions as concise prose, NOT bullet lists
 - **Present Tense**: Use present tense throughout
@@ -96,18 +97,23 @@ Examples:
 
 ## Steps
 
-1. Check for ticket number in this order:
+1. **Check for existing PR**: Run `gh pr view --json body,title` to see if a PR already exists for this branch
+   - If a PR exists, read its current title and description—preserve user content when updating
+   - If no PR exists, proceed with creating a new one
+2. Check for ticket number in this order:
    - First check current branch name (e.g. `agoodkind/AG-12345/fix-bug` → `AG-12345`)
    - Then check commit messages for ticket references
    - If not found, ask the user for the ticket number; if the user confirms there is no ticket, proceed without one
-2. Run `git log main..HEAD --oneline` to see commits on the branch
-3. Run `git diff main...HEAD` to analyze all changes
-4. Craft a concise PR title with ticket prefix when available: `[AG-12345] Your title here` (imperative mood, no feat/fix prefixes); if no ticket, skip the prefix
-5. Write 2-3 paragraph description following the flow: symptom → root cause → fix
-6. If before/after images are provided (in user input or existing PR description), convert them to the table format described above
-7. Add ticket link at the end of description when a ticket exists: `Ticket: https://ag.atlassian.net/browse/AG-12345` (infer the correct alassian subdomain from context or company); omit if no ticket
-8. Execute the command with `--draft` flag (REQUIRED - never omit): `gh pr create --draft --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
-9. After PR is created, output a Slack message for the review request channel
+3. Run `git log main..HEAD --oneline` to see commits on the branch
+4. Run `git diff main...HEAD` to analyze all changes
+5. Craft a concise PR title with ticket prefix when available: `[AG-12345] Your title here` (imperative mood, no feat/fix prefixes); if no ticket, skip the prefix
+6. Write 2-3 paragraph description following the flow: symptom → root cause → fix
+7. If before/after images are provided (in user input or existing PR description), convert them to the table format described above
+8. Add ticket link at the end of description when a ticket exists: `Ticket: https://ag.atlassian.net/browse/AG-12345` (infer the correct alassian subdomain from context or company); omit if no ticket
+9. Execute the command:
+   - If PR exists: `gh pr edit --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
+   - If no PR: `gh pr create --draft --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
+10. After PR is created/updated, output a Slack message for the review request channel
 
 ## Examples
 
