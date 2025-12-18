@@ -112,6 +112,7 @@ export BREW_SPECIFIC=(
 	gitui
 	glow
 	mdless
+	mitmproxy
 	navi
 	node
 	nvim
