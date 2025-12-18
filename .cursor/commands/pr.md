@@ -37,6 +37,45 @@ Analyze the branch changes and create a pull request using the GitHub CLI, follo
 - Reference specific methods, classes, or values that changed
 - Code references add precision—use them when naming things matters
 
+## Before/After Image Table Conversion
+
+When the PR description (existing or being created) contains before/after images, automatically convert them to a side-by-side table format.
+
+**Detect these patterns:**
+- "Before" followed by an `<img>` tag or markdown image `![]()`
+- "After" followed by an `<img>` tag or markdown image `![]()`
+- Variations like "Before:", "**Before**", "### Before", etc.
+
+**Convert to this format:**
+```markdown
+| Before | After |
+|--------|-------|
+| ![alt](image_url) | ![alt](image_url) |
+```
+
+**Conversion rules:**
+- Extract the `src` attribute from `<img>` tags and convert to markdown image syntax
+- Use the `alt` attribute as the alt text (or "Before"/"After" if no alt provided)
+- Drop `width`, `height`, and other HTML attributes (GitHub auto-sizes in tables)
+- If multiple before/after pairs exist, create multiple rows or separate tables
+
+**Example conversion:**
+
+Input:
+```
+Before
+<img width="1206" alt="Old UI" src="https://github.com/user-attachments/assets/abc123" />
+After
+<img width="545" alt="New UI" src="https://github.com/user-attachments/assets/def456" />
+```
+
+Output:
+```markdown
+| Before | After |
+|--------|-------|
+| ![Old UI](https://github.com/user-attachments/assets/abc123) | ![New UI](https://github.com/user-attachments/assets/def456) |
+```
+
 ## Prohibited Patterns
 
 - Bullet lists or itemized formats
@@ -65,9 +104,10 @@ Examples:
 3. Run `git diff main...HEAD` to analyze all changes
 4. Craft a concise PR title with ticket prefix when available: `[AG-12345] Your title here` (imperative mood, no feat/fix prefixes); if no ticket, skip the prefix
 5. Write 2-3 paragraph description following the flow: symptom → root cause → fix
-6. Add ticket link at the end of description when a ticket exists: `Ticket: https://ag.atlassian.net/browse/AG-12345` (infer the correct alassian subdomain from context or company); omit if no ticket
-7. Execute the command with `--draft` flag (REQUIRED - never omit): `gh pr create --draft --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
-8. After PR is created, output a Slack message for the review request channel
+6. If before/after images are provided (in user input or existing PR description), convert them to the table format described above
+7. Add ticket link at the end of description when a ticket exists: `Ticket: https://ag.atlassian.net/browse/AG-12345` (infer the correct alassian subdomain from context or company); omit if no ticket
+8. Execute the command with `--draft` flag (REQUIRED - never omit): `gh pr create --draft --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
+9. After PR is created, output a Slack message for the review request channel
 
 ## Examples
 
