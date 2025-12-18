@@ -223,6 +223,77 @@ function _git_wtk_guess_repo() {
 }
 
 ###############################################################################
+# _git_wkm_worker: create a single worktree (called in parallel by _git_wkm)
+#
+# Env vars (set by caller):
+#   _WKM_REPO, _WKM_PARENT, _WKM_BRANCH, _WKM_OUT, _WKM_PWD
+#
+# Output format (appended to $_WKM_OUT):
+#   status:<message>     - progress updates
+#   path:<worktree>      - final worktree path (if success)
+#   done:<ok|error>      - sentinel marking completion
+###############################################################################
+function _git_wkm_worker() {
+    local rp="$_WKM_REPO"
+    local out="$_WKM_OUT"
+
+    # Resolve repo name to path.
+    if [[ ! -d "$rp" && -n "$_WKM_PARENT" && -d "$_WKM_PARENT/$rp" ]]; then
+        rp="$_WKM_PARENT/$rp"
+    fi
+
+    if [[ ! -d "$rp" ]]; then
+        print "status:repo not found" >> "$out"
+        print "done:error" >> "$out"
+        return 1
+    fi
+
+    # Resolve to absolute path.
+    [[ "$rp" != /* ]] && rp="$_WKM_PWD/$rp"
+    rp="${rp:A}"
+
+    local dir_name="${_WKM_BRANCH//\//-}"
+    local wt_path="${rp}-worktrees/$dir_name"
+
+    # Check if worktree already exists.
+    if [[ -d "$wt_path" ]]; then
+        print "status:exists" >> "$out"
+        print "path:$wt_path" >> "$out"
+        print "done:ok" >> "$out"
+        return 0
+    fi
+
+    # Fetch.
+    print "status:fetching" >> "$out"
+    command git -C "$rp" fetch origin >/dev/null 2>&1
+
+    # Create worktree.
+    print "status:creating" >> "$out"
+    local origin_ref="origin/$_WKM_BRANCH"
+    if command git -C "$rp" show-ref --verify --quiet "refs/remotes/$origin_ref"
+    then
+        command git -C "$rp" worktree add --track -B "$_WKM_BRANCH" \
+            "$wt_path" "$origin_ref" >/dev/null 2>&1
+    else
+        command git -C "$rp" worktree add -B "$_WKM_BRANCH" \
+            "$wt_path" >/dev/null 2>&1
+        if [[ -d "$wt_path" ]]; then
+            print "status:pushing" >> "$out"
+            command git -C "$wt_path" push -u origin "$_WKM_BRANCH" >/dev/null 2>&1
+        fi
+    fi
+
+    if [[ -d "$wt_path" ]]; then
+        print "status:created" >> "$out"
+        print "path:$wt_path" >> "$out"
+        print "done:ok" >> "$out"
+    else
+        print "status:failed" >> "$out"
+        print "done:error" >> "$out"
+    fi
+}
+
+###############################################################################
 # git wkm: create worktrees across multiple repos and open in Cursor workspace
 #
 # Usage:
@@ -262,90 +333,93 @@ function _git_wkm() {
     local workspace_dir="${GIT_WKM_WORKSPACE_DIR:-${HOME}/.workspaces}"
     mkdir -p "$workspace_dir" 2>/dev/null || true
 
-    print "Creating worktrees for branch '$branch_name' in ${#repos[@]} repos..."
-    print ""
+    local total=${#repos[@]}
 
-    local -a worktree_paths
-    worktree_paths=()
+    # Temp dir for job output.
+    local tmp_dir="${TMPDIR:-/tmp}/git-wkm-$$"
+    command mkdir -p "$tmp_dir"
 
-    local repo repo_path
+    # Disable job notifications.
+    setopt local_options no_notify no_monitor
+
+    # Initialize output files and spawn workers (detached).
+    local idx=0
     for repo in "${repos[@]}"; do
-        print -P "%B[$repo]%b"
-        repo_path="$repo"
-
-        # Resolve repo name to path under GIT_WTK_PARENT_DIR.
-        if [[ ! -d "$repo_path" && -n "$parent_dir" ]]; then
-            if [[ -d "$parent_dir/$repo_path" ]]; then
-                repo_path="$parent_dir/$repo_path"
-            fi
-        fi
-
-        if [[ ! -d "$repo_path" ]]; then
-            print "  ✗ repo not found: $repo"
-            print ""
-            continue
-        fi
-
-        repo_path="$(cd "$repo_path" 2>/dev/null && pwd -P)"
-        if [[ -z "$repo_path" ]]; then
-            print "  ✗ could not resolve path"
-            print ""
-            continue
-        fi
-
-        # Fetch to make sure we have latest refs.
-        print "  fetching origin..."
-        command git -C "$repo_path" fetch origin >/dev/null 2>&1
-
-        # Check if branch exists on origin for this repo.
-        if ! command git -C "$repo_path" show-ref --verify --quiet \
-            "refs/remotes/origin/$branch_name"; then
-            print "  ✗ branch '$branch_name' not found on origin"
-            print ""
-            continue
-        fi
-
-        # Check if worktree already exists (via git worktree list).
-        local existing_wt_path
-        existing_wt_path="$(command git -C "$repo_path" worktree list --porcelain \
-            | awk -v branch="$branch_name" '
-                /^worktree/ { path=$2 }
-                $1 == "branch" && $2 == "refs/heads/" branch { print path; exit }
-            ')"
-
-        if [[ -n "$existing_wt_path" && -d "$existing_wt_path" ]]; then
-            print "  ✓ existing worktree: $existing_wt_path"
-            worktree_paths+=("$existing_wt_path")
-            print ""
-            continue
-        fi
-
-        # Compute worktree path (matches _git_wtk layout).
-        local dir_name="${branch_name//\//-}"
-        local wt_path="${repo_path}-worktrees/$dir_name"
-
-        # Create worktree in subshell (so its `cd` doesn't affect us).
-        print "  creating worktree..."
-        local wt_output
-        wt_output="$( _git_wtk --git-c "$repo_path" "$branch_name" 2>&1 )"
-        local wt_status=$?
-
-        if [[ $wt_status -ne 0 ]]; then
-            print "  ✗ failed: $wt_output"
-            print ""
-            continue
-        fi
-
-        if [[ ! -d "$wt_path" ]]; then
-            print "  ✗ worktree not found at expected path: $wt_path"
-            print ""
-            continue
-        fi
-
-        worktree_paths+=("$wt_path")
-        print "  ✓ created: $wt_path"
-        print ""
+        (( idx++ ))
+        : > "$tmp_dir/$idx"  # create empty file
+        _WKM_REPO="$repo" \
+        _WKM_PARENT="$parent_dir" \
+        _WKM_BRANCH="$branch_name" \
+        _WKM_OUT="$tmp_dir/$idx" \
+        _WKM_PWD="$PWD" \
+        _git_wkm_worker &!
     done
+
+    # Track state for each repo.
+    local -a last_status last_line_count wt_paths done_flags
+    for i in {1..$total}; do
+        last_status[$i]="pending"
+        last_line_count[$i]=0
+        wt_paths[$i]=""
+        done_flags[$i]=0
+    done
+
+    # Print initial status.
+    print "Creating worktrees for '$branch_name'...\n"
+    for i in {1..$total}; do
+        print "  ⏳ ${repos[$i]}"
+    done
+
+    # Poll and update display.
+    local all_done=0
+    while (( ! all_done )); do
+        all_done=1
+        for i in {1..$total}; do
+            (( done_flags[$i] )) && continue
+            all_done=0
+
+            local out_file="$tmp_dir/$i"
+            [[ -f "$out_file" ]] || continue
+
+            # Read new lines.
+            local line_num=0
+            while IFS= read -r line; do
+                (( line_num++ ))
+                (( line_num <= last_line_count[$i] )) && continue
+
+                local key="${line%%:*}"
+                local val="${line#*:}"
+                case "$key" in
+                    status) last_status[$i]="$val" ;;
+                    path)   wt_paths[$i]="$val" ;;
+                    done)   done_flags[$i]=1 ;;
+                esac
+            done < "$out_file"
+            last_line_count[$i]=$line_num
+        done
+        sleep 0.1
+    done
+
+    # Move cursor up and redraw final status.
+    printf "\033[%dA" "$total"
+    local -a worktree_paths worktree_names
+    worktree_paths=()
+    worktree_names=()
+    for i in {1..$total}; do
+        local st="${last_status[$i]}"
+        local repo="${repos[$i]}"
+        printf "\r\033[K"  # clear line
+        if [[ -n "${wt_paths[$i]}" ]]; then
+            print "  ✓ $repo ($st)"
+            worktree_paths+=("${wt_paths[$i]}")
+            worktree_names+=("${repo##*/}")  # basename if it's a path
+        else
+            print "  ✗ $repo ($st)"
+        fi
+    done
+
+    command rm -rf "$tmp_dir"
+    print ""
 
     if (( ${#worktree_paths[@]} == 0 )); then
         print "git wkm: no worktrees created or found" >&2
@@ -355,35 +429,86 @@ function _git_wkm() {
     print "---"
     print "${#worktree_paths[@]} worktree(s) ready"
 
-    # Create Cursor workspace file.
+    # Create Cursor workspace file with repo names as display names.
     local ws_name="${branch_name//\//-}"
     local ws_file="$workspace_dir/${ws_name}.code-workspace"
 
-    local folders_json=""
-    local wt
-    for wt in "${worktree_paths[@]}"; do
-        [[ -n "$folders_json" ]] && folders_json+=","
-        folders_json+="
-    { \"path\": \"$wt\" }"
+    # Build workspace JSON with jq.
+    local folders_json="[]"
+    local idx
+    for idx in {1..${#worktree_paths[@]}}; do
+        folders_json=$(print -r -- "$folders_json" | jq \
+            --arg name "${worktree_names[$idx]}" \
+            --arg path "${worktree_paths[$idx]}" \
+            '. + [{"name": $name, "path": $path}]')
     done
 
-    cat > "$ws_file" <<EOF
-{
-  "folders": [$folders_json
-  ]
-}
-EOF
+    jq -n --argjson folders "$folders_json" \
+        '{"folders": $folders, "settings": {
+            "git.enabled": true,
+            "git.autoRepositoryDetection": "subFolders",
+            "git.showCursorWorktrees": true,
+            "scm.alwaysShowRepositories": true
+        }}' > "$ws_file"
 
     print ""
     print "Workspace: $ws_file"
-    print ""
 
-    # Open in Cursor if available.
+    # Clear Cursor workspace state to prevent repos from being hidden (Bug workaround).
+    # Cursor stores SCM visibility state in SQLite; stale state can hide repos.
+    _git_wkm_clear_cursor_state "$ws_file"
+
+    # Open in Cursor.
     if command -v cursor >/dev/null 2>&1; then
         print "Opening in Cursor..."
         cursor "$ws_file"
+    elif [[ "$OSTYPE" == darwin* ]]; then
+        print "Opening in Cursor..."
+        open -a "Cursor" "$ws_file"
     else
+        print ""
         print "Run: cursor '$ws_file'"
+    fi
+}
+
+###############################################################################
+# _git_wkm_clear_cursor_state: clear SCM visibility state to prevent hidden repos
+#
+# Cursor has bugs where repos get stuck hidden:
+#   - closedRepositories: repos manually closed, can't reopen
+#   - scm:view:visibleRepositories: race condition hides repos on first open
+#
+# This function finds and clears that state before opening the workspace.
+###############################################################################
+function _git_wkm_clear_cursor_state() {
+    local ws_file="$1"
+    [[ -z "$ws_file" ]] && return
+
+    # Only works on macOS for now
+    [[ "$OSTYPE" != darwin* ]] && return
+
+    local storage_base="$HOME/Library/Application Support/Cursor/User/workspaceStorage"
+    [[ ! -d "$storage_base" ]] && return
+
+    # Find workspace storage by searching for matching workspace.json
+    local ws_hash=""
+    local ws_json
+    for ws_json in "$storage_base"/*/workspace.json(N); do
+        if grep -q "$ws_file" "$ws_json" 2>/dev/null; then
+            ws_hash="${ws_json:h}"
+            break
+        fi
+    done
+
+    [[ -z "$ws_hash" || ! -d "$ws_hash" ]] && return
+
+    local db_file="$ws_hash/state.vscdb"
+    [[ ! -f "$db_file" ]] && return
+
+    # Clear problematic keys
+    if command -v sqlite3 >/dev/null 2>&1; then
+        sqlite3 "$db_file" "DELETE FROM ItemTable WHERE key = 'scm:view:visibleRepositories';" 2>/dev/null
+        sqlite3 "$db_file" "UPDATE ItemTable SET value = '{}' WHERE key = 'vscode.git';" 2>/dev/null
     fi
 }
 
