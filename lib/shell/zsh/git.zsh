@@ -371,12 +371,35 @@ function _git_wkm() {
         setopt local_options no_notify no_monitor
     fi
 
-    # Initialize output files and spawn workers
+    # Print header with parallel indicator.
+    if [[ "$use_async_cmd" == "true" ]]; then
+        print "Creating worktrees for '$branch_name' in $total repos (async-cmd)..."
+    else
+        print "Creating worktrees for '$branch_name' in $total repos..."
+    fi
+    print "  ⚡ Spawning $total parallel workers...\n"
+
+    # Track state for each repo.
+    local -a last_status last_line_count wt_paths done_flags pids
+    for i in {1..$total}; do
+        last_status[$i]="spawning"
+        last_line_count[$i]=0
+        wt_paths[$i]=""
+        done_flags[$i]=0
+        pids[$i]=""
+    done
+
+    # Print initial status lines (will be updated in place).
+    for i in {1..$total}; do
+        print "  ⏳ ${repos[$i]} (spawning)"
+    done
+
     local widx=0
+    local start_time=$SECONDS
     for repo in "${repos[@]}"; do
         (( widx++ )) || true
         : > "$tmp_dir/$widx"  # create empty file
-        
+
         if [[ "$use_async_cmd" == "true" ]]; then
             # Submit job to async-cmd (non-blocking)
             async -s="$socket" cmd -- zsh -c \
@@ -387,39 +410,35 @@ _WKM_OUT='$tmp_dir/$widx' \
 _WKM_PWD='$PWD' \
 source '$DOTDOTFILES/lib/shell/zsh/git.zsh' && \
 _git_wkm_worker" >/dev/null 2>&1
+            pids[$widx]="async"
         else
             # Use native background jobs
-            async_run _git_wkm_worker_async \
-                "$repo" "$parent_dir" "$branch_name" "$tmp_dir/$widx" "$PWD"
+            (
+                _git_wkm_worker_async "$repo" "$parent_dir" "$branch_name" \
+                    "$tmp_dir/$widx" "$PWD"
+            ) &!
+            pids[$widx]=$!
         fi
     done
 
-    # Track state for each repo.
-    local -a last_status last_line_count wt_paths done_flags
+    # Move cursor back up to update status lines.
+    printf "\033[%dA" "$total"
     for i in {1..$total}; do
-        last_status[$i]="pending"
-        last_line_count[$i]=0
-        wt_paths[$i]=""
-        done_flags[$i]=0
+        last_status[$i]="pending (pid ${pids[$i]})"
+        printf "\r\033[K  ⏳ ${repos[$i]} (pid ${pids[$i]})\n"
     done
 
-    # Print initial status.
-    if [[ "$use_async_cmd" == "true" ]]; then
-        print "Creating worktrees for '$branch_name' \
-(async-cmd: ${total} repos)...\n"
-    else
-        print "Creating worktrees for '$branch_name'...\n"
-    fi
-    for i in {1..$total}; do
-        print "  ⏳ ${repos[$i]}"
-    done
-
-    # Poll and update display (same for both async-cmd and native).
+    # Poll and update display in real-time.
     local all_done=0
+    local poll_count=0
     while (( ! all_done )); do
         all_done=1
+        local completed=0
         for i in {1..$total}; do
-            (( done_flags[$i] )) && continue
+            if (( done_flags[$i] )); then
+                (( completed++ ))
+                continue
+            fi
             all_done=0
 
             local out_file="$tmp_dir/$i"
@@ -436,11 +455,22 @@ _git_wkm_worker" >/dev/null 2>&1
                 case "$key" in
                     status) last_status[$i]="$val" ;;
                     path)   wt_paths[$i]="$val" ;;
-                    done)   done_flags[$i]=1 ;;
+                    done)   done_flags[$i]=1; (( completed++ )) ;;
                 esac
             done < "$out_file"
             last_line_count[$i]=$line_num
         done
+
+        # Update progress display every few polls.
+        if (( poll_count % 3 == 0 )); then
+            printf "\033[%dA" "$total"  # move up
+            for i in {1..$total}; do
+                local icon="⏳"
+                (( done_flags[$i] )) && icon="✓"
+                printf "\r\033[K  $icon ${repos[$i]} (${last_status[$i]})\n"
+            done
+        fi
+        (( poll_count++ ))
         sleep 0.1
     done
 
@@ -448,6 +478,8 @@ _git_wkm_worker" >/dev/null 2>&1
     if [[ "$use_async_cmd" == "true" ]]; then
         async -s="$socket" server --stop >/dev/null 2>&1
     fi
+
+    local elapsed=$(( SECONDS - start_time ))
 
     # Move cursor up and redraw final status.
     printf "\033[%dA" "$total"
@@ -475,7 +507,13 @@ _git_wkm_worker" >/dev/null 2>&1
         return 1
     fi
 
-    print "${#worktree_paths[@]} worktree(s) ready"
+    print "✓ ${#worktree_paths[@]} worktree(s) ready in ${elapsed}s (parallel)"
+
+    # Call post-hook if defined (e.g., for halo integration in .zshrc.local)
+    # Hook receives: branch_name, worktree_names array, worktree_paths array
+    if (( ${+functions[_git_wkm_post_hook]} )); then
+        _git_wkm_post_hook "$branch_name" "${worktree_names[@]}" -- "${worktree_paths[@]}"
+    fi
 
     # Create Cursor workspace file with repo names as display names.
     local ws_name="${branch_name//\//-}"
