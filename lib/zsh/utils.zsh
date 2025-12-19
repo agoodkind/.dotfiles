@@ -166,7 +166,7 @@ repair() {
         config reset --hard origin/main
         config clean -fd
     }
-    (cd "$DOTDOTFILES" && git submodule update --init --recursive --remote)
+    (builtin cd "$DOTDOTFILES" && git submodule update --init --recursive --remote)
     "$DOTDOTFILES/sync.sh" --repair "$@"
     reload
 }
