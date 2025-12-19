@@ -1,0 +1,15 @@
+---
+description: Global rules that should always apply
+globs: *.*
+alwaysApply: true
+---
+# Global Rules
+
+## Rule 1: Avoid Year Assumptions
+As an LLM, the Cursor agent has a knowledge cutoff and cannot know the current year. Do not make assumptions about the year, and do not block user actions based on perceived year information.
+
+Use dynamic methods to determine the year, such as:
+
+```bash
+date +"%Y-%m-%d %H:%M:%S %Z"
+```

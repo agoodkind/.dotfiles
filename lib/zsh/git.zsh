@@ -53,12 +53,12 @@ function _git_wtk() {
         # `--git-common-dir` can be relative to the current working directory.
         common_dir="$repo_cwd/$common_dir"
     fi
-    common_dir="$(cd "$common_dir" 2>/dev/null && pwd -P)" || return 1
+    common_dir="$(builtin cd "$common_dir" 2>/dev/null && pwd -P)" || return 1
 
     local main_root
     if [[ "$(basename "$common_dir")" == ".git" ]]; then
         # Normal repo: common dir is `<root>/.git`.
-        main_root="$(cd "$(dirname "$common_dir")" && pwd -P)" || return 1
+        main_root="$(builtin cd "$(dirname "$common_dir")" && pwd -P)" || return 1
     else
         # Worktree: common dir is usually `<root>/.git/worktrees/<name>`.
         main_root="$(command git "${git_prefix[@]}" rev-parse \
@@ -69,7 +69,7 @@ function _git_wtk() {
     #   /path/to/repo
     #   /path/to/repo-worktrees/<branch>
     local base_dir="${main_root}-worktrees"
-    if ! mkdir -p "$base_dir" 2>/dev/null; then
+    if ! command mkdir -p "$base_dir" 2>/dev/null; then
         echo "git wtk: cannot create worktree dir: $base_dir" >&2
         return 1
     fi
@@ -270,13 +270,14 @@ function _git_wkm_worker() {
     # Create worktree.
     print "status:creating" >> "$out"
     local origin_ref="origin/$_WKM_BRANCH"
+    local git_err=""
     if command git -C "$rp" show-ref --verify --quiet "refs/remotes/$origin_ref"
     then
-        command git -C "$rp" worktree add --track -B "$_WKM_BRANCH" \
-            "$wt_path" "$origin_ref" >/dev/null 2>&1
+        git_err=$(command git -C "$rp" worktree add --track -B "$_WKM_BRANCH" \
+            "$wt_path" "$origin_ref" 2>&1)
     else
-        command git -C "$rp" worktree add -B "$_WKM_BRANCH" \
-            "$wt_path" >/dev/null 2>&1
+        git_err=$(command git -C "$rp" worktree add -B "$_WKM_BRANCH" \
+            "$wt_path" 2>&1)
         if [[ -d "$wt_path" ]]; then
             print "status:pushing" >> "$out"
             command git -C "$wt_path" push -u origin "$_WKM_BRANCH" >/dev/null 2>&1
@@ -288,7 +289,11 @@ function _git_wkm_worker() {
         print "path:$wt_path" >> "$out"
         print "done:ok" >> "$out"
     else
-        print "status:failed" >> "$out"
+        # Extract useful error message (first line, strip "fatal: " prefix)
+        local err_msg="${git_err%%$'\n'*}"
+        err_msg="${err_msg#fatal: }"
+        [[ -z "$err_msg" ]] && err_msg="unknown error"
+        print "status:$err_msg" >> "$out"
         print "done:error" >> "$out"
     fi
 }
@@ -331,7 +336,7 @@ function _git_wkm() {
 
     local parent_dir="${GIT_WTK_PARENT_DIR:-}"
     local workspace_dir="${GIT_WKM_WORKSPACE_DIR:-${HOME}/.workspaces}"
-    mkdir -p "$workspace_dir" 2>/dev/null || true
+    command mkdir -p "$workspace_dir" 2>/dev/null || true
 
     local total=${#repos[@]}
 
@@ -343,14 +348,14 @@ function _git_wkm() {
     setopt local_options no_notify no_monitor
 
     # Initialize output files and spawn workers (detached).
-    local idx=0
+    local widx=0
     for repo in "${repos[@]}"; do
-        (( idx++ ))
-        : > "$tmp_dir/$idx"  # create empty file
+        (( widx++ )) || true
+        : > "$tmp_dir/$widx"  # create empty file
         _WKM_REPO="$repo" \
         _WKM_PARENT="$parent_dir" \
         _WKM_BRANCH="$branch_name" \
-        _WKM_OUT="$tmp_dir/$idx" \
+        _WKM_OUT="$tmp_dir/$widx" \
         _WKM_PWD="$PWD" \
         _git_wkm_worker &!
     done
@@ -426,7 +431,6 @@ function _git_wkm() {
         return 1
     fi
 
-    print "---"
     print "${#worktree_paths[@]} worktree(s) ready"
 
     # Create Cursor workspace file with repo names as display names.
@@ -434,22 +438,39 @@ function _git_wkm() {
     local ws_file="$workspace_dir/${ws_name}.code-workspace"
 
     # Build workspace JSON with jq.
-    local folders_json="[]"
-    local idx
-    for idx in {1..${#worktree_paths[@]}}; do
+    local folders_json="[]" j
+    for j in {1..${#worktree_paths[@]}}; do
         folders_json=$(print -r -- "$folders_json" | jq \
-            --arg name "${worktree_names[$idx]}" \
-            --arg path "${worktree_paths[$idx]}" \
-            '. + [{"name": $name, "path": $path}]')
+            --arg name "${worktree_names[$j]}" \
+            --arg path "${worktree_paths[$j]}" \
+            '. + [{"name": $name, "path": $path}]') || true
     done
 
+    # Base settings for git detection
+    local base_settings='{
+        "git.enabled": true,
+        "git.autoRepositoryDetection": "subFolders",
+        "git.showCursorWorktrees": true,
+        "scm.alwaysShowRepositories": true
+    }'
+
+    # Merge custom settings from file or variable
+    local custom_settings="{}"
+    if [[ -n "${GIT_WKM_SETTINGS_FILE:-}" && -f "$GIT_WKM_SETTINGS_FILE" ]]; then
+        custom_settings="$(cat "$GIT_WKM_SETTINGS_FILE")"
+    elif [[ -n "${GIT_WKM_SETTINGS:-}" ]]; then
+        custom_settings="$GIT_WKM_SETTINGS"
+    fi
+
+    local merged_settings
+    merged_settings=$(jq -n \
+        --argjson base "$base_settings" \
+        --argjson custom "$custom_settings" \
+        '$base * $custom')
+
     jq -n --argjson folders "$folders_json" \
-        '{"folders": $folders, "settings": {
-            "git.enabled": true,
-            "git.autoRepositoryDetection": "subFolders",
-            "git.showCursorWorktrees": true,
-            "scm.alwaysShowRepositories": true
-        }}' > "$ws_file"
+        --argjson settings "$merged_settings" \
+        '{"folders": $folders, "settings": $settings}' > "$ws_file"
 
     print ""
     print "Workspace: $ws_file"
@@ -494,7 +515,7 @@ function _git_wkm_clear_cursor_state() {
     local ws_hash=""
     local ws_json
     for ws_json in "$storage_base"/*/workspace.json(N); do
-        if grep -q "$ws_file" "$ws_json" 2>/dev/null; then
+        if command grep -q "$ws_file" "$ws_json" 2>/dev/null; then
             ws_hash="${ws_json:h}"
             break
         fi
@@ -567,7 +588,7 @@ function git() {
                 fi
 
                 if [[ -d "$repo_path" ]]; then
-                    repo_path="$(cd "$repo_path" 2>/dev/null && pwd -P)" \
+                    repo_path="$(builtin cd "$repo_path" 2>/dev/null && pwd -P)" \
                         || return 1
                     _git_wtk --git-c "$repo_path" "$branch_name"
                     return $?
