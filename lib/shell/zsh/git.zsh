@@ -275,7 +275,7 @@ function _git_wkm_worker() {
         return 0
     fi
 
-    # Check if branch is already checked out in another worktree.
+    # Check if branch is already checked out in another worktree - fail if so.
     local existing_wt
     existing_wt=$(command git -C "$rp" worktree list --porcelain 2>/dev/null \
         | command awk -v branch="$_WKM_BRANCH" '
@@ -284,11 +284,11 @@ function _git_wkm_worker() {
                 b = substr($0, 20)
                 if (b == branch) { print wt; exit }
             }')
-    if [[ -n "$existing_wt" && -d "$existing_wt" ]]; then
-        print "status:exists (other)" >> "$out"
-        print "path:$existing_wt" >> "$out"
-        print "done:ok" >> "$out"
-        return 0
+    if [[ -n "$existing_wt" ]]; then
+        local short_path="${existing_wt##*/}"
+        print "status:branch in use: $short_path" >> "$out"
+        print "done:error" >> "$out"
+        return 1
     fi
 
     # Fetch with timeout.
@@ -309,7 +309,7 @@ function _git_wkm_worker() {
         if [[ -d "$wt_path" ]]; then
             print "status:pushing" >> "$out"
             # Push with timeout to avoid hanging on auth/network issues.
-            timeout 60 command git -C "$wt_path" push -u origin "$_WKM_BRANCH" \
+            timeout 30 command git -C "$wt_path" push -u origin "$_WKM_BRANCH" \
                 >/dev/null 2>&1 || true
         fi
     fi
