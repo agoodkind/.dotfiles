@@ -229,7 +229,7 @@ function _git_wtk_guess_repo() {
 #   _WKM_REPO, _WKM_PARENT, _WKM_BRANCH, _WKM_OUT, _WKM_PWD
 #
 # Output format (appended to $_WKM_OUT):
-#   status:<message>     - progress updates
+#   status:<message>     - progress updates (keep short to avoid line wrap)
 #   path:<worktree>      - final worktree path (if success)
 #   done:<ok|error>      - sentinel marking completion
 ###############################################################################
@@ -267,7 +267,7 @@ function _git_wkm_worker() {
     local dir_name="${_WKM_BRANCH//\//-}"
     local wt_path="${rp}-worktrees/$dir_name"
 
-    # Check if worktree already exists.
+    # Check if worktree already exists at expected path.
     if [[ -d "$wt_path" ]]; then
         print "status:exists" >> "$out"
         print "path:$wt_path" >> "$out"
@@ -275,9 +275,25 @@ function _git_wkm_worker() {
         return 0
     fi
 
-    # Fetch.
+    # Check if branch is already checked out in another worktree.
+    local existing_wt
+    existing_wt=$(command git -C "$rp" worktree list --porcelain 2>/dev/null \
+        | command awk -v branch="$_WKM_BRANCH" '
+            /^worktree / { wt = substr($0, 10) }
+            /^branch refs\/heads\// { 
+                b = substr($0, 20)
+                if (b == branch) { print wt; exit }
+            }')
+    if [[ -n "$existing_wt" && -d "$existing_wt" ]]; then
+        print "status:exists (other)" >> "$out"
+        print "path:$existing_wt" >> "$out"
+        print "done:ok" >> "$out"
+        return 0
+    fi
+
+    # Fetch with timeout.
     print "status:fetching" >> "$out"
-    command git -C "$rp" fetch origin >/dev/null 2>&1
+    timeout 30 command git -C "$rp" fetch origin >/dev/null 2>&1 || true
 
     # Create worktree.
     print "status:creating" >> "$out"
@@ -292,7 +308,9 @@ function _git_wkm_worker() {
             "$wt_path" 2>&1)
         if [[ -d "$wt_path" ]]; then
             print "status:pushing" >> "$out"
-            command git -C "$wt_path" push -u origin "$_WKM_BRANCH" >/dev/null 2>&1
+            # Push with timeout to avoid hanging on auth/network issues.
+            timeout 60 command git -C "$wt_path" push -u origin "$_WKM_BRANCH" \
+                >/dev/null 2>&1 || true
         fi
     fi
 
@@ -301,10 +319,11 @@ function _git_wkm_worker() {
         print "path:$wt_path" >> "$out"
         print "done:ok" >> "$out"
     else
-        # Extract useful error message (first line, strip "fatal: " prefix)
+        # Truncate error message to prevent terminal line wrap.
         local err_msg="${git_err%%$'\n'*}"
         err_msg="${err_msg#fatal: }"
-        [[ -z "$err_msg" ]] && err_msg="unknown error"
+        (( ${#err_msg} > 35 )) && err_msg="${err_msg:0:32}..."
+        [[ -z "$err_msg" ]] && err_msg="failed"
         print "status:$err_msg" >> "$out"
         print "done:error" >> "$out"
     fi
