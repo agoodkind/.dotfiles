@@ -308,12 +308,6 @@ function _git_wkm_worker() {
         # New branch - start from origin/main to avoid stale base.
         git_err=$(command git -C "$rp" worktree add -B "$_WKM_BRANCH" \
             "$wt_path" origin/main 2>&1)
-        if [[ -d "$wt_path" ]]; then
-            print "status:pushing" >> "$out"
-            # Push with timeout to avoid hanging on auth/network issues.
-            timeout 30 command git -C "$wt_path" push -u origin "$_WKM_BRANCH" \
-                >/dev/null 2>&1 || true
-        fi
     fi
 
     if [[ -d "$wt_path" ]]; then
