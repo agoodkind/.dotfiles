@@ -301,11 +301,13 @@ function _git_wkm_worker() {
     local git_err=""
     if command git -C "$rp" show-ref --verify --quiet "refs/remotes/$origin_ref"
     then
+        # Branch exists on origin - track it.
         git_err=$(command git -C "$rp" worktree add --track -B "$_WKM_BRANCH" \
             "$wt_path" "$origin_ref" 2>&1)
     else
+        # New branch - start from origin/main to avoid stale base.
         git_err=$(command git -C "$rp" worktree add -B "$_WKM_BRANCH" \
-            "$wt_path" 2>&1)
+            "$wt_path" origin/main 2>&1)
         if [[ -d "$wt_path" ]]; then
             print "status:pushing" >> "$out"
             # Push with timeout to avoid hanging on auth/network issues.
@@ -343,6 +345,15 @@ function _git_wkm_worker() {
 function _git_wkm() {
     emulate -L zsh
     setopt localoptions no_unset
+
+    local caller_repo_name=""
+    local caller_repo_path=""
+    caller_repo_path="$(command git rev-parse --show-toplevel 2>/dev/null)" || true
+    if [[ -n "$caller_repo_path" ]]; then
+        caller_repo_path="$(builtin cd "$caller_repo_path" 2>/dev/null && pwd -P)" \
+            || caller_repo_path=""
+        caller_repo_name="${caller_repo_path##*/}"
+    fi
 
     local branch_name="$1"
     shift
@@ -518,6 +529,21 @@ _git_wkm_worker" >/dev/null 2>&1
         fi
     done
 
+    # Prefer cd into the worktree for the repo we ran git wkm from. If we can't
+    # find a match, fall back to the first ready worktree.
+    local target_worktree=""
+    if [[ -n "$caller_repo_name" ]]; then
+        for i in {1..$total}; do
+            if [[ "${repos[$i]##*/}" == "$caller_repo_name" ]] \
+                && [[ -n "${wt_paths[$i]}" ]]
+            then
+                target_worktree="${wt_paths[$i]}"
+                break
+            fi
+        done
+    fi
+    [[ -z "$target_worktree" ]] && target_worktree="${worktree_paths[1]:-}"
+
     command rm -rf "$tmp_dir"
     print ""
 
@@ -590,6 +616,11 @@ _git_wkm_worker" >/dev/null 2>&1
     else
         print ""
         print "Run: cursor '$ws_file'"
+    fi
+
+    # Leave the current shell in the newly-created worktree.
+    if [[ -n "$target_worktree" && -d "$target_worktree" ]]; then
+        builtin cd "$target_worktree" 2>/dev/null || true
     fi
 }
 
