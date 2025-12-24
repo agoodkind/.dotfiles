@@ -20,7 +20,7 @@ Host router
 
 Host suburban
   User agoodkind
-  HostName 128-nj.goodkind.io
+  HostName suburban-hypervisor.goodkind.io
   ForwardAgent yes
   LocalForward 10000 localhost:10000
 
