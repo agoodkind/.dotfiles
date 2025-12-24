@@ -121,6 +121,11 @@ export BREW_SPECIFIC=(
 	wireguard-tools
 )
 
+# Cargo packages (installed via cargo install)
+export CARGO_PACKAGES=(
+	async-cmd
+)
+
 # Brew casks - using parallel arrays for bash 3.2 compatibility
 # BREW_CASK_NAMES[i] corresponds to BREW_CASK_APPS[i]
 # Empty app name means CLI-only or font (no .app to check)
