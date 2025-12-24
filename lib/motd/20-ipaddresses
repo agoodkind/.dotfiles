@@ -1,8 +1,44 @@
 #!/usr/bin/env bash
 # Display IP addresses for each network interface
 
+# Requires bash 4+ for associative arrays and `mapfile` (macOS /bin/bash is 3.2).
+if [[ -z "${BASH_VERSINFO[0]:-}" || "${BASH_VERSINFO[0]}" -lt 4 ]]; then
+    exit 0
+fi
+
 declare -A ipv4_arrays
 declare -A ipv6_arrays
+
+# Strip ANSI color codes for alignment calculations
+strip_ansi() {
+    sed -E 's/\x1B\[[0-9;]*m//g'
+}
+
+visible_len() {
+    local s=$1
+    local stripped
+    stripped=$(printf '%s' "$s" | strip_ansi)
+    printf '%s' "${#stripped}"
+}
+
+get_public_ip() {
+    local ver=$1
+    command -v curl >/dev/null 2>&1 || { printf '%s\n' "N/A"; return; }
+    curl -"${ver}" -s --connect-timeout 2 --max-time 3 \
+        ifconfig.co 2>/dev/null || printf '%s\n' "N/A"
+}
+
+get_isp() {
+    command -v curl >/dev/null 2>&1 || { printf '%s\n' "N/A"; return; }
+    local org
+    org=$(curl -s --connect-timeout 2 --max-time 3 \
+        https://ipinfo.io/org 2>/dev/null)
+    if [[ -n "$org" ]]; then
+        printf '%s\n' "$org"
+    else
+        printf '%s\n' "N/A"
+    fi
+}
 
 # Optional color configuration (disabled if NO_COLOR is set or output is not a TTY)
 bold=""
@@ -201,8 +237,10 @@ fi
 mapfile -t all_interfaces < <(printf '%s\n' "${!ipv4_arrays[@]}" "${!ipv6_arrays[@]}" | sort -u)
 [[ ${#all_interfaces[@]} -eq 0 ]] && exit 0
 
-echo ""
-echo "IP Addresses:"
+left_lines=()
+
+left_lines+=("")
+left_lines+=("IP Addresses:")
 
 top_prefix="  "
 num_ifaces=${#all_interfaces[@]}
@@ -212,10 +250,10 @@ for idx in "${!all_interfaces[@]}"; do
 
     v6_addrs=()
     v4_addrs=()
-    
+
     [[ -n "${ipv6_arrays[$iface]}" ]] && read -ra v6_addrs <<< "${ipv6_arrays[$iface]}"
     [[ -n "${ipv4_arrays[$iface]}" ]] && read -ra v4_addrs <<< "${ipv4_arrays[$iface]}"
-    
+
     all_addrs=("${v6_addrs[@]}" "${v4_addrs[@]}")
     [[ ${#all_addrs[@]} -eq 0 ]] && continue
 
@@ -233,7 +271,10 @@ for idx in "${!all_interfaces[@]}"; do
     dominant_count=0
     for key in "${!subnet_counts[@]}"; do
         count=${subnet_counts[$key]}
-        if (( count > dominant_count )) || { (( count == dominant_count )) && [[ -n "$key" && ( -z "$dominant_key" || "$key" < "$dominant_key" ) ]]; }; then
+        if (( count > dominant_count )) || \
+            { (( count == dominant_count )) && \
+            [[ -n "$key" && ( -z "$dominant_key" || "$key" < "$dominant_key" ) ]]; }
+        then
             dominant_key="$key"
             dominant_count=$count
         fi
@@ -252,15 +293,9 @@ for idx in "${!all_interfaces[@]}"; do
         addr_prefix="${top_prefix}│  "
     fi
 
-    # Build colored interface label:
-    # - prefer the color of the dominant subnet for this interface
-    # - fall back to per-interface palette if subnet colors aren't available
-    # - if the interface is a VLAN (e.g. vlan0100@enp1s0), make the VLAN
-    #   name the primary (bold) part and the parent interface a secondary,
-    #   softer-colored part.
+    # Build colored interface label
     iface_label="$iface"
     if [[ -n "$dominant_color" || ${#iface_colors[@]} -gt 0 ]]; then
-        # Decide base color for this interface
         base_color="$dominant_color"
         if [[ -z "$base_color" && ${#iface_colors[@]} -gt 0 ]]; then
             color_idx=$((idx % ${#iface_colors[@]}))
@@ -271,25 +306,21 @@ for idx in "${!all_interfaces[@]}"; do
             vlan_part="${iface%%@*}"
             parent_part="${iface#*@}"
 
-            # Primary: VLAN name, bold in base_color
             iface_label="${bold}${base_color}${vlan_part}${reset}@"
-
-            # Secondary: parent interface, dimmer in same color so it is readable
             if [[ -n "$dim" ]]; then
                 iface_label+="${dim}${base_color}${parent_part}${reset}"
             else
                 iface_label+="${base_color}${parent_part}${reset}"
             fi
         else
-            # Non‑VLAN: just bold the whole interface name
             iface_label="${bold}${base_color}${iface}${reset}"
         fi
     fi
 
-    # Print interface line
-    printf "%s%s %s\n" "$top_prefix" "$iface_connector" "$iface_label"
+    left_lines+=("$(printf "%s%s %s" "$top_prefix" "$iface_connector" \
+        "$iface_label")")
 
-    # Print all addresses for this interface
+    # Addresses for this interface
     num_addrs=${#all_addrs[@]}
     for i in "${!all_addrs[@]}"; do
         if [[ $i -eq $((num_addrs - 1)) ]]; then
@@ -299,39 +330,33 @@ for idx in "${!all_interfaces[@]}"; do
         fi
 
         addr_label="${all_addrs[$i]}"
-        # Color by subnet so that similar networks share a stable color.
-        # Make IPv4 more visually prominent than IPv6 and highlight the host bits
-        # (lower bits) with a universal host color while keeping colors stable.
         subnet_key="${addr_subnet_keys[$i]}"
         subnet_color=$(subnet_color_for_key "$subnet_key")
         if [[ -n "$subnet_color" ]]; then
             if [[ "${all_addrs[$i]}" == *.* ]]; then
-                # IPv4: emphasize, and color network vs host differently
                 o1="" o2="" o3="" o4=""
                 IFS='.' read -r o1 o2 o3 o4 <<< "${all_addrs[$i]}"
                 if [[ -n "$o1" && -n "$o2" && -n "$o3" && -n "$o4" ]]; then
                     net_part="${o1}.${o2}.${o3}."
                     host_part="$o4"
                     if [[ -n "$host_color" ]]; then
-                        # Network portion: bold in subnet color
-                        # Host portion: bold in the global host color
-                        addr_label="${bold}${subnet_color}${net_part}${reset}${host_color}${host_part}${reset}"
+                        addr_label="${bold}${subnet_color}${net_part}${reset}"
+                        addr_label+="${host_color}${host_part}${reset}"
                     else
-                        # Fallback: bold whole IPv4 in subnet color
                         addr_label="${bold}${subnet_color}${all_addrs[$i]}${reset}"
                     fi
                 else
                     addr_label="${bold}${subnet_color}${all_addrs[$i]}${reset}"
                 fi
             else
-                # IPv6: subnet color for upper bits, global host color for host bits (if detectable),
-                # and non‑bold overall so v6 is visually softer than v4.
                 ip6="${all_addrs[$i]}"
-                if [[ -n "$host_color" && -n "$subnet_key" && "$ip6" == "$subnet_key"* ]]; then
+                if [[ -n "$host_color" && -n "$subnet_key" && "$ip6" == "$subnet_key"* ]]
+                then
                     net_part="$subnet_key"
                     host_part="${ip6#"$subnet_key"}"
                     if [[ -n "$host_part" ]]; then
-                        addr_label="${subnet_color}${net_part}${reset}${host_color}${host_part}${reset}"
+                        addr_label="${subnet_color}${net_part}${reset}"
+                        addr_label+="${host_color}${host_part}${reset}"
                     else
                         addr_label="${subnet_color}${ip6}${reset}"
                     fi
@@ -340,12 +365,49 @@ for idx in "${!all_interfaces[@]}"; do
                 fi
             fi
         elif [[ -n "$dim" ]]; then
-            # Fallback to dimming if colors are disabled but dim style is available
             addr_label="${dim}${addr_label}${reset}"
         fi
 
-        printf "%s%s %s\n" "$addr_prefix" "$addr_connector" "$addr_label"
+        left_lines+=("$(printf "%s%s %s" "$addr_prefix" "$addr_connector" \
+            "$addr_label")")
     done
+done
+
+pub4=$(get_public_ip 4)
+pub6=$(get_public_ip 6)
+isp=$(get_isp)
+
+right_lines=()
+right_lines+=("")
+right_lines+=("Internet:")
+right_lines+=("  ├─ Public IPv4: ${pub4}")
+right_lines+=("  ├─ Public IPv6: ${pub6}")
+right_lines+=("  └─ ISP: ${isp}")
+
+max_left=0
+for line in "${left_lines[@]}"; do
+    l=$(visible_len "$line")
+    (( l > max_left )) && max_left=$l
+done
+
+pad_width=$((max_left + 4))
+
+num_lines=${#left_lines[@]}
+for ((i = 0; i < num_lines; i++)); do
+    left="${left_lines[$i]}"
+    right="${right_lines[$i]:-}"
+    if [[ -z "$right" ]]; then
+        printf '%b\n' "$left"
+        continue
+    fi
+
+    left_len=$(visible_len "$left")
+    spaces=$((pad_width - left_len))
+    (( spaces < 1 )) && spaces=1
+
+    printf '%b' "$left"
+    printf '%*s' "$spaces" ""
+    printf '%s\n' "$right"
 done
 
 printf "\n"
