@@ -63,7 +63,6 @@ export COMMON_PACKAGES=(
 	starship
 	tealdeer
 	thefuck
-	tldr
 	tokei
 	tree
 	vim
@@ -94,7 +93,6 @@ export APT_SPECIFIC=(
 	rbenv
 	ripcalc
 	rsyslog
-	sasl-xoauth2
 	sudo
 	speedtest-cli
 	ufw
@@ -184,6 +182,7 @@ get_package_name() {
 	case "${pkg}:${type}" in
 		ack:apt) echo "ack-grep" ;;
 		fd:apt) echo "fd-find" ;;
+		rg:apt) echo "ripgrep" ;;
 		openssh:apt) echo "openssh-client openssh-server" ;;
 		neovim:snap) echo "nvim" ;;
 		*) echo "$pkg" ;;

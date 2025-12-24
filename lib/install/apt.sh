@@ -473,8 +473,12 @@ kill_nano() {
         sudo rm -rf "$(which nano)"
     fi
 
-    color_echo YELLOW "Linking nvim as nano..."
-    sudo ln -sf "$(which nvim)" /usr/bin/nano
+    if command -v nvim &>/dev/null; then
+        color_echo YELLOW "Linking nvim as nano..."
+        sudo ln -sf "$(command -v nvim)" /usr/bin/nano
+    else
+        color_echo YELLOW "nvim not found, skipping nano symlink..."
+    fi
 }
 
 kill_nano
