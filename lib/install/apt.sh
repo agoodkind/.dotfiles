@@ -485,11 +485,11 @@ kill_nano
 
 # Link batcat to bat
 if [ ! -e ~/.local/bin/bat ]; then
-    color_echo YELLOW "Linking batcat to ~/.local/bin/bat..."
-    mkdir -p ~/.local/bin
-    ln -sf "$(which batcat)" ~/.local/bin/bat
+	color_echo YELLOW "Linking batcat to ~/.local/bin/bat..."
+	mkdir -p ~/.local/bin
+	ln -sf "$(which batcat)" ~/.local/bin/bat
 else
-    color_echo GREEN "batcat already linked to bat, skipping..."
+	color_echo GREEN "batcat already linked to bat, skipping..."
 fi
 
 color_echo GREEN "All done!"

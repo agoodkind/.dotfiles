@@ -17,6 +17,7 @@ done
 
 if [[ " $* " != *" --skip-install "* ]]; then
     "$DOTDOTFILES/lib/install/brew.sh" "${BREW_ARGS[@]}"
+    "$DOTDOTFILES/lib/install/rust.sh"
 fi
 
 # # copy MOTD to /etc/motd

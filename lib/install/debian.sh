@@ -33,6 +33,7 @@ if [[ " $* " != *" --skip-install "* ]]; then
     fi
     
     run_with_defaults "$DOTDOTFILES/lib/install/apt.sh"
+    "$DOTDOTFILES/lib/install/rust.sh"
 fi
 
 # Script to configure MOTD (Message of the Day) on Ubuntu, Debian, and Proxmox systems

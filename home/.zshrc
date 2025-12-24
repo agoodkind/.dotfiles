@@ -192,7 +192,7 @@ prefer help tldr
 prefer lg lazygit
 
 # npm wrapper prefers pnpm implementation
-npm() { command pnpm "$@"; }
+# npm() { command pnpm "$@"; }
 
 # ssh helper
 sshrm() { command ssh-keygen -R "$@"; }
