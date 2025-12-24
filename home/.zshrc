@@ -180,24 +180,24 @@ prefer llt eza -lah --tree --level=2 --icons
 ls() { ll "$@"; }
 
 # cat / find / grep
-prefer_tty cat bat --style=auto --paging=never
+# prefer_tty cat bat --style=auto --paging=never
 prefer catt bat --style=auto
-prefer find fd
-prefer grep rg
+# prefer find fd
+# prefer grep rg
 prefer rgi rg -i
 prefer rgl rg -l
 
 # disk + process tools
-prefer du dust
-prefer df duf
-prefer ps procs
+# prefer du dust
+# prefer df duf
+# prefer ps procs
 prefer top btop
 prefer htop btop
 
 # helper CLIs
 prefer help tldr
-prefer dig doggo
-prefer curl curlie
+# prefer dig doggo
+# prefer curl curlie
 prefer lg lazygit
 
 # npm wrapper prefers pnpm implementation
