@@ -340,24 +340,50 @@ function _git_wkm() {
 
     local total=${#repos[@]}
 
-    # Temp dir for job output.
+    # Check if async-cmd is available, fall back to native if not
+    local use_async_cmd=false
+    if command -v async >/dev/null 2>&1; then
+        use_async_cmd=true
+    fi
+
+    # Temp dir for job output (and socket if using async-cmd).
     local tmp_dir="${TMPDIR:-/tmp}/git-wkm-$$"
     command mkdir -p "$tmp_dir"
+    local socket="$tmp_dir/async.sock"
 
-    # Disable job notifications.
-    setopt local_options no_notify no_monitor
+    if [[ "$use_async_cmd" == "true" ]]; then
+        # Start async-cmd server
+        async -s="$socket" server --start >/dev/null 2>&1
+    else
+        # Disable job notifications for native background jobs
+        setopt local_options no_notify no_monitor
+    fi
 
-    # Initialize output files and spawn workers (detached).
+    # Initialize output files and spawn workers
     local widx=0
     for repo in "${repos[@]}"; do
         (( widx++ )) || true
         : > "$tmp_dir/$widx"  # create empty file
-        _WKM_REPO="$repo" \
-        _WKM_PARENT="$parent_dir" \
-        _WKM_BRANCH="$branch_name" \
-        _WKM_OUT="$tmp_dir/$widx" \
-        _WKM_PWD="$PWD" \
-        _git_wkm_worker &!
+        
+        if [[ "$use_async_cmd" == "true" ]]; then
+            # Submit job to async-cmd (non-blocking)
+            async -s="$socket" cmd -- zsh -c \
+                "_WKM_REPO='$repo' \
+_WKM_PARENT='$parent_dir' \
+_WKM_BRANCH='$branch_name' \
+_WKM_OUT='$tmp_dir/$widx' \
+_WKM_PWD='$PWD' \
+source '$DOTDOTFILES/lib/zsh/git.zsh' && \
+_git_wkm_worker" >/dev/null 2>&1
+        else
+            # Use native background jobs
+            _WKM_REPO="$repo" \
+            _WKM_PARENT="$parent_dir" \
+            _WKM_BRANCH="$branch_name" \
+            _WKM_OUT="$tmp_dir/$widx" \
+            _WKM_PWD="$PWD" \
+            _git_wkm_worker &!
+        fi
     done
 
     # Track state for each repo.
@@ -370,12 +396,17 @@ function _git_wkm() {
     done
 
     # Print initial status.
-    print "Creating worktrees for '$branch_name'...\n"
+    if [[ "$use_async_cmd" == "true" ]]; then
+        print "Creating worktrees for '$branch_name' \
+(async-cmd: ${total} repos)...\n"
+    else
+        print "Creating worktrees for '$branch_name'...\n"
+    fi
     for i in {1..$total}; do
         print "  ⏳ ${repos[$i]}"
     done
 
-    # Poll and update display.
+    # Poll and update display (same for both async-cmd and native).
     local all_done=0
     while (( ! all_done )); do
         all_done=1
@@ -404,6 +435,11 @@ function _git_wkm() {
         done
         sleep 0.1
     done
+
+    # Stop async-cmd server if we used it
+    if [[ "$use_async_cmd" == "true" ]]; then
+        async -s="$socket" server --stop >/dev/null 2>&1
+    fi
 
     # Move cursor up and redraw final status.
     printf "\033[%dA" "$total"
