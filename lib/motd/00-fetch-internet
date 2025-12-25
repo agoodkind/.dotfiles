@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+#
+# Async fetch of internet info for later MOTD scripts.
+# Writes cached values to ~/.cache/motd/internet.env
+#
+
+set -euo pipefail
+
+cache_dir="${HOME}/.cache/motd"
+cache_file="${cache_dir}/internet.env"
+lock_dir="${cache_dir}/internet.lock"
+
+command -v curl >/dev/null 2>&1 || exit 0
+
+mkdir -p "$cache_dir"
+
+if ! mkdir "$lock_dir" 2>/dev/null; then
+    exit 0
+fi
+
+(
+    set -euo pipefail
+
+    pub4="N/A"
+    pub6="N/A"
+    isp="N/A"
+
+    tmp_file=$(mktemp "${cache_dir}/internet.env.XXXXXX")
+
+    {
+        curl -4 -s --connect-timeout 1 --max-time 2 --retry 0 ifconfig.co \
+            2>/dev/null >"${tmp_file}.pub4" || true
+        curl -6 -s --connect-timeout 1 --max-time 2 --retry 0 ifconfig.co \
+            2>/dev/null >"${tmp_file}.pub6" || true
+        curl -s --connect-timeout 1 --max-time 2 --retry 0 \
+            https://ipinfo.io/org 2>/dev/null >"${tmp_file}.isp" || true
+    } &
+    p_all=$!
+    wait "$p_all" 2>/dev/null || true
+
+    pub4=$(tr -d '\r\n' <"${tmp_file}.pub4" 2>/dev/null || true)
+    pub6=$(tr -d '\r\n' <"${tmp_file}.pub6" 2>/dev/null || true)
+    isp=$(tr -d '\r\n' <"${tmp_file}.isp" 2>/dev/null || true)
+
+    [[ -n "$pub4" ]] || pub4="N/A"
+    [[ -n "$pub6" ]] || pub6="N/A"
+    [[ -n "$isp" ]] || isp="N/A"
+
+    {
+        printf '%s\n' "pub4=${pub4}"
+        printf '%s\n' "pub6=${pub6}"
+        printf '%s\n' "isp=${isp}"
+        printf '%s\n' "epoch=$(date +%s)"
+    } >"$tmp_file"
+
+    mv -f "$tmp_file" "$cache_file"
+
+    rm -f "${tmp_file}.pub4" "${tmp_file}.pub6" "${tmp_file}.isp" 2>/dev/null \
+        || true
+    rmdir "$lock_dir" 2>/dev/null || true
+) </dev/null >/dev/null 2>&1 &
+
+exit 0
+

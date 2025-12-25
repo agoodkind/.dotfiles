@@ -9,6 +9,10 @@ fi
 declare -A ipv4_arrays
 declare -A ipv6_arrays
 
+# ==============================================================================
+# Output helpers
+# ==============================================================================
+
 # Strip ANSI color codes for alignment calculations
 strip_ansi() {
     sed -E 's/\x1B\[[0-9;]*m//g'
@@ -21,24 +25,14 @@ visible_len() {
     printf '%s' "${#stripped}"
 }
 
-get_public_ip() {
-    local ver=$1
-    command -v curl >/dev/null 2>&1 || { printf '%s\n' "N/A"; return; }
-    curl -"${ver}" -s --connect-timeout 2 --max-time 3 \
-        ifconfig.co 2>/dev/null || printf '%s\n' "N/A"
-}
+# ==============================================================================
+# OS detection
+# ==============================================================================
 
-get_isp() {
-    command -v curl >/dev/null 2>&1 || { printf '%s\n' "N/A"; return; }
-    local org
-    org=$(curl -s --connect-timeout 2 --max-time 3 \
-        https://ipinfo.io/org 2>/dev/null)
-    if [[ -n "$org" ]]; then
-        printf '%s\n' "$org"
-    else
-        printf '%s\n' "N/A"
-    fi
-}
+# Use cached OS_TYPE if available, fallback to uname
+[[ -z "$OS_TYPE" ]] && [[ -f ~/.cache/os-type.cache ]] && \
+    OS_TYPE=$(cat ~/.cache/os-type.cache)
+[[ -z "$OS_TYPE" ]] && [[ "$(uname)" == "Darwin" ]] && OS_TYPE="mac"
 
 # Optional color configuration (disabled if NO_COLOR is set or output is not a TTY)
 bold=""
@@ -48,7 +42,6 @@ iface_colors=()
 subnet_colors=()
 host_color=""        # global color for host bits (lower bits), same everywhere
 declare -A subnet_color_cache
-declare -A subnet_index_cache
 
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
     bold=$'\e[1m'
@@ -78,6 +71,10 @@ if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
     # Host bits (lower bits) color: single universal style, distinct from the palettes above
     host_color=$'\e[1;97m' # bright white, bold
 fi
+
+# ==============================================================================
+# Subnet/color mapping
+# ==============================================================================
 
 # Return a "subnet key" for an IP:
 # - IPv4: /24, e.g. 10.250.1.53 -> 10.250.1.0/24
@@ -135,33 +132,97 @@ subnet_color_for_key() {
     done
 
     local idx=$((hash % ${#subnet_colors[@]}))
-    subnet_index_cache[$key]=$idx
     subnet_color_cache[$key]="${subnet_colors[$idx]}"
     printf '%s\n' "${subnet_colors[$idx]}"
 }
 
-# For a given subnet key, return a contrasting color (used for host bits),
-# chosen deterministically so results are stable across runs.
-subnet_contrast_color_for_key() {
-    local key=$1
+# ==============================================================================
+# Internet info (cached)
+# ==============================================================================
 
-    [[ -z "$key" ]] && return
-    [[ ${#subnet_colors[@]} -eq 0 ]] && return
+fetch_internet_info() {
+    internet_pub4=("N/A")
+    internet_pub6=("N/A")
+    internet_isp=("N/A")
 
-    local idx
-    if [[ -n "${subnet_index_cache[$key]:-}" ]]; then
-        idx=${subnet_index_cache[$key]}
-    else
-        # Ensure color/index are initialized
-        subnet_color_for_key "$key" >/dev/null
-        idx=${subnet_index_cache[$key]}
+    local cache_file="${HOME}/.cache/motd/internet.env"
+    local max_age_seconds=600
+    local cache_mtime now_epoch age
+
+    [[ -f "$cache_file" ]] || return 0
+
+    cache_mtime=0
+    cache_mtime=$(stat -f %m "$cache_file" 2>/dev/null || true)
+    if [[ -z "$cache_mtime" ]]; then
+        cache_mtime=$(stat -c %Y "$cache_file" 2>/dev/null || true)
+    fi
+    [[ "$cache_mtime" =~ ^[0-9]+$ ]] || cache_mtime=0
+
+    now_epoch=$(date +%s 2>/dev/null || echo 0)
+    if [[ "$now_epoch" =~ ^[0-9]+$ ]] && (( cache_mtime > 0 && now_epoch > 0 ))
+    then
+        age=$((now_epoch - cache_mtime))
+        (( age <= max_age_seconds )) || return 0
     fi
 
-    # Pick a color roughly opposite in the palette for contrast
-    local palette_len=${#subnet_colors[@]}
-    local offset=$((palette_len / 2))
-    local contrast_idx=$(((idx + offset) % palette_len))
-    printf '%s\n' "${subnet_colors[$contrast_idx]}"
+    while IFS='=' read -r k v; do
+        case "$k" in
+            pub4) internet_pub4=("$v") ;;
+            pub6) internet_pub6=("$v") ;;
+            isp)  internet_isp=("$v") ;;
+        esac
+    done <"$cache_file"
+}
+
+# Color IP the same way as the left column:
+# - subnet bits in `subnet_color_for_key`
+# - host bits in `host_color` when available
+format_ip_colored() {
+    local ip=$1
+    local subnet_key subnet_color
+
+    [[ -z "$ip" || "$ip" == "N/A" ]] && { printf '%s' "N/A"; return; }
+
+    subnet_key=$(subnet_key_for_ip "$ip")
+    subnet_color=$(subnet_color_for_key "$subnet_key")
+
+    if [[ -z "$subnet_color" ]]; then
+        printf '%s' "$ip"
+        return
+    fi
+
+    if [[ "$ip" == *.* ]]; then
+        local o1 o2 o3 o4 net_part host_part
+        IFS='.' read -r o1 o2 o3 o4 <<< "$ip"
+        if [[ -n "$o1" && -n "$o2" && -n "$o3" && -n "$o4" ]]; then
+            net_part="${o1}.${o2}.${o3}."
+            host_part="$o4"
+            if [[ -n "$host_color" ]]; then
+                printf '%b' "${bold}${subnet_color}${net_part}${reset}"
+                printf '%b' "${host_color}${host_part}${reset}"
+            else
+                printf '%b' "${bold}${subnet_color}${ip}${reset}"
+            fi
+            return
+        fi
+        printf '%b' "${bold}${subnet_color}${ip}${reset}"
+        return
+    fi
+
+    if [[ -n "$host_color" && -n "$subnet_key" && "$ip" == "$subnet_key"* ]]; then
+        local net_part host_part
+        net_part="$subnet_key"
+        host_part="${ip#"$subnet_key"}"
+        if [[ -n "$host_part" ]]; then
+            printf '%b' "${subnet_color}${net_part}${reset}"
+            printf '%b' "${host_color}${host_part}${reset}"
+        else
+            printf '%b' "${subnet_color}${ip}${reset}"
+        fi
+        return
+    fi
+
+    printf '%b' "${subnet_color}${ip}${reset}"
 }
 
 # Add IP address to array for interface
@@ -181,10 +242,9 @@ add_ip() {
     fi
 }
 
-# Parse network interface output
-# Use cached OS_TYPE if available, fallback to uname
-[[ -z "$OS_TYPE" ]] && [[ -f ~/.cache/os-type.cache ]] && OS_TYPE=$(cat ~/.cache/os-type.cache)
-[[ -z "$OS_TYPE" ]] && [[ "$(uname)" == "Darwin" ]] && OS_TYPE="mac"
+# ==============================================================================
+# Network parsing
+# ==============================================================================
 
 if [[ "$OS_TYPE" == "mac" ]]; then
     command -v ifconfig >/dev/null 2>&1 || exit 0
@@ -240,7 +300,7 @@ mapfile -t all_interfaces < <(printf '%s\n' "${!ipv4_arrays[@]}" "${!ipv6_arrays
 left_lines=()
 
 left_lines+=("")
-left_lines+=("IP Addresses:")
+left_lines+=("Interfaces:")
 
 top_prefix="  "
 num_ifaces=${#all_interfaces[@]}
@@ -373,16 +433,20 @@ for idx in "${!all_interfaces[@]}"; do
     done
 done
 
-pub4=$(get_public_ip 4)
-pub6=$(get_public_ip 6)
-isp=$(get_isp)
+fetch_internet_info
+pub4="${internet_pub4[0]:-N/A}"
+pub6="${internet_pub6[0]:-N/A}"
+isp="${internet_isp[0]:-N/A}"
 
 right_lines=()
 right_lines+=("")
 right_lines+=("Internet:")
-right_lines+=("  ├─ Public IPv4: ${pub4}")
-right_lines+=("  ├─ Public IPv6: ${pub6}")
-right_lines+=("  └─ ISP: ${isp}")
+right_lines+=("  ├─ Public IPv4")
+right_lines+=("  │  └─ $(format_ip_colored "$pub4")")
+right_lines+=("  ├─ Public IPv6")
+right_lines+=("  │  └─ $(format_ip_colored "$pub6")")
+right_lines+=("  └─ ISP")
+right_lines+=("     └─ ${isp}")
 
 max_left=0
 for line in "${left_lines[@]}"; do
