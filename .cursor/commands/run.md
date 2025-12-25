@@ -8,6 +8,9 @@ Carry out the command referenced in this message or the latest context.
 - Ask for confirmation if the command is ambiguous or risky before running it.
 - Prefer IPv6 flags or options when the command does networking.
 - Present commands inside code blocks.
+- Use `bash -lc` when running shell commands to avoid zsh expansion surprises.
+- When running commands over SSH, run bash explicitly on the remote side too:
+  `ssh <host> 'bash -lc "<remote command>"'`.
 - When multiple commands are provided, run each in the given order.
 - Avoid indefinite hangs; set a reasonable timeout when a command could block.
 - If the instruction is contextual, restate the exact command before running it
