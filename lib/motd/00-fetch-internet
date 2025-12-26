@@ -21,13 +21,32 @@ fi
 (
     set -euo pipefail
 
+    stats_file="${cache_dir}/internet-stats.jsonl"
+
+    # Log stats entry as JSON
+    log_stat() {
+        local cat=$1 url=$2 ms=$3 won=$4 val=$5
+        jq -cn \
+            --argjson ts "$(date +%s)" \
+            --arg cat "$cat" \
+            --arg url "$url" \
+            --argjson ms "$ms" \
+            --argjson won "$won" \
+            --arg val "$val" \
+            '{ts:$ts, cat:$cat, url:$url, ms:$ms, won:$won, val:$val}' \
+            >>"$stats_file" 2>/dev/null || true
+    }
+
     # Race multiple URLs in parallel; first to complete with data wins
-    # Usage: fetch_race output_file curl_opts url1 url2 ...
+    # Usage: fetch_race category output_file curl_opts url1 url2 ...
+    # Writes winner stats to stats_file
     fetch_race() {
-        local out=$1 opts=$2
-        shift 2
+        local category=$1 out=$2 opts=$3
+        shift 3
         local urls=("$@")
         local tmps=() pids=()
+        local start_ms
+        start_ms=$(($(date +%s%N 2>/dev/null || echo 0) / 1000000))
 
         for url in "${urls[@]}"; do
             local t
@@ -39,7 +58,7 @@ fi
             pids+=($!)
         done
 
-        # Poll for first completed result (20ms interval)
+        # Poll for first completed result
         while true; do
             local running=0
             for i in "${!pids[@]}"; do
@@ -48,17 +67,34 @@ fi
                 if kill -0 "${pids[$i]}" 2>/dev/null; then
                     running=$((running + 1))
                 else
-                    # Process finished - check result
+                    # Process finished - log stats
+                    local end_ms elapsed_ms val
+                    end_ms=$(($(date +%s%N 2>/dev/null || echo 0) / 1000000))
+                    elapsed_ms=$((end_ms - start_ms))
+                    val=$(tr -d '\r\n' <"${tmps[$i]}" 2>/dev/null || true)
+
                     if [[ -s "${tmps[$i]}" ]]; then
                         cat "${tmps[$i]}" >"$out"
-                        # Kill remaining processes
-                        for p in "${pids[@]}"; do
-                            [[ -n "$p" ]] && kill "$p" 2>/dev/null
-                        done
-                        wait 2>/dev/null
-                        rm -f "${tmps[@]}" 2>/dev/null
+                        log_stat "$category" "${urls[$i]}" "$elapsed_ms" true "$val"
+                        rm -f "${tmps[$i]}" 2>/dev/null
+                        pids[$i]=""
+
+                        # Background logger for remaining processes
+                        (
+                            for j in "${!pids[@]}"; do
+                                [[ -z "${pids[$j]}" ]] && continue
+                                wait "${pids[$j]}" 2>/dev/null || true
+                                local e_ms v
+                                e_ms=$(( $(date +%s%N 2>/dev/null || echo 0) / 1000000 - start_ms ))
+                                v=$(tr -d '\r\n' <"${tmps[$j]}" 2>/dev/null || true)
+                                log_stat "$category" "${urls[$j]}" "$e_ms" false "$v"
+                                rm -f "${tmps[$j]}" 2>/dev/null
+                            done
+                        ) &
                         return 0
                     fi
+
+                    log_stat "$category" "${urls[$i]}" "$elapsed_ms" false "$val"
                     pids[$i]=""
                 fi
             done
@@ -73,21 +109,21 @@ fi
     tmp_file=$(mktemp "${cache_dir}/internet.env.XXXXXX")
 
     # Run all three categories in parallel, each racing multiple services
-    fetch_race "${tmp_file}.pub4" "-4" \
+    fetch_race "pub4" "${tmp_file}.pub4" "-4" \
         "ifconfig.co" \
         "icanhazip.com" \
         "api.ipify.org" \
         "ifconfig.me" \
         "ip.me" &
 
-    fetch_race "${tmp_file}.pub6" "-6" \
+    fetch_race "pub6" "${tmp_file}.pub6" "-6" \
         "ifconfig.co" \
         "icanhazip.com" \
         "api6.ipify.org" \
         "ifconfig.me" \
         "ip.me" &
 
-    fetch_race "${tmp_file}.isp" "" \
+    fetch_race "isp" "${tmp_file}.isp" "" \
         "https://ipinfo.io/org" \
         "http://ip-api.com/line/?fields=org" \
         "https://ipapi.co/org/" &
