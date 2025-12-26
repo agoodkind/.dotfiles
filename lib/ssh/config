@@ -53,13 +53,8 @@ Host pikvm-suburban
   User agoodkind
 
 Host ansible
-  HostName ansible.home.goodkind.io
-  User root
-
-Host logstash
-  HostName logstash.home.goodkind.io
-  User root
-  ForwardAgent yes
+  HostName ssh.home.goodkind.io
+  User root@ansible
 
 Host nas
   HostName nas.home.goodkind.io
@@ -72,7 +67,7 @@ Host debianct
   ForwardAgent yes
 
 Host vault
-  HostName vault.home.goodkind.io
+  HostName hypervisor.home.goodkind.io
   User root
   ForwardAgent yes
 

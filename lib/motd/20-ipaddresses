@@ -438,15 +438,56 @@ pub4="${internet_pub4[0]:-N/A}"
 pub6="${internet_pub6[0]:-N/A}"
 isp="${internet_isp[0]:-N/A}"
 
+# Build right column conditionally - only show fields that have values
 right_lines=()
-right_lines+=("")
-right_lines+=("Internet:")
-right_lines+=("  ├─ Public IPv4")
-right_lines+=("  │  └─ $(format_ip_colored "$pub4")")
-right_lines+=("  ├─ Public IPv6")
-right_lines+=("  │  └─ $(format_ip_colored "$pub6")")
-right_lines+=("  └─ ISP")
-right_lines+=("     └─ ${isp}")
+
+has_pub4=false
+has_pub6=false
+has_isp=false
+
+[[ -n "$pub4" && "$pub4" != "N/A" ]] && has_pub4=true
+[[ -n "$pub6" && "$pub6" != "N/A" ]] && has_pub6=true
+[[ -n "$isp" && "$isp" != "N/A" ]] && has_isp=true
+
+if $has_pub4 || $has_pub6 || $has_isp; then
+    right_lines+=("")
+    right_lines+=("Internet:")
+
+    # Build items list to determine tree connectors
+    items=()
+    $has_pub4 && items+=("pub4")
+    $has_pub6 && items+=("pub6")
+    $has_isp && items+=("isp")
+
+    num_items=${#items[@]}
+    item_idx=0
+
+    for item in "${items[@]}"; do
+        ((item_idx++))
+        if [[ $item_idx -eq $num_items ]]; then
+            connector="└─"
+            sub_prefix="   "
+        else
+            connector="├─"
+            sub_prefix="│  "
+        fi
+
+        case "$item" in
+            pub4)
+                right_lines+=("  ${connector} Public IPv4")
+                right_lines+=("  ${sub_prefix}└─ $(format_ip_colored "$pub4")")
+                ;;
+            pub6)
+                right_lines+=("  ${connector} Public IPv6")
+                right_lines+=("  ${sub_prefix}└─ $(format_ip_colored "$pub6")")
+                ;;
+            isp)
+                right_lines+=("  ${connector} ISP")
+                right_lines+=("  ${sub_prefix}└─ ${isp}")
+                ;;
+        esac
+    done
+fi
 
 max_left=0
 for line in "${left_lines[@]}"; do

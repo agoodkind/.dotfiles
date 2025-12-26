@@ -21,35 +21,87 @@ fi
 (
     set -euo pipefail
 
-    pub4="N/A"
-    pub6="N/A"
-    isp="N/A"
+    # Race multiple URLs in parallel; first to complete with data wins
+    # Usage: fetch_race output_file curl_opts url1 url2 ...
+    fetch_race() {
+        local out=$1 opts=$2
+        shift 2
+        local urls=("$@")
+        local tmps=() pids=()
+
+        for url in "${urls[@]}"; do
+            local t
+            t=$(mktemp)
+            tmps+=("$t")
+            # shellcheck disable=SC2086
+            curl $opts -s --connect-timeout 3 --max-time 5 "$url" >"$t" \
+                2>/dev/null &
+            pids+=($!)
+        done
+
+        # Poll for first completed result (20ms interval)
+        while true; do
+            local running=0
+            for i in "${!pids[@]}"; do
+                [[ -z "${pids[$i]}" ]] && continue
+
+                if kill -0 "${pids[$i]}" 2>/dev/null; then
+                    running=$((running + 1))
+                else
+                    # Process finished - check result
+                    if [[ -s "${tmps[$i]}" ]]; then
+                        cat "${tmps[$i]}" >"$out"
+                        # Kill remaining processes
+                        for p in "${pids[@]}"; do
+                            [[ -n "$p" ]] && kill "$p" 2>/dev/null
+                        done
+                        wait 2>/dev/null
+                        rm -f "${tmps[@]}" 2>/dev/null
+                        return 0
+                    fi
+                    pids[$i]=""
+                fi
+            done
+
+            [[ $running -eq 0 ]] && break
+            sleep 0.005
+        done
+
+        rm -f "${tmps[@]}" 2>/dev/null
+    }
 
     tmp_file=$(mktemp "${cache_dir}/internet.env.XXXXXX")
 
-    {
-        curl -4 -s --connect-timeout 1 --max-time 2 --retry 0 ifconfig.co \
-            2>/dev/null >"${tmp_file}.pub4" || true
-        curl -6 -s --connect-timeout 1 --max-time 2 --retry 0 ifconfig.co \
-            2>/dev/null >"${tmp_file}.pub6" || true
-        curl -s --connect-timeout 1 --max-time 2 --retry 0 \
-            https://ipinfo.io/org 2>/dev/null >"${tmp_file}.isp" || true
-    } &
-    p_all=$!
-    wait "$p_all" 2>/dev/null || true
+    # Run all three categories in parallel, each racing multiple services
+    fetch_race "${tmp_file}.pub4" "-4" \
+        "ifconfig.co" \
+        "icanhazip.com" \
+        "api.ipify.org" \
+        "ifconfig.me" \
+        "ip.me" &
+
+    fetch_race "${tmp_file}.pub6" "-6" \
+        "ifconfig.co" \
+        "icanhazip.com" \
+        "api6.ipify.org" \
+        "ifconfig.me" \
+        "ip.me" &
+
+    fetch_race "${tmp_file}.isp" "" \
+        "https://ipinfo.io/org" \
+        "http://ip-api.com/line/?fields=org" \
+        "https://ipapi.co/org/" &
+
+    wait
 
     pub4=$(tr -d '\r\n' <"${tmp_file}.pub4" 2>/dev/null || true)
     pub6=$(tr -d '\r\n' <"${tmp_file}.pub6" 2>/dev/null || true)
     isp=$(tr -d '\r\n' <"${tmp_file}.isp" 2>/dev/null || true)
 
-    [[ -n "$pub4" ]] || pub4="N/A"
-    [[ -n "$pub6" ]] || pub6="N/A"
-    [[ -n "$isp" ]] || isp="N/A"
-
     {
-        printf '%s\n' "pub4=${pub4}"
-        printf '%s\n' "pub6=${pub6}"
-        printf '%s\n' "isp=${isp}"
+        [[ -n "$pub4" ]] && printf '%s\n' "pub4=${pub4}"
+        [[ -n "$pub6" ]] && printf '%s\n' "pub6=${pub6}"
+        [[ -n "$isp" ]] && printf '%s\n' "isp=${isp}"
         printf '%s\n' "epoch=$(date +%s)"
     } >"$tmp_file"
 
