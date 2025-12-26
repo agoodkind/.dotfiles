@@ -6,10 +6,10 @@ echo "Installing dotfiles to $DOTDOTFILES"
 cd "$DOTDOTFILES" || { echo "Failed to cd to $DOTDOTFILES" && exit 1; }
 
 # Source utilities
-source "${DOTDOTFILES}/lib/bash/colors.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/colors.sh"
 color_echo BLUE "📁  Sourcing utilities..."
-source "${DOTDOTFILES}/lib/bash/defaults.sh"
-source "${DOTDOTFILES}/lib/bash/packages.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/defaults.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/packages.sh"
 
 color_echo BLUE "📁  Creating SSH sockets directory..."
 mkdir -p "$HOME/.ssh/sockets"
@@ -18,7 +18,7 @@ color_echo BLUE "🗝️  Starting SSH agent..."
 eval "$(ssh-agent -s)"
 
 color_echo BLUE "🔧  Setting up git configuration..."
-run_with_defaults "$DOTDOTFILES/lib/install/git.sh"
+run_with_defaults "$DOTDOTFILES/lib/setup/platform/git.sh"
 
 color_echo BLUE "🛠️  Running sync script..."
 run_with_defaults "$DOTDOTFILES/sync.sh" "$@"

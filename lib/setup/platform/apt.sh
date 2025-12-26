@@ -3,9 +3,9 @@
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
 # Source utilities
-source "${DOTDOTFILES}/lib/bash/colors.sh"
-source "${DOTDOTFILES}/lib/bash/defaults.sh"
-source "${DOTDOTFILES}/lib/bash/packages.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/colors.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/defaults.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/packages.sh"
 
 # =============================================================================
 # APT/Snap Helper Functions

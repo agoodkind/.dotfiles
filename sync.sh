@@ -11,9 +11,9 @@ export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 [[ -f "$HOME/.overrides.local" ]] && source "$HOME/.overrides.local"
 
 # Source utilities
-source "${DOTDOTFILES}/lib/bash/colors.sh"
-source "${DOTDOTFILES}/lib/bash/defaults.sh"
-source "${DOTDOTFILES}/lib/bash/packages.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/colors.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/defaults.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/packages.sh"
 
 ###############################################################################
 # Utility Functions
@@ -578,7 +578,7 @@ run_os_install() {
     
     if is_macos; then
         os_type="macOS"
-        install_script="$DOTDOTFILES/lib/install/mac.sh"
+        install_script="$DOTDOTFILES/lib/setup/platform/mac.sh"
         # Only cleanup if brew is already installed
         if command -v brew >/dev/null 2>&1; then
             color_echo YELLOW "🧹  Cleaning up Homebrew..."
@@ -586,7 +586,7 @@ run_os_install() {
         fi
     elif is_ubuntu; then
         os_type="Debian/Ubuntu/Proxmox"
-        install_script="$DOTDOTFILES/lib/install/debian.sh"
+        install_script="$DOTDOTFILES/lib/setup/platform/debian.sh"
     else
         return 0
     fi

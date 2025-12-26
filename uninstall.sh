@@ -271,7 +271,7 @@ remove_systemd_updater() {
 
 # Source package lists if available
 source_packages() {
-    local packages_file="$DOTDOTFILES/lib/bash/packages.sh"
+    local packages_file="$DOTDOTFILES/lib/setup/helpers/packages.sh"
     if [[ -f "$packages_file" ]]; then
         # Only source the arrays, not the full file (which may have functions)
         # Extract just the package arrays
