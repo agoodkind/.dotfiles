@@ -4,11 +4,12 @@
 # SSH key persistence  #
 # Ensure SSH key is loaded in agent after reboot (uses Apple keychain)
 # Run in background to not block shell startup
-{
+_mac_load_ssh_key() {
     if ! /usr/bin/ssh-add -l 2>/dev/null | grep -q "id_ed25519"; then
         /usr/bin/ssh-add --apple-use-keychain ~/.ssh/id_ed25519
     fi
-} >> ~/.cache/ssh-add.log 2>&1 &!
+} >> ~/.cache/ssh-add.log 2>&1
+async_run _mac_load_ssh_key
 ########################
 
 ########################

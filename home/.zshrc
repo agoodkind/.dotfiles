@@ -9,7 +9,7 @@ export PATH="$PATH:$HOME/.local/bin:$HOME/.local/bin/scripts:/opt/scripts"
 export NVM_LAZY_LOAD=true
 ###############################################################################
 # Include OS specific and common zshrc configs ################################
-source $DOTDOTFILES/lib/zsh/incl.zsh
+source $DOTDOTFILES/lib/shell/zsh/incl.zsh
 ###############################################################################
 
 ###############################################################################
