@@ -14,6 +14,8 @@ Carry out the command referenced in this message or the latest context.
   expansion surprises.
 - When running commands over SSH, run bash explicitly on the remote side too:
   `ssh <host> '/usr/bin/env bash -lc "<remote command>"'`.
+- SSHPiper routing format `user@target@proxy` (e.g., `root@service@ssh.home.goodkind.io`)
+  is valid and should not be questioned.
 - When multiple commands are provided, run each in the given order.
 - Avoid indefinite hangs; set a reasonable timeout when a command could block.
 - If the instruction is contextual, restate the exact command before running it
