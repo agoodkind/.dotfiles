@@ -233,6 +233,18 @@ function _git_wtk_guess_repo() {
 #   path:<worktree>      - final worktree path (if success)
 #   done:<ok|error>      - sentinel marking completion
 ###############################################################################
+
+# Wrapper for async_run: takes positional args, sets env vars, calls worker
+# Usage: _git_wkm_worker_async <repo> <parent> <branch> <out> <pwd>
+function _git_wkm_worker_async() {
+    _WKM_REPO="$1" \
+    _WKM_PARENT="$2" \
+    _WKM_BRANCH="$3" \
+    _WKM_OUT="$4" \
+    _WKM_PWD="$5" \
+    _git_wkm_worker
+}
+
 function _git_wkm_worker() {
     local rp="$_WKM_REPO"
     local out="$_WKM_OUT"
@@ -377,12 +389,8 @@ source '$DOTDOTFILES/lib/shell/zsh/git.zsh' && \
 _git_wkm_worker" >/dev/null 2>&1
         else
             # Use native background jobs
-            _WKM_REPO="$repo" \
-            _WKM_PARENT="$parent_dir" \
-            _WKM_BRANCH="$branch_name" \
-            _WKM_OUT="$tmp_dir/$widx" \
-            _WKM_PWD="$PWD" \
-            _git_wkm_worker &!
+            async_run _git_wkm_worker_async \
+                "$repo" "$parent_dir" "$branch_name" "$tmp_dir/$widx" "$PWD"
         fi
     done
 
