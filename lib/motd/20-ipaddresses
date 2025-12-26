@@ -474,15 +474,20 @@ if $has_pub4 || $has_pub6 || $has_isp; then
 
         case "$item" in
             pub4)
-                right_lines+=("  ${connector} Public IPv4")
+                sk4=$(subnet_key_for_ip "$pub4")
+                sc4=$(subnet_color_for_key "$sk4")
+                right_lines+=("  ${connector} ${bold}${sc4}Public IPv4${reset}")
                 right_lines+=("  ${sub_prefix}└─ $(format_ip_colored "$pub4")")
                 ;;
             pub6)
-                right_lines+=("  ${connector} Public IPv6")
+                sk6=$(subnet_key_for_ip "$pub6")
+                sc6=$(subnet_color_for_key "$sk6")
+                right_lines+=("  ${connector} ${bold}${sc6}Public IPv6${reset}")
                 right_lines+=("  ${sub_prefix}└─ $(format_ip_colored "$pub6")")
                 ;;
             isp)
-                right_lines+=("  ${connector} ISP")
+                # ISP has no IP - use host_color for consistency
+                right_lines+=("  ${connector} ${bold}${host_color}ISP${reset}")
                 right_lines+=("  ${sub_prefix}└─ ${isp}")
                 ;;
         esac
