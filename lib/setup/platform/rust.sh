@@ -3,9 +3,9 @@
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
 # Source utilities
-source "${DOTDOTFILES}/lib/bash/colors.sh"
-source "${DOTDOTFILES}/lib/bash/defaults.sh"
-source "${DOTDOTFILES}/lib/bash/packages.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/colors.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/defaults.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/packages.sh"
 
 # Install Rust via rustup if not present
 if ! command -v rustup &>/dev/null; then

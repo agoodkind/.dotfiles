@@ -3,9 +3,9 @@
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
 # Source utilities
-source "${DOTDOTFILES}/lib/bash/colors.sh"
-source "${DOTDOTFILES}/lib/bash/defaults.sh"
-source "${DOTDOTFILES}/lib/bash/packages.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/colors.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/defaults.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/packages.sh"
 
 # Build brew.sh args from passed flags
 BREW_ARGS=()
@@ -16,8 +16,8 @@ for arg in "$@"; do
 done
 
 if [[ " $* " != *" --skip-install "* ]]; then
-    "$DOTDOTFILES/lib/install/brew.sh" "${BREW_ARGS[@]}"
-    "$DOTDOTFILES/lib/install/rust.sh"
+    "$DOTDOTFILES/lib/setup/platform/brew.sh" "${BREW_ARGS[@]}"
+    "$DOTDOTFILES/lib/setup/platform/rust.sh"
 fi
 
 # # copy MOTD to /etc/motd

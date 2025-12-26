@@ -3,9 +3,9 @@
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
 # Source utilities
-source "${DOTDOTFILES}/lib/bash/colors.sh"
-source "${DOTDOTFILES}/lib/bash/defaults.sh"
-source "${DOTDOTFILES}/lib/bash/packages.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/colors.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/defaults.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/packages.sh"
 
 # Apt-based installation script for Ubuntu, Debian, and Proxmox systems
 # if not skip install is set, skip installation of packages, --skip-install
@@ -32,8 +32,8 @@ if [[ " $* " != *" --skip-install "* ]]; then
         echo "Timezone already configured: $CURRENT_TZ (skipping reconfiguration)"
     fi
     
-    run_with_defaults "$DOTDOTFILES/lib/install/apt.sh"
-    "$DOTDOTFILES/lib/install/rust.sh"
+    run_with_defaults "$DOTDOTFILES/lib/setup/platform/apt.sh"
+    "$DOTDOTFILES/lib/setup/platform/rust.sh"
 fi
 
 # Script to configure MOTD (Message of the Day) on Ubuntu, Debian, and Proxmox systems
@@ -62,7 +62,7 @@ fi
 # Copy our custom MOTD entrypoint
 echo "Installing custom MOTD entrypoint..."
 sudo rm -f /etc/update-motd.d/00-motd-entrypoint.sh
-sudo cp "$DOTDOTFILES/lib/zsh/motd.zsh" /etc/update-motd.d/00-motd-entrypoint.sh
+sudo cp "$DOTDOTFILES/lib/shell/zsh/motd.zsh" /etc/update-motd.d/00-motd-entrypoint.sh
 sudo chmod +x /etc/update-motd.d/00-motd-entrypoint.sh
 
 echo "MOTD configuration complete."

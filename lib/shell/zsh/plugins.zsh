@@ -12,7 +12,7 @@ autoload -Uz _zinit
 (( ${+_comps} )) && _comps[zinit]=_zinit
 
 # Completions with custom fpath
-fpath=("$DOTDOTFILES/lib/completions" $fpath)
+fpath=("$DOTDOTFILES/lib/shell/completions" $fpath)
 
 # Core plugins with staggered loading
 # shellcheck disable=SC2016

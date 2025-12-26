@@ -14,13 +14,13 @@ if [[ -f ~/.cache/zsh_profile_next ]]; then
 fi
 export SHOULD_PROFILE
 
-source "$DOTDOTFILES/lib/zsh/plugins.zsh"
+source "$DOTDOTFILES/lib/shell/zsh/plugins.zsh"
 # Dotfiles async update - source directly to avoid zinit plugin management
-source "$DOTDOTFILES/lib/zsh/utils.zsh"
-source "$DOTDOTFILES/lib/zsh/git.zsh"
-(zsh "$DOTDOTFILES/lib/zsh/updater.zsh" >/dev/null 2>&1 &)
-source "$DOTDOTFILES/lib/zsh/zoxide.zsh"
-source "$DOTDOTFILES/lib/zsh/motd.zsh"
+source "$DOTDOTFILES/lib/shell/zsh/utils.zsh"
+source "$DOTDOTFILES/lib/shell/zsh/git.zsh"
+(zsh "$DOTDOTFILES/lib/shell/zsh/updater.zsh" >/dev/null 2>&1 &)
+source "$DOTDOTFILES/lib/shell/zsh/zoxide.zsh"
+source "$DOTDOTFILES/lib/shell/zsh/motd.zsh"
 # Load local zshrc customizations that are not to be tracked by git
 [[ ! -f "$DOTDOTFILES/.zshrc.local" ]] || source "$DOTDOTFILES/.zshrc.local"
 

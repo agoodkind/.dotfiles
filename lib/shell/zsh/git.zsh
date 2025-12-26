@@ -373,7 +373,7 @@ _WKM_PARENT='$parent_dir' \
 _WKM_BRANCH='$branch_name' \
 _WKM_OUT='$tmp_dir/$widx' \
 _WKM_PWD='$PWD' \
-source '$DOTDOTFILES/lib/zsh/git.zsh' && \
+source '$DOTDOTFILES/lib/shell/zsh/git.zsh' && \
 _git_wkm_worker" >/dev/null 2>&1
         else
             # Use native background jobs

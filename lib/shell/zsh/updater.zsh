@@ -2,7 +2,7 @@
 # shellcheck shell=bash
 # Background dotfiles updater - checks for updates and applies them silently
 
-source "$DOTDOTFILES/lib/zsh/utils.zsh"
+source "$DOTDOTFILES/lib/shell/zsh/utils.zsh"
 
 # Prevent concurrent runs
 LOCK_FILE="$HOME/.cache/dotfiles_update.lock"
