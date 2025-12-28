@@ -151,11 +151,8 @@ fetch_internet_info() {
 
     [[ -f "$cache_file" ]] || return 0
 
-    cache_mtime=0
-    cache_mtime=$(stat -f %m "$cache_file" 2>/dev/null || true)
-    if [[ -z "$cache_mtime" ]]; then
-        cache_mtime=$(stat -c %Y "$cache_file" 2>/dev/null || true)
-    fi
+    # date -r works on both BSD (macOS) and GNU (Linux) date
+    cache_mtime=$(date -r "$cache_file" +%s 2>/dev/null)
     [[ "$cache_mtime" =~ ^[0-9]+$ ]] || cache_mtime=0
 
     now_epoch=$(date +%s 2>/dev/null || echo 0)
@@ -502,7 +499,11 @@ done
 
 pad_width=$((max_left + 4))
 
-num_lines=${#left_lines[@]}
+# Use the maximum of left and right line counts
+num_left=${#left_lines[@]}
+num_right=${#right_lines[@]}
+num_lines=$((num_left > num_right ? num_left : num_right))
+
 for ((i = 0; i < num_lines; i++)); do
     left="${left_lines[$i]}"
     right="${right_lines[$i]:-}"
