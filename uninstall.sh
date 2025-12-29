@@ -3,7 +3,7 @@
 # Uninstall dotfiles - removes symlinks and configurations
 # Use --purge-packages to also remove installed packages
 #
-# Bash 3.2 compatible (macOS default)
+# Requires bash 4.0+ for associative arrays
 
 set -euo pipefail
 
@@ -273,15 +273,7 @@ remove_systemd_updater() {
 source_packages() {
     local packages_file="$DOTDOTFILES/lib/setup/helpers/packages.sh"
     if [[ -f "$packages_file" ]]; then
-        # Only source the arrays, not the full file (which may have functions)
-        # Extract just the package arrays
-        eval "$(grep -E '^(export )?(COMMON_PACKAGES|BREW_SPECIFIC|BREW_CASK_NAMES|APT_SPECIFIC|SNAP_PACKAGES)=\(' "$packages_file" | head -100)"
-        # Read until closing paren for each array
-        COMMON_PACKAGES=()
-        BREW_SPECIFIC=()
-        BREW_CASK_NAMES=()
-        APT_SPECIFIC=()
-        SNAP_PACKAGES=()
+        # Source the entire file to get all arrays and associative arrays
         source "$packages_file" 2>/dev/null || true
         return 0
     fi
@@ -341,12 +333,12 @@ remove_brew_packages() {
     fi
     
     # Remove casks
-    if [[ ${#BREW_CASK_NAMES[@]} -gt 0 ]]; then
+    if [[ ${#BREW_CASKS[@]} -gt 0 ]]; then
         local installed_casks
         installed_casks=$(brew list --cask 2>/dev/null | tr '\n' ' ')
         
         local casks_to_remove=()
-        for cask in "${BREW_CASK_NAMES[@]}"; do
+        for cask in "${!BREW_CASKS[@]}"; do
             if [[ " $installed_casks " == *" $cask "* ]]; then
                 casks_to_remove+=("$cask")
             fi

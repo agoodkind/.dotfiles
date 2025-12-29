@@ -1,9 +1,10 @@
 # Centralized package list for both apt and brew installations
-# NOTE: This file must be bash 3.2 compatible (macOS default)
+# NOTE: Requires bash 4.0+ (modern bash with associative arrays)
 
 # Packages that should always be installed via snap (on Linux)
 export SNAP_PACKAGES=(
 	neovim
+	fx
 )
 
 # Common packages across both package managers
@@ -107,6 +108,7 @@ export BREW_SPECIFIC=(
 	curlie
 	doggo
 	dust
+	fx
 	gitui
 	glow
 	mdless
@@ -124,57 +126,53 @@ export BREW_SPECIFIC=(
 # Cargo packages (installed via cargo install)
 export CARGO_PACKAGES=(
 	async-cmd
+	cloudflare-speed-cli
 )
 
-# Brew casks - using parallel arrays for bash 3.2 compatibility
-# BREW_CASK_NAMES[i] corresponds to BREW_CASK_APPS[i]
-# Empty app name means CLI-only or font (no .app to check)
-export BREW_CASK_NAMES=(
-	1password
-	1password-cli
-	iterm2
-	keycastr
-	visual-studio-code
-	google-chrome
-	font-jetbrains-mono-nerd-font
-	font-jetbrains-mono
-	cyberduck
-	utm
-	vlc
-	stats
-	xcodes-app
-	pingplotter
+# Cargo packages requiring git installation - associative arrays
+# Format: [package]="url|features"
+declare -gA CARGO_GIT_PACKAGES=(
+	[cloudflare-speed-cli]="https://github.com/kavehtehrani/cloudflare-speed-cli|tui"
 )
 
-export BREW_CASK_APPS=(
-	"1Password"
-	""
-	"iTerm"
-	"KeyCastr"
-	"Visual Studio Code"
-	"Google Chrome"
-	""
-	""
-	"Cyberduck"
-	"UTM"
-	"VLC"
-	"Stats"
-	"Xcodes"
-	"PingPlotter"
+# Get git installation details for a cargo package
+# Returns: "url|features" or empty if not a git package
+function get_cargo_git_details() {
+	local package="$1"
+	if [[ -n "${CARGO_GIT_PACKAGES[$package]:-}" ]]; then
+		echo "${CARGO_GIT_PACKAGES[$package]}"
+		return 0
+	fi
+	return 1
+}
+
+# Brew casks - associative array mapping cask name to app name
+# Empty value means CLI-only or font (no .app to check)
+declare -gA BREW_CASKS=(
+	[1password]="1Password"
+	[1password-cli]=""
+	[iterm2]="iTerm"
+	[keycastr]="KeyCastr"
+	[visual-studio-code]="Visual Studio Code"
+	[google-chrome]="Google Chrome"
+	[font-jetbrains-mono-nerd-font]=""
+	[font-jetbrains-mono]=""
+	[cyberduck]="Cyberduck"
+	[utm]="UTM"
+	[vlc]="VLC"
+	[stats]="Stats"
+	[xcodes-app]="Xcodes"
+	[pingplotter]="PingPlotter"
 )
 
 # Get app name for a cask (returns empty if unknown or no .app)
-# Bash 3.2 compatible - uses parallel arrays
-get_cask_app_name() {
+function get_cask_app_name() {
 	local cask="$1"
-	local i
-	for i in "${!BREW_CASK_NAMES[@]}"; do
-		if [[ "${BREW_CASK_NAMES[$i]}" == "$cask" ]]; then
-			local name="${BREW_CASK_APPS[$i]}"
-			[[ -n "$name" ]] && echo "${name}.app"
-			return 0
-		fi
-	done
+	local app_name="${BREW_CASKS[$cask]:-}"
+	if [[ -n "$app_name" ]]; then
+		echo "${app_name}.app"
+		return 0
+	fi
 	return 1
 }
 

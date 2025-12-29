@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# NOTE: This file must be bash 3.2 compatible (macOS default)
 
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
@@ -11,10 +10,9 @@ for arg in "$@"; do
 	esac
 done
 
-# Source utilities
+# Source utilities (these must remain bash 3.2 compatible)
 source "${DOTDOTFILES}/lib/setup/helpers/colors.sh"
 source "${DOTDOTFILES}/lib/setup/helpers/defaults.sh"
-source "${DOTDOTFILES}/lib/setup/helpers/packages.sh"
 
 # Install Homebrew if not present
 if ! /usr/bin/which -s brew; then
@@ -23,6 +21,23 @@ if ! /usr/bin/which -s brew; then
 else
 	color_echo GREEN "Homebrew already installed, skipping..."
 fi
+
+# Install modern bash first (required for packages.sh)
+BASH_VERSION_MAJOR="${BASH_VERSINFO[0]}"
+if [[ "$BASH_VERSION_MAJOR" -lt 4 ]]; then
+	color_echo YELLOW "Installing modern bash (current: $BASH_VERSION)..."
+	brew install bash
+	
+	# Re-exec this script with modern bash
+	MODERN_BASH="$(brew --prefix)/bin/bash"
+	if [[ -x "$MODERN_BASH" ]]; then
+		color_echo GREEN "Re-executing with modern bash..."
+		exec "$MODERN_BASH" "$0" "$@"
+	fi
+fi
+
+# Now we can source packages.sh (requires bash 4+)
+source "${DOTDOTFILES}/lib/setup/helpers/packages.sh"
 
 # Check for and clean up STALE brew locks (only if owning process is dead)
 cleanup_stale_brew_locks() {
@@ -205,7 +220,7 @@ else
 	CASKS_TO_UPGRADE=()
 
 	color_echo YELLOW "Checking cask applications..."
-	for cask in "${BREW_CASK_NAMES[@]}"; do
+	for cask in "${!BREW_CASKS[@]}"; do
 		if ! check_cask_installed "$cask"; then
 			CASKS_TO_INSTALL+=("$cask")
 			continue

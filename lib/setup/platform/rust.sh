@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
+# Requires bash 4.0+ for associative arrays in packages.sh
 
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
+
+# Ensure we're running bash 4+
+if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
+	echo "Error: This script requires bash 4.0 or later (current: $BASH_VERSION)"
+	echo "Please install modern bash first"
+	exit 1
+fi
 
 # Source utilities
 source "${DOTDOTFILES}/lib/setup/helpers/colors.sh"
@@ -57,7 +65,18 @@ if [ ${#CARGO_TO_INSTALL[@]} -gt 0 ]; then
 	color_echo YELLOW "Installing ${#CARGO_TO_INSTALL[@]} cargo packages..."
 	for package in "${CARGO_TO_INSTALL[@]}"; do
 		color_echo CYAN "Installing $package..."
-		cargo install "$package"
+		
+		# Check if this package requires git installation
+		if git_details=$(get_cargo_git_details "$package"); then
+			IFS='|' read -r git_url features <<< "$git_details"
+			if [[ -n "$features" ]]; then
+				cargo install --git "$git_url" --features "$features"
+			else
+				cargo install --git "$git_url"
+			fi
+		else
+			cargo install "$package"
+		fi
 	done
 else
 	color_echo GREEN "All cargo packages already installed!"
