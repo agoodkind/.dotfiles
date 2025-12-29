@@ -53,7 +53,7 @@ fi
             t=$(mktemp)
             tmps+=("$t")
             # shellcheck disable=SC2086
-            curl $opts -s --connect-timeout 3 --max-time 5 "$url" >"$t" \
+            curl $opts -sL --connect-timeout 3 --max-time 5 "$url" >"$t" \
                 2>/dev/null &
             pids+=($!)
         done

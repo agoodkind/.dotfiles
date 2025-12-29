@@ -627,20 +627,17 @@ for idx in "${!all_interfaces[@]}"; do
                     addr_label="${bold}${subnet_color}${all_addrs[$i]}${reset}"
                 fi
             else
-                # IPv6 address
+                # IPv6 address - split at /64 boundary (4 hextets)
                 ip6="${all_addrs[$i]}"
-                if [[ -n "$subnet_color" && -n "$subnet_key" ]]; then
-                    # Extract prefix length from subnet_key (e.g., "fd00:...:0/64" -> 64)
-                    prefix_len="${subnet_key##*/}"
-                    
-                    # Split at /64 boundary (4 hextets) for common case
-                    if [[ "$prefix_len" == "64" ]]; then
-                        # Split on 4th colon (or before ::)
-                        if [[ "$ip6" =~ ^([0-9a-fA-F]+:[0-9a-fA-F]+:[0-9a-fA-F]+:[0-9a-fA-F]+)(::?|:)(.*)$ ]]; then
-                            net_part="${BASH_REMATCH[1]}"
-                            separator="${BASH_REMATCH[2]}"
-                            host_part="${BASH_REMATCH[3]}"
-                            
+                if [[ -n "$subnet_color" ]]; then
+                    # Always try to split on 4th colon (works for most /64 networks)
+                    if [[ "$ip6" =~ ^([0-9a-fA-F]+:[0-9a-fA-F]+:[0-9a-fA-F]+:[0-9a-fA-F]+)(::?|:)(.*)$ ]]; then
+                        net_part="${BASH_REMATCH[1]}"
+                        separator="${BASH_REMATCH[2]}"
+                        host_part="${BASH_REMATCH[3]}"
+                        
+                        # Only split if we have host part and colors enabled
+                        if [[ -n "$host_part" && -n "$host_color" ]]; then
                             # Get deterministic host color for IPv6
                             host_clr=$(host_color_for_bits "$host_part" "true")
                             
@@ -650,11 +647,10 @@ for idx in "${!all_interfaces[@]}"; do
                             addr_label="${subnet_color}${ip6}${reset}"
                         fi
                     else
-                        # For non-/64, just color the whole address with subnet color
                         addr_label="${subnet_color}${ip6}${reset}"
                     fi
                 else
-                    addr_label="${subnet_color}${ip6}${reset}"
+                    addr_label="${dim}${ip6}${reset}"
                 fi
             fi
         elif [[ -n "$dim" ]]; then
