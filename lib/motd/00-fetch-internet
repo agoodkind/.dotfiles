@@ -23,6 +23,29 @@ fi
 
     stats_file="${cache_dir}/internet-stats.jsonl"
 
+    # URL-specific configuration
+    declare -A url_headers=(
+        ["https://speed.cloudflare.com/meta"]="Referer: https://speed.cloudflare.com/"
+    )
+
+    declare -A url_extract=(
+        ["https://speed.cloudflare.com/meta_pub4"]="jq -r .clientIp"
+        ["https://speed.cloudflare.com/meta_pub6"]="jq -r .clientIp"
+        ["https://speed.cloudflare.com/meta_isp"]="jq -r .asOrganization"
+    )
+
+    # Extract data from URL response (handles both plain text and JSON)
+    extract_data() {
+        local url=$1
+        local category=$2
+        local data_file=$3
+        
+        local key="${url}_${category}"
+        local extractor="${url_extract[$key]:-cat}"
+        
+        $extractor <"$data_file" 2>/dev/null || cat "$data_file"
+    }
+
     # Log stats entry as JSON
     log_stat() {
         local cat=$1 url=$2 ms=$3 won=$4 val=$5
@@ -33,15 +56,23 @@ fi
             --argjson ms "$ms" \
             --argjson won "$won" \
             --arg val "$val" \
-            '{ts:$ts, cat:$cat, url:$url, ms:$ms, won:$won, val:$val}' \
+            '{
+                ts: $ts,
+                cat: $cat,
+                url: $url,
+                ms: $ms,
+                won: $won,
+                val: $val
+            }' \
             >>"$stats_file" 2>/dev/null || true
     }
 
     # Race multiple URLs in parallel; first to complete with data wins
-    # Usage: fetch_race category output_file curl_opts url1 url2 ...
-    # Writes winner stats to stats_file
+    # Usage: fetch_race category output_file global_opts url1 url2 ...
+    # global_opts: curl options like "-4" or "-6" applied to all URLs
+    # Per-URL headers defined in url_headers associative array
     fetch_race() {
-        local category=$1 out=$2 opts=$3
+        local category=$1 out=$2 global_opts=$3
         shift 3
         local urls=("$@")
         local tmps=() pids=()
@@ -52,9 +83,16 @@ fi
             local t
             t=$(mktemp)
             tmps+=("$t")
-            # shellcheck disable=SC2086
-            curl $opts -sL --connect-timeout 3 --max-time 5 "$url" >"$t" \
-                2>/dev/null &
+            
+            # Build curl command
+            local curl_cmd="curl"
+            [[ -n "$global_opts" ]] && curl_cmd+=" $global_opts"
+            curl_cmd+=" -sL --connect-timeout 3 --max-time 5"
+            [[ -n "${url_headers[$url]:-}" ]] && \
+                curl_cmd+=" -H '${url_headers[$url]}'"
+            curl_cmd+=" '$url'"
+            
+            eval "$curl_cmd" >"$t" 2>/dev/null &
             pids+=($!)
         done
 
@@ -74,7 +112,10 @@ fi
                     val=$(tr -d '\r\n' <"${tmps[$i]}" 2>/dev/null || true)
 
                     if [[ -s "${tmps[$i]}" ]]; then
-                        cat "${tmps[$i]}" >"$out"
+                        # Save winner URL for extraction later
+                        echo "${urls[$i]}" >"${out}.url"
+                        # Apply extractor if defined, otherwise use raw data
+                        extract_data "${urls[$i]}" "$category" "${tmps[$i]}" >"$out"
                         log_stat "$category" "${urls[$i]}" "$elapsed_ms" true "$val"
                         rm -f "${tmps[$i]}" 2>/dev/null
                         pids[$i]=""
@@ -110,26 +151,31 @@ fi
 
     # Run all three categories in parallel, each racing multiple services
     fetch_race "pub4" "${tmp_file}.pub4" "-4" \
-        "ifconfig.co" \
-        "icanhazip.com" \
-        "api.ipify.org" \
-        "ifconfig.me" \
-        "ip.me" &
+        "https://speed.cloudflare.com/meta" \
+        "https://ifconfig.co" \
+        "https://icanhazip.com" \
+        "https://api.ipify.org" \
+        "https://ifconfig.me" \
+        "https://ip.me" &
 
     fetch_race "pub6" "${tmp_file}.pub6" "-6" \
-        "ifconfig.co" \
-        "icanhazip.com" \
-        "api6.ipify.org" \
-        "ifconfig.me" \
-        "ip.me" &
+        "https://speed.cloudflare.com/meta" \
+        "https://ifconfig.co" \
+        "https://icanhazip.com" \
+        "https://api6.ipify.org" \
+        "https://ifconfig.me" \
+        "https://ip.me" &
 
     fetch_race "isp" "${tmp_file}.isp" "" \
+        "https://speed.cloudflare.com/meta" \
+        "https://ifconfig.co/asn-org" \
         "https://ipinfo.io/org" \
         "http://ip-api.com/line/?fields=org" \
         "https://ipapi.co/org/" &
 
     wait
 
+    # Results are already extracted by fetch_race
     pub4=$(tr -d '\r\n' <"${tmp_file}.pub4" 2>/dev/null || true)
     pub6=$(tr -d '\r\n' <"${tmp_file}.pub6" 2>/dev/null || true)
     isp=$(tr -d '\r\n' <"${tmp_file}.isp" 2>/dev/null || true)
@@ -143,8 +189,7 @@ fi
 
     mv -f "$tmp_file" "$cache_file"
 
-    rm -f "${tmp_file}.pub4" "${tmp_file}.pub6" "${tmp_file}.isp" 2>/dev/null \
-        || true
+    rm -f "${tmp_file}".{pub4,pub6,isp}{,.url} 2>/dev/null || true
     rmdir "$lock_dir" 2>/dev/null || true
 ) </dev/null >/dev/null 2>&1 &
 
