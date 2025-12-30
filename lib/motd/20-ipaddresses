@@ -320,27 +320,33 @@ fetch_internet_info() {
     local cache_file="${HOME}/.cache/motd/internet.env"
     local max_age_seconds=600
     local max_wait_seconds=2
-    local cache_mtime now_epoch age
+    local cache_mtime now_epoch age is_fresh
 
-    # Wait up to 2 seconds for cache file to appear
+    # Helper: check if cache is fresh
+    is_cache_fresh() {
+        [[ -f "$cache_file" ]] || return 1
+        
+        local mtime
+        mtime=$(date -r "$cache_file" +%s 2>/dev/null)
+        [[ "$mtime" =~ ^[0-9]+$ ]] || return 1
+        
+        local now
+        now=$(date +%s 2>/dev/null)
+        [[ "$now" =~ ^[0-9]+$ ]] || return 1
+        
+        local file_age=$((now - mtime))
+        (( file_age <= max_age_seconds ))
+    }
+
+    # Wait up to 2 seconds for cache to become fresh
     local waited=0
-    while [[ ! -f "$cache_file" ]] && (( waited < max_wait_seconds * 10 )); do
+    while ! is_cache_fresh && (( waited < max_wait_seconds * 10 )); do
         sleep 0.1
         waited=$((waited + 1))
     done
 
-    [[ -f "$cache_file" ]] || return 0
-
-    # date -r works on both BSD (macOS) and GNU (Linux) date
-    cache_mtime=$(date -r "$cache_file" +%s 2>/dev/null)
-    [[ "$cache_mtime" =~ ^[0-9]+$ ]] || cache_mtime=0
-
-    now_epoch=$(date +%s 2>/dev/null || echo 0)
-    if [[ "$now_epoch" =~ ^[0-9]+$ ]] && (( cache_mtime > 0 && now_epoch > 0 ))
-    then
-        age=$((now_epoch - cache_mtime))
-        (( age <= max_age_seconds )) || return 0
-    fi
+    # If still not fresh after waiting, give up
+    is_cache_fresh || return 0
 
     while IFS='=' read -r k v; do
         case "$k" in
