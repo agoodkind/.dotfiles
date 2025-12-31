@@ -30,11 +30,13 @@ Analyze the branch changes and create a pull request using the GitHub CLI, follo
 
 - Use inline code for identifiers: `method_name`, `ClassName`, `variable`
 - Use fenced code blocks for multi-line snippets:
+
   ```ruby
   def example
     # relevant code
   end
   ```
+
 - Reference specific methods, classes, or values that changed
 - Code references add precision—use them when naming things matters
 
@@ -43,11 +45,13 @@ Analyze the branch changes and create a pull request using the GitHub CLI, follo
 When the PR description (existing or being created) contains before/after images, automatically convert them to a side-by-side table format.
 
 **Detect these patterns:**
+
 - "Before" followed by an `<img>` tag or markdown image `![]()`
 - "After" followed by an `<img>` tag or markdown image `![]()`
 - Variations like "Before:", "**Before**", "### Before", etc.
 
 **Convert to this format:**
+
 ```markdown
 | Before | After |
 |--------|-------|
@@ -55,6 +59,7 @@ When the PR description (existing or being created) contains before/after images
 ```
 
 **Conversion rules:**
+
 - Extract the `src` attribute from `<img>` tags and convert to markdown image syntax
 - Use the `alt` attribute as the alt text (or "Before"/"After" if no alt provided)
 - Drop `width`, `height`, and other HTML attributes (GitHub auto-sizes in tables)
@@ -63,6 +68,7 @@ When the PR description (existing or being created) contains before/after images
 **Example conversion:**
 
 Input:
+
 ```
 Before
 <img width="1206" alt="Old UI" src="https://github.com/user-attachments/assets/abc123" />
@@ -71,6 +77,7 @@ After
 ```
 
 Output:
+
 ```markdown
 | Before | After |
 |--------|-------|
@@ -92,6 +99,7 @@ Output:
 Branches must follow: `username/TICKET-NUMBER/descriptive-name` (with slashes, not dashes)
 
 Examples:
+
 - ✅ `agoodkind/AG-10677/fix-silver-shimmer`
 - ❌ `agoodkind-AG-10677-fix-silver-shimmer` (wrong: uses dashes)
 
@@ -103,7 +111,7 @@ Examples:
 2. Check for ticket number in this order:
    - First check current branch name (e.g. `agoodkind/AG-12345/fix-bug` → `AG-12345`)
    - Then check commit messages for ticket references
-   - If not found, ask the user for the ticket number; if the user confirms there is no ticket, proceed without one
+   - If not found, proceed without a ticket (do not ask the user)
 3. Run `git log main..HEAD --oneline` to see commits on the branch
 4. Run `git diff main...HEAD` to analyze all changes
 5. Craft a concise PR title with ticket prefix when available: `[AG-12345] Your title here` (imperative mood, no feat/fix prefixes); if no ticket, skip the prefix
@@ -113,23 +121,27 @@ Examples:
 9. Execute the command:
    - If PR exists: `gh pr edit --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
    - If no PR: `gh pr create --draft --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
-10. After PR is created/updated, output a Slack message for the review request channel
+10. After PR is created/updated, output:
+    - A Slack message for the review request channel
+    - The PR URL in a single-line code fence for easy copying
 
 ## Examples
 
 ✅ Good Title:
+
 - "[AG-1234] Add amount validation to silver processor
 - "[PLAT-567] Reset list state on pull-to-refresh"
 
 ✅ Good Description:
 "The silver list was showing duplicate entries after pull-to-refresh. The issue was that `fetchSilverElectrons` was appending results instead of replacing them when `offset` was zero. This PR resets the list state before fetching when triggered by refresh.
 
-Ticket: https://ag.atlassian.net/browse/AG-1234"
+Ticket: <https://ag.atlassian.net/browse/AG-1234>"
 
 ❌ Bad Title:
+
 - "fix: Fix silver bug"
 - "[AG-1234] fix: Update silver logic to improve reliability"
-- "Update silver logic" (missing ticket)
+- "Update logic" (too vague)
 
 ❌ Bad Description:
 "This PR fixes a bug in the silver fetching logic. Previously the code was appending results incorrectly. Now it properly resets state. This improves the user experience by preventing confusion from duplicate items."
@@ -146,10 +158,14 @@ After PR creation succeeds, output a Slack message for the code review channel:
 <Symptom/benefit> <PR_URL>
 ```
 
-Keep it concise—one line with the symptom or benefit followed by the URL. If calling out the action materially clarifies what changed, you can append “by <action>” before the URL. Examples:
+Keep it concise—one line with the symptom or benefit followed by the URL. If calling out the action materially clarifies what changed, you can append "by <action>" before the URL. Examples:
+
 - "Add JIRA PR badge https://..."
 - "Fix duplicate silver entries by resetting list state: https://..."
 - "Reduce memory usage https://..."
 
-If there's a ticket, optionally prefix with `[TICKET-123]` but keep the symptom/benefit (+ optional “by <action>”) + URL format.
+If there's a ticket, optionally prefix with `[TICKET-123]` but keep the symptom/benefit (+ optional "by <action>") + URL format.
 
+Then output the PR URL in a single-line code fence for easy copying:
+
+`<PR_URL>`
