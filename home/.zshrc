@@ -58,6 +58,11 @@ export SAVEHIST=100000
 setopt appendhistory
 setopt incappendhistory
 setopt share_history
+setopt interactive_comments
+setopt auto_cd 
+setopt auto_pushd
+setopt pushd_ignore_dups 
+setopt pushd_silent
 
 ###############################################################################
 # Aliases #####################################################################

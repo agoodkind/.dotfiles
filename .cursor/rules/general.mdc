@@ -54,6 +54,7 @@ alwaysApply: true
 ## Git
 
 - Do not force push (`git push --force` or `git push -f`) unless explicitly instructed
+- Do not reset hard without explicit permission, always prefer stashing if a clean working tree is needed
 
 ## Repository Access
 
