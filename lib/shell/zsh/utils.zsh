@@ -1,7 +1,15 @@
 # shellcheck shell=bash
+#
+#
+#
+#
+
 ###############################################################################
-# Core Utilities & OS Detection ##############################################
+# Core Utility Functions
 ###############################################################################
+
+# Run command asynchronously (background job)
+async_run() { "$@" &! }
 
 ###############################################################################
 # OS Detection & Caching
@@ -76,9 +84,6 @@ esac
 ###############################################################################
 # General Utility Functions
 ###############################################################################
-
-# Run command asynchronously (background job)
-async_run() { "$@" &! }
 
 # Portable command existence check (zsh builtin, no fork)
 isinstalled() { (( $+commands[$1] )); }

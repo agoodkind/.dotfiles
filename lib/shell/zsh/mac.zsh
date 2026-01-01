@@ -102,15 +102,32 @@ change_hostname() {
     fi
 
     local new_name="$1"
+    local sanitized_name="$new_name"
+    
+    # Capture old names
+    local old_computer=$(sudo scutil --get ComputerName 2>/dev/null)
+    local old_local=$(sudo scutil --get LocalHostName 2>/dev/null)
+    local old_host=$(sudo scutil --get HostName 2>/dev/null)
 
-    # Set all three names
+    # Sanitize for LocalHostName/HostName if needed
+    if [[ "$new_name" =~ [^a-zA-Z0-9-] ]]; then
+        # Remove apostrophes and other special chars, replace spaces with -
+        sanitized_name=$(echo "$new_name" | tr -d "'" | tr ' ' '-' | \
+            tr -cd 'a-zA-Z0-9-')
+        echo "ℹ️  Sanitized hostname: '$sanitized_name'"
+    fi
+
+    # ComputerName accepts spaces and special chars
     sudo scutil --set ComputerName "$new_name"
-    sudo scutil --set LocalHostName "$new_name"
-    sudo scutil --set HostName "$new_name"
+    
+    # LocalHostName and HostName need sanitized input
+    sudo scutil --set LocalHostName "$sanitized_name"
+    sudo scutil --set HostName "$sanitized_name"
 
     # Flush DNS cache
     flush_dns
 
-    echo "Successfully changed ComputerName, LocalHostName, and" \
-        "HostName to '$new_name'"
+    echo "✅ ComputerName: '$old_computer' -> '$new_name'"
+    echo "✅ LocalHostName: '$old_local' -> '$sanitized_name'"
+    echo "✅ HostName: '$old_host' -> '$sanitized_name'" 
 }
