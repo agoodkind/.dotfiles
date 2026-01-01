@@ -88,3 +88,29 @@ esac
 #######
 
 alias dircolors="gdircolors"
+
+flush_dns() {
+    echo "Flushing DNS..."
+    sudo dscacheutil -flushcache
+    sudo killall -HUP mDNSResponder
+}
+
+change_hostname() {
+    if [[ -z "$1" ]]; then
+        echo "Usage: change_hostname <new_name>"
+        return 1
+    fi
+
+    local new_name="$1"
+
+    # Set all three names
+    sudo scutil --set ComputerName "$new_name"
+    sudo scutil --set LocalHostName "$new_name"
+    sudo scutil --set HostName "$new_name"
+
+    # Flush DNS cache
+    flush_dns
+
+    echo "Successfully changed ComputerName, LocalHostName, and" \
+        "HostName to '$new_name'"
+}

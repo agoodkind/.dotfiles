@@ -1,6 +1,10 @@
 # shellcheck shell=bash
 ###############################################################################
-# Aliases and functions #######################################################
+# Core Utilities & OS Detection ##############################################
+###############################################################################
+
+###############################################################################
+# OS Detection & Caching
 ###############################################################################
 
 # Cache OS detection
@@ -43,6 +47,7 @@ fi
 read -r OS_TYPE < ~/.cache/os-type.cache
 export OS_TYPE
 
+# OS detection helpers
 is_macos() {
     [[ "$OS_TYPE" == "mac" ]]
 }
@@ -52,12 +57,10 @@ is_debian_based() {
 }
 
 is_ubuntu() {
-    is_debian_based
+    [[ "$OS_TYPE" == "ubuntu" ]]
 }
 
-
-async_run() { "$@" &! }
-
+# Source OS-specific configuration
 case "$OS_TYPE" in
     mac)
         source "$DOTDOTFILES/lib/shell/zsh/mac.zsh"
@@ -70,27 +73,38 @@ case "$OS_TYPE" in
         ;;
 esac
 
-# the fuck - lazy load this function
-fuck () {
-    # Undefine this function and source the real one on first use
-    unfunction fuck
-    eval "$(thefuck --alias)"
-    fuck "$(fc -ln -1)"
-}
+###############################################################################
+# General Utility Functions
+###############################################################################
 
-# Run this function to enable profiling for the next shell session
+# Run command asynchronously (background job)
+async_run() { "$@" &! }
+
+# Portable command existence check (zsh builtin, no fork)
+isinstalled() { (( $+commands[$1] )); }
+
+###############################################################################
+# Shell Management
+###############################################################################
+
+# Enable performance profiling for the next shell session
 zsh_profile() {
     mkdir -p ~/.cache
     touch ~/.cache/zsh_profile_next
     echo "Performance profiling enabled for next shell session"
 }
 
-
+# Reload the shell
 reload() {
     echo "🔄  Reloading shell..."
     exec zsh
 }
 
+###############################################################################
+# Dotfiles Management
+###############################################################################
+
+# Backup local changes before destructive operations
 backup_local_changes() {
     local timestamp=$(date +"%Y%m%d_%H%M%S")
     local has_changes=false
@@ -112,7 +126,8 @@ backup_local_changes() {
         has_untracked=true
     fi
     
-    if [[ "$has_changes" == "true" ]] || [[ "$has_untracked" == "true" ]]; then
+    if [[ "$has_changes" == "true" ]] || \
+       [[ "$has_untracked" == "true" ]]; then
         echo "📦 Backing up local changes..."
         
         # Create backup directory for untracked files
@@ -126,7 +141,8 @@ backup_local_changes() {
                 local target_dir="$backup_dir/$(dirname "$file")"
                 mkdir -p "$target_dir" 2>/dev/null || true
                 if [[ -f "$DOTDOTFILES/$file" ]]; then
-                    cp "$DOTDOTFILES/$file" "$backup_dir/$file" 2>/dev/null || true
+                    cp "$DOTDOTFILES/$file" "$backup_dir/$file" \
+                        2>/dev/null || true
                 fi
             done
             echo "  ✅ Backed up untracked files to $backup_dir/"
@@ -136,7 +152,8 @@ backup_local_changes() {
         if [[ "$has_changes" == "true" ]]; then
             if git --git-dir="$DOTDOTFILES/.git" \
                    --work-tree="$DOTDOTFILES" \
-                   stash push -m "backup-before-update-$timestamp" 2>/dev/null; then
+                   stash push -m "backup-before-update-$timestamp" \
+                   2>/dev/null; then
                 echo "  ✅ Stashed tracked changes: stash@{0}"
                 echo "  💡 To restore: git stash pop stash@{0}"
             fi
@@ -147,10 +164,12 @@ backup_local_changes() {
             echo "   - Stashed changes: git stash list"
             echo "     (look for backup-before-update-$timestamp)"
         fi
-        [[ "$has_untracked" == "true" ]] && echo "   - Untracked files: $backup_dir/"
+        [[ "$has_untracked" == "true" ]] && \
+            echo "   - Untracked files: $backup_dir/"
     fi
 }
 
+# Repair dotfiles by resetting to remote state
 repair() {
     echo "Repairing dotfiles..."
     # Backup local changes before discarding
@@ -162,23 +181,26 @@ repair() {
     config reset --hard HEAD
     # Remove untracked files and directories that might conflict
     config clean -fd
-    # Pull latest changes (will fail if there are conflicts, but we've reset above)
+    # Pull latest changes
     config pull || {
         # If pull fails, force reset to remote
-        git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" fetch origin
+        git --git-dir="$DOTDOTFILES/.git" \
+            --work-tree="$DOTDOTFILES" fetch origin
         config reset --hard origin/main
         config clean -fd
     }
-    (builtin cd "$DOTDOTFILES" && git submodule update --init --recursive --remote)
+    (builtin cd "$DOTDOTFILES" && \
+        git submodule update --init --recursive --remote)
     "$DOTDOTFILES/sync.sh" --repair "$@"
     reload
 }
 
+# Quick sync dotfiles
 sync() {
     "$DOTDOTFILES/sync.sh" --quick "$@"
 }
 
-# dotfile management
+# Dotfile management wrapper for git operations
 config() {
     local subcommand="$1"
     shift  # Remove subcommand from arguments
@@ -189,7 +211,8 @@ config() {
             backup_local_changes
             
             # Fetch latest changes first
-            git --git-dir="$DOTDOTFILES/.git" --work-tree="$DOTDOTFILES" fetch --all
+            git --git-dir="$DOTDOTFILES/.git" \
+                --work-tree="$DOTDOTFILES" fetch --all
             # Discard all local changes to tracked files
             config reset --hard origin/main 2>/dev/null || true
             # Remove untracked files and directories that might conflict
@@ -215,46 +238,4 @@ config() {
                 "$subcommand" "$@"
             ;;
     esac
-}
-
-
-flush_dns() {
-    echo "Flushing DNS..."
-    if is_macos; then
-        sudo dscacheutil -flushcache
-        sudo killall -HUP mDNSResponder
-    elif is_debian_based; then
-        local did_any=false
-
-        if command -v resolvectl >/dev/null 2>&1; then
-            sudo resolvectl flush-caches >/dev/null 2>&1 && did_any=true
-        fi
-
-        if command -v systemd-resolve >/dev/null 2>&1; then
-            sudo systemd-resolve --flush-caches >/dev/null 2>&1 && did_any=true
-        fi
-
-        if command -v systemctl >/dev/null 2>&1; then
-            local svc
-            for svc in systemd-resolved NetworkManager network-manager nscd \
-                dnsmasq unbound bind9 named; do
-                if systemctl cat "$svc" >/dev/null 2>&1; then
-                    sudo systemctl restart "$svc" >/dev/null 2>&1 && did_any=true
-                fi
-            done
-        elif command -v service >/dev/null 2>&1; then
-            local svc
-            for svc in network-manager nscd dnsmasq unbound bind9 named; do
-                sudo service "$svc" restart >/dev/null 2>&1 && did_any=true
-            done
-        fi
-
-        if [[ "$did_any" != "true" ]]; then
-            echo "No DNS cache service detected" >&2
-            return 0
-        fi
-    else
-        echo "Unsupported OS"
-        return 1
-    fi
 }

@@ -3,9 +3,6 @@
 # Command Wrappers & Customizations ##########################################
 ###############################################################################
 
-# portable command existence check (zsh builtin, no fork)
-isinstalled() { (( $+commands[$1] )); }
-
 # man wrapper: use default pager when not in a TTY (e.g., Cursor commands)
 man() {
     if [[ -t 1 ]]; then
@@ -16,7 +13,6 @@ man() {
         MANPAGER= PAGER=less command man "$@"
     fi
 }
-
 
 _needs_sudoedit_for_any_path() {
     emulate -L zsh
@@ -218,3 +214,10 @@ pbcopy() {
     fi
 }
 
+# thefuck wrapper: lazy load on first use
+fuck() {
+    # Undefine this function and source the real one on first use
+    unfunction fuck
+    eval "$(thefuck --alias)"
+    fuck "$(fc -ln -1)"
+}
