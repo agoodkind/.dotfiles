@@ -46,7 +46,7 @@ fi
 # Check if cargo package is installed
 is_cargo_installed() {
 	local package="$1"
-	cargo install --list | grep -q "^${package} v"
+	cargo install --list | grep -q "^${package} "
 }
 
 # Install cargo packages
