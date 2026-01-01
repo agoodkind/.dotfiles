@@ -334,6 +334,12 @@ sync_scripts_to_local() {
     # Check if launchd daemon is already installed
     if [[ -f "$DAEMON_PLIST" ]] && [[ -d "$SCRIPTS_DIR/.git" ]]; then
         color_echo GREEN "✅  scripts-updater launchd daemon already installed"
+        if ! sudo git config --system --get-all safe.directory 2>/dev/null | \
+            grep -Fxq "$SCRIPTS_DIR"; then
+            color_echo YELLOW "🔧  Fixing git safe.directory for scripts-updater..."
+            sudo git config --system --add safe.directory "$SCRIPTS_DIR" \
+                2>/dev/null || true
+        fi
         # Trigger an update
         sudo launchctl start "${DAEMON_NAME}" 2>/dev/null || true
         return 0
