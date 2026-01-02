@@ -5,9 +5,8 @@ This is a bespoke collection of my dotfiles wrapped up into a self-updating cros
 
 ## Setup
 
-### Automatic (preferred)
+### Interactive first time set up (preferred)
 
 ```sh
-chmod +x install.sh
 ./install.sh
 ```
