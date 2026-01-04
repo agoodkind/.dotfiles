@@ -27,7 +27,6 @@ Host suburban
   User agoodkind
   HostName suburban-hypervisor.goodkind.io
   ForwardAgent yes
-  LocalForward 10000 localhost:10000
 
 Host mom
   HostName mom.suburban.goodkind.io

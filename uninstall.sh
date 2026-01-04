@@ -79,14 +79,6 @@ remove_cursor_config() {
     
     local cursor_dir="$HOME/.cursor"
     
-    # Remove rule symlinks
-    if [[ -d "$cursor_dir/rules" ]]; then
-        for rule in "$cursor_dir/rules"/*; do
-            [[ -e "$rule" ]] || continue
-            remove_dotfiles_symlink "$rule"
-        done
-    fi
-    
     # Remove command symlinks
     if [[ -d "$cursor_dir/commands" ]]; then
         for cmd in "$cursor_dir/commands"/*; do
