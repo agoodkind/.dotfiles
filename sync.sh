@@ -438,7 +438,7 @@ sync_cursor_config() {
     color_echo BLUE "🔧  Syncing Cursor configuration..."
     
     local cursor_dir="$HOME/.cursor"
-    local src_rules="$DOTDOTFILES/.cursor/rules"
+    local src_rules="$DOTDOTFILES/lib/cursor/rules"
     local src_commands="$DOTDOTFILES/.cursor/commands"
     
     # Sync rules locally
@@ -464,18 +464,62 @@ sync_cursor_config() {
             color_echo GREEN "  🔗  Linked command: $cmd_name"
         done
     fi
-    
-    # Sync rules to Cursor cloud (macOS only, requires Cursor to be logged in)
-    if is_macos && [[ -f "$DOTDOTFILES/bin/sync-cursor-rules.sh" ]]; then
-        local cursor_db="$HOME/Library/Application Support/Cursor/User/globalStorage/state.vscdb"
-        if [[ -f "$cursor_db" ]]; then
-            color_echo BLUE "  ☁️  Syncing rules to Cursor cloud..."
-            if "$DOTDOTFILES/bin/sync-cursor-rules.sh" -q 2>/dev/null; then
-                color_echo GREEN "  ✅  Cloud rules synced"
-            else
-                color_echo YELLOW "  ⚠️  Cloud sync failed (Cursor may not be logged in)"
-            fi
-        fi
+}
+
+sync_cursor_user_rules() {
+    local sync_script="$DOTDOTFILES/bin/sync-cursor-rules"
+    local cursor_db="$HOME/Library/Application Support/Cursor/User/globalStorage/state.vscdb"
+
+    if ! is_macos; then
+        return 0
+    fi
+
+    if [[ ! -x "$sync_script" ]]; then
+        return 0
+    fi
+
+    if [[ ! -f "$cursor_db" ]]; then
+        return 0
+    fi
+
+    color_echo BLUE "☁️  Syncing Cursor User Rules..."
+    "$sync_script"
+}
+
+sync_git_hooks() {
+    color_echo BLUE "🪝  Syncing git hooks..."
+
+    local hooks_dir="$DOTDOTFILES/.git/hooks"
+    local src_hooks="$DOTDOTFILES/.githooks"
+
+    if [[ -d "$src_hooks" ]]; then
+        mkdir -p "$hooks_dir"
+        for hook in "$src_hooks"/*; do
+            [[ -f "$hook" ]] || continue
+            local hook_name
+            hook_name=$(basename "$hook")
+            ln -sf "../../.githooks/$hook_name" "$hooks_dir/$hook_name"
+            color_echo GREEN "  🔗  Linked hook: $hook_name"
+        done
+    fi
+}
+
+check_git_hooks_path() {
+    # This repo does not auto-run git config changes.
+    # If you want git to use .githooks directly, set core.hooksPath manually:
+    #   git -C "$DOTDOTFILES" config --local core.hooksPath ".githooks"
+    local configured
+    configured=$(git -C "$DOTDOTFILES" config --local --get core.hooksPath 2>/dev/null || true)
+
+    if [[ -z "$configured" ]]; then
+        return 0
+    fi
+
+    if [[ "$configured" != ".githooks" ]]; then
+        color_echo YELLOW "  ⚠️  core.hooksPath is set to: $configured"
+        color_echo YELLOW "  ⚠️  Expected: .githooks"
+        color_echo YELLOW "  Run:"
+        color_echo YELLOW "    git -C \"$DOTDOTFILES\" config --local core.hooksPath \".githooks\""
     fi
 }
 
@@ -653,6 +697,9 @@ main() {
     color_echo BLUE "[6/11] Syncing Cursor config..."
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     sync_cursor_config
+    sync_cursor_user_rules
+    check_git_hooks_path
+    sync_git_hooks
 
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     color_echo BLUE "[7/11] Repair cleanup (if --repair)..."

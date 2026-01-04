@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+"""Sync .cursor/rules MDC files to Cursor's cloud User Rules via API."""
+
+import os
+import sqlite3
+import subprocess
+import sys
+from pathlib import Path
+
+# Cursor paths
+CURSOR_DB = Path.home() / "Library/Application Support/Cursor/User/globalStorage/state.vscdb"
+RULES_DIR = Path.home() / ".dotfiles/lib/cursor/rules"
+API_BASE = "https://api2.cursor.sh/aiserver.v1.AiService"
+WORKSPACE_URL = "https://github.com/agoodkind/.dotfiles"
+
+def get_auth_token():
+    """Extract auth token from Cursor's database."""
+    conn = sqlite3.connect(CURSOR_DB)
+    cursor = conn.execute("SELECT value FROM ItemTable WHERE key = 'cursorAuth/accessToken'")
+    token = cursor.fetchone()[0].strip('"')
+    conn.close()
+    return token
+
+def api_call(token, endpoint, payload):
+    """Make API call to Cursor."""
+    result = subprocess.run([
+        "curl", "-s", "-X", "POST",
+        f"{API_BASE}/{endpoint}",
+        "-H", f"authorization: Bearer {token}",
+        "-H", "content-type: application/proto",
+        "-H", "connect-protocol-version: 1",
+        "--data-binary", f"@-"
+    ], input=payload, capture_output=True)
+    return result.stdout
+
+def list_rules(token):
+    """List all user rules and extract IDs."""
+    response = api_call(token, "KnowledgeBaseList", b"")
+    # Extract 8-digit IDs from response
+    ids = []
+    text = response.decode('utf-8', errors='ignore')
+    import re
+    for match in re.finditer(r'\b\d{8}\b', text):
+        ids.append(match.group())
+    return ids
+
+def remove_rule(token, rule_id):
+    """Remove a rule by ID."""
+    # Protobuf: field 1 (string) = rule_id
+    # Format: 0x0a (field 1 length-delimited) + length + ID bytes
+    id_bytes = rule_id.encode('utf-8')
+    payload = bytes([0x0a, len(id_bytes)]) + id_bytes
+    return api_call(token, "KnowledgeBaseRemove", payload)
+
+def encode_varint(value):
+    """Encode an integer as a protobuf varint."""
+    result = []
+    while value > 0x7f:
+        result.append((value & 0x7f) | 0x80)
+        value >>= 7
+    result.append(value & 0x7f)
+    return bytes(result)
+
+def encode_string_field(field_num, value):
+    """Encode a protobuf string field."""
+    value_bytes = value.encode('utf-8')
+    tag = (field_num << 3) | 2  # Wire type 2 = length-delimited
+    return bytes([tag]) + encode_varint(len(value_bytes)) + value_bytes
+
+def add_rule(token, title, content):
+    """Add a new rule."""
+    # Encode as protobuf with fields:
+    # Field 1 = content (the actual rule text)
+    # Field 2 = title
+    # Field 3 = workspace URL
+    payload = b''
+    payload += encode_string_field(1, content)
+    payload += encode_string_field(2, title)
+    payload += encode_string_field(3, WORKSPACE_URL)
+    return api_call(token, "KnowledgeBaseAdd", payload)
+
+def main():
+    token = get_auth_token()
+    print("✓ Auth token retrieved")
+    
+    # Remove all existing rules
+    print("Fetching existing rules...")
+    rule_ids = list_rules(token)
+    
+    if rule_ids:
+        print(f"Removing {len(rule_ids)} existing rules...")
+        for rule_id in rule_ids:
+            print(f"  → Removing rule {rule_id}")
+            remove_rule(token, rule_id)
+    
+    # Add all rules from dotfiles
+    print("Adding rules from dotfiles...")
+    for rule_file in sorted(RULES_DIR.glob("*.mdc")):
+        if rule_file.is_symlink():
+            rule_file = rule_file.resolve()
+        
+        # Skip if file doesn't exist (broken symlink)
+        if not rule_file.exists():
+            continue
+        
+        title = rule_file.stem
+        content = rule_file.read_text()
+        
+        print(f"  → Adding: {title}")
+        add_rule(token, title, content)
+    
+    print("✓ Sync complete - dotfiles is source of truth")
+
+if __name__ == "__main__":
+    main()
