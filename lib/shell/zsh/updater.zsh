@@ -26,6 +26,47 @@ DOTFILES_GIT_DIR="$DOTDOTFILES/.git"
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
 error() { echo "$*" >> "$ERROR_FILE"; log "ERROR: $*"; }
 
+run_logged() {
+    local label="$1"
+    shift
+
+    log "$label"
+    "$@" >> "$LOG_FILE" 2>&1
+    local exit_code=$?
+    log "$label exited with code $exit_code"
+    return $exit_code
+}
+
+do_brew_upgrade() {
+    is_macos || return 0
+    isinstalled brew || return 0
+
+    run_logged "Running brew update" brew update || true
+    run_logged "Running brew upgrade" brew upgrade || true
+    run_logged "Running brew upgrade --cask" brew upgrade --cask || true
+}
+
+do_apt_upgrade() {
+    is_debian_based || return 0
+    isinstalled apt-get || return 0
+
+    if ! sudo -n true >> "$LOG_FILE" 2>&1; then
+        log "Skipping apt upgrade (sudo requires a password)"
+        return 0
+    fi
+
+    run_logged "Running apt-get update" sudo -n apt-get update || true
+    local -a dpkg_opts=(
+        -o Dpkg::Options::=--force-confdef
+        -o Dpkg::Options::=--force-confold
+    )
+
+    run_logged "Running apt-get dist-upgrade" \
+        sudo -n env DEBIAN_FRONTEND=noninteractive \
+        apt-get -y "${dpkg_opts[@]}" dist-upgrade || true
+    run_logged "Running apt-get autoremove" sudo -n apt-get -y autoremove || true
+}
+
 # Fetch latest from remote
 fetch_latest() {
     git --git-dir="$DOTFILES_GIT_DIR" --work-tree="$DOTDOTFILES" fetch --quiet --all 2>/dev/null && return 0
@@ -127,9 +168,12 @@ do_weekly_update() {
         zinit update --all --quiet 2>&1 >> "$LOG_FILE" || true
         log "zinit update completed"
     fi
+
+    do_apt_upgrade
+    do_brew_upgrade
     
     # Homebrew cleanup (macOS only)
-    if [[ "$OSTYPE" == darwin* ]] && (( $+commands[brew] )); then
+    if is_macos && isinstalled brew; then
         log "Running brew cleanup"
         brew cleanup --prune=all 2>&1 >> "$LOG_FILE" || true
         log "brew cleanup completed"
