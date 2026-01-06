@@ -74,8 +74,13 @@ rbenv() {
 
 
 #######
-# nvm #
-export NVM_DIR=~/.nvm
+# nvm (lazy-loaded, no completions)
+export NVM_DIR="$HOME/.nvm"
+nvm() {
+  unset -f nvm
+  [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
+  nvm "$@"
+}
 #######
 
 ########
