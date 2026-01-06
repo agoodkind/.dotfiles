@@ -417,13 +417,16 @@ function _git_wkm() {
 
         if [[ "$use_async_cmd" == "true" ]]; then
             # Submit job to async-cmd (non-blocking)
+            # Resolve path now - DOTDOTFILES may not be exported to child shells
+            # Use semicolons so variables persist (VAR=x cmd only sets for that cmd)
+            local dotfiles_path="${DOTDOTFILES:-$HOME/.dotfiles}"
             async -s="$socket" cmd -- zsh -c \
-                "_WKM_REPO='$repo' \
-_WKM_PARENT='$parent_dir' \
-_WKM_BRANCH='$branch_name' \
-_WKM_OUT='$tmp_dir/$widx' \
-_WKM_PWD='$PWD' \
-source '$DOTDOTFILES/lib/shell/zsh/git.zsh' && \
+                "_WKM_REPO='$repo'; \
+_WKM_PARENT='$parent_dir'; \
+_WKM_BRANCH='$branch_name'; \
+_WKM_OUT='$tmp_dir/$widx'; \
+_WKM_PWD='$PWD'; \
+source \"$dotfiles_path/lib/shell/zsh/git.zsh\" && \
 _git_wkm_worker" >/dev/null 2>&1
             pids[$widx]="async"
         else
