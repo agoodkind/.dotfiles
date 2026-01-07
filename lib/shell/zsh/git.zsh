@@ -256,6 +256,7 @@ function _git_wkm_worker() {
 
     if [[ ! -d "$rp" ]]; then
         print "status:repo not found" >> "$out"
+        print "error:repository directory not found: $_WKM_REPO" >> "$out"
         print "done:error" >> "$out"
         return 1
     fi
@@ -287,6 +288,7 @@ function _git_wkm_worker() {
     if [[ -n "$existing_wt" ]]; then
         local short_path="${existing_wt##*/}"
         print "status:branch in use: $short_path" >> "$out"
+        print "error:branch already checked out at $existing_wt" >> "$out"
         print "done:error" >> "$out"
         return 1
     fi
@@ -315,12 +317,14 @@ function _git_wkm_worker() {
         print "path:$wt_path" >> "$out"
         print "done:ok" >> "$out"
     else
-        # Truncate error message to prevent terminal line wrap.
-        local err_msg="${git_err%%$'\n'*}"
-        err_msg="${err_msg#fatal: }"
+        # Store full error for later display, truncate for status line.
+        local full_err="${git_err%%$'\n'*}"
+        full_err="${full_err#fatal: }"
+        local err_msg="$full_err"
         (( ${#err_msg} > 35 )) && err_msg="${err_msg:0:32}..."
         [[ -z "$err_msg" ]] && err_msg="failed"
         print "status:$err_msg" >> "$out"
+        print "error:$full_err" >> "$out"
         print "done:error" >> "$out"
     fi
 }
@@ -395,13 +399,14 @@ function _git_wkm() {
     print "  ⚡ Spawning $total parallel workers...\n"
 
     # Track state for each repo.
-    local -a last_status last_line_count wt_paths done_flags pids
+    local -a last_status last_line_count wt_paths done_flags pids error_msgs
     for i in {1..$total}; do
         last_status[$i]="spawning"
         last_line_count[$i]=0
         wt_paths[$i]=""
         done_flags[$i]=0
         pids[$i]=""
+        error_msgs[$i]=""
     done
 
     # Print initial status lines (will be updated in place).
@@ -473,6 +478,7 @@ _git_wkm_worker" >/dev/null 2>&1
                 case "$key" in
                     status) last_status[$i]="$val" ;;
                     path)   wt_paths[$i]="$val" ;;
+                    error)  error_msgs[$i]="$val" ;;
                     done)   done_flags[$i]=1; (( completed++ )) ;;
                 esac
             done < "$out_file"
@@ -519,6 +525,24 @@ _git_wkm_worker" >/dev/null 2>&1
 
     command rm -rf "$tmp_dir"
     print ""
+
+    # Show full error messages for failed repos.
+    local has_errors=false
+    for i in {1..$total}; do
+        if [[ -n "${error_msgs[$i]}" ]]; then
+            has_errors=true
+            break
+        fi
+    done
+    if $has_errors; then
+        print "Errors:"
+        for i in {1..$total}; do
+            if [[ -n "${error_msgs[$i]}" ]]; then
+                print "  ${repos[$i]}: ${error_msgs[$i]}"
+            fi
+        done
+        print ""
+    fi
 
     if (( ${#worktree_paths[@]} == 0 )); then
         print "git wkm: no worktrees created or found" >&2
