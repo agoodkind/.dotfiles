@@ -14,9 +14,9 @@ Analyze the branch changes and create a pull request using the GitHub CLI, follo
 ## Title Rules
 
 - **No Prefix Labels**: Avoid feat, refactor, fix, etc.
+- **No Ticket Numbers**: Never include ticket numbers in the title - they go in the body
 - **Direct Statement**: Use imperative mood, state what changed
 - **Specific**: Be specific about what changed and where
-- **Ticket Optional**: Include the ticket prefix when one exists; omit it if the user confirms there is no ticket
 
 ## Description Structure
 
@@ -114,10 +114,10 @@ Examples:
    - If not found, proceed without a ticket (do not ask the user)
 3. Run `git log main..HEAD --oneline` to see commits on the branch
 4. Run `git diff main...HEAD` to analyze all changes
-5. Craft a concise PR title with ticket prefix when available: `[AG-12345] Your title here` (imperative mood, no feat/fix prefixes); if no ticket, skip the prefix
+5. Craft a concise PR title without ticket prefix (imperative mood, no feat/fix prefixes)
 6. Write 2-3 paragraph description following the flow: symptom → root cause → fix
 7. If before/after images are provided (in user input or existing PR description), convert them to the table format described above
-8. Add ticket link at the end of description when a ticket exists: `Ticket: https://ag.atlassian.net/browse/AG-12345` (infer the correct alassian subdomain from context or company); omit if no ticket
+8. Add ticket link at the start of description when a ticket exists: `Ticket: https://ag.atlassian.net/browse/AG-12345` (infer the correct atlassian subdomain from context or company); omit if no ticket
 9. Execute the command:
    - If PR exists: `gh pr edit --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
    - If no PR: `gh pr create --draft --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
@@ -129,18 +129,18 @@ Examples:
 
 ✅ Good Title:
 
-- "[AG-1234] Add amount validation to silver processor
-- "[PLAT-567] Reset list state on pull-to-refresh"
+- "Add amount validation to silver processor"
+- "Reset list state on pull-to-refresh"
 
 ✅ Good Description:
-"The silver list was showing duplicate entries after pull-to-refresh. The issue was that `fetchSilverElectrons` was appending results instead of replacing them when `offset` was zero. This PR resets the list state before fetching when triggered by refresh.
+"Ticket: <https://ag.atlassian.net/browse/AG-1234>
 
-Ticket: <https://ag.atlassian.net/browse/AG-1234>"
+The silver list was showing duplicate entries after pull-to-refresh. The issue was that `fetchSilverElectrons` was appending results instead of replacing them when `offset` was zero. This PR resets the list state before fetching when triggered by refresh."
 
 ❌ Bad Title:
 
 - "fix: Fix silver bug"
-- "[AG-1234] fix: Update silver logic to improve reliability"
+- "[AG-1234] Add amount validation to silver processor"
 - "Update logic" (too vague)
 
 ❌ Bad Description:
@@ -163,8 +163,6 @@ Keep it concise—one line with the symptom or benefit followed by the URL. If c
 - "Add JIRA PR badge https://..."
 - "Fix duplicate silver entries by resetting list state: https://..."
 - "Reduce memory usage https://..."
-
-If there's a ticket, optionally prefix with `[TICKET-123]` but keep the symptom/benefit (+ optional "by <action>") + URL format.
 
 Then output the PR URL in a single-line code fence for easy copying:
 
