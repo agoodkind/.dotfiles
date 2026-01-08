@@ -276,21 +276,39 @@ function _git_wkm_worker() {
         return 0
     fi
 
-    # Check if branch is already checked out in another worktree - fail if so.
+    # Check if branch is already checked out in another worktree.
     local existing_wt
     existing_wt=$(command git -C "$rp" worktree list --porcelain 2>/dev/null \
         | command awk -v branch="$_WKM_BRANCH" '
             /^worktree / { wt = substr($0, 10) }
             /^branch refs\/heads\// { 
-                b = substr($0, 20)
+                b = substr($0, 19)
                 if (b == branch) { print wt; exit }
             }')
-    if [[ -n "$existing_wt" ]]; then
+    if [[ -n "$existing_wt" && "$existing_wt" != "$wt_path" ]]; then
         local short_path="${existing_wt##*/}"
-        print "status:branch in use: $short_path" >> "$out"
-        print "error:branch already checked out at $existing_wt" >> "$out"
-        print "done:error" >> "$out"
-        return 1
+        # Check if the existing worktree is stale (merged + clean) - if so, remove it.
+        if _git_wkm_worktree_is_clean "$existing_wt" && \
+           _git_wkm_branch_is_stale "$rp" "$_WKM_BRANCH"; then
+            print "status:removing stale: $short_path" >> "$out"
+            local remove_err=""
+            remove_err=$(command git -C "$rp" worktree remove "$existing_wt" 2>&1)
+            if [[ $? -ne 0 ]]; then
+                print "status:cleanup failed" >> "$out"
+                print "error:failed to remove stale worktree: $remove_err" >> "$out"
+                print "done:error" >> "$out"
+                return 1
+            fi
+            # Delete the local branch since worktree remove doesn't.
+            command git -C "$rp" branch -d "$_WKM_BRANCH" >/dev/null 2>&1 || true
+            # Continue to create fresh worktree below.
+        else
+            # Not stale - reuse the existing worktree at its current path.
+            print "status:exists (reused)" >> "$out"
+            print "path:$existing_wt" >> "$out"
+            print "done:ok" >> "$out"
+            return 0
+        fi
     fi
 
     # Fetch with timeout.
@@ -330,11 +348,500 @@ function _git_wkm_worker() {
 }
 
 ###############################################################################
+# git wkm cleanup helpers
+###############################################################################
+function _git_wkm_resolve_repo_path() {
+    local repo="$1"
+    local parent_dir="$2"
+    local pwd="$3"
+
+    local rp="$repo"
+    if [[ ! -d "$rp" && -n "$parent_dir" && -d "$parent_dir/$rp" ]]; then
+        rp="$parent_dir/$rp"
+    fi
+
+    [[ "$rp" != /* ]] && rp="$pwd/$rp"
+    rp="${rp:A}"
+
+    if [[ -d "$rp" ]]; then
+        print -r -- "$rp"
+        return 0
+    fi
+
+    return 1
+}
+
+function _git_wkm_worktree_branch_map() {
+    emulate -L zsh
+    setopt localoptions no_unset
+
+    local repo_path="$1"
+    local wt=""
+    local br=""
+    local line=""
+
+    while IFS= read -r line; do
+        case "$line" in
+            worktree\ *)
+                wt="${line#worktree }"
+                br=""
+                ;;
+            branch\ refs/heads/*)
+                br="${line#branch refs/heads/}"
+                if [[ -n "$wt" && -n "$br" ]]; then
+                    print -r -- "$wt"$'\t'"$br"
+                fi
+                ;;
+        esac
+    done < <(command git -C "$repo_path" worktree list --porcelain 2>/dev/null)
+}
+
+function _git_wkm_worktree_is_clean() {
+    local wt_path="$1"
+    [[ -d "$wt_path" ]] || return 1
+    [[ -z "$(command git -C "$wt_path" status --porcelain 2>/dev/null)" ]]
+}
+
+function _git_wkm_repo_upstream_main_ref() {
+    local repo_path="$1"
+
+    if command git -C "$repo_path" show-ref --verify --quiet \
+        "refs/remotes/origin/main" 2>/dev/null; then
+        print -r -- "origin/main"
+        return 0
+    fi
+
+    if command git -C "$repo_path" show-ref --verify --quiet \
+        "refs/remotes/origin/master" 2>/dev/null; then
+        print -r -- "origin/master"
+        return 0
+    fi
+
+    if command git -C "$repo_path" show-ref --verify --quiet \
+        "refs/remotes/origin/trunk" 2>/dev/null; then
+        print -r -- "origin/trunk"
+        return 0
+    fi
+
+    return 1
+}
+
+function _git_wkm_branch_is_stale() {
+    local repo_path="$1"
+    local branch="$2"
+
+    case "$branch" in
+        main|master|trunk) return 1 ;;
+    esac
+
+    command git -C "$repo_path" show-ref --verify --quiet \
+        "refs/heads/$branch" 2>/dev/null || return 1
+
+    local upstream_ref=""
+    upstream_ref="$(_git_wkm_repo_upstream_main_ref "$repo_path")" || return 1
+
+    # A branch is stale if it has no unique patches compared to origin/<main>.
+    # This catches squash-merges since `git cherry` compares patch-ids.
+    local line=""
+    while IFS= read -r line; do
+        case "$line" in
+            +\ *) return 1 ;;
+        esac
+    done < <(command git -C "$repo_path" cherry "$upstream_ref" "$branch" \
+        2>/dev/null)
+
+    return 0
+}
+
+function _git_wkm_cleanup_repo_worker() {
+    emulate -L zsh
+    setopt localoptions no_unset
+    set +x
+    unsetopt xtrace 2>/dev/null || true
+
+    local repo="$1"
+    local parent_dir="$2"
+    local branch_filter="$3"
+    local should_fetch="$4"
+    local out="$5"
+
+    function _cleanup_log() {
+        print -r -- "$1" >> "$out"
+    }
+
+    [[ -n "$out" ]] || return 1
+
+    local rp=""
+    rp="$(_git_wkm_resolve_repo_path "$repo" "$parent_dir" "$PWD")" || {
+        _cleanup_log "status:repo not found"
+        _cleanup_log "error:repo not found: $repo"
+        _cleanup_log "done:error"
+        return 1
+    }
+
+    if [[ "$should_fetch" == "true" ]]; then
+        command git -C "$rp" fetch origin --quiet 2>/dev/null || true
+    fi
+
+    local wt_root="${rp}-worktrees"
+    if [[ ! -d "$wt_root" ]]; then
+        _cleanup_log "meta:repo:$repo"
+        _cleanup_log "meta:checked:0"
+        _cleanup_log "meta:stale:0"
+        _cleanup_log "done:ok"
+        return 0
+    fi
+
+    local dir_name=""
+    local target_wt=""
+    if [[ -n "$branch_filter" ]]; then
+        dir_name="${branch_filter//\//-}"
+        target_wt="$wt_root/$dir_name"
+    fi
+
+    typeset -A branch_count
+    local -a map_lines
+    map_lines=()
+
+    local line=""
+    while IFS= read -r line; do
+        map_lines+=("$line")
+        local br="${line#*$'\t'}"
+        local cur="${branch_count[$br]:-0}"
+        branch_count[$br]=$(( cur + 1 ))
+    done < <(_git_wkm_worktree_branch_map "$rp")
+
+    if (( ${#map_lines[@]} == 0 )); then
+        _cleanup_log "meta:repo:$repo"
+        _cleanup_log "meta:checked:0"
+        _cleanup_log "meta:stale:0"
+        _cleanup_log "done:ok"
+        return 0
+    fi
+
+    local upstream_ref=""
+    upstream_ref="$(_git_wkm_repo_upstream_main_ref "$rp")" || upstream_ref=""
+
+    local checked=0
+    local stale=0
+    local m
+    for m in "${map_lines[@]}"; do
+        local wt="${m%%$'\t'*}"
+        local branch="${m#*$'\t'}"
+
+        [[ "$wt" == "$wt_root/"* ]] || continue
+        [[ -n "$target_wt" && "$wt" != "$target_wt" ]] && continue
+        (( checked++ ))
+
+        case "$branch" in
+            main|master|trunk) continue ;;
+        esac
+
+        if (( ${branch_count[$branch]:-0} > 1 )); then
+            continue
+        fi
+
+        if ! _git_wkm_worktree_is_clean "$wt"; then
+            continue
+        fi
+
+        [[ -n "$upstream_ref" ]] || continue
+
+        if ! _git_wkm_branch_is_stale "$rp" "$branch"; then
+            continue
+        fi
+
+        (( stale++ ))
+        _cleanup_log "stale:$rp"$'\t'"$wt"$'\t'"$branch"
+    done
+
+    _cleanup_log "meta:repo:$repo"
+    _cleanup_log "meta:checked:$checked"
+    _cleanup_log "meta:stale:$stale"
+    _cleanup_log "done:ok"
+    return 0
+}
+
+function _git_wkm_cleanup() {
+    emulate -L zsh
+    setopt localoptions no_unset
+    set +x
+    setopt localoptions no_notify no_monitor
+    unsetopt xtrace 2>/dev/null || true
+    setopt localoptions localtraps
+
+    local branch_filter="$1"
+    shift
+
+    local apply_mode="$1"
+    shift
+
+    local parent_dir="$1"
+    shift
+
+    local jobs="$1"
+    shift
+
+    local should_fetch="$1"
+    shift
+
+    local -a repos
+    repos=("$@")
+
+    if (( ${#repos[@]} == 0 )); then
+        echo "git wkm --cleanup: no repos specified and GIT_WKM_REPOS not set" >&2
+        return 1
+    fi
+
+    local dir_name=""
+    if [[ -n "$branch_filter" ]]; then
+        dir_name="${branch_filter//\//-}"
+    fi
+
+    local -a stale_rows
+    stale_rows=()
+
+    local tmp_base="${TMPDIR:-/tmp}"
+    tmp_base="${tmp_base%/}"
+    local tmp_dir="$tmp_base/git-wkm-cleanup-$$"
+    command mkdir -p "$tmp_dir" 2>/dev/null || return 1
+
+    # Some shells route xtrace to stdout (via XTRACEFD=1). Redirect xtrace output
+    # to a temp fd for the duration of cleanup so it can't spam the terminal.
+    local had_xtracefd=false
+    local old_xtracefd=""
+    if (( ${+XTRACEFD} )); then
+        had_xtracefd=true
+        old_xtracefd="$XTRACEFD"
+    fi
+
+    local xtrace_fd
+    exec {xtrace_fd}>"$tmp_dir/xtrace.log"
+    XTRACEFD=$xtrace_fd
+
+    function _git_wkm_cleanup_restore_xtracefd() {
+        if $had_xtracefd; then
+            XTRACEFD="$old_xtracefd"
+        else
+            unset XTRACEFD 2>/dev/null || true
+        fi
+        exec {xtrace_fd}>&- 2>/dev/null || true
+    }
+
+    function _git_wkm_cleanup_abort() {
+        local p
+        for p in "${repo_pids[@]:-}"; do
+            [[ -n "$p" ]] || continue
+            kill "$p" 2>/dev/null || true
+        done
+        command rm -rf "$tmp_dir" 2>/dev/null || true
+        _git_wkm_cleanup_restore_xtracefd
+    }
+
+    trap '_git_wkm_cleanup_restore_xtracefd' RETURN
+    trap '_git_wkm_cleanup_abort; return 130' INT TERM
+
+    local max_jobs="$jobs"
+    [[ -z "$max_jobs" ]] && max_jobs=4
+    (( max_jobs < 1 )) && max_jobs=1
+    local total_repos=${#repos[@]}
+    local total_checked=0
+    local total_stale=0
+
+    local is_tty=false
+    [[ -t 1 ]] && is_tty=true
+
+    local -a out_files done_flags last_line_count repo_labels repo_checked
+    local -a repo_stale repo_status repo_error
+    local -a repo_pids
+    out_files=()
+    done_flags=()
+    last_line_count=()
+    repo_labels=()
+    repo_checked=()
+    repo_stale=()
+    repo_status=()
+    repo_error=()
+    repo_pids=()
+
+    local i
+    for i in {1..$total_repos}; do
+        out_files[$i]="$tmp_dir/$i"
+        : > "${out_files[$i]}"
+        done_flags[$i]=0
+        last_line_count[$i]=0
+        repo_labels[$i]="${repos[$i]##*/}"
+        repo_checked[$i]=0
+        repo_stale[$i]=0
+        repo_status[$i]="queued"
+        repo_error[$i]=""
+        repo_pids[$i]=""
+    done
+
+    local completed=0
+    local started=0
+
+    function _git_wkm_cleanup_progress_line() {
+        $is_tty || return 0
+        local active=$(( started - completed ))
+        local msg="Cleanup: ${completed}/${total_repos} repos"
+        (( active > 0 )) && msg="${msg} (active ${active})"
+        msg="${msg}; checked ${total_checked}; stale ${total_stale}"
+        [[ -n "$branch_filter" ]] && msg="${msg} (branch: $branch_filter)"
+        printf "\r\033[K%s" "$msg"
+    }
+
+    function _git_wkm_cleanup_spawn_next() {
+        (( started >= total_repos )) && return 1
+        started=$(( started + 1 ))
+        repo_status[$started]="scanning"
+        (
+            unsetopt xtrace 2>/dev/null || true
+            setopt no_notify no_monitor 2>/dev/null || true
+            _git_wkm_cleanup_repo_worker "${repos[$started]}" "$parent_dir" \
+                "$branch_filter" "$should_fetch" "${out_files[$started]}"
+        ) &!
+        repo_pids[$started]="$!"
+        return 0
+    }
+
+    while (( started < max_jobs )) && _git_wkm_cleanup_spawn_next; do
+        true
+    done
+
+    _git_wkm_cleanup_progress_line
+
+    while (( completed < total_repos )); do
+        local did_progress=false
+
+        local j
+        for j in {1..$total_repos}; do
+            (( done_flags[$j] )) && continue
+            local out_file="${out_files[$j]}"
+            [[ -f "$out_file" ]] || continue
+
+            local line_num=0
+            local l
+            while IFS= read -r l; do
+                (( line_num++ ))
+                (( line_num <= last_line_count[$j] )) && continue
+
+                local key="${l%%:*}"
+                local val="${l#*:}"
+                case "$key" in
+                    status) repo_status[$j]="$val" ;;
+                    error)  repo_error[$j]="$val" ;;
+                    stale)  stale_rows+=("$val"); (( total_stale++ )) ;;
+                    meta)
+                        case "$val" in
+                            checked:*)
+                                local c="${val#checked:}"
+                                local prev="${repo_checked[$j]:-0}"
+                                repo_checked[$j]="$c"
+                                total_checked=$(( total_checked - prev + c ))
+                                ;;
+                            stale:*)
+                                repo_stale[$j]="${val#stale:}"
+                                ;;
+                        esac
+                        ;;
+                    done)
+                        done_flags[$j]=1
+                        completed=$(( completed + 1 ))
+                        repo_status[$j]="done"
+                        did_progress=true
+                        ;;
+                esac
+            done < "$out_file"
+            last_line_count[$j]=$line_num
+
+            # Fallback: if the worker exited but never wrote done:, don't hang.
+            if (( ! done_flags[$j] )) && [[ -n "${repo_pids[$j]}" ]]; then
+                if ! kill -0 "${repo_pids[$j]}" 2>/dev/null; then
+                    done_flags[$j]=1
+                    completed=$(( completed + 1 ))
+                    repo_status[$j]="done"
+                    repo_error[$j]="worker exited without done marker"
+                    did_progress=true
+                fi
+            fi
+        done
+
+        while (( started - completed < max_jobs )) && _git_wkm_cleanup_spawn_next; do
+            did_progress=true
+        done
+
+        _git_wkm_cleanup_progress_line
+        $did_progress || command sleep 0.1
+    done
+
+    $is_tty && printf "\n"
+
+    local err_shown=false
+    for i in {1..$total_repos}; do
+        if [[ -n "${repo_error[$i]}" ]]; then
+            $err_shown || print "Errors:"
+            err_shown=true
+            print "  ${repo_labels[$i]}: ${repo_error[$i]}"
+        fi
+    done
+    $err_shown && print ""
+
+    command rm -rf "$tmp_dir" 2>/dev/null || true
+
+    if (( ${#stale_rows[@]} == 0 )); then
+        print "git wkm --cleanup: no stale worktrees found (checked $total_checked)"
+        return 0
+    fi
+
+    print "Stale worktrees (clean + no unique patches vs origin main):"
+    local row
+    for row in "${stale_rows[@]}"; do
+        local rp="${row%%$'\t'*}"
+        local rest="${row#*$'\t'}"
+        local wt="${rest%%$'\t'*}"
+        local branch="${rest##*$'\t'}"
+        print "  - ${rp##*/}: ${branch} (${wt##*/})"
+    done
+
+    if [[ "$apply_mode" == "dry-run" ]]; then
+        return 0
+    fi
+
+    if [[ "$apply_mode" != "yes" ]]; then
+        local response=""
+        read "?Delete these worktrees and local branches? (y/N): " response
+        [[ "$response" =~ ^[Yy]$ ]] || return 0
+    fi
+
+    for row in "${stale_rows[@]}"; do
+        local rp="${row%%$'\t'*}"
+        local rest="${row#*$'\t'}"
+        local wt="${rest%%$'\t'*}"
+        local branch="${rest##*$'\t'}"
+
+        print "Removing ${rp##*/}: $branch"
+        command git -C "$rp" worktree remove "$wt" >/dev/null 2>&1 || true
+        command git -C "$rp" branch -d "$branch" >/dev/null 2>&1 || true
+        command git -C "$rp" worktree prune >/dev/null 2>&1 || true
+    done
+
+    return 0
+}
+
+###############################################################################
 # git wkm: create worktrees across multiple repos and open in Cursor workspace
 #
 # Usage:
 #   git wkm <branch> [repo1 repo2 ...]
 #   git wkm <branch>                      # uses GIT_WKM_REPOS if set
+#   git wkm <branch> --add [repo1 ...]     # merge into existing workspace
+#   git wkm <branch> --replace [repo1 ...] # overwrite workspace folders list
+#   git wkm --cleanup [<branch>]           # delete stale worktrees (prompted)
+#   git wkm --cleanup --dry-run [<branch>] # list stale worktrees (no fetch)
+#   git wkm --cleanup --yes [<branch>]     # delete stale worktrees (no prompt)
+#   git wkm --cleanup --fetch [<branch>]   # fetch origin/main before checking
+#   git wkm --cleanup --jobs 8 [<branch>]  # parallel repo scan (default 4)
 #
 # Config:
 #   GIT_WKM_REPOS=(repo1 repo2 repo3)     # default repos (names or paths)
@@ -344,20 +851,94 @@ function _git_wkm() {
     emulate -L zsh
     setopt localoptions no_unset
 
-    local branch_name="$1"
-    shift
-
-    if [[ -z "$branch_name" ]]; then
-        echo "Usage: git wkm <branch> [repo1 repo2 ...]" >&2
-        return 1
-    fi
-
+    local mode="create"
+    local merge_workspace=true
     local -a repos
-    repos=("$@")
+    repos=()
+
+    local branch_name=""
+    local cleanup_branch=""
+    local cleanup_apply="prompt"
+    local cleanup_fetch="auto"
+    local cleanup_jobs="${GIT_WKM_CLEANUP_JOBS:-4}"
+
+    while (( $# > 0 )); do
+        case "$1" in
+            --replace)
+                merge_workspace=false
+                shift
+                ;;
+            --add|--merge)
+                merge_workspace=true
+                shift
+                ;;
+            --cleanup)
+                mode="cleanup"
+                shift
+                ;;
+            --dry-run)
+                cleanup_apply="dry-run"
+                shift
+                ;;
+            --yes|-y)
+                cleanup_apply="yes"
+                shift
+                ;;
+            --fetch)
+                cleanup_fetch="yes"
+                shift
+                ;;
+            --no-fetch)
+                cleanup_fetch="no"
+                shift
+                ;;
+            --jobs|-j)
+                cleanup_jobs="${2:-}"
+                shift 2 || break
+                ;;
+            --help|-h)
+                echo "Usage: git wkm <branch> [--add|--replace] [repo...]" >&2
+                echo "       git wkm --cleanup [opts] [branch] [repo...]" >&2
+                echo "  opts: --dry-run --yes --fetch --no-fetch --jobs N" >&2
+                return 1
+                ;;
+            *)
+                if [[ -z "$branch_name" ]]; then
+                    branch_name="$1"
+                else
+                    repos+=("$1")
+                fi
+                shift
+                ;;
+        esac
+    done
 
     # Fall back to GIT_WKM_REPOS if no repos specified.
     if (( ${#repos[@]} == 0 )) && (( ${+GIT_WKM_REPOS} )); then
         repos=("${(@)GIT_WKM_REPOS}")
+    fi
+
+    if [[ "$mode" == "cleanup" ]]; then
+        cleanup_branch="$branch_name"
+        local do_fetch="false"
+        if [[ "$cleanup_fetch" == "yes" ]]; then
+            do_fetch="true"
+        elif [[ "$cleanup_fetch" == "no" ]]; then
+            do_fetch="false"
+        else
+            if [[ "$cleanup_apply" != "dry-run" ]]; then
+                do_fetch="true"
+            fi
+        fi
+
+        _git_wkm_cleanup "$cleanup_branch" "$cleanup_apply" \
+            "${GIT_WTK_PARENT_DIR:-}" "$cleanup_jobs" "$do_fetch" "${repos[@]}"
+        return $?
+    fi
+
+    if [[ -z "$branch_name" ]]; then
+        echo "Usage: git wkm <branch> [--add|--replace] [repo1 repo2 ...]" >&2
+        return 1
     fi
 
     if (( ${#repos[@]} == 0 )); then
@@ -569,6 +1150,23 @@ _git_wkm_worker" >/dev/null 2>&1
             --arg path "${worktree_paths[$j]}" \
             '. + [{"name": $name, "path": $path}]') || true
     done
+
+    # Merge in existing workspace folders so "add a repo" doesn't drop others.
+    if [[ "$merge_workspace" == "true" && -f "$ws_file" ]]; then
+        local existing_folders_json="[]"
+        existing_folders_json="$(jq -c '.folders // []' "$ws_file" 2>/dev/null)" \
+            || existing_folders_json="[]"
+
+        folders_json="$(jq -n \
+            --argjson existing "$existing_folders_json" \
+            --argjson new "$folders_json" \
+            '
+            def add_unique_by_path($arr):
+              reduce $arr[] as $item (.;
+                if any(.[]; .path == $item.path) then . else . + [$item] end);
+            ([] | add_unique_by_path($existing) | add_unique_by_path($new))
+            ' 2>/dev/null)" || true
+    fi
 
     # Base settings for git detection
     local base_settings='{
