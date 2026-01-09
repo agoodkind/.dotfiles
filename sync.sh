@@ -441,7 +441,7 @@ sync_cursor_config() {
     local src_rules="$DOTDOTFILES/.cursor/rules"
     local src_commands="$DOTDOTFILES/.cursor/commands"
     
-    # Sync rules
+    # Sync rules locally
     if [[ -d "$src_rules" ]]; then
         mkdir -p "$cursor_dir/rules"
         for rule in "$src_rules"/*; do
@@ -463,6 +463,19 @@ sync_cursor_config() {
             ln -sf "$cmd" "$cursor_dir/commands/$cmd_name"
             color_echo GREEN "  🔗  Linked command: $cmd_name"
         done
+    fi
+    
+    # Sync rules to Cursor cloud (macOS only, requires Cursor to be logged in)
+    if is_macos && [[ -f "$DOTDOTFILES/bin/sync-cursor-rules.sh" ]]; then
+        local cursor_db="$HOME/Library/Application Support/Cursor/User/globalStorage/state.vscdb"
+        if [[ -f "$cursor_db" ]]; then
+            color_echo BLUE "  ☁️  Syncing rules to Cursor cloud..."
+            if "$DOTDOTFILES/bin/sync-cursor-rules.sh" -q 2>/dev/null; then
+                color_echo GREEN "  ✅  Cloud rules synced"
+            else
+                color_echo YELLOW "  ⚠️  Cloud sync failed (Cursor may not be logged in)"
+            fi
+        fi
     fi
 }
 
