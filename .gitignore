@@ -2,7 +2,9 @@
 .dotfiles_path
 backups
 .zshrc.local
+.zshrc.local.*
 .ssh_config.local
 .zsh_plugins.zsh
 .DS_Store
 lib/motd/*.local
+*.pyc
