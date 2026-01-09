@@ -66,6 +66,7 @@ export COMMON_PACKAGES=(
 	thefuck
 	tokei
 	tree
+	tshark
 	vim
 	watch
 	wget
@@ -188,6 +189,7 @@ get_package_name() {
 		rg:apt) echo "ripgrep" ;;
 		openssh:apt) echo "openssh-client openssh-server" ;;
 		neovim:snap) echo "nvim" ;;
+		tshark:brew) echo "wireshark" ;;
 		*) echo "$pkg" ;;
 	esac
 }
