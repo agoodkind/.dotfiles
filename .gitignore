@@ -8,3 +8,4 @@ backups
 .DS_Store
 lib/motd/*.local
 *.pyc
+**/__pycache__
