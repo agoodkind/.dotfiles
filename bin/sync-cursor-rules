@@ -11,7 +11,7 @@ from pathlib import Path
 
 # Cursor paths
 CURSOR_DB = Path.home() / "Library/Application Support/Cursor/User/globalStorage/state.vscdb"
-RULES_DIR = Path(os.environ.get("CURSOR_RULES_DIR", Path.home() / ".cursor/rules"))
+RULES_DIR = Path(os.environ.get("CURSOR_RULES_DIR", Path.home() / ".dotfiles/lib/cursor/rules"))
 API_BASE = "https://api2.cursor.sh/aiserver.v1.AiService"
 WORKSPACE_URL = os.environ.get("DEFAULT_RULE_URL", "https://github.com/agoodkind/.dotfiles")
 
