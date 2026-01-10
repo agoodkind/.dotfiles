@@ -16,11 +16,11 @@ INTERACTIVE=false
 [[ -t 1 ]] && INTERACTIVE=true
 
 log() {
-    [[ "$QUIET" == "true" ]] || echo "$@"
+    [[ "$QUIET" == "true" ]] || echo "$*"
 }
 
 log_verbose() {
-    [[ "$QUIET" == "true" ]] || echo "    $@"
+    [[ "$QUIET" == "true" ]] || echo "    $*"
 }
 
 get_auth_token() {
@@ -36,6 +36,17 @@ get_rule_ids() {
         -H "content-type: application/proto" \
         -H "connect-protocol-version: 1" \
         --data-binary "" | python3 "${PROTO_HELPER}" parse-ids
+}
+
+get_rule_count() {
+    local token="$1"
+    local ids
+    ids=$(get_rule_ids "$token")
+    if [[ -z "$ids" ]]; then
+        echo 0
+    else
+        echo "$ids" | wc -w | tr -d ' '
+    fi
 }
 
 delete_rule() {
@@ -54,13 +65,28 @@ add_rule() {
     local token="$1"
     local title="$2"
     local content="$3"
+    local tmpfile
+    tmpfile=$(mktemp)
     
-    python3 "${PROTO_HELPER}" encode-add "$content" "$title" "${DEFAULT_RULE_URL}" \
-        | curl -s -X POST "${API_BASE}/KnowledgeBaseAdd" \
+    local http_code
+    http_code=$(python3 "${PROTO_HELPER}" encode-add "$content" "$title" "${DEFAULT_RULE_URL}" \
+        | curl -s -w '%{http_code}' -o "$tmpfile" -X POST "${API_BASE}/KnowledgeBaseAdd" \
             -H "authorization: Bearer ${token}" \
             -H "content-type: application/proto" \
             -H "connect-protocol-version: 1" \
-            --data-binary @-
+            --data-binary @-)
+    
+    local body
+    body=$(<"$tmpfile")
+    rm -f "$tmpfile"
+    
+    if [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]]; then
+        echo "$body"
+        return 0
+    else
+        echo "HTTP $http_code: $body" >&2
+        return 1
+    fi
 }
 
 delete_all_rules() {
@@ -200,7 +226,9 @@ sync_rules() {
     log ""
     
     # Sync each .mdc file
-    local added=0
+    local attempted=0
+    local succeeded=0
+    local failed=0
     for rule_file in "${rule_files[@]}"; do
         [[ -e "${rule_file}" ]] || continue
         
@@ -220,23 +248,46 @@ sync_rules() {
         content=$(<"${rule_file}")
         local content_size=${#content}
         
-        added=$((added + 1))
-        log "  📄 [$added/$total_files] ${title}"
+        attempted=$((attempted + 1))
+        log "  📄 [$attempted/$total_files] ${title}"
         log_verbose "Source: ${display_file}"
         log_verbose "Size: ${content_size} bytes"
         
         local response
-        response=$(add_rule "${token}" "${title}" "${content}")
-        
-        if [[ -n "$response" ]]; then
-            log_verbose "Response: ${response}"
+        if response=$(add_rule "${token}" "${title}" "${content}"); then
+            succeeded=$((succeeded + 1))
+            if [[ -n "$response" ]]; then
+                log_verbose "Response: ${response}"
+            fi
+            log_verbose "Status: ✅ Uploaded"
+        else
+            failed=$((failed + 1))
+            log "    ❌ Failed to upload: $response"
         fi
-        log_verbose "Status: ✅ Uploaded"
         log ""
     done
     
+    # Verify rules were actually added to cloud
+    log "🔍 Verifying cloud rules..."
+    local cloud_count
+    cloud_count=$(get_rule_count "$token")
+    
+    if [[ "$cloud_count" -eq "$succeeded" ]]; then
+        log "  ✅ Verified: $cloud_count rule(s) in cloud (expected $succeeded)"
+    else
+        log "  ⚠️  Mismatch: $cloud_count rule(s) in cloud, expected $succeeded"
+        log "     Some rules may not have been saved correctly."
+    fi
+    log ""
+    
     log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    log "✅ Sync complete: $added rule(s) uploaded to Cursor cloud"
+    if [[ "$failed" -eq 0 && "$cloud_count" -eq "$succeeded" ]]; then
+        log "✅ Sync complete: $succeeded rule(s) uploaded and verified"
+    elif [[ "$failed" -gt 0 ]]; then
+        log "⚠️  Sync completed with errors: $succeeded/$attempted succeeded, $failed failed"
+    else
+        log "⚠️  Sync completed but verification failed: expected $succeeded, found $cloud_count"
+    fi
     log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 }
 
