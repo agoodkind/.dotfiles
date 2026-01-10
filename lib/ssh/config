@@ -24,14 +24,12 @@ Host router
   HostName router.home.goodkind.io
 
 Host suburban
-  User agoodkind
-  HostName suburban-hypervisor.goodkind.io
-  ForwardAgent yes
+  User root
+  HostName hypervisor.suburban.goodkind.io
 
 Host mom
-  HostName mom.suburban.goodkind.io
-  User julia
-  ProxyJump suburban
+  HostName 10.240.0.121
+  User agoodkind
 
 Host mini
   HostName mini.home.goodkind.io

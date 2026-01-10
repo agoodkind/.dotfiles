@@ -10,7 +10,7 @@
 # - MOTD scripts can be slow, so we don't run them every shell spawn
 # - Cache file tracks last display time; we show MOTD when:
 #     a) Force file exists (user explicitly requested via `motd` command)
-#     b) SSH connection detected (unless disabled)
+#     b) SSH connection detected (always, unless explicitly disabled)
 #     c) First run (no cache file exists)
 #     d) New day OR interval hours have passed since last shown
 #
@@ -47,7 +47,7 @@ _motd_should_show() {
     return
   fi
 
-  # Priority 2: SSH connection (unless explicitly disabled)
+  # Priority 2: SSH connection (always show on SSH, bypassing all cache checks)
   if [[ -n "$SSH_CONNECTION$SSH_CLIENT" ]] && [[ ! -f "$MOTD_DISABLE_SSH" ]]; then
     echo "true"
     return
