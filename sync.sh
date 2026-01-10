@@ -439,7 +439,7 @@ sync_cursor_config() {
     
     local cursor_dir="$HOME/.cursor"
     local src_rules="$DOTDOTFILES/lib/cursor/rules"
-    local src_commands="$DOTDOTFILES/.cursor/commands"
+    local src_commands="$DOTDOTFILES/lib/cursor/commands"
     
     # Sync rules locally
     if [[ -d "$src_rules" ]]; then
