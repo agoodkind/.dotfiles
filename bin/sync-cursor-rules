@@ -5,111 +5,345 @@ import os
 import sqlite3
 import subprocess
 import sys
+import re
+import concurrent.futures
 from pathlib import Path
 
 # Cursor paths
 CURSOR_DB = Path.home() / "Library/Application Support/Cursor/User/globalStorage/state.vscdb"
-RULES_DIR = Path.home() / ".dotfiles/lib/cursor/rules"
+RULES_DIR = Path(os.environ.get("CURSOR_RULES_DIR", Path.home() / ".cursor/rules"))
 API_BASE = "https://api2.cursor.sh/aiserver.v1.AiService"
-WORKSPACE_URL = "https://github.com/agoodkind/.dotfiles"
+WORKSPACE_URL = os.environ.get("DEFAULT_RULE_URL", "https://github.com/agoodkind/.dotfiles")
+
+# CLI options
+QUIET = "-q" in sys.argv
+INTERACTIVE = sys.stdout.isatty()
+
+
+def log(msg):
+    """Print message unless quiet mode."""
+    if not QUIET:
+        print(msg)
+
+
+def log_verbose(msg):
+    """Print indented message unless quiet mode."""
+    if not QUIET:
+        print(f"    {msg}")
+
 
 def get_auth_token():
     """Extract auth token from Cursor's database."""
     conn = sqlite3.connect(CURSOR_DB)
-    cursor = conn.execute("SELECT value FROM ItemTable WHERE key = 'cursorAuth/accessToken'")
+    cursor = conn.execute(
+        "SELECT value FROM ItemTable WHERE key = 'cursorAuth/accessToken'"
+    )
     token = cursor.fetchone()[0].strip('"')
     conn.close()
     return token
 
-def api_call(token, endpoint, payload):
-    """Make API call to Cursor."""
-    result = subprocess.run([
-        "curl", "-s", "-X", "POST",
-        f"{API_BASE}/{endpoint}",
-        "-H", f"authorization: Bearer {token}",
-        "-H", "content-type: application/proto",
-        "-H", "connect-protocol-version: 1",
-        "--data-binary", f"@-"
-    ], input=payload, capture_output=True)
-    return result.stdout
-
-def list_rules(token):
-    """List all user rules and extract IDs."""
-    response = api_call(token, "KnowledgeBaseList", b"")
-    # Extract 8-digit IDs from response
-    ids = []
-    text = response.decode('utf-8', errors='ignore')
-    import re
-    for match in re.finditer(r'\b\d{8}\b', text):
-        ids.append(match.group())
-    return ids
-
-def remove_rule(token, rule_id):
-    """Remove a rule by ID."""
-    # Protobuf: field 1 (string) = rule_id
-    # Format: 0x0a (field 1 length-delimited) + length + ID bytes
-    id_bytes = rule_id.encode('utf-8')
-    payload = bytes([0x0a, len(id_bytes)]) + id_bytes
-    return api_call(token, "KnowledgeBaseRemove", payload)
 
 def encode_varint(value):
     """Encode an integer as a protobuf varint."""
     result = []
-    while value > 0x7f:
-        result.append((value & 0x7f) | 0x80)
+    while value > 0x7F:
+        result.append((value & 0x7F) | 0x80)
         value >>= 7
-    result.append(value & 0x7f)
+    result.append(value & 0x7F)
     return bytes(result)
+
+
+def read_varint(data, pos):
+    """Read a varint from data at position, return (value, new_position)."""
+    result = 0
+    shift = 0
+    while pos < len(data):
+        b = data[pos]
+        pos += 1
+        result |= (b & 0x7F) << shift
+        if not (b & 0x80):
+            break
+        shift += 7
+    return result, pos
+
 
 def encode_string_field(field_num, value):
     """Encode a protobuf string field."""
-    value_bytes = value.encode('utf-8')
+    value_bytes = value.encode("utf-8")
     tag = (field_num << 3) | 2  # Wire type 2 = length-delimited
     return bytes([tag]) + encode_varint(len(value_bytes)) + value_bytes
 
+
+def parse_field(data, pos):
+    """Parse a single protobuf field, return (field_num, value, new_position)."""
+    if pos >= len(data):
+        return None, None, pos
+
+    tag = data[pos]
+    field_num = tag >> 3
+    wire_type = tag & 0x07
+    pos += 1
+
+    if wire_type == 0:  # varint
+        val, pos = read_varint(data, pos)
+        return field_num, val, pos
+    elif wire_type == 2:  # length-delimited
+        length, pos = read_varint(data, pos)
+        val = data[pos : pos + length]
+        return field_num, val, pos + length
+    else:
+        return None, None, len(data)
+
+
+def api_call(token, endpoint, payload):
+    """Make API call to Cursor."""
+    result = subprocess.run(
+        [
+            "curl",
+            "-s",
+            "-X",
+            "POST",
+            f"{API_BASE}/{endpoint}",
+            "-H",
+            f"authorization: Bearer {token}",
+            "-H",
+            "content-type: application/proto",
+            "-H",
+            "connect-protocol-version: 1",
+            "--data-binary",
+            "@-",
+        ],
+        input=payload,
+        capture_output=True,
+    )
+    return result.stdout
+
+
+def api_call_with_status(token, endpoint, payload):
+    """Make API call and return (http_code, body)."""
+    result = subprocess.run(
+        [
+            "curl",
+            "-s",
+            "-w",
+            "%{http_code}",
+            "-X",
+            "POST",
+            f"{API_BASE}/{endpoint}",
+            "-H",
+            f"authorization: Bearer {token}",
+            "-H",
+            "content-type: application/proto",
+            "-H",
+            "connect-protocol-version: 1",
+            "--data-binary",
+            "@-",
+        ],
+        input=payload,
+        capture_output=True,
+    )
+    output = result.stdout.decode("utf-8", errors="ignore")
+    # Last 3 chars are HTTP status code
+    http_code = int(output[-3:]) if len(output) >= 3 else 0
+    body = output[:-3] if len(output) >= 3 else output
+    return http_code, body
+
+
+def list_rule_ids(token):
+    """List all user rules and extract IDs."""
+    response = api_call(token, "KnowledgeBaseList", b"")
+    ids = []
+    i = 0
+    while i < len(response):
+        field_num, val, i = parse_field(response, i)
+        if field_num == 2 and isinstance(val, bytes):
+            j = 0
+            entry_field, entry_val, j = parse_field(val, j)
+            if entry_field == 1 and isinstance(entry_val, bytes):
+                try:
+                    id_str = entry_val.decode("utf-8")
+                    if id_str.isdigit():
+                        ids.append(id_str)
+                except (UnicodeDecodeError, ValueError):
+                    pass
+    return ids
+
+
+def get_rule_count(token):
+    """Get count of rules in cloud."""
+    return len(list_rule_ids(token))
+
+
+def remove_rule(token, rule_id):
+    """Remove a rule by ID."""
+    id_bytes = rule_id.encode("utf-8")
+    payload = bytes([0x0A, len(id_bytes)]) + id_bytes
+    return api_call(token, "KnowledgeBaseRemove", payload)
+
+
 def add_rule(token, title, content):
-    """Add a new rule."""
-    # Encode as protobuf with fields:
-    # Field 1 = content (the actual rule text)
-    # Field 2 = title
-    # Field 3 = workspace URL
-    payload = b''
+    """Add a new rule. Returns (success, response)."""
+    payload = b""
     payload += encode_string_field(1, content)
     payload += encode_string_field(2, title)
     payload += encode_string_field(3, WORKSPACE_URL)
-    return api_call(token, "KnowledgeBaseAdd", payload)
 
-def main():
-    token = get_auth_token()
-    print("✓ Auth token retrieved")
-    
-    # Remove all existing rules
-    print("Fetching existing rules...")
-    rule_ids = list_rules(token)
-    
-    if rule_ids:
-        print(f"Removing {len(rule_ids)} existing rules...")
-        for rule_id in rule_ids:
-            print(f"  → Removing rule {rule_id}")
+    http_code, body = api_call_with_status(token, "KnowledgeBaseAdd", payload)
+    success = 200 <= http_code < 300
+    return success, body
+
+
+def delete_all_rules(token):
+    """Delete all existing cloud rules with progress display."""
+    rule_ids = list_rule_ids(token)
+
+    if not rule_ids:
+        log("  ℹ️  No existing cloud rules found")
+        return 0
+
+    total = len(rule_ids)
+    log(f"  🗑️  Removing {total} existing rule(s) in parallel...")
+
+    if QUIET:
+        # Quiet mode: parallel with no output
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            list(executor.map(lambda rid: remove_rule(token, rid), rule_ids))
+    elif INTERACTIVE:
+        # Interactive: show progress bar
+        completed = 0
+        bar_width = 40
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {
+                executor.submit(remove_rule, token, rid): rid for rid in rule_ids
+            }
+            for future in concurrent.futures.as_completed(futures):
+                completed += 1
+                pct = completed * 100 // total
+                filled = completed * bar_width // total
+                empty = bar_width - filled
+                bar = "█" * filled + "░" * empty
+                print(f"\r    [{bar}] {completed}/{total} ({pct}%)", end="", flush=True)
+            print()
+    else:
+        # Non-interactive: line-by-line output
+        for i, rule_id in enumerate(rule_ids, 1):
             remove_rule(token, rule_id)
-    
-    # Add all rules from dotfiles
-    print("Adding rules from dotfiles...")
-    for rule_file in sorted(RULES_DIR.glob("*.mdc")):
+            log(f"    Deleted rule ID: {rule_id} ({i}/{total})")
+
+    log(f"  ✅ Removed {total} cloud rule(s)")
+    return total
+
+
+def sync_rules():
+    """Main sync function."""
+    log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    log("☁️  Cursor Cloud Rules Sync")
+    log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+    # Verify prerequisites
+    if not CURSOR_DB.exists():
+        log(f"❌ Cursor database not found: {CURSOR_DB}")
+        log("   Make sure Cursor is installed and you're logged in.")
+        sys.exit(1)
+
+    if not RULES_DIR.exists():
+        log(f"❌ Rules directory not found: {RULES_DIR}")
+        sys.exit(1)
+
+    log("")
+    log(f"📂 Rules directory: {RULES_DIR}")
+    log(f"🔗 API endpoint: {API_BASE}")
+    log("")
+
+    # Get auth token
+    log("🔐 Authenticating...")
+    token = get_auth_token()
+
+    if not token:
+        log("❌ Failed to get auth token. Make sure you're logged into Cursor.")
+        sys.exit(1)
+
+    log("  ✅ Authentication successful")
+    log("")
+
+    # Delete all existing rules first
+    log("🧹 Clearing existing cloud rules...")
+    delete_all_rules(token)
+    log("")
+
+    # Count available rules
+    rule_files = sorted(RULES_DIR.glob("*.mdc"))
+    if not rule_files:
+        log(f"⚠️  No .mdc files found in {RULES_DIR}")
+        sys.exit(0)
+
+    total_files = len(rule_files)
+    log(f"📤 Uploading {total_files} rule(s) to cloud...")
+    log("")
+
+    # Sync each .mdc file
+    attempted = 0
+    succeeded = 0
+    failed = 0
+
+    for rule_file in rule_files:
+        display_file = str(rule_file)
+
+        # Follow symlink if needed
         if rule_file.is_symlink():
-            rule_file = rule_file.resolve()
-        
+            resolved = rule_file.resolve()
+            display_file = f"{rule_file} → {resolved}"
+            rule_file = resolved
+
         # Skip if file doesn't exist (broken symlink)
         if not rule_file.exists():
             continue
-        
+
         title = rule_file.stem
         content = rule_file.read_text()
-        
-        print(f"  → Adding: {title}")
-        add_rule(token, title, content)
-    
-    print("✓ Sync complete - dotfiles is source of truth")
+        content_size = len(content)
+
+        attempted += 1
+        log(f"  📄 [{attempted}/{total_files}] {title}")
+        log_verbose(f"Source: {display_file}")
+        log_verbose(f"Size: {content_size} bytes")
+
+        success, response = add_rule(token, title, content)
+        if success:
+            succeeded += 1
+            if response:
+                log_verbose(f"Response: {response}")
+            log_verbose("Status: ✅ Uploaded")
+        else:
+            failed += 1
+            log(f"    ❌ Failed to upload: {response}")
+        log("")
+
+    # Verify rules were actually added to cloud
+    log("🔍 Verifying cloud rules...")
+    cloud_count = get_rule_count(token)
+
+    if cloud_count == succeeded:
+        log(f"  ✅ Verified: {cloud_count} rule(s) in cloud (expected {succeeded})")
+    else:
+        log(f"  ⚠️  Mismatch: {cloud_count} rule(s) in cloud, expected {succeeded}")
+        log("     Some rules may not have been saved correctly.")
+    log("")
+
+    log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    if failed == 0 and cloud_count == succeeded:
+        log(f"✅ Sync complete: {succeeded} rule(s) uploaded and verified")
+    elif failed > 0:
+        log(
+            f"⚠️  Sync completed with errors: {succeeded}/{attempted} succeeded, {failed} failed"
+        )
+    else:
+        log(
+            f"⚠️  Sync completed but verification failed: expected {succeeded}, found {cloud_count}"
+        )
+    log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
 
 if __name__ == "__main__":
-    main()
+    sync_rules()
