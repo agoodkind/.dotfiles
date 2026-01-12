@@ -26,7 +26,12 @@ source "$DOTDOTFILES/lib/shell/zsh/motd.zsh"
 [[ ! -f "$DOTDOTFILES/.zshrc.local" ]] || source "$DOTDOTFILES/.zshrc.local"
 
 # Check for update status from background updater
-if [[ -f ~/.cache/dotfiles_update_error ]]; then
+if [[ -f ~/.cache/dotfiles_local_changes ]]; then
+    local msg
+    msg=$(<~/.cache/dotfiles_local_changes)
+    print -P "%F{yellow}⚠️  ${msg}%f"
+    rm -f ~/.cache/dotfiles_local_changes
+elif [[ -f ~/.cache/dotfiles_update_error ]]; then
     print -P "%F{red}⚠️  Dotfiles update failed. See: ~/.cache/dotfiles_update.log%f"
     rm -f ~/.cache/dotfiles_update_error
 elif [[ -f ~/.cache/dotfiles_weekly_update_success ]]; then

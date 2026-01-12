@@ -1,0 +1,14 @@
+---
+description: JavaScript and TypeScript code style conventions
+globs: "**/*.{js,jsx,ts,tsx}"
+alwaysApply: true
+---
+
+# JavaScript / TypeScript Style
+
+- **Functions**: Use `function` definitions, not arrow functions for top-level.
+
+```typescript
+function handleClick(event) { ... } // ✅
+const handleClick = (event) => { ... } // ❌
+```

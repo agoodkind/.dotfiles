@@ -212,19 +212,31 @@ _logininfo() {
     return 0
   fi
 
-  # --- Get current session info (slow: ~50ms) ---
-  local current_line
-  current_line=$(who am i 2>/dev/null || who -m 2>/dev/null)
-  [[ -z "$current_line" ]] && return 0
+  # --- Get current session info (fast) ---
+  local current_terminal current_remote
 
-  # Parse terminal from second field
-  local -a words=(${=current_line})
-  local current_terminal=${words[2]}
+  # Try fast path via environment variables first
+  if [[ -n "$TTY" ]]; then
+    current_terminal="${TTY#/dev/}"
+    if [[ -n "$SSH_CLIENT" ]]; then
+      current_remote="${SSH_CLIENT%% *}"
+    elif [[ -n "$SSH_CONNECTION" ]]; then
+      current_remote="${SSH_CONNECTION%% *}"
+    fi
+  else
+    # Fallback to slow `who` call if TTY var is missing
+    local current_line
+    current_line=$(who am i 2>/dev/null || who -m 2>/dev/null)
+    [[ -z "$current_line" ]] && return 0
 
-  # Parse remote host from parentheses (e.g., "(192.168.1.1)")
-  local current_remote=""
-  if [[ "$current_line" =~ '\(([^)]+)\)' ]]; then
-    current_remote=${match[1]}
+    # Parse terminal from second field
+    local -a words=(${=current_line})
+    current_terminal=${words[2]}
+
+    # Parse remote host from parentheses (e.g., "(192.168.1.1)")
+    if [[ "$current_line" =~ '\(([^)]+)\)' ]]; then
+      current_remote=${match[1]}
+    fi
   fi
 
   local current_src="${current_remote:-$current_terminal}"

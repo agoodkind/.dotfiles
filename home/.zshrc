@@ -68,53 +68,13 @@ setopt pushd_silent
 # Aliases #####################################################################
 ###############################################################################
 
-# Editor preference: nvim > vim > vi
-EDITOR_BIN=
-if isinstalled nvim; then
-    EDITOR_BIN=nvim
-    export SUDO_EDITOR="nvim -u $HOME/.config/nvim/init.lua"
-    export MANPAGER='nvim +Man!'
-    export PAGER="$DOTDOTFILES/bin/nvim-pager"
-    export MANWIDTH=999
-    prefer vim nvim
-elif isinstalled vim; then
-    EDITOR_BIN=vim
-    export MANPAGER="vim -M +MANPAGER --not-a-term -"
-    export PAGER=$MANPAGER
-    export SUDO_EDITOR=vim
-    prefer nvim vim
-else
-    EDITOR_BIN=vi
-    export SUDO_EDITOR=vi
-fi
-
-# Fallback if nothing above matched
-[[ -z "$EDITOR_BIN" ]] && EDITOR_BIN=vi
-export EDITOR="$EDITOR_BIN"
-
-vim() { _edit_maybe_sudoedit "$EDITOR_BIN" "$@"; }
-vi() { _edit_maybe_sudoedit "$EDITOR_BIN" "$@"; }
-nvim() { _edit_maybe_sudoedit nvim "$@"; }
-
-edit() { "$EDITOR_BIN" "$@"; }
-nano() { edit "$@"; }
-emacs() { edit "$@"; }
-
-# sudo
-please() { sudo "$@"; }
-sudoedit() {
-    sudo -e "$@"
-}
-
-# clear screen
-c() { command clear; }
-
 # Prefer enhanced replacements when the binaries exist
-# Don't replace ls - it's used heavily in scripts
+
 prefer ll eza -lah --icons --group-directories-first
 prefer la eza -a --icons --group-directories-first
 prefer lt eza --tree --level=2 --icons
 prefer llt eza -lah --tree --level=2 --icons
+prefer_tty ls ll
 
 # cat / find / grep
 prefer catt bat --style=auto
@@ -134,6 +94,40 @@ prefer lg lazygit
 
 # ssh helper
 sshrm() { command ssh-keygen -R "$@"; }
+
+# Editor preference: nvim > vim > vi
+# This logic must come AFTER all other `prefer` calls and alias definitions
+# to avoid conflicts (since we are aliasing vim/nvim below)
+EDITOR_BIN=
+if isinstalled nvim; then
+    EDITOR_BIN=nvim
+    export SUDO_EDITOR="nvim -u $HOME/.config/nvim/init.lua"
+    export MANPAGER='nvim +Man!'
+    export PAGER="$DOTDOTFILES/bin/nvim-pager"
+    export MANWIDTH=999
+elif isinstalled vim; then
+    EDITOR_BIN=vim
+    export MANPAGER="vim -M +MANPAGER --not-a-term -"
+    export PAGER=$MANPAGER
+    export SUDO_EDITOR=vim
+else
+    EDITOR_BIN=vi
+    export SUDO_EDITOR=vi
+fi
+
+# Fallback if nothing above matched
+[[ -z "$EDITOR_BIN" ]] && EDITOR_BIN=vi
+export EDITOR="$EDITOR_BIN"
+
+# Define wrappers using `function` keyword to override any potential aliases
+# or ensure they take precedence
+function vim() { _edit_maybe_sudoedit "$EDITOR_BIN" "$@"; }
+function vi() { _edit_maybe_sudoedit "$EDITOR_BIN" "$@"; }
+function nvim() { _edit_maybe_sudoedit nvim "$@"; }
+
+edit() { "$EDITOR_BIN" "$@"; }
+nano() { edit "$@"; }
+emacs() { edit "$@"; }
 
 # Show profiling results if module was loaded
 if [[ "${SHOULD_PROFILE:-false}" == "true" ]]; then

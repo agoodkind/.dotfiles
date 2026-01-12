@@ -144,15 +144,16 @@ sudo() {
     command sudo "$@"
 }
 
-# Prefer running an alternate binary for a command when available
-prefer() {
-    local name="$1"
-    local binary="$2"
-    shift 2 || true
+# Helper to resolve binary target and args
+# Sets _PREFER_RESOLVED variable to the full command string
+_resolve_prefer_target() {
+    local binary="$1"
+    shift
     local args=("$@")
 
-    if ! isinstalled "$binary"; then
-        return
+    # If binary is NOT an alias AND NOT installed, skip it
+    if [[ -z "${aliases[$binary]}" ]] && ! isinstalled "$binary"; then
+        return 1
     fi
 
     local qargs=""
@@ -162,7 +163,27 @@ prefer() {
         qargs+=" $(printf '%q' "$arg")"
     done
 
-    eval "$name() { command $binary$qargs \"\$@\"; }"
+    # Resolve target
+    if [[ -n "${aliases[$binary]}" ]]; then
+        # Binary is an alias (e.g., ll='eza -lah')
+        _PREFER_RESOLVED="${aliases[$binary]}$qargs"
+    else
+        # Binary is a real command
+        _PREFER_RESOLVED="command $binary$qargs"
+    fi
+    return 0
+}
+
+# Prefer running an alternate binary for a command when available
+prefer() {
+    local name="$1"
+    local binary="$2"
+    shift 2 || true
+    
+    _resolve_prefer_target "$binary" "$@" || return
+
+    # Use alias instead of function for faster startup (avoids eval overhead)
+    alias "$name=$_PREFER_RESOLVED"
 }
 
 # Prefer an alternate binary only when writing to a terminal
@@ -171,22 +192,12 @@ prefer_tty() {
     local name="$1"
     local binary="$2"
     shift 2 || true
-    local args=("$@")
-
-    if ! isinstalled "$binary"; then
-        return
-    fi
-
-    local qargs=""
-    local arg
-    for arg in "${args[@]}"; do
-        [[ -z "$arg" ]] && continue
-        qargs+=" $(printf '%q' "$arg")"
-    done
+    
+    _resolve_prefer_target "$binary" "$@" || return
 
     eval "$name() {
         if [[ -t 1 ]]; then
-            command $binary$qargs \"\$@\";
+            $_PREFER_RESOLVED \"\$@\";
         else
             command $name \"\$@\";
         fi;
