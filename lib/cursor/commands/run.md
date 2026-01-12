@@ -20,10 +20,12 @@ Carry out the command referenced in this message or the latest context.
 - Avoid indefinite hangs; set a reasonable timeout when a command could block.
 - If the instruction is contextual, restate the exact command before running it
   unless it was already confirmed earlier.
+- Prefer to tee output to a file (e.g., `/tmp/command-output.log`) so the user can monitor progress and the agent can read the output from the file to avoid truncation.
 
 ## Steps
 
 1. Identify the command(s) from the latest instruction or context; if phrased
    loosely, restate the exact command back unless already confirmed.
 2. If multiple commands are possible or details are unclear, ask which to run.
-3. Show the command output or a short failure summary with the exit code.
+3. tee the output to a file (e.g., `command 2>&1 | tee /tmp/command-output.log`)
+   and use the file to read the output as needed
