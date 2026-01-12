@@ -6,81 +6,19 @@ alwaysApply: true
 
 # Commit Message Standards
 
-## Critical Rules
-
-- **No Explanations**: State the change only—no justification or elaboration
-- **No Filler Words**: Skip pleasantries and unnecessary phrases
-- **No Prefix Labels**: Avoid feat, refactor, fix, etc.
-- **Direct Statements**: Use imperative mood, state what changed
-
-## Prohibited Patterns
-
-### Purpose Clauses
-
-- Avoid "to [benefit]" or "for [benefit]" clauses (e.g., "to improve reliability", "for better performance")
-- State what changed, not why it was changed
-
-### Explanatory Language
-
-- Avoid benefit words: "improves", "enhances", "streamlines", "ensures", "allows", "enables"
-- Avoid "This change [verb]" constructions (e.g., "This change ensures", "This change allows")
-- Avoid explanatory sentences that describe the mechanism or reasoning
-
-### Structure Issues
-
-- No prefix labels: "feat:", "fix:", "refactor:", etc.
-- No multi-sentence explanations
-- No bullet lists or multi-line formats
-- Avoid conjunctions that explain mechanism: "while", "by", "based on" when used to justify
-
-### Vague or Overly Detailed Messages
-
-- **Too Vague**: Avoid generic terms without specifics (e.g., "Update logic", "Fix bug", "Improve code", "Refactor")
-- **Too Detailed**: Avoid step-by-step implementation details, multi-line explanations, or describing the mechanism
-- Find the balance: State what changed and where, without explaining how or why
-
-### Specific Phrases to Avoid
-
-- "it's important to note"
-- "this ensures"
-- "this enhances"
-- "improves" (as justification)
-- "fixes" (as a prefix)
-- "adds" (as a prefix)
-- "updates" (as a prefix)
-- Any justification or explanation of why the change was made
+## Rules
+- **Imperative**: "Add", "Fix", "Update" (not "Added", "Fixes").
+- **Concise**: No explanations, filler, or prefixes (feat:, fix:).
+- **Direct**: State *what* changed, not *why* (unless critical).
 
 ## Examples
 
-✅ Good:
-
+✅ **Good**
 - "Remove unused import"
-- "Add amount validation to silver processor"
 - "Add retry mechanism for failed requests"
-- "Refactor error handling in GraphQL resolver"
-- "Update syslog_message field in unbound Logstash filter and adjust field removal"
 - "Update Ansible configuration and playbooks"
-- "Add Gemfile.lock, VSCode extensions, and settings configuration"
-- "Add requirements.yml for Ansible playbooks to include community.proxmox and ansible.utils collections"
-- "Remove duplicate timeout and gather_timeout settings from ansible.cfg"
-- "Remove SKIP_PATTERNS handling from sync-semaphore.sh"
-- "Remove redundant reboot parameters in deploy-mwan.yml"
 
-❌ Bad:
-
-- "feat: Add retry mechanism to improve reliability"
-- "This PR fixes a bug that was causing issues"
-- "Update validation to ensure data integrity"
-- "Refactor: This enhances code maintainability"
-- "Comment out stdout debug output in Logstash configuration file to streamline logging."
-- "Add playbook to update Traefik configuration\n Create systemd service template for Traefik\n Add .gitignore for Traefik configuration files..."
-- "Add delete_existing_vm option to create-vm.yml for improved VM management"
-- "Fix bug" (too vague)
-- "Update logic" (too vague)
-- "Refactor code" (too vague)
-- "Update silver validation logic" (too vague)
-- "Reintroduce VM existence check in Debian playbook with improved clarity. Uncommented tasks for setting facts about existing VMs, while temporarily commenting out VM stop and destroy tasks to streamline the redeployment process. This change enhances the overall flow and maintainability of the playbook."
-- "Refactor deploy-mwan.yml to streamline service management and enhance clarity. Removed redundant notifications for service reloads and restarts, and added explicit service start commands based on certificate checks. Improved overall flow by consolidating service enabling and starting tasks."
-- "Update VM creation condition in Debian playbook to check for undefined VMID. This change ensures that the VM creation block is only executed when a new VMID is available, improving the logic and flow of the playbook."
-- "Enable privilege escalation in Ansible configuration by setting 'become' to True. This change allows tasks to run with elevated permissions, enhancing the flexibility of playbook execution."
-- "Comment out temporary VM management tasks in the Debian VM playbook to streamline the deployment process. This change enhances clarity and maintainability by removing unnecessary steps related to stopping and destroying existing VMs before creation."
+❌ **Bad**
+- "feat: Add retry mechanism to improve reliability" (No prefixes, no "to improve")
+- "Fix bug" (Too vague)
+- "Update logic" (Too vague)

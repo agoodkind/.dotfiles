@@ -92,10 +92,13 @@ is_behind_remote() {
     git --git-dir="$DOTFILES_GIT_DIR" merge-base --is-ancestor "$current_hash" "$latest_hash" 2>/dev/null
 }
 
-# Perform the update
-do_update() {
-    log "Update started"
-    
+# Check for local changes (modified tracked files)
+has_local_changes() {
+    [[ -n $(git --git-dir="$DOTFILES_GIT_DIR" --work-tree="$DOTDOTFILES" status --porcelain --untracked-files=no) ]]
+}
+
+# Update repo files (git pull, submodules)
+update_repo_files() {
     cd "$DOTDOTFILES" || { error "Failed to cd to dotfiles"; return 1; }
     
     # Pull latest
@@ -112,6 +115,14 @@ do_update() {
     
     # Checkout main branch in scripts submodule so it's not detached
     git -C "$DOTDOTFILES/lib/scripts" checkout main --quiet 2>/dev/null || true
+    return 0
+}
+
+# Perform the update
+do_update() {
+    log "Update started"
+    
+    update_repo_files || return 1
     
     # Run sync (non-interactive)
     log "Running sync.sh"
@@ -147,8 +158,9 @@ needs_weekly_update() {
 do_weekly_update() {
     log "Weekly full update started"
     
-    cd "$DOTDOTFILES" || { 
-        error "Failed to cd to dotfiles"
+    # Ensure repo is up to date first
+    update_repo_files || {
+        error "Failed to update repo during weekly update"
         return 1
     }
     
@@ -185,15 +197,37 @@ do_weekly_update() {
     touch "$HOME/.cache/dotfiles_weekly_update_success"
 }
 
-# Main
-fetch_latest || exit 0
+# Main entry point
+main() {
+    # Check for updates from remote
+    fetch_latest || return 0
 
-if is_behind_remote; then
-    do_update
-fi
+    local updates_available=false
+    is_behind_remote && updates_available=true
 
-# Check for weekly full update (independent of git changes)
-# Run async so it doesn't block shell startup
-if needs_weekly_update; then
-    async_run do_weekly_update
-fi
+    local weekly_needed=false
+    needs_weekly_update && weekly_needed=true
+
+    # If no updates are needed, exit early
+    if [[ "$updates_available" == false && "$weekly_needed" == false ]]; then
+        return 0
+    fi
+
+    # If any update is required, check for local changes first
+    if has_local_changes; then
+        # Create marker file with message
+        echo "local changes to dotfiles please clean working state and run config sync" > "$HOME/.cache/dotfiles_local_changes"
+        return 0
+    fi
+
+    # Perform updates if safe
+    if [[ "$weekly_needed" == true ]]; then
+        # Weekly update includes repo update + full sync + system updates
+        do_weekly_update
+    elif [[ "$updates_available" == true ]]; then
+        # Only normal update needed
+        do_update
+    fi
+}
+
+main

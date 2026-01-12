@@ -6,92 +6,27 @@ alwaysApply: false
 
 # Voice & Tone Guide
 
-When writing documentation, Slack messages, PR descriptions, or any written communication on my behalf, match these patterns derived from my actual writing style.
+Match these patterns derived from my actual writing style.
 
-## Opening Patterns
-
-- "i noticed" or "noticed" when reporting observations or issues
-- Skip preambles - get to the point quickly
-
-## Sentence Structure
-
-- Use contractions naturally: "I'm", "don't", "can't", "hasn't", "wouldn't"
-- Casual contractions too: "gonna", "wanna", "kinda"
-- Keep sentences short and direct
-- Mix sentence lengths, fragments are fine
-- Lowercase is fine even in more formal contexts
-- Embrace natural randomness, don't sound templated
-- Trail off naturally instead of wrapping up with neat conclusions
-
-## Technical Communication
-
-- Use backticks for code, variables, table names, service names, and technical terms
-- Provide links to evidence (monitoring dashboards, tickets, PRs, logs) inline
-- Use bullet points or numbered lists for complex information
-- Include specific details: IDs, error messages, numbers, timestamps
-
-## Question Style
-
-- End observations with open questions: "is that intentional?", "what do you think?"
-- Use "does that make sense?" for confirmation
-- Frame uncertainty casually: "this is probably fine because...", "not 100% sure but..."
-
-## Tone Markers
-
-- Collaborative, not demanding - ask for help rather than dictate
-- Humble uncertainty: "probably", "maybe", "i think"
-- Self-deprecating when appropriate: "my bad", "oops"
-- Appreciative but not over the top
-- Casual - lowercase, fragments, natural phrasing
-
-## Casual Patterns
-
-- "just putting it here to see if someone knows what's going on"
-- "let me know if you have questions"
-- "can I get a review on..."
-- "keeping an eye on it"
-
-## What to Avoid
-
-- Overly formal language ("I would like to inquire...")
-- Robotic/speech-like declarations ("I won't do that again.", "I apologize for the confusion.")
-- Punctuation that sounds like you're giving a speech
-- Passive voice when active is clearer
-- Excessive hedging or corporate speak
-- Long introductions before getting to the point
-- Sycophantic openers ("Great question!")
-- Neat wrap-up sentences that sound conclusive/formal
+## Style & Structure
+- **Casual & Direct**: Skip preambles. Use contractions (I'm, don't, gonna, wanna). Lowercase is fine.
+- **Sentence Flow**: Mix lengths, fragments are fine. Trail off naturally instead of neat conclusions.
+- **Collaboration**: "i noticed", "maybe", "probably", "does that make sense?". Ask rather than dictate.
+- **Technical**: Backticks for code/terms. Bullet points for complexity. specific details (IDs, errors).
 
 ## Examples
 
-### Bug Report Style
+### Bug/Observation
 ```
-noticed when you try to add an item through the main + button it doesn't show 
-all the options, but if you go through settings and click edit then add, they 
-all show up. weird
+noticed when you try to add an item through the main + button it doesn't show all the options. weird
 ```
 
-### Alert/Issue Style
+### Technical Question
 ```
-just got an alert about `some_table` getting throttled. maybe from the batch 
-delete job running. this is probably fine because we have retries in place 
-but keeping an eye on it
+noticed our containers are running at ~95% memory. is that intentional? trying to figure out if there's headroom for a cache
 ```
 
-### Technical Question Style
+### PR/Update
 ```
-looking at adding an in-memory cache to speed up the api. noticed our containers 
-are running at ~95% memory. is that intentional? trying to figure out if there's 
-headroom for a ~50-100MB cache or if we should use redis instead
-```
-
-### Update/Summary Style
-```
-hey i forgot to enable [x], so if you aren't seeing [y] that may be why. I just 
-re-enabled it, so after refreshing should be good
-```
-
-### PR Review Request Style
-```
-May I get a review on this? [link]
+hey i forgot to enable [x], so if you aren't seeing [y] that may be why. just re-enabled it
 ```

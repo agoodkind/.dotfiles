@@ -1,0 +1,19 @@
+---
+description: Shell script (bash/zsh) conventions
+globs: "**/*.{sh,zsh,bash}"
+alwaysApply: true
+---
+
+# Shell Script Style
+
+- **Shebang**: Use `#!/usr/bin/env bash` or `#!/usr/bin/env zsh`.
+- **Naming**:
+  - Functions: `snake_case` (e.g., `do_update`, `backup_local_changes`).
+  - Variables: `snake_case` for local, `UPPER_CASE` for globals/constants.
+- **Formatting**:
+  - Indentation: 4 spaces.
+  - Tests: Prefer `[[ ... ]]` over `[ ... ]`.
+- **Best Practices**:
+  - Scope variables with `local` inside functions.
+  - Use `source` instead of `.`.
+  - Include `# shellcheck` directives when needed.
