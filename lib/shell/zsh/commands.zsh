@@ -111,7 +111,7 @@ sudo() {
             -?*)
                 command sudo "$@"
                 return $?
-                ;;
+            ;;
             *)
                 break
                 ;;
@@ -174,35 +174,143 @@ _resolve_prefer_target() {
     return 0
 }
 
+# -----------------------------------------------------------------------------
+# Alias Caching & Performance
+# -----------------------------------------------------------------------------
+
+PREFER_CACHE_FILE="$HOME/.cache/zsh_prefer_aliases.zsh"
+_CURRENT_HASH=""
+
+# Async cache verification
+_check_prefer_cache_async() {
+    local current_hash
+    # Use dotfiles_changed_hash from utils if available
+    if (( $+functions[dotfiles_changed_hash] )); then
+        current_hash=$(dotfiles_changed_hash)
+    else
+        return
+    fi
+
+    local cached_hash
+    if [[ -f "$PREFER_CACHE_FILE" ]]; then
+        read -r cached_hash < <(head -n 1 "$PREFER_CACHE_FILE" | sed 's/# HASH: //')
+    fi
+
+    if [[ "$current_hash" != "$cached_hash" ]]; then
+        # Cache is stale! Delete it so next session regenerates.
+        rm -f "$PREFER_CACHE_FILE"
+    fi
+}
+
+# Initialize cache if needed
+_init_cache_if_needed() {
+    # Only calculate hash if we HAVE to (no cache file exists)
+    if [[ -z "$_CURRENT_HASH" ]]; then
+        if (( $+functions[dotfiles_changed_hash] )); then
+            _CURRENT_HASH=$(dotfiles_changed_hash)
+        fi
+        
+        # Ensure directory exists
+        mkdir -p "$(dirname "$PREFER_CACHE_FILE")"
+        
+        # If cache file doesn't exist or is empty (newly created), add header
+        if [[ ! -f "$PREFER_CACHE_FILE" ]] || [[ ! -s "$PREFER_CACHE_FILE" ]]; then
+            echo "# HASH: $_CURRENT_HASH" > "$PREFER_CACHE_FILE"
+        fi
+    fi
+}
+
+# Optimistic loading: Source the cache immediately if it exists.
+if [[ -f "$PREFER_CACHE_FILE" ]]; then
+    source "$PREFER_CACHE_FILE"
+    # Verify in background (async) - don't check hash here!
+    # Just fire the async check which calculates the hash itself.
+    async_run _check_prefer_cache_async
+else
+    # First run (no cache): We must initialize hash to write the cache file
+    _init_cache_if_needed
+fi
+
+# -----------------------------------------------------------------------------
+# Implementation Functions (Slow Path)
+# -----------------------------------------------------------------------------
+
+_prefer_impl() {
+    local name="$1"
+    local binary="$2"
+    shift 2 || true
+    
+    _resolve_prefer_target "$binary" "$@" || return
+
+    # Define alias in current session
+    alias "$name=$_PREFER_RESOLVED"
+    
+    # Append to cache file
+    # We only init cache if it wasn't there at start. 
+    # If we are falling back to impl, it means alias wasn't in cache.
+    # We should ensure cache exists before appending.
+    # But checking hash again is slow.
+    # We can just verify file exists.
+    if [[ ! -f "$PREFER_CACHE_FILE" ]]; then
+         _init_cache_if_needed
+    fi
+    echo "alias ${(q)name}=${(q)_PREFER_RESOLVED}" >> "$PREFER_CACHE_FILE"
+}
+
+_prefer_tty_impl() {
+    local name="$1"
+    local binary="$2"
+    shift 2 || true
+    
+    _resolve_prefer_target "$binary" "$@" || return
+
+    # Define logic for TTY check
+    local func_body="
+$name() {
+    if [[ -t 1 ]]; then
+        $_PREFER_RESOLVED \"\$@\";
+    else
+        command $name \"\$@\";
+    fi;
+}"
+    
+    # Eval in current session
+    eval "$func_body"
+    
+    # Append to cache file
+    if [[ ! -f "$PREFER_CACHE_FILE" ]]; then
+         _init_cache_if_needed
+    fi
+    echo "$func_body" >> "$PREFER_CACHE_FILE"
+}
+
+# -----------------------------------------------------------------------------
+# Public API (Fast Check + Fallback)
+# -----------------------------------------------------------------------------
+
 # Prefer running an alternate binary for a command when available
 prefer() {
     local name="$1"
-    local binary="$2"
-    shift 2 || true
+    # Fast path: if alias exists (from cache), return immediately (0 cost)
+    [[ -n "${aliases[$name]}" ]] && return 0
     
-    _resolve_prefer_target "$binary" "$@" || return
-
-    # Use alias instead of function for faster startup (avoids eval overhead)
-    alias "$name=$_PREFER_RESOLVED"
+    # Slow path: resolve and cache
+    _prefer_impl "$@"
 }
 
 # Prefer an alternate binary only when writing to a terminal
-# (fallback otherwise)
 prefer_tty() {
     local name="$1"
-    local binary="$2"
-    shift 2 || true
+    # Fast path: if function exists (from cache), return immediately
+    (( $+functions[$name] )) && return 0
     
-    _resolve_prefer_target "$binary" "$@" || return
-
-    eval "$name() {
-        if [[ -t 1 ]]; then
-            $_PREFER_RESOLVED \"\$@\";
-        else
-            command $name \"\$@\";
-        fi;
-    }"
+    # Slow path: resolve and cache
+    _prefer_tty_impl "$@"
 }
+
+# -----------------------------------------------------------------------------
+# Other Utilities
+# -----------------------------------------------------------------------------
 
 # pbcopy wrapper: on macOS use native, otherwise ssh to source host
 pbcopy() {

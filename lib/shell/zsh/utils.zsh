@@ -88,6 +88,46 @@ esac
 # Portable command existence check (zsh builtin, no fork)
 isinstalled() { (( $+commands[$1] )); }
 
+# Check if dotfiles have changed since last check (git HEAD + local modifications)
+dotfiles_changed_hash() {
+    # Fast path: check if .git/HEAD changed (very cheap)
+    local head_hash
+    if [[ -f "$DOTDOTFILES/.git/HEAD" ]]; then
+        read -r head_hash < "$DOTDOTFILES/.git/HEAD"
+        # If it's a ref, follow it
+        if [[ "$head_hash" == ref:* ]]; then
+            local ref="${head_hash#ref: }"
+            if [[ -f "$DOTDOTFILES/.git/$ref" ]]; then
+                read -r head_hash < "$DOTDOTFILES/.git/$ref"
+            fi
+        fi
+    fi
+
+    # Fast path: check mtime of specific key files instead of scanning everything
+    # We only care if:
+    # 1. lib/shell/zsh/commands.zsh changed (prefer logic)
+    # 2. home/.zshrc changed (aliases defined)
+    # 3. .zshrc.local changed
+    
+    local last_mod
+    # Use zsh/stat for fast, consistent, cross-platform timestamp checking
+    zmodload -F zsh/stat b:zstat 2>/dev/null
+    
+    local -a files=("$DOTDOTFILES/lib/shell/zsh/commands.zsh" "$DOTDOTFILES/home/.zshrc" "$DOTDOTFILES/.zshrc.local")
+    local max_mtime=0
+    local f
+    local -a file_stat
+    
+    for f in "${files[@]}"; do
+        if zstat -A file_stat +mtime "$f" 2>/dev/null; then
+            (( file_stat[1] > max_mtime )) && max_mtime=$file_stat[1]
+        fi
+    done
+    last_mod=$max_mtime
+    
+    echo "${head_hash}-${last_mod}"
+}
+
 ###############################################################################
 # Shell Management
 ###############################################################################
