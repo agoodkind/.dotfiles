@@ -160,7 +160,7 @@ _resolve_prefer_target() {
     local arg
     for arg in "${args[@]}"; do
         [[ -z "$arg" ]] && continue
-        qargs+=" $(printf '%q' "$arg")"
+        qargs+=" ${(q)arg}"
     done
 
     # Resolve target
