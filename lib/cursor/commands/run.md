@@ -16,6 +16,7 @@ Carry out the command referenced in this message or the latest context.
   `ssh <host> '/usr/bin/env bash -lc "<remote command>"'`.
 - SSHPiper routing format `user@target@proxy` (e.g., `root@service@ssh.home.goodkind.io`)
   is valid and should not be questioned.
+- Check `@.dotfiles/lib/ssh/config` first to see what shortcuts are available for the desired host.
 - When multiple commands are provided, run each in the given order.
 - Avoid indefinite hangs; set a reasonable timeout when a command could block.
 - If the instruction is contextual, restate the exact command before running it
