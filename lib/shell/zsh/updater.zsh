@@ -147,10 +147,17 @@ WEEKLY_SECONDS=$((7 * 24 * 60 * 60))  # 7 days
 needs_weekly_update() {
     [[ ! -f "$WEEKLY_TIMESTAMP" ]] && return 0
     
-    local last_update now
-    last_update=$(stat -f %m "$WEEKLY_TIMESTAMP" 2>/dev/null) || \
-        last_update=$(stat -c %Y "$WEEKLY_TIMESTAMP" 2>/dev/null) || return 0
-    now=$(date +%s)
+    # Use zsh/stat for fast, consistent, cross-platform timestamp checking
+    zmodload -F zsh/stat b:zstat 2>/dev/null
+    if (( ! $+builtins[zstat] )); then
+        # Should not happen if environment is set up, but safe fallback
+        return 0
+    fi
+
+    local -a file_stat
+    zstat -A file_stat +mtime "$WEEKLY_TIMESTAMP" 2>/dev/null || return 0
+    local last_update=$file_stat[1]
+    local now=$EPOCHSECONDS
     
     (( now - last_update > WEEKLY_SECONDS ))
 }
