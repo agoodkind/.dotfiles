@@ -213,10 +213,13 @@ main() {
         return 0
     fi
 
-    # If any update is required, check for local changes first
-    if has_local_changes; then
-        # Create marker file with message
-        echo "local changes to dotfiles please clean working state and run config sync" > "$HOME/.cache/dotfiles_local_changes"
+    # If upstream updates are available and we have local changes, warn and stop.
+    # We block ONLY when there are incoming git changes that might conflict.
+    # If local changes exist but we are up-to-date with upstream, we allow
+    # weekly maintenance (package updates) to proceed.
+    if [[ "$updates_available" == true ]] && has_local_changes; then
+        local msg="upstream updates available but local changes detected. please clean working state"
+        echo "$msg" > "$HOME/.cache/dotfiles_local_changes"
         return 0
     fi
 
