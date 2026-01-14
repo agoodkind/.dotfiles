@@ -206,6 +206,11 @@ do_weekly_update() {
 
 # Main entry point
 main() {
+    # Check for internet connectivity first
+    if ! has_internet; then
+        return 0
+    fi
+
     # Check for updates from remote
     fetch_latest || return 0
 

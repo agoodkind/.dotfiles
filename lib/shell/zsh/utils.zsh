@@ -85,6 +85,32 @@ esac
 # General Utility Functions
 ###############################################################################
 
+# Check for internet connectivity
+has_internet() {
+    # Try ping v6 first (as requested)
+    if command -v ping6 >/dev/null; then
+        if ping6 -c 1 -W 2 google.com >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+
+    # Try ping first (fastest)
+    if command -v ping >/dev/null; then
+        if ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+    
+    # Fallback to curl
+    if command -v curl >/dev/null; then
+        if curl -s --head --request GET --connect-timeout 2 http://google.com >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
 # Portable command existence check (zsh builtin, no fork)
 isinstalled() { (( $+commands[$1] )); }
 
