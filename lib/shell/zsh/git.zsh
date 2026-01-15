@@ -456,8 +456,7 @@ function _git_wkm_branch_is_stale() {
 function _git_wkm_cleanup_repo_worker() {
     emulate -L zsh
     setopt localoptions no_unset
-    set +x
-    unsetopt xtrace 2>/dev/null || true
+    set +x  # Suppress any inherited xtrace
 
     local repo="$1"
     local parent_dir="$2"
@@ -471,26 +470,32 @@ function _git_wkm_cleanup_repo_worker() {
 
     [[ -n "$out" ]] || return 1
 
+    _cleanup_log "status:resolving"
+
     local rp=""
     rp="$(_git_wkm_resolve_repo_path "$repo" "$parent_dir" "$PWD")" || {
-        _cleanup_log "status:repo not found"
-        _cleanup_log "error:repo not found: $repo"
+        _cleanup_log "status:not found"
+        _cleanup_log "error:repository not found: $repo"
         _cleanup_log "done:error"
         return 1
     }
 
     if [[ "$should_fetch" == "true" ]]; then
+        _cleanup_log "status:fetching"
         command git -C "$rp" fetch origin --quiet 2>/dev/null || true
     fi
 
     local wt_root="${rp}-worktrees"
     if [[ ! -d "$wt_root" ]]; then
+        _cleanup_log "status:no worktrees"
         _cleanup_log "meta:repo:$repo"
         _cleanup_log "meta:checked:0"
         _cleanup_log "meta:stale:0"
         _cleanup_log "done:ok"
         return 0
     fi
+
+    _cleanup_log "status:listing worktrees"
 
     local dir_name=""
     local target_wt=""
@@ -511,13 +516,17 @@ function _git_wkm_cleanup_repo_worker() {
         branch_count[$br]=$(( cur + 1 ))
     done < <(_git_wkm_worktree_branch_map "$rp")
 
-    if (( ${#map_lines[@]} == 0 )); then
+    local wt_count=${#map_lines[@]}
+    if (( wt_count == 0 )); then
+        _cleanup_log "status:no worktrees"
         _cleanup_log "meta:repo:$repo"
         _cleanup_log "meta:checked:0"
         _cleanup_log "meta:stale:0"
         _cleanup_log "done:ok"
         return 0
     fi
+
+    _cleanup_log "status:scanning $wt_count worktrees"
 
     local upstream_ref=""
     upstream_ref="$(_git_wkm_repo_upstream_main_ref "$rp")" || upstream_ref=""
@@ -532,6 +541,11 @@ function _git_wkm_cleanup_repo_worker() {
         [[ "$wt" == "$wt_root/"* ]] || continue
         [[ -n "$target_wt" && "$wt" != "$target_wt" ]] && continue
         (( checked++ ))
+
+        # Update progress periodically.
+        if (( checked % 5 == 0 )); then
+            _cleanup_log "status:checked $checked/$wt_count"
+        fi
 
         case "$branch" in
             main|master|trunk) continue ;;
@@ -564,11 +578,8 @@ function _git_wkm_cleanup_repo_worker() {
 
 function _git_wkm_cleanup() {
     emulate -L zsh
-    setopt localoptions no_unset
-    set +x
-    setopt localoptions no_notify no_monitor
-    unsetopt xtrace 2>/dev/null || true
-    setopt localoptions localtraps
+    setopt localoptions no_unset no_notify no_monitor
+    set +x  # Suppress any inherited xtrace
 
     local branch_filter="$1"
     shift
@@ -593,208 +604,205 @@ function _git_wkm_cleanup() {
         return 1
     fi
 
-    local dir_name=""
-    if [[ -n "$branch_filter" ]]; then
-        dir_name="${branch_filter//\//-}"
-    fi
-
     local -a stale_rows
     stale_rows=()
 
-    local tmp_base="${TMPDIR:-/tmp}"
-    tmp_base="${tmp_base%/}"
-    local tmp_dir="$tmp_base/git-wkm-cleanup-$$"
+    local tmp_dir="${TMPDIR:-/tmp}/git-wkm-cleanup-$$"
     command mkdir -p "$tmp_dir" 2>/dev/null || return 1
-
-    # Some shells route xtrace to stdout (via XTRACEFD=1). Redirect xtrace output
-    # to a temp fd for the duration of cleanup so it can't spam the terminal.
-    local had_xtracefd=false
-    local old_xtracefd=""
-    if (( ${+XTRACEFD} )); then
-        had_xtracefd=true
-        old_xtracefd="$XTRACEFD"
-    fi
-
-    local xtrace_fd
-    exec {xtrace_fd}>"$tmp_dir/xtrace.log"
-    XTRACEFD=$xtrace_fd
-
-    function _git_wkm_cleanup_restore_xtracefd() {
-        if $had_xtracefd; then
-            XTRACEFD="$old_xtracefd"
-        else
-            unset XTRACEFD 2>/dev/null || true
-        fi
-        exec {xtrace_fd}>&- 2>/dev/null || true
-    }
-
-    function _git_wkm_cleanup_abort() {
-        local p
-        for p in "${repo_pids[@]:-}"; do
-            [[ -n "$p" ]] || continue
-            kill "$p" 2>/dev/null || true
-        done
-        command rm -rf "$tmp_dir" 2>/dev/null || true
-        _git_wkm_cleanup_restore_xtracefd
-    }
-
-    trap '_git_wkm_cleanup_restore_xtracefd' RETURN
-    trap '_git_wkm_cleanup_abort; return 130' INT TERM
 
     local max_jobs="$jobs"
     [[ -z "$max_jobs" ]] && max_jobs=4
     (( max_jobs < 1 )) && max_jobs=1
-    local total_repos=${#repos[@]}
+    local total=${#repos[@]}
     local total_checked=0
     local total_stale=0
 
-    local is_tty=false
-    [[ -t 1 ]] && is_tty=true
+    # Print header (matches create mode style).
+    if [[ -n "$branch_filter" ]]; then
+        print "Scanning $total repos for stale worktrees (branch: $branch_filter)..."
+    else
+        print "Scanning $total repos for stale worktrees..."
+    fi
+    print "  ⚡ Spawning up to $max_jobs parallel workers...\n"
 
-    local -a out_files done_flags last_line_count repo_labels repo_checked
-    local -a repo_stale repo_status repo_error
-    local -a repo_pids
-    out_files=()
-    done_flags=()
-    last_line_count=()
-    repo_labels=()
-    repo_checked=()
-    repo_stale=()
-    repo_status=()
-    repo_error=()
-    repo_pids=()
-
+    # Track state for each repo (matches create mode pattern).
+    local -a last_status last_line_count repo_pids done_flags error_msgs repo_stale spawn_poll
     local i
-    for i in {1..$total_repos}; do
-        out_files[$i]="$tmp_dir/$i"
-        : > "${out_files[$i]}"
-        done_flags[$i]=0
+    for i in {1..$total}; do
+        last_status[$i]="queued"
         last_line_count[$i]=0
-        repo_labels[$i]="${repos[$i]##*/}"
-        repo_checked[$i]=0
-        repo_stale[$i]=0
-        repo_status[$i]="queued"
-        repo_error[$i]=""
+        done_flags[$i]=0
         repo_pids[$i]=""
+        error_msgs[$i]=""
+        repo_stale[$i]=0
+        spawn_poll[$i]=0
+    done
+
+    # Print initial status lines (will be updated in place).
+    for i in {1..$total}; do
+        print "  ⏳ ${repos[$i]##*/} (queued)"
     done
 
     local completed=0
     local started=0
+    local start_time=$SECONDS
 
-    function _git_wkm_cleanup_progress_line() {
-        $is_tty || return 0
-        local active=$(( started - completed ))
-        local msg="Cleanup: ${completed}/${total_repos} repos"
-        (( active > 0 )) && msg="${msg} (active ${active})"
-        msg="${msg}; checked ${total_checked}; stale ${total_stale}"
-        [[ -n "$branch_filter" ]] && msg="${msg} (branch: $branch_filter)"
-        printf "\r\033[K%s" "$msg"
-    }
-
-    function _git_wkm_cleanup_spawn_next() {
-        (( started >= total_repos )) && return 1
-        started=$(( started + 1 ))
-        repo_status[$started]="scanning"
+    # Spawn initial batch of workers.
+    while (( started < max_jobs && started < total )); do
+        (( started++ )) || true
+        : > "$tmp_dir/$started"
+        last_status[$started]="starting"
+        spawn_poll[$started]=0
         (
-            unsetopt xtrace 2>/dev/null || true
-            setopt no_notify no_monitor 2>/dev/null || true
             _git_wkm_cleanup_repo_worker "${repos[$started]}" "$parent_dir" \
-                "$branch_filter" "$should_fetch" "${out_files[$started]}"
-        ) &!
-        repo_pids[$started]="$!"
-        return 0
-    }
-
-    while (( started < max_jobs )) && _git_wkm_cleanup_spawn_next; do
-        true
+                "$branch_filter" "$should_fetch" "$tmp_dir/$started"
+        ) &
+        repo_pids[$started]=$!
+        disown $! 2>/dev/null || true
     done
 
-    _git_wkm_cleanup_progress_line
-
-    while (( completed < total_repos )); do
-        local did_progress=false
+    # Poll and update display in real-time (matches create mode).
+    local poll_count=0
+    while (( completed < total )); do
+        set +x  # Ensure xtrace stays off in the loop
 
         local j
-        for j in {1..$total_repos}; do
+        for j in {1..$total}; do
             (( done_flags[$j] )) && continue
-            local out_file="${out_files[$j]}"
+
+            local out_file="$tmp_dir/$j"
             [[ -f "$out_file" ]] || continue
 
             local line_num=0
-            local l
-            while IFS= read -r l; do
+            local line
+            while IFS= read -r line || [[ -n "$line" ]]; do
                 (( line_num++ ))
                 (( line_num <= last_line_count[$j] )) && continue
 
-                local key="${l%%:*}"
-                local val="${l#*:}"
+                local key="${line%%:*}"
+                local val="${line#*:}"
                 case "$key" in
-                    status) repo_status[$j]="$val" ;;
-                    error)  repo_error[$j]="$val" ;;
-                    stale)  stale_rows+=("$val"); (( total_stale++ )) ;;
+                    status) last_status[$j]="$val" ;;
+                    error)  error_msgs[$j]="$val" ;;
+                    stale)
+                        stale_rows+=("$val")
+                        (( total_stale++ ))
+                        (( repo_stale[$j]++ ))
+                        ;;
                     meta)
                         case "$val" in
-                            checked:*)
-                                local c="${val#checked:}"
-                                local prev="${repo_checked[$j]:-0}"
-                                repo_checked[$j]="$c"
-                                total_checked=$(( total_checked - prev + c ))
-                                ;;
-                            stale:*)
-                                repo_stale[$j]="${val#stale:}"
-                                ;;
+                            checked:*) total_checked=$(( total_checked + ${val#checked:} )) ;;
                         esac
                         ;;
                     done)
                         done_flags[$j]=1
-                        completed=$(( completed + 1 ))
-                        repo_status[$j]="done"
-                        did_progress=true
+                        (( completed++ ))
+                        # Build final status with stale count if any found.
+                        if (( repo_stale[$j] > 0 )); then
+                            last_status[$j]="${repo_stale[$j]} stale"
+                        else
+                            last_status[$j]="clean"
+                        fi
+                        # Spawn next worker if any remain.
+                        if (( started < total )); then
+                            (( started++ )) || true
+                            : > "$tmp_dir/$started"
+                            last_status[$started]="starting"
+                            spawn_poll[$started]=$poll_count
+                            (
+                                _git_wkm_cleanup_repo_worker "${repos[$started]}" \
+                                    "$parent_dir" "$branch_filter" "$should_fetch" \
+                                    "$tmp_dir/$started"
+                            ) &
+                            repo_pids[$started]=$!
+                            disown $! 2>/dev/null || true
+                        fi
                         ;;
                 esac
             done < "$out_file"
             last_line_count[$j]=$line_num
 
-            # Fallback: if the worker exited but never wrote done:, don't hang.
-            if (( ! done_flags[$j] )) && [[ -n "${repo_pids[$j]}" ]]; then
+            # Fallback: if worker exited but never wrote done:, don't hang.
+            # Only check after grace period (10 polls = 1s) to let worker start.
+            local grace_polls=10
+            if (( ! done_flags[$j] )) && [[ -n "${repo_pids[$j]}" ]] && \
+               (( poll_count - spawn_poll[$j] >= grace_polls )); then
                 if ! kill -0 "${repo_pids[$j]}" 2>/dev/null; then
                     done_flags[$j]=1
-                    completed=$(( completed + 1 ))
-                    repo_status[$j]="done"
-                    repo_error[$j]="worker exited without done marker"
-                    did_progress=true
+                    (( completed++ ))
+                    last_status[$j]="failed"
+                    [[ -z "${error_msgs[$j]}" ]] && error_msgs[$j]="worker exited unexpectedly"
+                    # Spawn next worker if any remain (mirrors done: path).
+                    if (( started < total )); then
+                        (( started++ )) || true
+                        : > "$tmp_dir/$started"
+                        last_status[$started]="starting"
+                        spawn_poll[$started]=$poll_count
+                        (
+                            _git_wkm_cleanup_repo_worker "${repos[$started]}" \
+                                "$parent_dir" "$branch_filter" "$should_fetch" \
+                                "$tmp_dir/$started"
+                        ) &
+                        repo_pids[$started]=$!
+                        disown $! 2>/dev/null || true
+                    fi
                 fi
             fi
         done
 
-        while (( started - completed < max_jobs )) && _git_wkm_cleanup_spawn_next; do
-            did_progress=true
-        done
-
-        _git_wkm_cleanup_progress_line
-        $did_progress || command sleep 0.1
-    done
-
-    $is_tty && printf "\n"
-
-    local err_shown=false
-    for i in {1..$total_repos}; do
-        if [[ -n "${repo_error[$i]}" ]]; then
-            $err_shown || print "Errors:"
-            err_shown=true
-            print "  ${repo_labels[$i]}: ${repo_error[$i]}"
+        # Update display every few polls to reduce flicker.
+        if (( poll_count % 2 == 0 )); then
+            printf "\033[%dA" "$total"  # Move cursor up
+            for j in {1..$total}; do
+                local icon="⏳"
+                local st="${last_status[$j]}"
+                if (( done_flags[$j] )); then
+                    if [[ -n "${error_msgs[$j]}" ]]; then
+                        icon="✗"
+                    else
+                        icon="✓"
+                    fi
+                fi
+                printf "\r\033[K  %s %s (%s)\n" "$icon" "${repos[$j]##*/}" "$st"
+            done
         fi
-    done
-    $err_shown && print ""
+        (( poll_count++ ))
 
+        (( completed < total )) && sleep 0.1
+    done
+
+    # Final redraw to ensure all repos show final state.
+    printf "\033[%dA" "$total"
+    for j in {1..$total}; do
+        local icon="✓"
+        [[ -n "${error_msgs[$j]}" ]] && icon="✗"
+        printf "\r\033[K  %s %s (%s)\n" "$icon" "${repos[$j]##*/}" "${last_status[$j]}"
+    done
+
+    local elapsed=$(( SECONDS - start_time ))
     command rm -rf "$tmp_dir" 2>/dev/null || true
+    print ""
+
+    # Show errors if any.
+    local has_errors=false
+    for i in {1..$total}; do
+        [[ -n "${error_msgs[$i]}" ]] && has_errors=true && break
+    done
+    if $has_errors; then
+        print "Errors:"
+        for i in {1..$total}; do
+            [[ -n "${error_msgs[$i]}" ]] && print "  ✗ ${repos[$i]##*/}: ${error_msgs[$i]}"
+        done
+        print ""
+    fi
+
+    print "✓ Scanned $total repo(s) in ${elapsed}s, checked $total_checked worktree(s), found $total_stale stale"
 
     if (( ${#stale_rows[@]} == 0 )); then
-        print "git wkm --cleanup: no stale worktrees found (checked $total_checked)"
         return 0
     fi
 
-    print "Stale worktrees (clean + no unique patches vs origin main):"
+    print "\nStale worktrees (clean + no unique patches vs origin/main):"
     local row
     for row in "${stale_rows[@]}"; do
         local rp="${row%%$'\t'*}"
@@ -810,10 +818,12 @@ function _git_wkm_cleanup() {
 
     if [[ "$apply_mode" != "yes" ]]; then
         local response=""
+        print ""
         read "?Delete these worktrees and local branches? (y/N): " response
         [[ "$response" =~ ^[Yy]$ ]] || return 0
     fi
 
+    print ""
     for row in "${stale_rows[@]}"; do
         local rp="${row%%$'\t'*}"
         local rest="${row#*$'\t'}"
@@ -1130,14 +1140,6 @@ _git_wkm_worker" >/dev/null 2>&1
         return 1
     fi
 
-    print "✓ ${#worktree_paths[@]} worktree(s) ready in ${elapsed}s (parallel)"
-
-    # Call post-hook if defined (e.g., for halo integration in .zshrc.local)
-    # Hook receives: branch_name, worktree_names array, worktree_paths array
-    if (( ${+functions[_git_wkm_post_hook]} )); then
-        _git_wkm_post_hook "$branch_name" "${worktree_names[@]}" -- "${worktree_paths[@]}"
-    fi
-
     # Create Cursor workspace file with repo names as display names.
     local ws_name="${branch_name//\//-}"
     local ws_file="$workspace_dir/${ws_name}.code-workspace"
@@ -1194,25 +1196,26 @@ _git_wkm_worker" >/dev/null 2>&1
         --argjson settings "$merged_settings" \
         '{"folders": $folders, "settings": $settings}' > "$ws_file"
 
-    print ""
-    print "Workspace: $ws_file"
-
     # Clear Cursor workspace state to prevent repos from being hidden (Bug workaround).
     # Cursor stores SCM visibility state in SQLite; stale state can hide repos.
     _git_wkm_clear_cursor_state "$ws_file"
 
-    # Open in Cursor.
+    # Open in Cursor BEFORE linking so IDE is ready while services sync.
     if command -v cursor >/dev/null 2>&1; then
-        print "Opening in Cursor..."
-        cursor "$ws_file"
+        cursor --reuse-window "$ws_file" &>/dev/null &!
     elif [[ "$OSTYPE" == darwin* ]]; then
-        print "Opening in Cursor..."
-        open -a "Cursor" "$ws_file"
-    else
-        print ""
-        print "Run: cursor '$ws_file'"
+        open -a "Cursor" --args --reuse-window "$ws_file" &>/dev/null &!
     fi
 
+    # Call post-hook if defined (e.g., for halo integration in .zshrc.local)
+    # Hook receives: branch_name, worktree_names array, worktree_paths array
+    if (( ${+functions[_git_wkm_post_hook]} )); then
+        _git_wkm_post_hook "$branch_name" "${worktree_names[@]}" -- "${worktree_paths[@]}"
+    fi
+
+    print ""
+    print "✓ ${#worktree_paths[@]} worktree(s) ready in ${elapsed}s"
+    print "  Workspace: $ws_file"
 }
 
 ###############################################################################
