@@ -21,7 +21,7 @@ Host ssh.home.goodkind.io
 
 Host router
   User agoodkind
-  HostName router.home.goodkind.io
+  HostName 3d06:bad:b01::1
 
 Host suburban
   User root
@@ -61,6 +61,16 @@ Host nas
 Host debianct
   HostName ssh.home.goodkind.io
   User root@debianct
+  ForwardAgent yes
+  ForwardX11 yes
+  ForwardX11Trusted yes
+  Compression yes
+  TCPKeepAlive yes
+  ServerAliveInterval 60
+
+Host debianct-direct
+  HostName 3d06:bad:b01::100
+  User root
   ForwardAgent yes
   ForwardX11 yes
   ForwardX11Trusted yes
