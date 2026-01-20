@@ -9,7 +9,7 @@ Analyze the branch changes and create a pull request using the GitHub CLI, follo
 - **Prose Paragraphs**: Write descriptions as concise prose, NOT bullet lists
 - **Present Tense**: Use present tense throughout
 - **2-3 Paragraphs Max**: Keep descriptions brief and focused
-- **Flow**: Observable problem → Root cause → What the PR does to fix it
+- **Classify PR Type**: Determine if this is a bug fix or feature/iteration PR (see below)
 
 ## Title Rules
 
@@ -18,13 +18,43 @@ Analyze the branch changes and create a pull request using the GitHub CLI, follo
 - **Direct Statement**: Use imperative mood, state what changed
 - **Specific**: Be specific about what changed and where
 
+## PR Type Classification
+
+Before writing the description, classify the PR:
+
+**Bug Fix PR** — Something was broken and this fixes it:
+- Users/devs experienced unexpected behavior
+- Error states, crashes, incorrect data
+- Regressions from previous changes
+
+**Feature/Iteration PR** — Adding or extending functionality:
+- New capabilities that didn't exist before
+- Implementing spec'd behavior (even if prior code was scaffolded)
+- Enhancements to existing features
+
 ## Description Structure
 
+### For Bug Fix PRs
+
+Flow: Observable problem → Root cause → What the PR does to fix it
+
 1. Start with the observable problem or symptom (what users/devs saw)
-2. Explain what was actually wrong in the code
+2. Explain what was actually wrong in the code (high-level, not a code walkthrough)
 3. Describe what this PR does to fix it
-4. Include implementation details when necessary
-5. Acknowledge friction or concerns where relevant
+4. Focus on the *nature* of the fix, not a list of changed methods
+
+### For Feature/Iteration PRs
+
+Flow: Context/motivation → What it adds → Implementation approach
+
+1. Start with context: what capability is being added and why it's needed
+2. Describe what the PR implements (the "what", not framed as fixing)
+3. Summarize the approach at a high level — how it works conceptually
+4. Note dependencies or follow-up work if relevant
+
+**Key difference**: Feature PRs describe what's being *built*, not what was *broken*. Avoid framing scaffolded/stub code as "bugs" — if prior code returned empty arrays as placeholder, that's not a symptom to fix, it's a feature to implement.
+
+**Avoid laundry lists**: Don't enumerate every method, class, or file changed. Instead, describe the approach empirically — what happens, how data flows, what the user sees. Reviewers can see the diff; they need context, not a changelog.
 
 ## Code References
 
@@ -87,6 +117,7 @@ Output:
 ## Prohibited Patterns
 
 - Bullet lists or itemized formats
+- Laundry lists of methods, classes, or files changed
 - Separate "benefits" sections
 - Teaching how systems work
 - Explaining obvious things
@@ -114,28 +145,57 @@ Examples:
    - If not found, proceed without a ticket (do not ask the user)
 3. Run `git log main..HEAD --oneline` to see commits on the branch
 4. Run `git diff main...HEAD` to analyze all changes
-5. Craft a concise PR title without ticket prefix (imperative mood, no feat/fix prefixes)
-6. Write 2-3 paragraph description following the flow: symptom → root cause → fix
-7. If before/after images are provided (in user input or existing PR description), convert them to the table format described above
-8. Add ticket link at the start of description when a ticket exists: `Ticket: https://ag.atlassian.net/browse/AG-12345` (infer the correct atlassian subdomain from context or company); omit if no ticket
-9. Execute the command:
-   - If PR exists: `gh pr edit --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
-   - If no PR: `gh pr create --draft --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
-10. After PR is created/updated, output:
+5. **Classify PR type**: Based on the changes, determine if this is a bug fix or feature/iteration PR
+   - Look at commit messages, branch name hints, and nature of changes
+   - New methods/classes/resolvers → likely feature
+   - Correcting existing behavior → likely bug fix
+6. Craft a concise PR title without ticket prefix (imperative mood, no feat/fix prefixes)
+7. Write 2-3 paragraph description using the appropriate flow for the PR type:
+   - Bug fix: symptom → root cause → fix
+   - Feature: context → what it adds → implementation approach
+8. If before/after images are provided (in user input or existing PR description), convert them to the table format described above
+9. Add ticket link at the start of description when a ticket exists: `Ticket: https://ag.atlassian.net/browse/AG-12345` (infer the correct atlassian subdomain from context or company); omit if no ticket
+10. Execute the command:
+    - If PR exists: `gh pr edit --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
+    - If no PR: `gh pr create --draft --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
+11. After PR is created/updated, output:
     - A Slack message for the review request channel
     - The PR URL in a single-line code fence for easy copying
 
 ## Examples
 
-✅ Good Title:
+### Bug Fix PR
 
-- "Add amount validation to silver processor"
-- "Reset list state on pull-to-refresh"
+✅ Good Title: "Reset list state on pull-to-refresh"
 
 ✅ Good Description:
 "Ticket: <https://ag.atlassian.net/browse/AG-1234>
 
 The silver list was showing duplicate entries after pull-to-refresh. The issue was that `fetchSilverElectrons` was appending results instead of replacing them when `offset` was zero. This PR resets the list state before fetching when triggered by refresh."
+
+### Feature/Iteration PR
+
+✅ Good Title: "Implement account logos in spending insights resolvers"
+
+✅ Good Description:
+"Ticket: <https://ag.atlassian.net/browse/ST-10627>
+Depends on: #24675
+
+Spending insights screens need to display bank logos for accounts that have transactions in the selected period. This PR implements the resolver logic across three spending insights endpoints.
+
+Each resolver identifies which accounts have transaction data, maps those to their institution, and returns up to 4 logos. Chime accounts are prioritized when present, followed by external accounts. The Hub resolver shows logos for all accounts in the selected scope, while the breakdown and history detail views filter to only accounts with actual transactions in the result set."
+
+❌ Bad Feature PR (laundry list):
+"This PR adds eight helper methods to `utils.rb` including `institution_name_to_icon`, `extract_external_account_uuids_with_data`, `extract_unique_institutions`, and `build_account_logos`. It also updates `hub_resolver.rb`, `main_category_breakdown_resolver.rb`, and `spending_history_details_resolver.rb`."
+
+(Wrong: lists methods and files instead of explaining what happens)
+
+❌ Bad Feature PR (framed as bug fix):
+"The types were added in #24675 but returned empty arrays without resolver implementation. This PR fixes the empty arrays by implementing the actual resolver logic."
+
+(Wrong: frames placeholder code as a bug rather than describing the feature being built)
+
+### Common Bad Patterns
 
 ❌ Bad Title:
 
@@ -146,7 +206,7 @@ The silver list was showing duplicate entries after pull-to-refresh. The issue w
 ❌ Bad Description:
 "This PR fixes a bug in the silver fetching logic. Previously the code was appending results incorrectly. Now it properly resets state. This improves the user experience by preventing confusion from duplicate items."
 
-(Missing ticket link at the end)
+(Missing ticket link, filler phrases)
 
 ## Output Format
 
@@ -155,14 +215,14 @@ Create a PR with a single-line title and 2-3 paragraph prose description. If the
 After PR creation succeeds, output a Slack message for the code review channel:
 
 ```
-<Symptom/benefit> <PR_URL>
+<What it does/fixes> <PR_URL>
 ```
 
-Keep it concise—one line with the symptom or benefit followed by the URL. If calling out the action materially clarifies what changed, you can append "by <action>" before the URL. Examples:
+Keep it concise—one line describing the change followed by the URL. Examples:
 
-- "Add JIRA PR badge https://..."
-- "Fix duplicate silver entries by resetting list state: https://..."
-- "Reduce memory usage https://..."
+- Bug fix: "Fix duplicate silver entries by resetting list state https://..."
+- Feature: "Add account logos to spending insights resolvers https://..."
+- Iteration: "Extend payment validation to handle zero amounts https://..."
 
 Then output the PR URL in a single-line code fence for easy copying:
 
