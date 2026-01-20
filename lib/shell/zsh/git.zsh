@@ -455,47 +455,72 @@ function _git_wkm_branch_is_stale() {
 
 function _git_wkm_cleanup_repo_worker() {
     emulate -L zsh
-    setopt localoptions no_unset
-    set +x  # Suppress any inherited xtrace
+    setopt localoptions no_xtrace
+    unsetopt errexit err_return pipe_fail
 
-    local repo="$1"
-    local parent_dir="$2"
-    local branch_filter="$3"
-    local should_fetch="$4"
-    local out="$5"
+    # If xtrace is enabled globally (e.g., via zinit debug), it will interleave
+    # with the status redraw and spam the terminal. Force it off + redirect.
+    local saved_xtracefd="${XTRACEFD:-2}"
+    local xtrace_devnull_fd=""
+    exec {xtrace_devnull_fd}>/dev/null
+    XTRACEFD=$xtrace_devnull_fd
+    unsetopt xtrace verbose
+ 
+    local cleanup_done=false
+    {
+        local repo="$1"
+        local parent_dir="$2"
+        local branch_filter="$3"
+        local should_fetch="$4"
+        local out="$5"
 
-    function _cleanup_log() {
-        print -r -- "$1" >> "$out"
-    }
+        function _cleanup_log() {
+            [[ -n "$out" ]] || return 0
+            # Never spam the terminal if the temp dir is gone; just best-effort.
+            command mkdir -p "${out:h}" 2>/dev/null || return 0
+            print -r -- "$1" >> "$out" 2>/dev/null || true
+        }
 
-    [[ -n "$out" ]] || return 1
+        [[ -n "$out" ]] || return 1
+        command mkdir -p "${out:h}" 2>/dev/null || out="/dev/null"
+        : >| "$out" 2>/dev/null || out="/dev/null"
 
-    _cleanup_log "status:resolving"
+        function _cleanup_done_ok() {
+            cleanup_done=true
+            _cleanup_log "done:ok"
+        }
 
-    local rp=""
-    rp="$(_git_wkm_resolve_repo_path "$repo" "$parent_dir" "$PWD")" || {
-        _cleanup_log "status:not found"
-        _cleanup_log "error:repository not found: $repo"
-        _cleanup_log "done:error"
-        return 1
-    }
+        function _cleanup_done_error() {
+            cleanup_done=true
+            _cleanup_log "done:error"
+        }
 
-    if [[ "$should_fetch" == "true" ]]; then
-        _cleanup_log "status:fetching"
-        command git -C "$rp" fetch origin --quiet 2>/dev/null || true
-    fi
+        _cleanup_log "status:resolving"
 
-    local wt_root="${rp}-worktrees"
-    if [[ ! -d "$wt_root" ]]; then
-        _cleanup_log "status:no worktrees"
-        _cleanup_log "meta:repo:$repo"
-        _cleanup_log "meta:checked:0"
-        _cleanup_log "meta:stale:0"
-        _cleanup_log "done:ok"
-        return 0
-    fi
+        local rp=""
+        rp="$(_git_wkm_resolve_repo_path "$repo" "$parent_dir" "$PWD")" || {
+            _cleanup_log "status:not found"
+            _cleanup_log "error:repository not found: $repo"
+            _cleanup_done_error
+            return 1
+        }
 
-    _cleanup_log "status:listing worktrees"
+        if [[ "$should_fetch" == "true" ]]; then
+            _cleanup_log "status:fetching"
+            command git -C "$rp" fetch origin --quiet 2>/dev/null || true
+        fi
+
+        local wt_root="${rp}-worktrees"
+        if [[ ! -d "$wt_root" ]]; then
+            _cleanup_log "status:no worktrees"
+            _cleanup_log "meta:repo:$repo"
+            _cleanup_log "meta:checked:0"
+            _cleanup_log "meta:stale:0"
+            _cleanup_done_ok
+            return 0
+        fi
+
+        _cleanup_log "status:listing worktrees"
 
     local dir_name=""
     local target_wt=""
@@ -522,7 +547,7 @@ function _git_wkm_cleanup_repo_worker() {
         _cleanup_log "meta:repo:$repo"
         _cleanup_log "meta:checked:0"
         _cleanup_log "meta:stale:0"
-        _cleanup_log "done:ok"
+            _cleanup_done_ok
         return 0
     fi
 
@@ -533,7 +558,7 @@ function _git_wkm_cleanup_repo_worker() {
 
     local checked=0
     local stale=0
-    local m
+    local m=""
     for m in "${map_lines[@]}"; do
         local wt="${m%%$'\t'*}"
         local branch="${m#*$'\t'}"
@@ -572,32 +597,49 @@ function _git_wkm_cleanup_repo_worker() {
     _cleanup_log "meta:repo:$repo"
     _cleanup_log "meta:checked:$checked"
     _cleanup_log "meta:stale:$stale"
-    _cleanup_log "done:ok"
+        _cleanup_done_ok
     return 0
+    } always {
+        if ! $cleanup_done; then
+            _cleanup_log "status:failed"
+            _cleanup_log "error:worker exited unexpectedly"
+            _cleanup_log "done:error"
+        fi
+        XTRACEFD=$saved_xtracefd
+        exec {xtrace_devnull_fd}>&- 2>/dev/null
+    }
 }
 
 function _git_wkm_cleanup() {
     emulate -L zsh
-    setopt localoptions no_unset no_notify no_monitor
-    set +x  # Suppress any inherited xtrace
+    setopt localoptions no_notify no_monitor no_xtrace
+    unsetopt errexit err_return pipe_fail
 
-    local branch_filter="$1"
-    shift
+    # Ensure xtrace can't leak into the ANSI redraw loop (keeps output dynamic).
+    local saved_xtracefd="${XTRACEFD:-2}"
+    local xtrace_devnull_fd=""
+    exec {xtrace_devnull_fd}>/dev/null
+    XTRACEFD=$xtrace_devnull_fd
+    unsetopt xtrace verbose bgnice
 
-    local apply_mode="$1"
-    shift
+    {
+        local branch_filter="$1"
+        shift
 
-    local parent_dir="$1"
-    shift
+        local apply_mode="$1"
+        shift
 
-    local jobs="$1"
-    shift
+        local parent_dir="$1"
+        shift
 
-    local should_fetch="$1"
-    shift
+        local jobs="$1"
+        shift
 
-    local -a repos
-    repos=("$@")
+        local should_fetch="$1"
+        shift
+
+        local -a repos
+        repos=("$@")
 
     if (( ${#repos[@]} == 0 )); then
         echo "git wkm --cleanup: no repos specified and GIT_WKM_REPOS not set" >&2
@@ -626,8 +668,8 @@ function _git_wkm_cleanup() {
     print "  ⚡ Spawning up to $max_jobs parallel workers...\n"
 
     # Track state for each repo (matches create mode pattern).
-    local -a last_status last_line_count repo_pids done_flags error_msgs repo_stale spawn_poll
-    local i
+    local -a last_status last_line_count repo_pids done_flags error_msgs repo_stale spawn_poll err_files
+    local i=0
     for i in {1..$total}; do
         last_status[$i]="queued"
         last_line_count[$i]=0
@@ -651,14 +693,15 @@ function _git_wkm_cleanup() {
     while (( started < max_jobs && started < total )); do
         (( started++ )) || true
         : > "$tmp_dir/$started"
+        err_files[$started]="$tmp_dir/$started.stderr"
+        : >| "${err_files[$started]}" 2>/dev/null || true
         last_status[$started]="starting"
         spawn_poll[$started]=0
         (
             _git_wkm_cleanup_repo_worker "${repos[$started]}" "$parent_dir" \
                 "$branch_filter" "$should_fetch" "$tmp_dir/$started"
-        ) &
+        ) 2>"${err_files[$started]}" &
         repo_pids[$started]=$!
-        disown $! 2>/dev/null || true
     done
 
     # Poll and update display in real-time (matches create mode).
@@ -666,7 +709,7 @@ function _git_wkm_cleanup() {
     while (( completed < total )); do
         set +x  # Ensure xtrace stays off in the loop
 
-        local j
+        local j=0
         for j in {1..$total}; do
             (( done_flags[$j] )) && continue
 
@@ -674,7 +717,7 @@ function _git_wkm_cleanup() {
             [[ -f "$out_file" ]] || continue
 
             local line_num=0
-            local line
+            local line=""
             while IFS= read -r line || [[ -n "$line" ]]; do
                 (( line_num++ ))
                 (( line_num <= last_line_count[$j] )) && continue
@@ -697,8 +740,10 @@ function _git_wkm_cleanup() {
                     done)
                         done_flags[$j]=1
                         (( completed++ ))
-                        # Build final status with stale count if any found.
-                        if (( repo_stale[$j] > 0 )); then
+                        # Build final status.
+                        if [[ -n "${error_msgs[$j]}" ]]; then
+                            last_status[$j]="failed"
+                        elif (( repo_stale[$j] > 0 )); then
                             last_status[$j]="${repo_stale[$j]} stale"
                         else
                             last_status[$j]="clean"
@@ -707,15 +752,16 @@ function _git_wkm_cleanup() {
                         if (( started < total )); then
                             (( started++ )) || true
                             : > "$tmp_dir/$started"
+                            err_files[$started]="$tmp_dir/$started.stderr"
+                            : >| "${err_files[$started]}" 2>/dev/null || true
                             last_status[$started]="starting"
                             spawn_poll[$started]=$poll_count
                             (
                                 _git_wkm_cleanup_repo_worker "${repos[$started]}" \
                                     "$parent_dir" "$branch_filter" "$should_fetch" \
                                     "$tmp_dir/$started"
-                            ) &
+                            ) 2>"${err_files[$started]}" &
                             repo_pids[$started]=$!
-                            disown $! 2>/dev/null || true
                         fi
                         ;;
                 esac
@@ -736,18 +782,32 @@ function _git_wkm_cleanup() {
                     if (( started < total )); then
                         (( started++ )) || true
                         : > "$tmp_dir/$started"
+                        err_files[$started]="$tmp_dir/$started.stderr"
+                        : >| "${err_files[$started]}" 2>/dev/null || true
                         last_status[$started]="starting"
                         spawn_poll[$started]=$poll_count
                         (
                             _git_wkm_cleanup_repo_worker "${repos[$started]}" \
                                 "$parent_dir" "$branch_filter" "$should_fetch" \
                                 "$tmp_dir/$started"
-                        ) &
+                        ) 2>"${err_files[$started]}" &
                         repo_pids[$started]=$!
-                        disown $! 2>/dev/null || true
                     fi
                 fi
             fi
+        done
+
+        # If any workers reported the generic error, try to pull a real message
+        # from their captured stderr.
+        for j in {1..$total}; do
+            [[ "${error_msgs[$j]:-}" == "worker exited unexpectedly" ]] || continue
+            local ef="${err_files[$j]:-}"
+            [[ -n "$ef" && -f "$ef" ]] || continue
+            local err_line=""
+            IFS= read -r err_line < "$ef" 2>/dev/null || err_line=""
+            [[ -z "$err_line" ]] && continue
+            (( ${#err_line} > 120 )) && err_line="${err_line:0:117}..."
+            error_msgs[$j]="$err_line"
         done
 
         # Update display every few polls to reduce flicker.
@@ -770,6 +830,15 @@ function _git_wkm_cleanup() {
 
         (( completed < total )) && sleep 0.1
     done
+
+    # Wait for all background workers to finish.
+    for j in {1..$total}; do
+        if [[ -n "${repo_pids[$j]}" ]] && [[ "${repo_pids[$j]}" != "0" ]]; then
+            wait "${repo_pids[$j]}" 2>/dev/null || true
+        fi
+    done
+    # Belt-and-suspenders: wait for any stragglers not tracked in repo_pids.
+    wait 2>/dev/null || true
 
     # Final redraw to ensure all repos show final state.
     printf "\033[%dA" "$total"
@@ -836,7 +905,11 @@ function _git_wkm_cleanup() {
         command git -C "$rp" worktree prune >/dev/null 2>&1 || true
     done
 
-    return 0
+        return 0
+    } always {
+        XTRACEFD=$saved_xtracefd
+        exec {xtrace_devnull_fd}>&- 2>/dev/null
+    }
 }
 
 ###############################################################################
@@ -951,14 +1024,57 @@ function _git_wkm() {
         return 1
     fi
 
+    local parent_dir="${GIT_WTK_PARENT_DIR:-}"
+    local workspace_dir="${GIT_WKM_WORKSPACE_DIR:-${HOME}/.workspaces}"
+    command mkdir -p "$workspace_dir" 2>/dev/null || true
+
+    # If workspace file exists, use it as source of truth for repos.
+    # CLI repos (with or without --add) are appended and deduplicated.
+    local ws_name="${branch_name//\//-}"
+    local ws_file="$workspace_dir/${ws_name}.code-workspace"
+
+    if [[ -f "$ws_file" ]]; then
+        local -a ws_repos
+        ws_repos=()
+        local dir_name="${branch_name//\//-}"
+        local suffix="-worktrees/$dir_name"
+
+        # Extract repo paths from workspace folders.
+        local folder_path
+        while IFS= read -r folder_path; do
+            [[ -z "$folder_path" ]] && continue
+            # Strip the -worktrees/branch suffix to get repo path.
+            if [[ "$folder_path" == *"$suffix" ]]; then
+                ws_repos+=("${folder_path%$suffix}")
+            fi
+        done < <(jq -r '.folders[].path // empty' "$ws_file" 2>/dev/null)
+
+        # Merge: workspace repos first, then CLI repos (deduplicated by resolved path).
+        local -a merged_repos
+        merged_repos=("${ws_repos[@]}")
+        local r rp found existing
+        for r in "${repos[@]}"; do
+            # Resolve CLI repo to absolute path for comparison.
+            rp="$r"
+            [[ ! -d "$rp" && -n "$parent_dir" && -d "$parent_dir/$rp" ]] && rp="$parent_dir/$rp"
+            [[ "$rp" != /* ]] && rp="$PWD/$rp"
+            rp="${rp:A}"
+
+            # Add if not already in merged_repos.
+            found=false
+            for existing in "${merged_repos[@]}"; do
+                [[ "$existing" == "$rp" ]] && { found=true; break; }
+            done
+            $found || merged_repos+=("$rp")
+        done
+
+        repos=("${merged_repos[@]}")
+    fi
+
     if (( ${#repos[@]} == 0 )); then
         echo "git wkm: no repos specified and GIT_WKM_REPOS not set" >&2
         return 1
     fi
-
-    local parent_dir="${GIT_WTK_PARENT_DIR:-}"
-    local workspace_dir="${GIT_WKM_WORKSPACE_DIR:-${HOME}/.workspaces}"
-    command mkdir -p "$workspace_dir" 2>/dev/null || true
 
     local total=${#repos[@]}
 
@@ -1141,8 +1257,7 @@ _git_wkm_worker" >/dev/null 2>&1
     fi
 
     # Create Cursor workspace file with repo names as display names.
-    local ws_name="${branch_name//\//-}"
-    local ws_file="$workspace_dir/${ws_name}.code-workspace"
+    # (ws_name and ws_file already defined above)
 
     # Build workspace JSON with jq.
     local folders_json="[]" j
@@ -1201,10 +1316,11 @@ _git_wkm_worker" >/dev/null 2>&1
     _git_wkm_clear_cursor_state "$ws_file"
 
     # Open in Cursor BEFORE linking so IDE is ready while services sync.
-    if command -v cursor >/dev/null 2>&1; then
+    # Prefer `open` on macOS for reliable window focus, fall back to CLI.
+    if [[ "$OSTYPE" == darwin* ]]; then
+        open -a "Cursor" "$ws_file" &>/dev/null &!
+    elif command -v cursor >/dev/null 2>&1; then
         cursor --reuse-window "$ws_file" &>/dev/null &!
-    elif [[ "$OSTYPE" == darwin* ]]; then
-        open -a "Cursor" --args --reuse-window "$ws_file" &>/dev/null &!
     fi
 
     # Call post-hook if defined (e.g., for halo integration in .zshrc.local)
