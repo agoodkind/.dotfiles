@@ -53,8 +53,8 @@ fi
 # zsh Configs #################################################################
 ###############################################################################
 export HISTFILE=~/.zsh_history
-export HISTSIZE=100000
-export SAVEHIST=100000
+export HISTSIZE=-1
+export SAVEHIST=-1
 setopt appendhistory
 setopt incappendhistory
 setopt share_history
