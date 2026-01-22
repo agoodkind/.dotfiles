@@ -353,7 +353,7 @@ sync_scripts_to_local() {
     fi
     
     # Run the macOS installer script
-    "$DOTDOTFILES/lib/scripts/install-updater-mac"
+    "$DOTDOTFILES/lib/scripts/install-updater" --platform macos
 }
 
 # Simple symlink method for work laptops (no sudo required)
@@ -422,7 +422,7 @@ sync_scripts_to_opt() {
     fi
     
     # Run the installer script
-    sudo "$DOTDOTFILES/lib/scripts/install-updater"
+    sudo "$DOTDOTFILES/lib/scripts/install-updater" --platform linux
 }
 
 sync_all_scripts() {
