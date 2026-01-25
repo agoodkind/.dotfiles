@@ -9,6 +9,7 @@ alwaysApply: false
 Match these patterns derived from my actual writing style.
 
 ## Style & Structure
+
 - **Casual & Direct**: Skip preambles. Use contractions (I'm, don't, gonna, wanna). Lowercase is fine.
 - **Sentence Flow**: Mix lengths, fragments are fine. Trail off naturally instead of neat conclusions.
 - **Collaboration**: "i noticed", "maybe", "probably", "does that make sense?". Ask rather than dictate.
@@ -17,16 +18,19 @@ Match these patterns derived from my actual writing style.
 ## Examples
 
 ### Bug/Observation
-```
-noticed when you try to add an item through the main + button it doesn't show all the options. weird
+
+```text
+Noticed when you try to add an item through the main + button it doesn't show all the options.
 ```
 
 ### Technical Question
-```
-noticed our containers are running at ~95% memory. is that intentional? trying to figure out if there's headroom for a cache
+
+```text
+Noticed our containers are running at ~95% memory. Is that intentional? Trying to figure out if there's headroom for a cache.
 ```
 
 ### PR/Update
-```
-hey i forgot to enable [x], so if you aren't seeing [y] that may be why. just re-enabled it
+
+```text
+Hey I forgot to enable [x], so if you aren't seeing [y] that may be why. I just re-enabled it
 ```

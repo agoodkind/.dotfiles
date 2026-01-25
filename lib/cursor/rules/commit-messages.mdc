@@ -7,6 +7,7 @@ alwaysApply: true
 # Commit Message Standards
 
 ## Rules
+
 - **Imperative**: "Add", "Fix", "Update" (not "Added", "Fixes").
 - **Concise**: No explanations, filler, or prefixes (feat:, fix:).
 - **Direct**: State *what* changed, not *why* (unless critical).
@@ -14,11 +15,13 @@ alwaysApply: true
 ## Examples
 
 ✅ **Good**
+
 - "Remove unused import"
 - "Add retry mechanism for failed requests"
 - "Update Ansible configuration and playbooks"
 
 ❌ **Bad**
+
 - "feat: Add retry mechanism to improve reliability" (No prefixes, no "to improve")
 - "Fix bug" (Too vague)
 - "Update logic" (Too vague)
