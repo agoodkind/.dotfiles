@@ -6,6 +6,7 @@ alwaysApply: true
 # Global Rules
 
 ## Date Handling
+
 Do not assume the current year. Use dynamic methods:
 
 ```bash

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Sync .cursor/rules MDC files to Cursor's cloud User Rules via API."""
+"""Sync .cursor/rules MDC files to Cursor's cloud User Rules via API.
+"""
 
 import os
 import sqlite3
 import subprocess
 import sys
-import re
 import concurrent.futures
 from pathlib import Path
 
@@ -20,28 +20,9 @@ QUIET = "-q" in sys.argv
 INTERACTIVE = sys.stdout.isatty()
 
 
-def log(msg):
-    """Print message unless quiet mode."""
-    if not QUIET:
-        print(msg)
-
-
-def log_verbose(msg):
-    """Print indented message unless quiet mode."""
-    if not QUIET:
-        print(f"    {msg}")
-
-
-def get_auth_token():
-    """Extract auth token from Cursor's database."""
-    conn = sqlite3.connect(CURSOR_DB)
-    cursor = conn.execute(
-        "SELECT value FROM ItemTable WHERE key = 'cursorAuth/accessToken'"
-    )
-    token = cursor.fetchone()[0].strip('"')
-    conn.close()
-    return token
-
+# =============================================================================
+# Minimal protobuf encoding/decoding (no external dependencies)
+# =============================================================================
 
 def encode_varint(value):
     """Encode an integer as a protobuf varint."""
@@ -67,32 +48,80 @@ def read_varint(data, pos):
     return result, pos
 
 
-def encode_string_field(field_num, value):
-    """Encode a protobuf string field."""
-    value_bytes = value.encode("utf-8")
-    tag = (field_num << 3) | 2  # Wire type 2 = length-delimited
-    return bytes([tag]) + encode_varint(len(value_bytes)) + value_bytes
+def encode_bytes_field(field_num, value):
+    """Encode a protobuf bytes/string field (wire type 2)."""
+    if isinstance(value, str):
+        value = value.encode("utf-8")
+    tag = (field_num << 3) | 2
+    return bytes([tag]) + encode_varint(len(value)) + value
 
 
 def parse_field(data, pos):
-    """Parse a single protobuf field, return (field_num, value, new_position)."""
+    """Parse a single protobuf field, return (field_num, wire_type, value, new_pos)."""
     if pos >= len(data):
-        return None, None, pos
+        return None, None, None, pos
 
-    tag = data[pos]
+    tag, pos = read_varint(data, pos)
     field_num = tag >> 3
     wire_type = tag & 0x07
-    pos += 1
 
     if wire_type == 0:  # varint
         val, pos = read_varint(data, pos)
-        return field_num, val, pos
-    elif wire_type == 2:  # length-delimited
+        return field_num, wire_type, val, pos
+    elif wire_type == 2:  # length-delimited (bytes/string/message)
         length, pos = read_varint(data, pos)
-        val = data[pos : pos + length]
-        return field_num, val, pos + length
+        val = data[pos:pos + length]
+        return field_num, wire_type, val, pos + length
     else:
-        return None, None, len(data)
+        # Skip unknown wire types
+        return None, None, None, len(data)
+
+
+def parse_message(data):
+    """Parse all fields from a protobuf message into a dict."""
+    fields = {}
+    pos = 0
+    while pos < len(data):
+        field_num, wire_type, val, pos = parse_field(data, pos)
+        if field_num is None:
+            break
+        # Store as list if field repeats
+        if field_num in fields:
+            if not isinstance(fields[field_num], list):
+                fields[field_num] = [fields[field_num]]
+            fields[field_num].append(val)
+        else:
+            fields[field_num] = val
+    return fields
+
+
+# =============================================================================
+# Logging
+# =============================================================================
+
+def log(msg):
+    """Print message unless quiet mode."""
+    if not QUIET:
+        print(msg)
+
+
+def log_verbose(msg):
+    """Print indented message unless quiet mode."""
+    if not QUIET:
+        print(f"    {msg}")
+
+
+def get_auth_token():
+    """Extract auth token from Cursor's database."""
+    conn = sqlite3.connect(CURSOR_DB)
+    cursor = conn.execute(
+        "SELECT value FROM ItemTable WHERE key = 'cursorAuth/accessToken'"
+    )
+    token = cursor.fetchone()[0].strip('"')
+    conn.close()
+    return token
+
+
 
 
 def api_call(token, endpoint, payload):
@@ -149,24 +178,44 @@ def api_call_with_status(token, endpoint, payload):
     return http_code, body
 
 
+def decode_bytes(value, default=""):
+    """Decode bytes to string, handling both bytes and string input."""
+    if isinstance(value, bytes):
+        return value.decode("utf-8")
+    return value if value is not None else default
+
+
+def list_rules(token):
+    """List all user rules with full data (id, title, content)."""
+    response = api_call(token, "KnowledgeBaseList", b"")
+    if not response:
+        return []
+
+    decoded = parse_message(response)
+    raw_rules = decoded.get(2, [])
+
+    # Normalize to list (single item comes as bytes, multiple as list)
+    if isinstance(raw_rules, bytes):
+        raw_rules = [raw_rules]
+
+    rules = []
+    for entry_bytes in raw_rules:
+        entry = parse_message(entry_bytes)
+        # Field mapping: 1=id, 2=content, 3=title, 4=timestamp
+        rule = {
+            "id": decode_bytes(entry.get(1, b"")),
+            "content": decode_bytes(entry.get(2, b"")),
+            "title": decode_bytes(entry.get(3, b"")),
+            "timestamp": decode_bytes(entry.get(4, b"")),
+        }
+        if rule["id"]:
+            rules.append(rule)
+    return rules
+
+
 def list_rule_ids(token):
     """List all user rules and extract IDs."""
-    response = api_call(token, "KnowledgeBaseList", b"")
-    ids = []
-    i = 0
-    while i < len(response):
-        field_num, val, i = parse_field(response, i)
-        if field_num == 2 and isinstance(val, bytes):
-            j = 0
-            entry_field, entry_val, j = parse_field(val, j)
-            if entry_field == 1 and isinstance(entry_val, bytes):
-                try:
-                    id_str = entry_val.decode("utf-8")
-                    if id_str.isdigit():
-                        ids.append(id_str)
-                except (UnicodeDecodeError, ValueError):
-                    pass
-    return ids
+    return [r["id"] for r in list_rules(token) if r.get("id")]
 
 
 def get_rule_count(token):
@@ -176,17 +225,18 @@ def get_rule_count(token):
 
 def remove_rule(token, rule_id):
     """Remove a rule by ID."""
-    id_bytes = rule_id.encode("utf-8")
-    payload = bytes([0x0A, len(id_bytes)]) + id_bytes
+    # Field 1 = id
+    payload = encode_bytes_field(1, rule_id)
     return api_call(token, "KnowledgeBaseRemove", payload)
 
 
 def add_rule(token, title, content):
     """Add a new rule. Returns (success, response)."""
+    # Field 1 = content, Field 2 = title, Field 3 = workspace_url
     payload = b""
-    payload += encode_string_field(1, content)
-    payload += encode_string_field(2, title)
-    payload += encode_string_field(3, WORKSPACE_URL)
+    payload += encode_bytes_field(1, content)
+    payload += encode_bytes_field(2, title)
+    payload += encode_bytes_field(3, WORKSPACE_URL)
 
     http_code, body = api_call_with_status(token, "KnowledgeBaseAdd", payload)
     success = 200 <= http_code < 300
@@ -320,27 +370,58 @@ def sync_rules():
             log(f"    ❌ Failed to upload: {response}")
         log("")
 
-    # Verify rules were actually added to cloud
+    # Verify rules were actually added to cloud with content comparison
     log("🔍 Verifying cloud rules...")
-    cloud_count = get_rule_count(token)
+    cloud_rules = list_rules(token)
+    cloud_count = len(cloud_rules)
 
-    if cloud_count == succeeded:
-        log(f"  ✅ Verified: {cloud_count} rule(s) in cloud (expected {succeeded})")
+    # Build lookup of cloud rules by title
+    cloud_by_title = {r.get("title"): r for r in cloud_rules}
+
+    # Compare each uploaded rule
+    verified = 0
+    verify_failed = 0
+
+    for rule_file in rule_files:
+        if rule_file.is_symlink():
+            rule_file = rule_file.resolve()
+        if not rule_file.exists():
+            continue
+
+        title = rule_file.stem
+        expected_content = rule_file.read_text()
+
+        cloud_rule = cloud_by_title.get(title)
+        if not cloud_rule:
+            log(f"  ❌ Missing: {title}")
+            verify_failed += 1
+        elif cloud_rule.get("content") != expected_content:
+            log(f"  ❌ Content mismatch: {title}")
+            log_verbose(f"Expected {len(expected_content)} bytes, "
+                        f"got {len(cloud_rule.get('content', ''))} bytes")
+            verify_failed += 1
+        else:
+            log_verbose(f"✅ {title}: content verified")
+            verified += 1
+
+    log("")
+    if verify_failed == 0:
+        log(f"  ✅ Verified: {verified} rule(s) match local files")
     else:
-        log(f"  ⚠️  Mismatch: {cloud_count} rule(s) in cloud, expected {succeeded}")
-        log("     Some rules may not have been saved correctly.")
+        log(f"  ⚠️  {verify_failed} rule(s) failed verification")
     log("")
 
     log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    if failed == 0 and cloud_count == succeeded:
+    if failed == 0 and verify_failed == 0:
         log(f"✅ Sync complete: {succeeded} rule(s) uploaded and verified")
     elif failed > 0:
         log(
-            f"⚠️  Sync completed with errors: {succeeded}/{attempted} succeeded, {failed} failed"
+            f"⚠️  Sync completed with errors: {succeeded}/{attempted} succeeded, "
+            f"{failed} failed"
         )
-    else:
+    elif verify_failed > 0:
         log(
-            f"⚠️  Sync completed but verification failed: expected {succeeded}, found {cloud_count}"
+            f"⚠️  Sync completed but {verify_failed} rule(s) failed content verification"
         )
     log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
