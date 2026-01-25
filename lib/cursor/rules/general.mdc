@@ -13,6 +13,9 @@ alwaysApply: true
 - **Tone**: Engineer-to-engineer. Present tense, direct facts.
 - **Format**: 1-3 short paragraphs. Concrete, copy-pastable snippets.
 - **No emdashes**: Never use emdashes (—) or emdash-like constructs (--). Restructure sentences to use periods, commas, colons, or parentheses instead.
+- **Direct**: State *what* changed or *what* is, not *why* (unless critical). Avoid purpose clauses ("to improve", "for better performance").
+- **Specific**: Avoid vague language. Be specific about what changed or what the issue is.
+- **No fluff words**: Avoid "improves", "enhances", "streamlines", "ensures", "allows", "enables" when used as justification. State facts directly.
 
 ## Technical Accuracy
 

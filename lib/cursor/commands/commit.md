@@ -32,6 +32,7 @@ Commit changes with a generated commit message. If files are already staged, com
 ### Vague or Overly Detailed Messages
 
 - **Too Vague**: Avoid generic terms without specifics (e.g., "Update logic", "Fix bug", "Improve code", "Refactor")
+- **After Removing Fluff**: Removing fluff must not leave a vague message. Be specific about what changed.
 - **Too Detailed**: Avoid step-by-step implementation details, multi-line explanations, or describing the mechanism
 - Find the balance: State what changed and where, without explaining how or why
 
@@ -44,6 +45,8 @@ Commit changes with a generated commit message. If files are already staged, com
 - "fixes" (as a prefix)
 - "adds" (as a prefix)
 - "updates" (as a prefix)
+- "ensures"
+- "enhances"
 - Any justification or explanation of why the change was made
 
 ## Commit Scope & Splitting
@@ -58,6 +61,7 @@ Commit changes with a generated commit message. If files are already staged, com
 - **Ask When Uncertain**: If it's unclear whether a file should be included, ask before committing
 
 Signs you should split commits:
+
 - Changes affect unrelated features or systems
 - The commit message would need "and" to describe all changes
 - Some files are cleanup/refactoring while others are new functionality
@@ -107,22 +111,28 @@ When in doubt, ask before including a suspicious file.
 
 ❌ Bad:
 
-- "feat: Add retry mechanism to improve reliability"
-- "This PR fixes a bug that was causing issues"
-- "Update validation to ensure data integrity"
-- "Refactor: This enhances code maintainability"
-- "Comment out stdout debug output in Logstash configuration file to streamline logging."
-- "Add playbook to update Traefik configuration\n Create systemd service template for Traefik\n Add .gitignore for Traefik configuration files..."
-- "Add delete_existing_vm option to create-vm.yml for improved VM management"
-- "Fix bug" (too vague)
-- "Update logic" (too vague)
-- "Refactor code" (too vague)
-- "Update silver validation logic" (too vague)
-- "Reintroduce VM existence check in Debian playbook with improved clarity. Uncommented tasks for setting facts about existing VMs, while temporarily commenting out VM stop and destroy tasks to streamline the redeployment process. This change enhances the overall flow and maintainability of the playbook."
-- "Refactor deploy-mwan.yml to streamline service management and enhance clarity. Removed redundant notifications for service reloads and restarts, and added explicit service start commands based on certificate checks. Improved overall flow by consolidating service enabling and starting tasks."
-- "Update VM creation condition in Debian playbook to check for undefined VMID. This change ensures that the VM creation block is only executed when a new VMID is available, improving the logic and flow of the playbook."
-- "Enable privilege escalation in Ansible configuration by setting 'become' to True. This change allows tasks to run with elevated permissions, enhancing the flexibility of playbook execution."
-- "Comment out temporary VM management tasks in the Debian VM playbook to streamline the deployment process. This change enhances clarity and maintainability by removing unnecessary steps related to stopping and destroying existing VMs before creation."
+- "feat: Add retry mechanism to improve reliability" (Prefix "feat:", fluff "to improve")
+- "This PR fixes a bug that was causing issues" (Conversational, vague "bug", past tense)
+- "Update validation to ensure data integrity" (Fluff "to ensure")
+- "Refactor: This enhances code maintainability" (Prefix "Refactor:", fluff "enhances")
+- "Comment out stdout debug output in Logstash configuration file to streamline logging." (Fluff "to streamline")
+- "Add playbook to update Traefik configuration\n Create systemd service template for Traefik\n Add .gitignore for Traefik configuration files..." (Multi-line format)
+- "Add delete_existing_vm option to create-vm.yml for improved VM management" (Fluff "for improved")
+- "Fix bug" (Too vague)
+- "Update logic" (Too vague)
+- "Refactor code" (Too vague)
+- "Update silver validation logic" (Too vague)
+- "Refactor netfilter modules to improve consistency and functionality" (Fluff: "to improve")
+- "Changed target functions, enhancing clarity in their purpose" (Fluff: "enhancing clarity")
+- "Improved the handling of DSCP and TTL values" (Fluff: "Improved")
+- "Update validation logic to ensure data integrity" (Fluff: "to ensure")
+- "Refactor code to enhance maintainability and streamline operations" (Fluff: "enhance", "streamline" - without fluff: "Refactor code" is meaningless)
+- "Add error handling to improve user experience" (Fluff: "to improve")
+- "Reintroduce VM existence check in Debian playbook with improved clarity. Uncommented tasks for setting facts about existing VMs, while temporarily commenting out VM stop and destroy tasks to streamline the redeployment process. This change enhances the overall flow and maintainability of the playbook." (Multi-sentence, fluff: "improved", "streamline", "enhances")
+- "Refactor deploy-mwan.yml to streamline service management and enhance clarity. Removed redundant notifications for service reloads and restarts, and added explicit service start commands based on certificate checks. Improved overall flow by consolidating service enabling and starting tasks." (Multi-sentence, fluff: "streamline", "enhance", "Improved")
+- "Update VM creation condition in Debian playbook to check for undefined VMID. This change ensures that the VM creation block is only executed when a new VMID is available, improving the logic and flow of the playbook." (Multi-sentence, fluff: "ensures", "improving")
+- "Enable privilege escalation in Ansible configuration by setting 'become' to True. This change allows tasks to run with elevated permissions, enhancing the flexibility of playbook execution." (Multi-sentence, fluff: "allows", "enhancing")
+- "Comment out temporary VM management tasks in the Debian VM playbook to streamline the deployment process. This change enhances clarity and maintainability by removing unnecessary steps related to stopping and destroying existing VMs before creation." (Multi-sentence, fluff: "streamline", "enhances")
 
 ## Output Format
 
