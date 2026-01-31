@@ -12,29 +12,41 @@ source "${DOTDOTFILES}/lib/setup/helpers/colors.sh"
 color_echo BLUE "📁  Sourcing utilities..."
 source "${DOTDOTFILES}/lib/setup/helpers/defaults.sh"
 
-# On macOS, we need a modern bash (4+) for associative arrays in packages.sh
-if [[ "$OSTYPE" == "darwin"* ]] && [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
-    color_echo YELLOW "⚠️  Modern bash (4+) required for packages.sh. Checking for Homebrew bash..."
-    if ! command -v brew >/dev/null 2>&1; then
-        color_echo BLUE "🍺  Installing Homebrew..."
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+# Ensure we have a modern bash (4+) for associative arrays in packages.sh
+if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
+    color_echo YELLOW "⚠️  Modern bash (4+) required for packages.sh (current: $BASH_VERSION)"
+    
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        color_echo YELLOW "Checking for Homebrew bash..."
+        if ! command -v brew >/dev/null 2>&1; then
+            color_echo BLUE "🍺  Installing Homebrew..."
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        fi
+        
+        BREW_PREFIX=$(brew --prefix)
+        MODERN_BASH="$BREW_PREFIX/bin/bash"
+        
+        if [[ ! -x "$MODERN_BASH" ]]; then
+            color_echo BLUE "🍺  Installing modern bash via Homebrew..."
+            brew install bash
+        fi
+        
+        if [[ -x "$MODERN_BASH" ]]; then
+            color_echo GREEN "🔄  Re-executing with modern bash..."
+            exec "$MODERN_BASH" "$0" "$@"
+        fi
+    elif [[ -f /etc/os-release ]]; then
+        color_echo YELLOW "Attempting to update bash via apt..."
+        sudo apt-get update && sudo apt-get install -y bash
+        
+        # Check if we now have a newer version in the path
+        if [[ "$(bash -c 'echo ${BASH_VERSINFO[0]}')" -ge 4 ]]; then
+            color_echo GREEN "🔄  Re-executing with updated bash..."
+            exec bash "$0" "$@"
+        fi
     fi
     
-    # Try to find existing homebrew bash
-    BREW_PREFIX=$(brew --prefix)
-    MODERN_BASH="$BREW_PREFIX/bin/bash"
-    
-    if [[ ! -x "$MODERN_BASH" ]]; then
-        color_echo BLUE "🍺  Installing modern bash via Homebrew..."
-        brew install bash
-    fi
-    
-    if [[ -x "$MODERN_BASH" ]]; then
-        color_echo GREEN "🔄  Re-executing with modern bash..."
-        exec "$MODERN_BASH" "$0" "$@"
-    else
-        color_echo RED "❌  Could not find or install modern bash. Installation may fail."
-    fi
+    color_echo RED "❌  Could not ensure modern bash. Installation may fail."
 fi
 
 source "${DOTDOTFILES}/lib/setup/helpers/packages.sh"
