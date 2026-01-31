@@ -58,45 +58,6 @@ is_cargo_installed() {
 	command -v "$binary" &>/dev/null
 }
 
-install_cloudflare_speed_cli() {
-	color_echo CYAN "Installing cloudflare-speed-cli from GitHub releases..."
-	local repo="kavehtehrani/cloudflare-speed-cli"
-	local arch
-	case "$(uname -m)" in
-		x86_64) arch="x86_64" ;;
-		arm64|aarch64) arch="aarch64" ;;
-		*) color_echo RED "Unsupported architecture for cloudflare-speed-cli binary"; return 1 ;;
-	esac
-	
-	local os="unknown-linux-musl"
-	if [[ "$OSTYPE" == "darwin"* ]]; then
-		os="apple-darwin"
-	fi
-
-	local version
-	version=$(curl -s "https://api.github.com/repos/$repo/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-	local filename="cloudflare-speed-cli-$arch-$os.tar.xz"
-	local url="https://github.com/kavehtehrani/cloudflare-speed-cli/releases/download/$version/$filename"
-	
-	curl -L "$url" -o "/tmp/$filename"
-	mkdir -p "/tmp/cloudflare-speed-cli"
-	tar -xf "/tmp/$filename" -C "/tmp/cloudflare-speed-cli"
-	
-	local bin_name="cloudflare-speed-cli"
-	# macOS tar might preserve directory structure or just extract files
-	local bin_path
-	bin_path=$(find "/tmp/cloudflare-speed-cli" -name "$bin_name" -type f | head -n 1)
-	
-	if [[ -x "$bin_path" ]]; then
-		mkdir -p "$HOME/.cargo/bin"
-		cp "$bin_path" "$HOME/.cargo/bin/"
-		color_echo GREEN "cloudflare-speed-cli installed to ~/.cargo/bin"
-	else
-		color_echo RED "Failed to find binary in cloudflare-speed-cli archive"
-		return 1
-	fi
-}
-
 # Install cargo packages
 CARGO_TO_INSTALL=()
 
@@ -120,35 +81,13 @@ if [ ${#CARGO_TO_INSTALL[@]} -gt 0 ]; then
 	for package in "${CARGO_TO_INSTALL[@]}"; do
 		color_echo CYAN "Checking $package..."
 		
-		# 1. Try First-Party Binary Installers
-		case "$package" in
-			starship)
-				color_echo CYAN "Installing starship via official installer..."
-				curl -sS https://starship.rs/install.sh | sh -s -- --yes
+		# 1. Try Custom Tool Installers (lib/setup/tools/)
+		local tool_script="${DOTDOTFILES}/lib/setup/tools/${package}.sh"
+		if [[ -x "$tool_script" ]]; then
+			if "$tool_script"; then
 				continue
-				;;
-			atuin)
-				color_echo CYAN "Installing atuin via official installer..."
-				curl --proto '=https' --tlsv1.2 -sSf https://setup.atuin.sh | sh -s -- --yes
-				continue
-				;;
-			xh)
-				color_echo CYAN "Installing xh via official installer..."
-				curl -sfL https://raw.githubusercontent.com/ducaale/xh/master/install.sh | sh
-				continue
-				;;
-			cloudflare-speed-cli)
-				if install_cloudflare_speed_cli; then
-					continue
-				fi
-				;;
-			async-cmd)
-				if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
-					color_echo YELLOW "⏭️  Skipping async-cmd compilation in CI"
-					continue
-				fi
-				;;
-		esac
+			fi
+		fi
 
 		# 2. Fallback to cargo-binstall or cargo install
 		color_echo CYAN "Installing $package via cargo/binstall..."
