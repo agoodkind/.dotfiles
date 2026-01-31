@@ -6,14 +6,30 @@ set -o pipefail
 export DOTDOTFILES="${DOTDOTFILES:-$(cd "$(dirname "$0")/../../.." && pwd)}"
 source "${DOTDOTFILES}/lib/setup/helpers/colors.sh"
 
-if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
-    color_echo YELLOW "  ⏭️  Skipping tree-sitter compilation in CI"
-    exit 0
-fi
+color_echo CYAN "  📦  Installing tree-sitter-cli from GitHub releases..."
 
-color_echo CYAN "  📦  Installing tree-sitter via cargo-binstall..."
-if command -v cargo-binstall &>/dev/null; then
-    cargo binstall -y tree-sitter-cli
-else
-    cargo install tree-sitter-cli
-fi
+repo="tree-sitter/tree-sitter"
+arch=$(uname -m)
+os_type=$(uname -s | tr '[:upper:]' '[:lower:]')
+
+# Map architecture
+case "$arch" in
+    x86_64) arch="x64" ;;
+    arm64|aarch64) arch="arm64" ;;
+esac
+
+# Map OS
+case "$os_type" in
+    darwin) os="macos" ;;
+    linux) os="linux" ;;
+esac
+
+tag=$(curl -s "https://api.github.com/repos/$repo/releases/latest" | jq -r .tag_name)
+filename="tree-sitter-$os-$arch.gz"
+url="https://github.com/$repo/releases/download/$tag/$filename"
+
+mkdir -p "$HOME/.cargo/bin"
+curl -L "$url" | gunzip -c > "$HOME/.cargo/bin/tree-sitter"
+chmod +x "$HOME/.cargo/bin/tree-sitter"
+
+color_echo GREEN "  ✅  tree-sitter installed to ~/.cargo/bin"

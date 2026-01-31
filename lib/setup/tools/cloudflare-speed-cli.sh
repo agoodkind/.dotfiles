@@ -5,7 +5,7 @@ set -o pipefail
 export DOTDOTFILES="${DOTDOTFILES:-$(cd "$(dirname "$0")/../../.." && pwd)}"
 source "${DOTDOTFILES}/lib/setup/helpers/colors.sh"
 
-color_echo CYAN "Installing cloudflare-speed-cli from GitHub releases..."
+color_echo CYAN "  📦  Installing cloudflare-speed-cli from GitHub releases..."
 repo="kavehtehrani/cloudflare-speed-cli"
 
 case "$(uname -m)" in
@@ -19,22 +19,25 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     os="apple-darwin"
 fi
 
-version=$(curl -s "https://api.github.com/repos/$repo/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+version=$(curl -s "https://api.github.com/repos/$repo/releases/latest" | jq -r .tag_name)
 filename="cloudflare-speed-cli-$arch-$os.tar.xz"
 url="https://github.com/kavehtehrani/cloudflare-speed-cli/releases/download/$version/$filename"
 
+mkdir -p "$HOME/.cargo/bin"
 curl -L "$url" -o "/tmp/$filename"
-mkdir -p "/tmp/cloudflare-speed-cli"
-tar -xf "/tmp/$filename" -C "/tmp/cloudflare-speed-cli"
+mkdir -p "/tmp/cloudflare-speed-cli-extract"
+tar -xf "/tmp/$filename" -C "/tmp/cloudflare-speed-cli-extract"
 
-bin_name="cloudflare-speed-cli"
-bin_path=$(find "/tmp/cloudflare-speed-cli" -name "$bin_name" -type f | head -n 1)
+# Binary is inside a subdirectory matching the filename prefix
+bin_path=$(find "/tmp/cloudflare-speed-cli-extract" -name "cloudflare-speed-cli" -type f | head -n 1)
 
 if [[ -x "$bin_path" ]]; then
-    mkdir -p "$HOME/.cargo/bin"
     cp "$bin_path" "$HOME/.cargo/bin/"
-    color_echo GREEN "cloudflare-speed-cli installed to ~/.cargo/bin"
+    chmod +x "$HOME/.cargo/bin/cloudflare-speed-cli"
+    color_echo GREEN "  ✅  cloudflare-speed-cli installed to ~/.cargo/bin"
 else
-    color_echo RED "Failed to find binary in cloudflare-speed-cli archive"
+    color_echo RED "  ❌  Failed to find binary in cloudflare-speed-cli archive"
     exit 1
 fi
+
+rm -rf "/tmp/$filename" "/tmp/cloudflare-speed-cli-extract"
