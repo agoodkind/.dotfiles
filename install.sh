@@ -123,7 +123,9 @@ if [[ "$CURRENT_SHELL" == "$ZSH_PATH" ]] || [[ "$(basename "$CURRENT_SHELL" 2>/d
     color_echo GREEN "  ✅  Installation complete!"
 else
     color_echo YELLOW "  🔄  Changing login shell to zsh..."
-    if chsh -s "$ZSH_PATH"; then
+    if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+        color_echo YELLOW "  ⏭️  Skipping shell change in CI"
+    elif chsh -s "$ZSH_PATH"; then
         color_echo GREEN "  ✅  Login shell changed to zsh"
         color_echo YELLOW "  💡  Log out and back in, or run: exec zsh"
     else
