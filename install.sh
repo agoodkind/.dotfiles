@@ -103,7 +103,8 @@ ZSH_PATH=$(command -v zsh)
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     # macOS: use dscl to get login shell, extract path after "UserShell: "
-    CURRENT_SHELL=$(dscl . -read "/Users/$(whoami)" UserShell 2>/dev/null | awk '{print $2}')
+    CURRENT_SHELL=$(dscl . -read "/Users/$(whoami)" UserShell 2>/dev/null | \
+        awk '{print $2}')
 else
     # Linux: use getent to get login shell from passwd
     CURRENT_SHELL=$(getent passwd "$(whoami)" 2>/dev/null | cut -d: -f7)
