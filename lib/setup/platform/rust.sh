@@ -52,8 +52,6 @@ is_cargo_installed() {
 	local binary="$package"
 	case "$package" in
 		"tree-sitter-cli") binary="tree-sitter" ;;
-		"cloudflare-speed-cli") binary="cloudflare-speed-cli" ;;
-		"async-cmd") binary="async" ;;
 	esac
 	command -v "$binary" &>/dev/null
 }
@@ -64,6 +62,11 @@ CARGO_TO_INSTALL=()
 color_echo YELLOW "Checking cargo packages..."
 
 for package in "${CARGO_PACKAGES[@]}"; do
+	# Skip tools that have their own custom installer scripts
+	if [[ -f "${DOTDOTFILES}/lib/setup/tools/${package}.sh" ]]; then
+		continue
+	fi
+
 	if ! is_cargo_installed "$package"; then
 		CARGO_TO_INSTALL+=("$package")
 	fi
@@ -81,15 +84,7 @@ if [ ${#CARGO_TO_INSTALL[@]} -gt 0 ]; then
 	for package in "${CARGO_TO_INSTALL[@]}"; do
 		color_echo CYAN "Checking $package..."
 		
-		# 1. Try Custom Tool Installers (lib/setup/tools/)
-		local tool_script="${DOTDOTFILES}/lib/setup/tools/${package}.sh"
-		if [[ -x "$tool_script" ]]; then
-			if "$tool_script"; then
-				continue
-			fi
-		fi
-
-		# 2. Fallback to cargo-binstall or cargo install
+		# Fallback to cargo-binstall or cargo install
 		color_echo CYAN "Installing $package via cargo/binstall..."
 		
 		# Check if this package requires git installation

@@ -711,32 +711,32 @@ run_os_install() {
 
 main() {
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    color_echo BLUE "[1/11] Updating git repo..."
+    color_echo BLUE "[1/12] Updating git repo..."
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     update_git_repo
 
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    color_echo BLUE "[2/11] Linking dotfiles..."
+    color_echo BLUE "[2/12] Linking dotfiles..."
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     link_dotfiles
 
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    color_echo BLUE "[3/11] Syncing SSH config..."
+    color_echo BLUE "[3/12] Syncing SSH config..."
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     sync_ssh_config
 
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    color_echo BLUE "[4/11] Updating authorized keys..."
+    color_echo BLUE "[4/12] Updating authorized keys..."
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     update_authorized_keys
 
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    color_echo BLUE "[5/11] Syncing scripts..."
+    color_echo BLUE "[5/12] Syncing scripts..."
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     sync_all_scripts
 
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    color_echo BLUE "[6/11] Syncing Cursor config..."
+    color_echo BLUE "[6/12] Syncing Cursor config..."
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     sync_cursor_config
     sync_cursor_user_rules
@@ -744,28 +744,33 @@ main() {
     sync_git_hooks
 
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    color_echo BLUE "[7/11] Repair cleanup (if --repair)..."
+    color_echo BLUE "[7/12] Repair cleanup (if --repair)..."
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     cleanup_homebrew_repair
     cleanup_neovim_repair
 
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    color_echo BLUE "[8/11] Updating Neovim plugins..."
+    color_echo BLUE "[8/12] Updating Neovim plugins..."
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     update_neovim_plugins
 
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    color_echo BLUE "[9/11] Cleaning up zcompdump..."
+    color_echo BLUE "[9/12] Cleaning up zcompdump..."
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     cleanup_zcompdump
 
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    color_echo BLUE "[10/11] Running OS-specific install..."
+    color_echo BLUE "[10/12] Running OS-specific install..."
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     run_os_install "$@"
 
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    color_echo BLUE "[11/11] Creating hushlogin..."
+    color_echo BLUE "[11/12] Installing custom tools..."
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    "$DOTDOTFILES/lib/setup/platform/tools.sh" "$@"
+
+    color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    color_echo BLUE "[12/12] Creating hushlogin..."
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     create_hushlogin
 
