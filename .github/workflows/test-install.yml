@@ -1,0 +1,25 @@
+name: Test Install
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  install:
+    name: Install (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run install script
+        env:
+          DOTDOTFILES: ${{ github.workspace }}
+        run: |
+          chmod +x install.sh
+          ./install.sh --use-defaults
