@@ -5,8 +5,6 @@
 zmodload zsh/datetime
 START_TIME=$EPOCHREALTIME
 export DOTDOTFILES="$HOME/.dotfiles"
-export PATH="$PATH:$HOME/.local/bin:$HOME/.local/bin/scripts:/opt/scripts"
-export NVM_LAZY_LOAD=true
 ###############################################################################
 # Include OS specific and common zshrc configs ################################
 source $DOTDOTFILES/lib/shell/zsh/incl.zsh
@@ -94,6 +92,8 @@ prefer lg lazygit
 
 # ssh helper
 sshrm() { command ssh-keygen -R "$@"; }
+
+prefer docker podman
 
 # Editor preference: nvim > vim > vi
 # This logic must come AFTER all other `prefer` calls and alias definitions
