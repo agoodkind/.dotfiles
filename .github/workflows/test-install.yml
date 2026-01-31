@@ -21,6 +21,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install modern Bash (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install bash
+
       - name: Cache Homebrew (macOS)
         if: matrix.os == 'macos-latest'
         uses: actions/cache@v4

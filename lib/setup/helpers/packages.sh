@@ -141,13 +141,13 @@ export CARGO_PACKAGES=(
 
 # Go packages (installed via go install)
 # Format: package-name=install-path
-declare -gA GO_PACKAGES=(
+declare -A GO_PACKAGES=(
 	[lazygit]="github.com/jesseduffield/lazygit@latest"
 )
 
 # Cargo packages requiring git installation - associative arrays
 # Format: [package]="url|features"
-declare -gA CARGO_GIT_PACKAGES=(
+declare -A CARGO_GIT_PACKAGES=(
 	[cloudflare-speed-cli]="https://github.com/kavehtehrani/cloudflare-speed-cli|tui"
 )
 
@@ -164,7 +164,7 @@ function get_cargo_git_details() {
 
 # Brew casks - associative array mapping cask name to app name
 # Empty value means CLI-only or font (no .app to check)
-declare -gA BREW_CASKS=(
+declare -A BREW_CASKS=(
 	[1password]="1Password"
 	[1password-cli]=""
 	[iterm2]="iTerm"
