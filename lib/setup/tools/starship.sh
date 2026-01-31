@@ -3,7 +3,7 @@ set -e
 set -o pipefail
 
 # Sourcing from DOTDOTFILES or calculating relative path
-export DOTDOTFILES="${DOTDOTFILES:-$(cd "$(dirname "$0")/../../.." && pwd)}"
+export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 source "${DOTDOTFILES}/lib/setup/helpers/colors.sh"
 
 color_echo CYAN "Installing starship via official installer..."

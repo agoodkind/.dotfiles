@@ -2,7 +2,7 @@
 set -e
 set -o pipefail
 
-export DOTDOTFILES="${DOTDOTFILES:-$(cd "$(dirname "$0")/../../.." && pwd)}"
+export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 source "${DOTDOTFILES}/lib/setup/helpers/colors.sh"
 
 color_echo CYAN "  📦  Installing cloudflare-speed-cli from GitHub releases..."
