@@ -20,4 +20,4 @@ case "$OS_NAME" in
 esac
 
 color_echo CYAN "  📦  Installing tokei..."
-install_from_github "XAMPPRocky/tokei" "$pattern" "tokei" "tar -xzf"
+install_from_github "XAMPPRocky/tokei" "$pattern" "tokei"
