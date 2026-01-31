@@ -63,7 +63,10 @@ color_echo YELLOW "Checking cargo packages..."
 
 for package in "${CARGO_PACKAGES[@]}"; do
 	# Skip tools that have their own custom installer scripts
-	if [[ -f "${DOTDOTFILES}/lib/setup/tools/${package}.sh" ]]; then
+	# 1. Check if a script named <package>.sh exists
+	# 2. Check if any script contains "# package: <package>"
+	if [[ -f "${DOTDOTFILES}/lib/setup/tools/${package}.sh" ]] || \
+	   grep -lqE "^# package: ${package}\$" "${DOTDOTFILES}/lib/setup/tools"/*.sh 2>/dev/null; then
 		continue
 	fi
 

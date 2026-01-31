@@ -14,16 +14,7 @@ color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━
 
 # Check if a tool is installed
 is_tool_installed() {
-    local tool="$1"
-    local binary="$tool"
-    
-    # Mapping for tools where binary name != package name
-    case "$tool" in
-        "tree-sitter-cli") binary="tree-sitter" ;;
-        "cloudflare-speed-cli") binary="cloudflare-speed-cli" ;;
-        "async-cmd") binary="async" ;;
-    esac
-    
+    local binary="$1"
     command -v "$binary" &>/dev/null
 }
 
