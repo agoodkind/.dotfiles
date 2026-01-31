@@ -17,6 +17,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache Homebrew (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /usr/local/Homebrew
+          key: ${{ runner.os }}-brew-${{ hashFiles('lib/setup/helpers/packages.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-brew-
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('lib/setup/helpers/packages.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Cache Go
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('lib/setup/helpers/packages.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
       - name: Run install script
         env:
           DOTDOTFILES: ${{ github.workspace }}
