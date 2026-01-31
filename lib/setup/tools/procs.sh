@@ -4,33 +4,20 @@ set -o pipefail
 
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 source "${DOTDOTFILES}/lib/setup/helpers/colors.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/tools.sh"
 
-color_echo CYAN "  📦  Installing procs from GitHub releases..."
-
-repo="dalance/procs"
-arch=$(uname -m)
-os_type=$(uname -s | tr '[:upper:]' '[:lower:]')
+get_system_info
 
 # Map OS/Arch for procs naming convention
-case "$os_type" in
-    darwin) os="mac" ;;
-    linux) os="linux" ;;
+case "$OS_NAME" in
+    macos) os_tag="mac" ;;
+    linux) os_tag="linux" ;;
 esac
 
-case "$arch" in
-    x86_64) arch="x86_64" ;;
-    arm64|aarch64) arch="aarch64" ;;
+case "$ARCH" in
+    x86_64) arch_tag="x86_64" ;;
+    arm64|aarch64) arch_tag="aarch64" ;;
 esac
 
-tag=$(curl -s "https://api.github.com/repos/$repo/releases/latest" | jq -r .tag_name)
-filename="procs-$tag-$arch-$os.zip"
-url="https://github.com/$repo/releases/download/$tag/$filename"
-
-mkdir -p "$HOME/.cargo/bin"
-curl -L "$url" -o "/tmp/procs.zip"
-unzip -o "/tmp/procs.zip" -d "/tmp/procs-extract"
-mv "/tmp/procs-extract/procs" "$HOME/.cargo/bin/"
-chmod +x "$HOME/.cargo/bin/procs"
-rm -rf "/tmp/procs.zip" "/tmp/procs-extract"
-
-color_echo GREEN "  ✅  procs installed to ~/.cargo/bin"
+color_echo CYAN "  📦  Installing procs..."
+install_from_github "dalance/procs" "contains(\"$os_tag\") and contains(\"$arch_tag\") and endswith(\".zip\")" "procs" "unzip -o"
