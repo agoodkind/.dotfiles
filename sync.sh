@@ -586,6 +586,26 @@ cleanup_neovim_repair() {
         find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*" -type d ! -name "*.so" -exec rm -rf {} + 2>/dev/null
     fi
     
+    # Clean up swap files in repair mode
+    local NVIM_SWAP="${XDG_STATE_HOME:-$HOME/.local/state}/nvim/swap"
+    local swap_count=0
+    if [[ -d "$NVIM_SWAP" ]]; then
+        swap_count=$(find "$NVIM_SWAP" -name "*.swp" -type f 2>/dev/null | wc -l)
+        if [[ "$swap_count" -gt 0 ]]; then
+            find "$NVIM_SWAP" -name "*.swp" -type f -delete 2>/dev/null
+            color_echo YELLOW "  🗑️  Removed $swap_count swap file(s)"
+        fi
+    fi
+    # Also check legacy swap location
+    local NVIM_SWAP_LEGACY="$NVIM_DATA/swap"
+    if [[ -d "$NVIM_SWAP_LEGACY" ]]; then
+        swap_count=$(find "$NVIM_SWAP_LEGACY" -name "*.swp" -type f 2>/dev/null | wc -l)
+        if [[ "$swap_count" -gt 0 ]]; then
+            find "$NVIM_SWAP_LEGACY" -name "*.swp" -type f -delete 2>/dev/null
+            color_echo YELLOW "  🗑️  Removed $swap_count swap file(s) from legacy location"
+        fi
+    fi
+    
     color_echo GREEN "  ✅  Neovim cleanup complete"
 }
 
@@ -611,6 +631,21 @@ update_neovim_plugins() {
     
     nvim --headless -c "lua require('lazy').sync()" -c "qa" 2>/dev/null || true
     color_echo GREEN "  ✅  Neovim plugins updated"
+    
+    # Install treesitter parsers if tree-sitter CLI is available
+    if command -v tree-sitter >/dev/null 2>&1; then
+        local ts_version
+        ts_version=$(tree-sitter --version 2>/dev/null | awk '{print $2}')
+        # Require tree-sitter 0.21+ for build command
+        if [[ "$(printf '%s\n' "0.21.0" "$ts_version" | sort -V | head -1)" == "0.21.0" ]]; then
+            color_echo YELLOW "🌳  Installing treesitter parsers..."
+            local parsers="bash,lua,vim,vimdoc,python,javascript,typescript,json,yaml"
+            nvim --headless "+lua require('nvim-treesitter').install({'${parsers//,/\',\'}'})" "+sleep 10" "+qa" 2>/dev/null || true
+            color_echo GREEN "  ✅  Treesitter parsers installed"
+        else
+            color_echo YELLOW "  ⚠️  tree-sitter CLI too old ($ts_version), skipping parser install"
+        fi
+    fi
 }
 
 ###############################################################################
