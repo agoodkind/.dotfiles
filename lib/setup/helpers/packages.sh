@@ -126,9 +126,6 @@ export BREW_SPECIFIC=(
 # Cargo packages (installed via cargo install)
 # These are packages not available via apt on Linux
 export CARGO_PACKAGES=(
-	procs
-	tokei
-	tree-sitter-cli
 )
 
 # Go packages (installed via go install)
