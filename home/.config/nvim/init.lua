@@ -29,8 +29,20 @@ vim.g.maplocalleader = "\\"
 -- General Settings
 -- =============================================================================
 
--- Enable true color support
-vim.opt.termguicolors = true
+-- Enable true color support if terminal supports it
+-- Check COLORTERM, or fallback to checking if we're in a known good terminal
+local colorterm = vim.env.COLORTERM
+local term = vim.env.TERM or ''
+local term_program = vim.env.TERM_PROGRAM or ''
+
+if colorterm == 'truecolor' or colorterm == '24bit'
+    or term_program == 'iTerm.app'
+    or term_program == 'Apple_Terminal'
+    or term:match('256color')
+    or term:match('kitty')
+    or term:match('alacritty') then
+    vim.opt.termguicolors = true
+end
 
 -- Enable syntax highlighting
 vim.cmd('syntax on')
