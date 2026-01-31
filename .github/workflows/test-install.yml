@@ -21,14 +21,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install latest Bash (macOS)
-        if: matrix.os == 'macos-latest'
-        run: brew install bash
-
-      - name: Install latest Bash (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y bash
-
       - name: Cache Homebrew (macOS)
         if: matrix.os == 'macos-latest'
         uses: actions/cache@v4
