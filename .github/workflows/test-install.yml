@@ -21,11 +21,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install modern Bash (macOS)
+      - name: Install latest Bash (macOS)
         if: matrix.os == 'macos-latest'
         run: brew install bash
 
-      - name: Install modern Bash (Ubuntu)
+      - name: Install latest Bash (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y bash
 

@@ -12,9 +12,10 @@ source "${DOTDOTFILES}/lib/setup/helpers/colors.sh"
 color_echo BLUE "📁  Sourcing utilities..."
 source "${DOTDOTFILES}/lib/setup/helpers/defaults.sh"
 
-# Ensure we have a modern bash (4+) for associative arrays in packages.sh
+# Ensure we have a modern bash (4+ required, 5+ preferred)
 if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
-    color_echo YELLOW "⚠️  Modern bash (4+) required for packages.sh (current: $BASH_VERSION)"
+    color_echo YELLOW "⚠️  Modern bash required for packages.sh (current: $BASH_VERSION)"
+    color_echo YELLOW "Note: Bash 5.x is the current standard."
     
     if [[ "$OSTYPE" == "darwin"* ]]; then
         color_echo YELLOW "Checking for Homebrew bash..."
