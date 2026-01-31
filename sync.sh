@@ -142,8 +142,15 @@ update_git_repo() {
     
     handle_git_lock
     
-    # can't use config here since we don't know if its been defined yet
-    (cd "$DOTDOTFILES" && git pull)
+    # Skip git pull in CI or if detached HEAD
+    if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+        color_echo YELLOW "  ⏭️  Skipping git pull in CI"
+    elif ! git symbolic-ref -q HEAD >/dev/null; then
+        color_echo YELLOW "  ⏭️  Skipping git pull (detached HEAD)"
+    else
+        (cd "$DOTDOTFILES" && git pull)
+    fi
+    
     (cd "$DOTDOTFILES" && git submodule update --init --recursive)
     
     # Update timestamp after git operations (matches original behavior)
