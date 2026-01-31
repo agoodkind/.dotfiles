@@ -142,13 +142,11 @@ update_git_repo() {
     
     handle_git_lock
     
-    # Skip git pull in CI or if detached HEAD
-    if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
-        color_echo YELLOW "  ⏭️  Skipping git pull in CI"
-    elif ! git symbolic-ref -q HEAD >/dev/null; then
-        color_echo YELLOW "  ⏭️  Skipping git pull (detached HEAD)"
-    else
+    # Only pull if we're on a branch (avoids failure in CI/detached HEAD)
+    if git symbolic-ref -q HEAD >/dev/null; then
         (cd "$DOTDOTFILES" && git pull)
+    else
+        color_echo YELLOW "  ⏭️  Skipping git pull (detached HEAD)"
     fi
     
     (cd "$DOTDOTFILES" && git submodule update --init --recursive)
