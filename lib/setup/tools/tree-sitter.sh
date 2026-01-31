@@ -21,4 +21,5 @@ case "$OS_NAME" in
 esac
 
 color_echo CYAN "  📦  Installing tree-sitter-cli..."
-install_from_github "tree-sitter/tree-sitter" "contains(\"$os_tag\") and contains(\"$arch_tag\") and endswith(\".gz\")" "tree-sitter"
+pattern="contains(\"$os_tag\") and contains(\"$arch_tag\") and endswith(\".gz\")"
+install_from_github "tree-sitter/tree-sitter" "$pattern" "tree-sitter"

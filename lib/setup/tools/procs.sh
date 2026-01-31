@@ -20,4 +20,5 @@ case "$ARCH" in
 esac
 
 color_echo CYAN "  📦  Installing procs..."
-install_from_github "dalance/procs" "contains(\"$os_tag\") and contains(\"$arch_tag\") and endswith(\".zip\")" "procs"
+pattern="contains(\"$os_tag\") and contains(\"$arch_tag\") and endswith(\".zip\")"
+install_from_github "dalance/procs" "$pattern" "procs"

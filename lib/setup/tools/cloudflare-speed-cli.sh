@@ -19,4 +19,5 @@ case "$OS_NAME" in
 esac
 
 color_echo CYAN "  📦  Installing cloudflare-speed-cli..."
-install_from_github "kavehtehrani/cloudflare-speed-cli" "contains(\"$arch_tag\") and contains(\"$os_tag\") and endswith(\".tar.xz\")" "cloudflare-speed-cli"
+pattern="contains(\"$arch_tag\") and contains(\"$os_tag\") and endswith(\".tar.xz\")"
+install_from_github "kavehtehrani/cloudflare-speed-cli" "$pattern" "cloudflare-speed-cli"

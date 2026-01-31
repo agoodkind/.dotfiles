@@ -23,11 +23,14 @@ get_github_release_data() {
     
     # Try latest stable release first
     local release_data
-    release_data=$(echo "$releases" | jq -c '.[] | select(.assets | length > 0) | select(.prerelease == false)' | head -n 1)
+    release_data=$(echo "$releases" | jq -c '.[] | 
+        select(.assets | length > 0) | 
+        select(.prerelease == false)' | head -n 1)
     
     # Fallback to any release with assets if no stable ones found
     if [[ -z "$release_data" ]]; then
-        release_data=$(echo "$releases" | jq -c '.[] | select(.assets | length > 0)' | head -n 1)
+        release_data=$(echo "$releases" | jq -c '.[] | 
+            select(.assets | length > 0)' | head -n 1)
     fi
     
     echo "$release_data"
@@ -52,14 +55,16 @@ install_from_github() {
     tag=$(echo "$release_data" | jq -r .tag_name)
     
     local filename
-    filename=$(echo "$release_data" | jq -r ".assets[].name | select($pattern)" | head -n 1)
+    filename=$(echo "$release_data" | 
+        jq -r ".assets[].name | select($pattern)" | head -n 1)
     
     if [[ -z "$filename" || "$filename" == "null" ]]; then
         color_echo RED "  ❌  No matching asset found for pattern: $pattern"
         return 1
     fi
     
-    local url="https://github.com/$repo/releases/download/$tag/$filename"
+    local base_url="https://github.com/$repo/releases/download"
+    local url="${base_url}/$tag/$filename"
     local tmp_file="/tmp/$filename"
     local extract_dir="/tmp/${bin_name}-extract"
     
@@ -99,7 +104,8 @@ install_from_github() {
 
     # Find the binary in the extract directory - use -executable instead of -perm +111
     local bin_path
-    bin_path=$(find "$extract_dir" -name "$bin_name" -type f -executable | head -n 1)
+    bin_path=$(find "$extract_dir" -name "$bin_name" \
+        -type f -executable | head -n 1)
     
     if [[ -x "$bin_path" ]]; then
         cp "$bin_path" "$HOME/.cargo/bin/$bin_name"

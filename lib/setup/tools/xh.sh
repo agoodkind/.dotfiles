@@ -19,4 +19,5 @@ case "$OS_NAME" in
 esac
 
 color_echo CYAN "  📦  Installing xh..."
-install_from_github "ducaale/xh" "contains(\"$arch_tag\") and contains(\"$os_tag\") and endswith(\".tar.gz\")" "xh"
+pattern="contains(\"$arch_tag\") and contains(\"$os_tag\") and endswith(\".tar.gz\")"
+install_from_github "ducaale/xh" "$pattern" "xh"
