@@ -1,3 +1,10 @@
+export PATH="$PATH:$HOME/.local/bin:"
+export PATH="$PATH:$HOME/.local/bin/scripts"
+export PATH="$PATH:/opt/scripts"
+export PATH="$PATH:$HOME/.cargo/bin"
+export PATH="$PATH:$HOME/go/bin"
+export NVM_LAZY_LOAD=true
+
 # shellcheck shell=bash
 # Check if profiling was requested and load zprof module early if needed
 SHOULD_PROFILE=false
