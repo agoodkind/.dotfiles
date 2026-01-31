@@ -8,12 +8,13 @@ export SNAP_PACKAGES=(
 )
 
 # Common packages across both package managers
+# Note: Some packages (atuin, procs, starship, tokei, xh, tree-sitter-cli)
+# are in CARGO_PACKAGES for Linux since they're not in apt
 export COMMON_PACKAGES=(
 	ack
 	ansible
 	ansible-lint
 	aria2
-	atuin
 	bat
 	bash
 	btop
@@ -40,7 +41,6 @@ export COMMON_PACKAGES=(
 	imagemagick
 	ipv6calc
 	jq
-	lazygit
 	less
 	most
 	moreutils
@@ -49,7 +49,6 @@ export COMMON_PACKAGES=(
 	openssh
 	pandoc
 	pigz
-	procs
 	pv
 	python3
 	rename
@@ -61,20 +60,16 @@ export COMMON_PACKAGES=(
 	sipcalc
 	smartmontools
 	sshuttle
-	starship
 	tealdeer
 	thefuck
-	tokei
 	tree
 	tshark
 	vim
 	watch
 	wget
-	xh
 	zoxide
 	zsh
 	yq
-	tree-sitter-cli
 )
 
 # APT-specific packages (different names or apt-only)
@@ -93,7 +88,6 @@ export APT_SPECIFIC=(
 	openssh-server
 	parted
 	rbenv
-	ripcalc
 	rsyslog
 	sudo
 	speedtest-cli
@@ -102,8 +96,10 @@ export APT_SPECIFIC=(
 )
 
 # Brew-specific packages (different names or brew-only)
+# Includes packages that are cargo-only on Linux but available via brew
 export BREW_SPECIFIC=(
 	ast-grep
+	atuin
 	bandwhich
 	bottom
 	curlie
@@ -112,22 +108,41 @@ export BREW_SPECIFIC=(
 	fx
 	gitui
 	glow
+	lazygit
 	mdless
 	mitmproxy
 	navi
 	node
 	nvim
 	pnpm
+	procs
 	ripgrep-all
 	ssh-copy-id
+	starship
+	tokei
+	tree-sitter
 	wireguard-go
 	wireguard-tools
+	xh
 )
 
 # Cargo packages (installed via cargo install)
+# These are packages not available via apt on Linux
 export CARGO_PACKAGES=(
 	async-cmd
+	atuin
 	cloudflare-speed-cli
+	procs
+	starship
+	tokei
+	tree-sitter-cli
+	xh
+)
+
+# Go packages (installed via go install)
+# Format: package-name=install-path
+declare -gA GO_PACKAGES=(
+	[lazygit]="github.com/jesseduffield/lazygit@latest"
 )
 
 # Cargo packages requiring git installation - associative arrays
