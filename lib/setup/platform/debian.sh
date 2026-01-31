@@ -34,6 +34,7 @@ if [[ " $* " != *" --skip-install "* ]]; then
     
     run_with_defaults "$DOTDOTFILES/lib/setup/platform/apt.sh"
     "$DOTDOTFILES/lib/setup/platform/rust.sh"
+    "$DOTDOTFILES/lib/setup/platform/go.sh"
 fi
 
 # Script to configure MOTD (Message of the Day) on Ubuntu, Debian, and Proxmox systems
