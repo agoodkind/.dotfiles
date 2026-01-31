@@ -18,14 +18,16 @@ get_system_info() {
 # Usage: get_github_release_data "owner/repo"
 get_github_release_data() {
     local repo="$1"
-    local release_data
+    local releases
+    releases=$(curl -s "https://api.github.com/repos/$repo/releases")
     
     # Try latest stable release first
-    release_data=$(curl -s "https://api.github.com/repos/$repo/releases" | jq -c '.[] | select(.assets | length > 0) | select(.prerelease == false)' | head -n 1)
+    local release_data
+    release_data=$(echo "$releases" | jq -c '.[] | select(.assets | length > 0) | select(.prerelease == false)' | head -n 1)
     
     # Fallback to any release with assets if no stable ones found
     if [[ -z "$release_data" ]]; then
-        release_data=$(curl -s "https://api.github.com/repos/$repo/releases" | jq -c '.[] | select(.assets | length > 0)' | head -n 1)
+        release_data=$(echo "$releases" | jq -c '.[] | select(.assets | length > 0)' | head -n 1)
     fi
     
     echo "$release_data"
@@ -49,7 +51,6 @@ install_from_github() {
     local tag
     tag=$(echo "$release_data" | jq -r .tag_name)
     
-    # Use a variable to avoid broken pipe issues with jq | head
     local filename
     filename=$(echo "$release_data" | jq -r ".assets[].name | select($pattern)" | head -n 1)
     
@@ -96,9 +97,9 @@ install_from_github() {
             ;;
     esac
 
-    # Find the binary in the extract directory
+    # Find the binary in the extract directory - use -executable instead of -perm +111
     local bin_path
-    bin_path=$(find "$extract_dir" -name "$bin_name" -type f -perm +111 | head -n 1)
+    bin_path=$(find "$extract_dir" -name "$bin_name" -type f -executable | head -n 1)
     
     if [[ -x "$bin_path" ]]; then
         cp "$bin_path" "$HOME/.cargo/bin/$bin_name"
