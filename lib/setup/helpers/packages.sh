@@ -99,7 +99,6 @@ export APT_SPECIFIC=(
 # Includes packages that are cargo-only on Linux but available via brew
 export BREW_SPECIFIC=(
 	ast-grep
-	atuin
 	bandwhich
 	bottom
 	curlie
@@ -118,25 +117,18 @@ export BREW_SPECIFIC=(
 	procs
 	ripgrep-all
 	ssh-copy-id
-	starship
 	tokei
 	tree-sitter
 	wireguard-go
 	wireguard-tools
-	xh
 )
 
 # Cargo packages (installed via cargo install)
 # These are packages not available via apt on Linux
 export CARGO_PACKAGES=(
-	async-cmd
-	atuin
-	cloudflare-speed-cli
 	procs
-	starship
 	tokei
 	tree-sitter-cli
-	xh
 )
 
 # Go packages (installed via go install)
@@ -148,7 +140,6 @@ declare -A GO_PACKAGES=(
 # Cargo packages requiring git installation - associative arrays
 # Format: [package]="url|features"
 declare -A CARGO_GIT_PACKAGES=(
-	[cloudflare-speed-cli]="https://github.com/kavehtehrani/cloudflare-speed-cli|tui"
 )
 
 # Get git installation details for a cargo package
