@@ -32,12 +32,11 @@ get_github_release_data() {
 }
 
 # Download and install a binary from a GitHub release asset
-# Usage: install_from_github "owner/repo" "asset_pattern" "bin_name" [extract_cmd]
+# Usage: install_from_github "owner/repo" "asset_pattern" "bin_name"
 install_from_github() {
     local repo="$1"
     local pattern="$2"
     local bin_name="$3"
-    local extract_cmd="${4:-}"
     
     local release_data
     release_data=$(get_github_release_data "$repo")
@@ -50,6 +49,7 @@ install_from_github() {
     local tag
     tag=$(echo "$release_data" | jq -r .tag_name)
     
+    # Use a variable to avoid broken pipe issues with jq | head
     local filename
     filename=$(echo "$release_data" | jq -r ".assets[].name | select($pattern)" | head -n 1)
     
@@ -67,31 +67,48 @@ install_from_github() {
     
     mkdir -p "$HOME/.cargo/bin"
     
-    if [[ -n "$extract_cmd" ]]; then
-        mkdir -p "$extract_dir"
-        eval "$extract_cmd \"$tmp_file\" \"$extract_dir\""
-        
-        local bin_path
-        bin_path=$(find "$extract_dir" -name "$bin_name" -type f -perm +111 | head -n 1)
-        
-        if [[ -x "$bin_path" ]]; then
-            cp "$bin_path" "$HOME/.cargo/bin/$bin_name"
-        else
-            color_echo RED "  ❌  Failed to find executable '$bin_name' in extracted files"
-            rm -rf "$tmp_file" "$extract_dir"
-            return 1
-        fi
-        rm -rf "$extract_dir"
+    case "$filename" in
+        *.tar.gz|*.tgz)
+            mkdir -p "$extract_dir"
+            tar -xzf "$tmp_file" -C "$extract_dir"
+            ;;
+        *.tar.xz)
+            mkdir -p "$extract_dir"
+            tar -xf "$tmp_file" -C "$extract_dir"
+            ;;
+        *.zip)
+            mkdir -p "$extract_dir"
+            unzip -o "$tmp_file" -d "$extract_dir"
+            ;;
+        *.gz)
+            gunzip -c "$tmp_file" > "$HOME/.cargo/bin/$bin_name"
+            chmod +x "$HOME/.cargo/bin/$bin_name"
+            rm -f "$tmp_file"
+            color_echo GREEN "  ✅  $bin_name $tag installed to ~/.cargo/bin"
+            return 0
+            ;;
+        *)
+            cp "$tmp_file" "$HOME/.cargo/bin/$bin_name"
+            chmod +x "$HOME/.cargo/bin/$bin_name"
+            rm -f "$tmp_file"
+            color_echo GREEN "  ✅  $bin_name $tag installed to ~/.cargo/bin"
+            return 0
+            ;;
+    esac
+
+    # Find the binary in the extract directory
+    local bin_path
+    bin_path=$(find "$extract_dir" -name "$bin_name" -type f -perm +111 | head -n 1)
+    
+    if [[ -x "$bin_path" ]]; then
+        cp "$bin_path" "$HOME/.cargo/bin/$bin_name"
+        chmod +x "$HOME/.cargo/bin/$bin_name"
+        color_echo GREEN "  ✅  $bin_name $tag installed to ~/.cargo/bin"
     else
-        # Direct download or simple decompression
-        case "$filename" in
-            *.gz) gunzip -c "$tmp_file" > "$HOME/.cargo/bin/$bin_name" ;;
-            *) cp "$tmp_file" "$HOME/.cargo/bin/$bin_name" ;;
-        esac
+        color_echo RED "  ❌  Failed to find executable '$bin_name' in extracted files"
+        rm -rf "$tmp_file" "$extract_dir"
+        return 1
     fi
     
-    chmod +x "$HOME/.cargo/bin/$bin_name"
-    rm -f "$tmp_file"
-    
-    color_echo GREEN "  ✅  $bin_name $tag installed to ~/.cargo/bin"
+    rm -rf "$tmp_file" "$extract_dir"
 }
