@@ -1,0 +1,20 @@
+# http://editorconfig.org
+root = true
+
+[*]
+indent_style = space
+indent_size = 4
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+max_line_length = 90
+
+[*.{md,mdc,json}]
+max_line_length = 0
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[**/zinit/**]
+max_line_length = 0

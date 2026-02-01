@@ -1,0 +1,62 @@
+name: Test Install
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  install:
+    name: Install (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Homebrew (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /usr/local/Homebrew
+          key: ${{ runner.os }}-brew-${{ hashFiles('lib/setup/helpers/packages.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-brew-
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('lib/setup/helpers/packages.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Cache Go
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('lib/setup/helpers/packages.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Run install script
+        env:
+          DOTDOTFILES: ${{ github.workspace }}
+        run: |
+          chmod +x install.sh
+          ./install.sh --use-defaults
