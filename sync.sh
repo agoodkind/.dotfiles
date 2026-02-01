@@ -19,64 +19,16 @@ source "${DOTDOTFILES}/lib/setup/helpers/packages.sh"
 source "${DOTDOTFILES}/lib/setup/helpers/progress.sh"
 source "${DOTDOTFILES}/lib/setup/helpers/tools.sh"
 
-###############################################################################
-# Utility Functions
-###############################################################################
+# Always log to file (full verbose output for error diagnosis)
+progress_set_log_file "${HOME}/.cache/dotfiles/sync-${timestamp}.log"
+trap progress_on_exit_trap EXIT
 
-is_ubuntu() {
-    [[ -f /etc/os-release ]] && grep -qiE 'ubuntu|debian' /etc/os-release
-}
-
-is_work_laptop() {
-    [[ -n "$WORK_DIR_PATH" ]]
-}
+###############################################################################
+# Sync-specific helpers
+###############################################################################
 
 skip_on_work_laptop() {
     is_work_laptop && progress_log "Skipping $1 on work laptop"
-}
-
-realpath_cmd() {
-    if command -v grealpath >/dev/null; then
-        grealpath "$@"
-    elif [[ "$OSTYPE" != "darwin"* ]]; then
-        realpath "$@"
-    else
-        # macOS realpath doesn't support GNU options; provide fallback
-        echo "realpath_cmd: macOS fallback not available for: $*" >&2
-        return 1
-    fi
-}
-
-# Get path relative to a base directory (works without GNU coreutils)
-relative_path_from() {
-    local base="$1"
-    local target="$2"
-    # Simple case: target is under base - just strip the prefix
-    if [[ "$target" == "$base"/* ]]; then
-        echo "${target#"$base"/}"
-    else
-        # Fall back to realpath if available
-        realpath_cmd --relative-to="$base" "$target"
-    fi
-}
-
-get_checksum_cmd() {
-    if command -v shasum >/dev/null 2>&1; then
-        echo "shasum -a 256"
-    else
-        echo "sha256sum"
-    fi
-}
-
-calculate_checksum() {
-    local file="$1"
-    local cmd
-    cmd=$(get_checksum_cmd)
-    $cmd "$file" | cut -d' ' -f1
-}
-
-has_sudo_access() {
-    command -v sudo >/dev/null 2>&1 && (sudo -n true 2>/dev/null || sudo -v 2>/dev/null)
 }
 
 ###############################################################################
@@ -133,14 +85,18 @@ update_git_repo() {
 
     handle_git_lock
 
+    local git_cmd="cd \"$DOTDOTFILES\""
+
     # Only pull if we're on a branch (avoids failure in CI/detached HEAD)
     if git -C "$DOTDOTFILES" symbolic-ref -q HEAD >/dev/null; then
-        progress_exec_stream sh -c "cd \"$DOTDOTFILES\" && git pull"
+        git_cmd="$git_cmd && git pull"
     else
         progress_log "  Skipping git pull (detached HEAD)"
     fi
 
-    progress_exec_stream sh -c "cd \"$DOTDOTFILES\" && git submodule update --init --recursive"
+    git_cmd="$git_cmd && git submodule update --init --recursive"
+
+    progress_exec_stream sh -c "$git_cmd"
 
     # Update timestamp after git operations (matches original behavior)
     timestamp=$(date +"%Y%m%d_%H%M%S")
@@ -631,8 +587,8 @@ update_neovim_plugins() {
         find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*-tmp" -type d -exec rm -rf {} + 2>/dev/null
     fi
 
-    nvim --headless -c "lua require('lazy').sync()" -c "qa" 2>/dev/null || true
-    color_echo GREEN "  Neovim plugins updated"
+    progress_log "Running lazy.sync()..."
+    progress_exec_stream nvim --headless -c "lua require('lazy').sync()" -c "qa"
 
     # Install treesitter parsers if tree-sitter CLI is available
     if command -v tree-sitter >/dev/null 2>&1; then
@@ -640,10 +596,9 @@ update_neovim_plugins() {
         ts_version=$(tree-sitter --version 2>/dev/null | awk '{print $2}')
         # Require tree-sitter 0.21+ for build command
         if [[ "$(printf '%s\n' "0.21.0" "$ts_version" | sort -V | head -1)" == "0.21.0" ]]; then
-            color_echo YELLOW "Installing treesitter parsers..."
+            progress_log "Installing treesitter parsers..."
             local parsers="bash,lua,vim,vimdoc,python,javascript,typescript,json,yaml"
-            nvim --headless "+lua require('nvim-treesitter').install({'${parsers//,/\',\'}'})" "+sleep 10" "+qa" 2>/dev/null || true
-            color_echo GREEN "  Treesitter parsers installed"
+            progress_exec_stream nvim --headless "+lua require('nvim-treesitter').install({'${parsers//,/\',\'}'})" "+sleep 10" "+qa"
         else
             color_echo YELLOW "  tree-sitter CLI too old ($ts_version), skipping parser install"
         fi
@@ -696,12 +651,11 @@ run_os_install() {
         return 0
     fi
 
-    color_echo BLUE "Running $os_type setup script..."
-
+    progress_step "Running $os_type setup"
     if [[ "${USE_DEFAULTS:-false}" == "true" ]]; then
-        "$install_script" --use-defaults "$@"
+        progress_exec_stream "$install_script" --use-defaults "$@"
     else
-        "$install_script" "$@"
+        progress_exec_stream "$install_script" "$@"
     fi
 }
 

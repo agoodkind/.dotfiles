@@ -26,16 +26,46 @@ function progress_init() {
     local log_file="${1:-}"
     if [[ -n "$log_file" ]]; then
         _PROGRESS_LOG_FILE="$log_file"
+        mkdir -p "$(dirname "$log_file")"
         echo "=== Progress Log Started: $(date) ===" > "$_PROGRESS_LOG_FILE"
     fi
     echo -ne "${CURSOR_HIDE}"
 }
 
+# EXIT trap: restore cursor, print log path on error.
+# Usage: progress_set_log_file /path/to/log; trap progress_on_exit_trap EXIT
+function progress_on_exit_trap() {
+    local ec=$?
+    # Temporarily disable set -e to ensure we finish the trap
+    set +e
+    progress_done
+    if [[ $ec -ne 0 ]]; then
+        if [[ -n "${_PROGRESS_LOG_FILE:-}" ]] && [[ -f "${_PROGRESS_LOG_FILE:-}" ]]; then
+            echo -e "\n${COLOR_RED}Full log: ${_PROGRESS_LOG_FILE}${TEXT_RESET}" >&2
+        else
+            echo -e "\n${COLOR_RED}Sync failed with exit code $ec (no log file found)${TEXT_RESET}" >&2
+        fi
+    fi
+    trap - EXIT
+    exit $ec
+}
+
+# Set log file only (no cursor change). Use when you want file logging without init.
+function progress_set_log_file() {
+    local log_file="$1"
+    if [[ -n "$log_file" ]]; then
+        _PROGRESS_LOG_FILE="$log_file"
+        mkdir -p "$(dirname "$log_file")"
+        echo "=== Progress Log Started: $(date) ===" > "$_PROGRESS_LOG_FILE"
+    fi
+}
+
 # Log to file (strips ANSI codes)
 function progress_log() {
-    if [[ -n "$_PROGRESS_LOG_FILE" ]]; then
-        # Strip ANSI escape codes before logging
-        echo "$@" | sed 's/\x1b\[[0-9;]*m//g' >> "$_PROGRESS_LOG_FILE"
+    if [[ -n "${_PROGRESS_LOG_FILE:-}" ]]; then
+        # Use a more portable way to strip ANSI codes that doesn't depend on BSD vs GNU sed differences
+        # or just log as is if sed is being problematic, but we'll try to keep it simple
+        echo "$*" | sed 's/\[[0-9;]*m//g' >> "$_PROGRESS_LOG_FILE" 2>/dev/null || true
     fi
 }
 
@@ -76,53 +106,90 @@ function progress_step() {
 function progress_exec_stream() {
     local buffer=()
     local line_count=0
-    local exit_code=0
-    local exit_file="/tmp/progress_exit_$$"
+    local exit_code=-1
+    local exit_token="PROGRESS_EXIT_CODE_$(date +%s)_$RANDOM"
 
     # In CI/Non-interactive/Non-TTY, just stream output linearly without cursor magic
     if [[ "${GITHUB_ACTIONS:-}" == "true" ]] || [[ "${CI:-}" == "true" ]] || [[ ! -t 1 ]]; then
-        "$@" 2>&1 | while IFS= read -r line; do
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            if [[ "$line" == "$exit_token:"* ]]; then
+                exit_code="${line#$exit_token:}"
+                continue
+            fi
             echo "  $line"
             progress_log "$line"
-        done
-        exit_code=${PIPESTATUS[0]}
+        done < <(set +e; "$@" 2>&1; printf "\n%s:%d\n" "$exit_token" $?)
+
+        # Fallback if for some reason we didn't get the exit code
+        [[ "$exit_code" == "-1" ]] && exit_code=1
 
         if [[ $exit_code -eq 0 ]]; then
             echo -e "${COLOR_GREEN}  ✓ Completed${TEXT_RESET}"
             progress_log "  ✓ Completed"
         else
             echo -e "${COLOR_RED}  ✗ Failed (exit code: $exit_code)${TEXT_RESET}"
+            echo -e "${COLOR_RED}  Command: $*${TEXT_RESET}"
             progress_log "  ✗ Failed (exit code: $exit_code)"
+            progress_log "  Command: $*"
         fi
         return $exit_code
     fi
 
-    # We use a temp file to capture the exit code because capturing it
-    # from process substitution is unreliable across bash versions.
+    # TTY Mode: Fixed height scrolling window
+    local max_height=10  # Maximum lines to show at once
+    local visible_lines=0
 
     # Disable set -e in the subshell so we can capture the exit code
-    while IFS= read -r line; do
-        echo -e "${TEXT_DIM}  ${line}${TEXT_RESET}"
-        progress_log "$line"
-        buffer+=("$line")
-        ((line_count++))
+    # We append the exit code to the stream to avoid race conditions with temp files
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$line" == "$exit_token:"* ]]; then
+            exit_code="${line#$exit_token:}"
+            continue
+        fi
 
-        # Keep buffer size manageable
-        if [[ ${#buffer[@]} -gt 100 ]]; then
+        # Log full output to file
+        progress_log "$line"
+        ((line_count++)) || true
+
+        # Buffer logic for display
+        buffer+=("$line")
+        # Keep buffer size manageable (but larger than max_height)
+        if [[ ${#buffer[@]} -gt 50 ]]; then
             buffer=("${buffer[@]:1}")
         fi
-    done < <(set +e; "$@" 2>&1; echo $? > "$exit_file")
 
-    if [[ -f "$exit_file" ]]; then
-        exit_code=$(cat "$exit_file")
-        rm -f "$exit_file"
-    else
-        exit_code=1 # Fallback error if something went wrong
-    fi
+        # --- Display Update (Fixed Height Scrolling) ---
 
-    # Clear verbose output
-    if [[ $line_count -gt 0 ]]; then
-        progress_clear_lines $line_count
+        # 1. Determine lines to show (last N lines)
+        local display_start=0
+        if [[ ${#buffer[@]} -gt $max_height ]]; then
+            display_start=$(( ${#buffer[@]} - max_height ))
+        fi
+        local lines_to_print=("${buffer[@]:$display_start}")
+        local new_visible_count=${#lines_to_print[@]}
+
+        # 2. Move cursor to top of the visible block
+        if [[ $visible_lines -gt 0 ]]; then
+            echo -ne "${ESC}[${visible_lines}A"
+        fi
+
+        # 3. Print the window
+        for l in "${lines_to_print[@]}"; do
+            echo -ne "${ERASE_LINE}"
+            echo -e "${TEXT_DIM}  ${l}${TEXT_RESET}"
+        done
+
+        # 4. Update visible count
+        visible_lines=$new_visible_count
+
+    done < <(set +e; "$@" 2>&1; printf "\n%s:%d\n" "$exit_token" $?)
+
+    # Fallback if for some reason we didn't get the exit code
+    [[ "$exit_code" == "-1" ]] && exit_code=1
+
+    # Clear verbose output only on success; keep it visible on failure
+    if [[ $exit_code -eq 0 ]] && [[ $visible_lines -gt 0 ]]; then
+        progress_clear_lines $visible_lines
     fi
 
     # Show result
@@ -132,14 +199,10 @@ function progress_exec_stream() {
         summary="  ✓ Completed in ${duration}s"
         echo -e "${COLOR_GREEN}${summary}${TEXT_RESET}"
     else
-        summary="  ✗ Failed in ${duration}s"
+        summary="  ✗ Failed in ${duration}s (exit code: $exit_code)"
         echo -e "${COLOR_RED}${summary}${TEXT_RESET}"
-        # Show last 10 lines on error so the user can see WHY it failed
-        echo -e "${TEXT_DIM}"
-        for line in "${buffer[@]: -10}"; do
-            echo "  $line"
-        done
-        echo -e "${TEXT_RESET}"
+        echo -e "${COLOR_RED}  Command: $*${TEXT_RESET}"
+        progress_log "  Command: $*"
     fi
     progress_log "$summary"
 
