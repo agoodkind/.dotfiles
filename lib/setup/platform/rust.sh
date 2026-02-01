@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -e
+set -o pipefail
 # Requires bash 4.0+ for associative arrays in packages.sh
 
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
@@ -46,7 +48,12 @@ fi
 # Check if cargo package is installed
 is_cargo_installed() {
 	local package="$1"
-	cargo install --list | grep -q "^${package} "
+	# Map package name to binary name if different
+	local binary="$package"
+	case "$package" in
+		"tree-sitter-cli") binary="tree-sitter" ;;
+	esac
+	command -v "$binary" &>/dev/null
 }
 
 # Install cargo packages
@@ -60,11 +67,20 @@ for package in "${CARGO_PACKAGES[@]}"; do
 	fi
 done
 
+# Install cargo-binstall if not present
+if ! command -v cargo-binstall &>/dev/null; then
+	color_echo BLUE "Installing cargo-binstall..."
+	curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+fi
+
 # Install packages if any are missing
 if [ ${#CARGO_TO_INSTALL[@]} -gt 0 ]; then
 	color_echo YELLOW "Installing ${#CARGO_TO_INSTALL[@]} cargo packages..."
 	for package in "${CARGO_TO_INSTALL[@]}"; do
-		color_echo CYAN "Installing $package..."
+		color_echo CYAN "Checking $package..."
+		
+		# Fallback to cargo-binstall or cargo install
+		color_echo CYAN "Installing $package via cargo/binstall..."
 		
 		# Check if this package requires git installation
 		if git_details=$(get_cargo_git_details "$package"); then
@@ -75,7 +91,11 @@ if [ ${#CARGO_TO_INSTALL[@]} -gt 0 ]; then
 				cargo install --git "$git_url"
 			fi
 		else
-			cargo install "$package"
+			if command -v cargo-binstall &>/dev/null; then
+				cargo binstall -y "$package"
+			else
+				cargo install "$package"
+			fi
 		fi
 	done
 else

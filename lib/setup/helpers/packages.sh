@@ -99,7 +99,6 @@ export APT_SPECIFIC=(
 # Includes packages that are cargo-only on Linux but available via brew
 export BREW_SPECIFIC=(
 	ast-grep
-	atuin
 	bandwhich
 	bottom
 	curlie
@@ -118,37 +117,26 @@ export BREW_SPECIFIC=(
 	procs
 	ripgrep-all
 	ssh-copy-id
-	starship
 	tokei
 	tree-sitter
 	wireguard-go
 	wireguard-tools
-	xh
 )
 
 # Cargo packages (installed via cargo install)
 # These are packages not available via apt on Linux
 export CARGO_PACKAGES=(
-	async-cmd
-	atuin
-	cloudflare-speed-cli
-	procs
-	starship
-	tokei
-	tree-sitter-cli
-	xh
 )
 
 # Go packages (installed via go install)
 # Format: package-name=install-path
-declare -gA GO_PACKAGES=(
+declare -A GO_PACKAGES=(
 	[lazygit]="github.com/jesseduffield/lazygit@latest"
 )
 
 # Cargo packages requiring git installation - associative arrays
 # Format: [package]="url|features"
-declare -gA CARGO_GIT_PACKAGES=(
-	[cloudflare-speed-cli]="https://github.com/kavehtehrani/cloudflare-speed-cli|tui"
+declare -A CARGO_GIT_PACKAGES=(
 )
 
 # Get git installation details for a cargo package
@@ -164,7 +152,7 @@ function get_cargo_git_details() {
 
 # Brew casks - associative array mapping cask name to app name
 # Empty value means CLI-only or font (no .app to check)
-declare -gA BREW_CASKS=(
+declare -A BREW_CASKS=(
 	[1password]="1Password"
 	[1password-cli]=""
 	[iterm2]="iTerm"
@@ -197,7 +185,7 @@ function get_cask_app_name() {
 get_package_name() {
 	local pkg="$1"
 	local type="$2"
-	
+
 	case "${pkg}:${type}" in
 		ack:apt) echo "ack-grep" ;;
 		fd:apt) echo "fd-find" ;;
@@ -208,6 +196,13 @@ get_package_name() {
 		*) echo "$pkg" ;;
 	esac
 }
+
+# APT PPAs to add before installing packages
+# Format: [package_name]="ppa:user/repo"
+# The PPA will only be added if the package is in the install list
+declare -A APT_PPAS=(
+	[fastfetch]="ppa:zhangsongcui3371/fastfetch"
+)
 
 # Check if a package is in an array
 is_in_array() {

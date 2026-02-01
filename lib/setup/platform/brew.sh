@@ -2,6 +2,11 @@
 
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
+# Source utilities (for mac_only guard)
+source "${DOTDOTFILES}/lib/setup/helpers/tools.sh"
+
+mac_only "brew.sh is macOS-only, skipping..."
+
 # Parse flags
 SKIP_CASKS=false
 for arg in "$@"; do
