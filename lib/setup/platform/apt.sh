@@ -59,6 +59,15 @@ requires_classic_confinement() {
 
 ALL_APT_PACKAGES=()
 
+# Add fastfetch PPA if needed (Ubuntu only)
+if is_ubuntu && is_in_array "fastfetch" "${COMMON_PACKAGES[@]}"; then
+    if ! grep -q "^deb .*zhangsongcui3371/fastfetch" /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null; then
+        color_echo YELLOW "  📦  Adding fastfetch PPA..."
+        sudo add-apt-repository -y ppa:zhangsongcui3371/fastfetch
+        sudo apt-get update -qq
+    fi
+fi
+
 # Add mapped common packages (skip duplicates that are in APT_SPECIFIC or SNAP_PACKAGES)
 for package in "${COMMON_PACKAGES[@]}"; do
 	# Skip packages that should be installed via snap
