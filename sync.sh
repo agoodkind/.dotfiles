@@ -256,7 +256,7 @@ update_authorized_keys() {
     while IFS= read -r key || [[ -n "$key" ]]; do
         if ! grep -q "$key" "$HOME/.ssh/authorized_keys"; then
             echo "$key" >> "$HOME/.ssh/authorized_keys"
-            ((added_count++))
+            added_count=$((added_count + 1))
         fi
     done < "$HOME/.ssh/authorized_keys.tmp"
     
