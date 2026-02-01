@@ -6,6 +6,9 @@ export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 source "${DOTDOTFILES}/lib/setup/helpers/colors.sh"
 source "${DOTDOTFILES}/lib/setup/helpers/defaults.sh"
 source "${DOTDOTFILES}/lib/setup/helpers/packages.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/tools.sh"
+
+linux_only "apt.sh is Linux-only, skipping..."
 
 # =============================================================================
 # APT/Snap Helper Functions
@@ -230,16 +233,6 @@ install_packages() {
 # Repository Setup
 # =============================================================================
 
-# Install zoxide if not installed
-if ! command -v zoxide &>/dev/null; then
-    color_echo BLUE "Installing zoxide..."
-    curl -sSfL \
-        https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh \
-        | sh
-else
-    color_echo GREEN "zoxide already installed, skipping..."
-fi
-
 # Setup GitHub CLI repository if not already configured
 GITHUB_CLI_LIST="/etc/apt/sources.list.d/github-cli.list"
 GITHUB_CLI_KEY="/usr/share/keyrings/githubcli-archive-keyring.gpg"
@@ -289,40 +282,6 @@ installation (may not be supported on this distribution)"
             "Failed to install software-properties-common \
 (may not be available on this distribution)"
     fi
-fi
-
-# Add sasl-xoauth2 PPA if not already added
-# (Ubuntu-only, PPAs don't work on Debian)
-if [ "$DISTRO_ID" = "ubuntu" ]; then
-    if command -v add-apt-repository &>/dev/null; then
-        PPA_PATTERN="/etc/apt/sources.list.d/*sasl-xoauth2*stable*.list"
-        PPA_GREP="sasl-xoauth2.*stable|ppa\.launchpadcontent\.net/sasl-xoauth2/stable"
-        if ! compgen -G "$PPA_PATTERN" >/dev/null 2>&1 && \
-           ! grep -qE "$PPA_GREP" \
-              /etc/apt/sources.list /etc/apt/sources.list.d/* \
-              2>/dev/null; then
-            color_echo BLUE "Adding sasl-xoauth2 PPA..."
-            if sudo add-apt-repository ppa:sasl-xoauth2/stable -y \
-                2>/dev/null; then
-                color_echo GREEN \
-                    "sasl-xoauth2 PPA added successfully"
-            else
-                color_echo RED \
-                    "Failed to add sasl-xoauth2 PPA, skipping..."
-            fi
-        else
-            color_echo GREEN \
-                "sasl-xoauth2 PPA already added, skipping..."
-        fi
-    else
-        color_echo YELLOW \
-            "add-apt-repository not available, \
-skipping sasl-xoauth2 PPA..."
-    fi
-else
-    color_echo YELLOW \
-        "PPAs are Ubuntu-specific, skipping sasl-xoauth2 PPA on \
-$DISTRO_ID..."
 fi
 
 # Get release codename for backports repository
@@ -462,26 +421,6 @@ color_echo YELLOW "Total packages to process: ${#ALL_APT_PACKAGES[@]}"
 color_echo CYAN "Packages to process: ${ALL_APT_PACKAGES[*]}"
 install_packages "${ALL_APT_PACKAGES[@]}"
 
-# Install fastfetch if not installed
-if ! command -v fastfetch &>/dev/null; then
-    color_echo BLUE "Installing latest Fastfetch..."
-    FASTFETCH_URL="https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest"
-    FASTFETCH_DEB_URL=$(curl -s "$FASTFETCH_URL" \
-        | grep "browser_download_url.*linux-amd64.deb" \
-        | cut -d : -f 2,3 \
-        | tr -d \" \
-        | tr -d ' ')
-    if [[ -n "$FASTFETCH_DEB_URL" ]]; then
-        curl -fsSL "$FASTFETCH_DEB_URL" -o /tmp/fastfetch-linux-amd64.deb
-        sudo dpkg -i /tmp/fastfetch-linux-amd64.deb
-        rm -f /tmp/fastfetch-linux-amd64.deb
-    else
-        color_echo RED "Failed to get fastfetch download URL"
-    fi
-else
-    color_echo GREEN "fastfetch already installed, skipping..."
-fi
-
 kill_nano() {
     color_echo YELLOW "Killing nano..."
 
@@ -506,14 +445,5 @@ kill_nano() {
 }
 
 kill_nano
-
-# Link batcat to bat
-if [ ! -e ~/.local/bin/bat ]; then
-	color_echo YELLOW "Linking batcat to ~/.local/bin/bat..."
-	mkdir -p ~/.local/bin
-	ln -sf "$(which batcat)" ~/.local/bin/bat
-else
-	color_echo GREEN "batcat already linked to bat, skipping..."
-fi
 
 color_echo GREEN "All done!"
