@@ -78,15 +78,15 @@ function progress_exec_stream() {
     local line_count=0
     local exit_code=0
     local exit_file="/tmp/progress_exit_$$"
-    
-    # In CI/Non-interactive, just stream output linearly without cursor magic
-    if [[ "${GITHUB_ACTIONS:-}" == "true" ]] || [[ "${CI:-}" == "true" ]]; then
+
+    # In CI/Non-interactive/Non-TTY, just stream output linearly without cursor magic
+    if [[ "${GITHUB_ACTIONS:-}" == "true" ]] || [[ "${CI:-}" == "true" ]] || [[ ! -t 1 ]]; then
         "$@" 2>&1 | while IFS= read -r line; do
             echo "  $line"
             progress_log "$line"
         done
         exit_code=${PIPESTATUS[0]}
-        
+
         if [[ $exit_code -eq 0 ]]; then
             echo -e "${COLOR_GREEN}  ✓ Completed${TEXT_RESET}"
             progress_log "  ✓ Completed"
@@ -96,17 +96,17 @@ function progress_exec_stream() {
         fi
         return $exit_code
     fi
-    
+
     # We use a temp file to capture the exit code because capturing it
     # from process substitution is unreliable across bash versions.
-    
+
     # Disable set -e in the subshell so we can capture the exit code
     while IFS= read -r line; do
         echo -e "${TEXT_DIM}  ${line}${TEXT_RESET}"
         progress_log "$line"
         buffer+=("$line")
         ((line_count++))
-        
+
         # Keep buffer size manageable
         if [[ ${#buffer[@]} -gt 100 ]]; then
             buffer=("${buffer[@]:1}")
