@@ -313,11 +313,28 @@ prefer_tty() {
 # -----------------------------------------------------------------------------
 
 _sshpiper_proxy_host="root@ssh.home.goodkind.io"
-_sshpiper_dest_regex='^(.+)@(.+)@ssh\.home\.goodkind\.io$'
+_sshpiper_user_svc_regex='^(.+)@(.+)$'
+_sshpiper_dest_regex="${_sshpiper_user_svc_regex%'\$'}@ssh\.home\.goodkind\.io\$"
 
 _sshpiper_two_hop_inner() {
     local dest="$1"
-    [[ "$dest" =~ $_sshpiper_dest_regex ]] || return 1
+
+    # Direct pattern: user@service@ssh.home.goodkind.io
+    if [[ "$dest" =~ $_sshpiper_dest_regex ]]; then
+        printf '%s@%s@localhost' "${match[1]}" "${match[2]}"
+        return 0
+    fi
+
+    # Expand SSH config alias
+    local expanded hostname user
+    expanded=$(ssh -G "$dest" 2>/dev/null) || return 1
+    hostname=$(awk '/^hostname / {print $2}' <<< "$expanded")
+    user=$(awk '/^user / {print $2}' <<< "$expanded")
+
+    # Check if hostname is our sshpiper proxy and user is user@service
+    [[ "$hostname" == "ssh.home.goodkind.io" ]] || return 1
+    [[ "$user" =~ $_sshpiper_user_svc_regex ]] || return 1
+
     printf '%s@%s@localhost' "${match[1]}" "${match[2]}"
 }
 
