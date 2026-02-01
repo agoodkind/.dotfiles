@@ -40,6 +40,58 @@ is_macos() {
     return 1
 }
 
+# Returns 0 on Debian/Ubuntu, 1 otherwise.
+is_ubuntu() {
+    [[ -f /etc/os-release ]] && grep -qiE 'ubuntu|debian' /etc/os-release
+}
+
+# Returns 0 if running on work laptop (WORK_DIR_PATH set).
+is_work_laptop() {
+    [[ -n "${WORK_DIR_PATH:-}" ]]
+}
+
+# GNU realpath. On macOS without coreutils, returns 1.
+realpath_cmd() {
+    if command -v grealpath >/dev/null; then
+        grealpath "$@"
+    elif [[ "${OSTYPE:-}" != "darwin"* ]]; then
+        realpath "$@"
+    else
+        echo "realpath_cmd: macOS fallback not available for: $*" >&2
+        return 1
+    fi
+}
+
+# Path relative to base. Simple prefix strip when target is under base.
+relative_path_from() {
+    local base="$1"
+    local target="$2"
+    if [[ "$target" == "$base"/* ]]; then
+        echo "${target#"$base"/}"
+    else
+        realpath_cmd --relative-to="$base" "$target"
+    fi
+}
+
+get_checksum_cmd() {
+    if command -v shasum >/dev/null 2>&1; then
+        echo "shasum -a 256"
+    else
+        echo "sha256sum"
+    fi
+}
+
+calculate_checksum() {
+    local file="$1"
+    local cmd
+    cmd=$(get_checksum_cmd)
+    $cmd "$file" | cut -d' ' -f1
+}
+
+has_sudo_access() {
+    command -v sudo >/dev/null 2>&1 && (sudo -n true 2>/dev/null || sudo -v 2>/dev/null)
+}
+
 # Get system architecture and OS type
 # Sets: ARCH, OS_TYPE, OS_NAME
 get_system_info() {
