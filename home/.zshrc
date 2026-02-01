@@ -57,9 +57,9 @@ setopt appendhistory
 setopt incappendhistory
 setopt share_history
 setopt interactive_comments
-setopt auto_cd 
+setopt auto_cd
 setopt auto_pushd
-setopt pushd_ignore_dups 
+setopt pushd_ignore_dups
 setopt pushd_silent
 
 ###############################################################################
@@ -75,6 +75,7 @@ prefer llt eza -lah --tree --level=2 --icons
 prefer_tty ls ll
 
 # cat / find / grep
+prefer bat batcat --style=auto
 prefer catt bat --style=auto
 prefer rgi rg -i
 prefer rgl rg -l

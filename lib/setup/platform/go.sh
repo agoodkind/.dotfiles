@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -e
+set -o pipefail
 # Go packages installation script
 # Requires bash 4.0+ for associative arrays in packages.sh
 
