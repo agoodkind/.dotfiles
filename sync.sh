@@ -273,7 +273,7 @@ sync_script_with_checksum() {
 }
 
 sync_scripts_to_local() {
-    is_macos "sync_scripts_to_local is macOS-only" || return
+    is_macos "sync_scripts_to_local is macOS-only" || return 0
 
     # Work laptop: use simple ~/.local/bin/scripts symlinks (no sudo, no launchd)
     if is_work_laptop; then
@@ -429,7 +429,7 @@ sync_cursor_user_rules() {
     local sync_script="$DOTDOTFILES/bin/sync-cursor-rules"
     local cursor_db="$HOME/Library/Application Support/Cursor/User/globalStorage/state.vscdb"
 
-    is_macos "sync_cursor_user_rules is macOS-only" || return
+    is_macos "sync_cursor_user_rules is macOS-only" || return 0
 
     if [[ ! -x "$sync_script" ]]; then
         return 0
@@ -490,7 +490,7 @@ cleanup_homebrew_repair() {
         return 0
     fi
 
-    is_macos "Homebrew repair is macOS-only" || return
+    is_macos "Homebrew repair is macOS-only" || return 0
 
     if ! command -v brew >/dev/null 2>&1; then
         return 0
