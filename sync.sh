@@ -17,14 +17,11 @@ source "${DOTDOTFILES}/lib/setup/helpers/colors.sh"
 source "${DOTDOTFILES}/lib/setup/helpers/defaults.sh"
 source "${DOTDOTFILES}/lib/setup/helpers/packages.sh"
 source "${DOTDOTFILES}/lib/setup/helpers/progress.sh"
+source "${DOTDOTFILES}/lib/setup/helpers/tools.sh"
 
 ###############################################################################
 # Utility Functions
 ###############################################################################
-
-is_macos() {
-    [[ "$OSTYPE" == "darwin"* ]]
-}
 
 is_ubuntu() {
     [[ -f /etc/os-release ]] && grep -qiE 'ubuntu|debian' /etc/os-release
@@ -137,7 +134,7 @@ update_git_repo() {
     handle_git_lock
 
     # Only pull if we're on a branch (avoids failure in CI/detached HEAD)
-    if git symbolic-ref -q HEAD >/dev/null; then
+    if git -C "$DOTDOTFILES" symbolic-ref -q HEAD >/dev/null; then
         progress_exec_stream sh -c "cd \"$DOTDOTFILES\" && git pull"
     else
         progress_log "  Skipping git pull (detached HEAD)"
@@ -320,10 +317,7 @@ sync_script_with_checksum() {
 }
 
 sync_scripts_to_local() {
-    # macOS only
-    if ! is_macos; then
-        return 0
-    fi
+    is_macos "sync_scripts_to_local is macOS-only" || return
 
     # Work laptop: use simple ~/.local/bin/scripts symlinks (no sudo, no launchd)
     if is_work_laptop; then
@@ -479,9 +473,7 @@ sync_cursor_user_rules() {
     local sync_script="$DOTDOTFILES/bin/sync-cursor-rules"
     local cursor_db="$HOME/Library/Application Support/Cursor/User/globalStorage/state.vscdb"
 
-    if ! is_macos; then
-        return 0
-    fi
+    is_macos "sync_cursor_user_rules is macOS-only" || return
 
     if [[ ! -x "$sync_script" ]]; then
         return 0
@@ -542,9 +534,7 @@ cleanup_homebrew_repair() {
         return 0
     fi
 
-    if ! is_macos; then
-        return 0
-    fi
+    is_macos "Homebrew repair is macOS-only" || return
 
     if ! command -v brew >/dev/null 2>&1; then
         return 0
