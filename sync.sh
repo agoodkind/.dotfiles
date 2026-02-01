@@ -90,7 +90,7 @@ parse_flags() {
     repair_mode=false
     non_interactive=false
     quick_mode=false
-    
+
     for arg in "$@"; do
         case $arg in
             --repair)
@@ -104,7 +104,7 @@ parse_flags() {
                 ;;
         esac
     done
-    
+
     # Export for use in other functions and subscripts
     export repair_mode non_interactive quick_mode
 }
@@ -115,11 +115,11 @@ parse_flags() {
 
 handle_git_lock() {
     local lock_file="$DOTDOTFILES/.git/objects/info/commit-graphs/commit-graph-chain.lock"
-    
+
     if [[ ! -f "$lock_file" ]]; then
         return 0
     fi
-    
+
     if [[ "$non_interactive" == "true" ]]; then
         progress_log "🔒  Git is locked, force unlocking..."
         rm -f "$lock_file" 2>/dev/null || \
@@ -133,18 +133,18 @@ handle_git_lock() {
 
 update_git_repo() {
     progress_step "Updating git repo"
-    
+
     handle_git_lock
-    
+
     # Only pull if we're on a branch (avoids failure in CI/detached HEAD)
     if git symbolic-ref -q HEAD >/dev/null; then
         progress_exec_stream sh -c "cd \"$DOTDOTFILES\" && git pull"
     else
         progress_log "  ⏭️  Skipping git pull (detached HEAD)"
     fi
-    
+
     progress_exec_stream sh -c "cd \"$DOTDOTFILES\" && git submodule update --init --recursive"
-    
+
     # Update timestamp after git operations (matches original behavior)
     timestamp=$(date +"%Y%m%d_%H%M%S")
 }
@@ -155,16 +155,16 @@ update_git_repo() {
 
 link_dotfiles() {
     progress_step "Linking dotfiles"
-    
+
     local BACKUPS_PATH="$DOTDOTFILES/backups/$timestamp"
     local files
     files=$(find "$DOTDOTFILES/home" -type f)
     local linked_count=0
     local skipped_count=0
     local backed_up_count=0
-    
+
     progress_log "Linking dotfiles to home directory..."
-    
+
     for source_file in $files; do
         local relative_path
         relative_path=$(relative_path_from "$DOTDOTFILES/home" "$source_file")
@@ -192,13 +192,13 @@ link_dotfiles() {
                 backed_up_count=$((backed_up_count + 1))
             fi
         fi
-        
+
         mkdir -p "$(dirname "$home_file")"
         ln -sf "$source_file" "$home_file"
         progress_log "  🔗  Linked: $relative_path"
         linked_count=$((linked_count + 1))
     done
-    
+
     # Summary
     if [[ $skipped_count -gt 0 ]]; then
         progress_log "  ✅  $skipped_count file(s) already correctly linked"
@@ -209,7 +209,7 @@ link_dotfiles() {
     if [[ $backed_up_count -gt 0 ]]; then
         progress_log "  📁  $backed_up_count file(s) backed up to: $BACKUPS_PATH"
     fi
-    
+
     # Simulate work for progress display
     progress_exec_stream sh -c "echo 'Linked $linked_count files, skipped $skipped_count, backed up $backed_up_count'"
 }
@@ -222,13 +222,13 @@ sync_ssh_config() {
     progress_step "Syncing SSH config"
 
     skip_on_work_laptop "SSH config" && return 0
-    
+
     mkdir -p "$HOME/.ssh"
     chmod 700 "$HOME/.ssh"
-    
+
     local src="$DOTDOTFILES/lib/ssh/config"
     local dst="$HOME/.ssh/config"
-    
+
     if [[ -f "$src" ]]; then
         progress_exec_stream sh -c "ln -sf \"$src\" \"$dst\" && chmod 600 \"$src\""
         progress_log "  ✅  SSH config synced"
@@ -241,17 +241,17 @@ sync_ssh_config() {
 
 update_authorized_keys() {
     progress_step "Updating authorized keys"
-    
+
     skip_on_work_laptop "authorized keys" && return 0
-    
+
     # Use curl (available on fresh macOS) instead of wget
     progress_exec_stream sh -c "curl -fsSL https://github.com/agoodkind.keys \
         -o \"$HOME/.ssh/authorized_keys.tmp\""
-    
+
     # Append missing keys to ~/.ssh/authorized_keys
     mkdir -p "$HOME/.ssh"
     touch "$HOME/.ssh/authorized_keys"
-    
+
     local added_count=0
     while IFS= read -r key || [[ -n "$key" ]]; do
         if ! grep -q "$key" "$HOME/.ssh/authorized_keys"; then
@@ -259,7 +259,7 @@ update_authorized_keys() {
             added_count=$((added_count + 1))
         fi
     done < "$HOME/.ssh/authorized_keys.tmp"
-    
+
     rm -f "$HOME/.ssh/authorized_keys.tmp"
     progress_log "  ✅  Authorized keys updated (added $added_count keys)"
 }
@@ -275,14 +275,14 @@ sync_script_with_checksum() {
     local script_name
     script_name=$(basename "$src" .sh)
     local target="$dst/$script_name"
-    
+
     local src_sum
     src_sum=$(calculate_checksum "$src")
-    
+
     # Check if target exists and compare checksums
     if [[ -e "$target" ]] || [[ -L "$target" ]]; then
         local dst_file="$target"
-        
+
         # Resolve symlink if it is one
         if [[ -L "$target" ]]; then
             if [[ "$mode" == "link" ]]; then
@@ -297,7 +297,7 @@ sync_script_with_checksum() {
                 dst_file=$(readlink -f "$target" 2>/dev/null || echo "$target")
             fi
         fi
-        
+
         # Compare checksums if target file exists
         if [[ -f "$dst_file" ]]; then
             local dst_sum
@@ -307,7 +307,7 @@ sync_script_with_checksum() {
             fi
         fi
     fi
-    
+
     # Perform sync based on mode
     if [[ "$mode" == "link" ]]; then
         ln -sf "$src" "$target"
@@ -324,18 +324,18 @@ sync_scripts_to_local() {
     if ! is_macos; then
         return 0
     fi
-    
+
     # Work laptop: use simple ~/.local/bin/scripts symlinks (no sudo, no launchd)
     if is_work_laptop; then
         sync_scripts_to_local_symlinks
         return 0
     fi
-    
+
     # Personal Mac: install launchd daemon to auto-update /usr/local/opt/scripts
     local DAEMON_NAME="com.agoodkind.scripts-updater"
     local DAEMON_PLIST="/Library/LaunchDaemons/${DAEMON_NAME}.plist"
     local SCRIPTS_DIR="/usr/local/opt/scripts"
-    
+
     # Check if launchd daemon is already installed
     if [[ -f "$DAEMON_PLIST" ]] && [[ -d "$SCRIPTS_DIR/.git" ]]; then
         progress_log "  ✅  scripts-updater launchd daemon already installed"
@@ -349,14 +349,14 @@ sync_scripts_to_local() {
         progress_exec_stream sudo launchctl start "${DAEMON_NAME}"
         return 0
     fi
-    
+
     # Check if /usr/local/opt/scripts exists but is not a git repo
     if [[ -d "$SCRIPTS_DIR" ]] && [[ ! -d "$SCRIPTS_DIR/.git" ]]; then
         progress_log "  🔄  Migrating to git-based launchd updater..."
     else
         progress_log "  📦  Installing scripts-updater launchd daemon..."
     fi
-    
+
     # Run the macOS installer script
     progress_exec_stream "$DOTDOTFILES/lib/scripts/install-updater" --platform macos
 }
@@ -364,20 +364,20 @@ sync_scripts_to_local() {
 # Simple symlink method for work laptops (no sudo required)
 sync_scripts_to_local_symlinks() {
     progress_log "🔗 Syncing scripts to ~/.local/bin/scripts (work laptop mode)..."
-    
+
     mkdir -p "$HOME/.local/bin/scripts"
     local scripts
     # Find executable files (excluding hidden files and specific non-script files)
     scripts=$(find "$DOTDOTFILES/lib/scripts" -maxdepth 1 -type f \
         \( -perm -u=x -o -perm -g=x -o -perm -o=x \) \
         ! -name ".*" ! -name "LICENSE" ! -name "*.md" ! -name "*.txt")
-    
+
     local linked_count=0
     for script in $scripts; do
         local script_name
         script_name=$(basename "$script")
         local target="$HOME/.local/bin/scripts/$script_name"
-        
+
         # Check if symlink already points to correct location
         if [[ -L "$target" ]]; then
             local current_link
@@ -386,11 +386,11 @@ sync_scripts_to_local_symlinks() {
                 continue  # Already correct
             fi
         fi
-        
+
         ln -sf "$script" "$target"
         linked_count=$((linked_count + 1))
     done
-    
+
     if [[ $linked_count -gt 0 ]]; then
         color_echo GREEN "  ✅  $linked_count script(s) linked"
     else
@@ -403,14 +403,14 @@ sync_scripts_to_opt() {
     if ! is_ubuntu; then
         return 0
     fi
-    
+
     skip_on_work_laptop "/opt/scripts" && return 0
-    
+
     if ! has_sudo_access; then
         color_echo RED "  ⚠️  Skipping /opt/scripts (no sudo access)"
         return
     fi
-    
+
     # Check if systemd updater is already installed
     if systemctl is-enabled scripts-updater.timer &>/dev/null; then
         color_echo GREEN "✅  scripts-updater systemd timer already installed"
@@ -418,14 +418,14 @@ sync_scripts_to_opt() {
         sudo systemctl start scripts-updater.service 2>/dev/null || true
         return 0
     fi
-    
+
     # Check if /opt/scripts exists but is not a git repo (old copy-based install)
     if [[ -d "/opt/scripts" ]] && [[ ! -d "/opt/scripts/.git" ]]; then
         progress_log "  🔄  Migrating /opt/scripts to git-based systemd updater..."
     else
         progress_log "  📦  Installing scripts-updater systemd timer..."
     fi
-    
+
     # Run the installer script
     progress_exec_stream sudo "$DOTDOTFILES/lib/scripts/install-updater" --platform linux
 }
@@ -442,11 +442,11 @@ sync_all_scripts() {
 
 sync_cursor_config() {
     progress_step "Syncing Cursor configuration"
-    
+
     local cursor_dir="$HOME/.cursor"
     local src_rules="$DOTDOTFILES/lib/cursor/rules"
     local src_commands="$DOTDOTFILES/lib/cursor/commands"
-    
+
     # Sync rules locally
     if [[ -d "$src_rules" ]]; then
         mkdir -p "$cursor_dir/rules"
@@ -458,7 +458,7 @@ sync_cursor_config() {
             progress_log "  🔗  Linked rule: $rule_name"
         done
     fi
-    
+
     # Sync commands
     if [[ -d "$src_commands" ]]; then
         mkdir -p "$cursor_dir/commands"
@@ -470,7 +470,7 @@ sync_cursor_config() {
             progress_log "  🔗  Linked command: $cmd_name"
         done
     fi
-    
+
     # Simulate work for progress display
     progress_exec_stream sh -c "echo 'Synced Cursor configuration files'"
 }
@@ -541,17 +541,17 @@ cleanup_homebrew_repair() {
         color_echo GRAY "  ⏭️  Skipping Homebrew repair (not in repair mode)"
         return 0
     fi
-    
+
     if ! is_macos; then
         return 0
     fi
-    
+
     if ! command -v brew >/dev/null 2>&1; then
         return 0
     fi
-    
+
     color_echo YELLOW "🔧  Repair mode: cleaning up Homebrew..."
-    
+
     # Remove incomplete downloads that can cause lock issues
     local incomplete_files
     incomplete_files=$(find "$HOME/Library/Caches/Homebrew/downloads" -name "*.incomplete" 2>/dev/null | wc -l | tr -d ' ')
@@ -559,11 +559,11 @@ cleanup_homebrew_repair() {
         color_echo YELLOW "  🗑️  Removing $incomplete_files incomplete download(s)..."
         rm -rf "$HOME/Library/Caches/Homebrew/downloads"/*.incomplete 2>/dev/null
     fi
-    
+
     # Run brew cleanup
     color_echo YELLOW "  🧹  Running brew cleanup..."
     brew cleanup --prune=all 2>/dev/null || true
-    
+
     color_echo GREEN "  ✅  Homebrew cleanup complete"
 }
 
@@ -572,15 +572,15 @@ cleanup_neovim_repair() {
         progress_log "  ⏭️  Skipping Neovim repair (not in repair mode)"
         return 0
     fi
-    
+
     progress_step "Repair mode: cleaning up Neovim"
-    
+
     local NVIM_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/nvim"
     local LAZY_DIR="$NVIM_DATA/lazy"
-    
+
     if [[ -d "$LAZY_DIR" ]]; then
         find "$LAZY_DIR" -maxdepth 1 -name "*.cloning" -delete 2>/dev/null
-        
+
         # Remove failed/partial plugin directories (empty or missing .git)
         local dir
         for dir in "$LAZY_DIR"/*/; do
@@ -591,12 +591,12 @@ cleanup_neovim_repair() {
             fi
         done
     fi
-    
+
     if [[ -d "$NVIM_DATA" ]]; then
         find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*-tmp" -type d -exec rm -rf {} + 2>/dev/null
         find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*" -type d ! -name "*.so" -exec rm -rf {} + 2>/dev/null
     fi
-    
+
     # Clean up swap files in repair mode
     local NVIM_SWAP="${XDG_STATE_HOME:-$HOME/.local/state}/nvim/swap"
     local swap_count=0
@@ -616,7 +616,7 @@ cleanup_neovim_repair() {
             color_echo YELLOW "  🗑️  Removed $swap_count swap file(s) from legacy location"
         fi
     fi
-    
+
     color_echo GREEN "  ✅  Neovim cleanup complete"
 }
 
@@ -627,23 +627,23 @@ update_neovim_plugins() {
         progress_log "  ⏭️  Skipping Neovim plugins (nvim not installed)"
         return 0
     fi
-    
+
     local NVIM_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/nvim"
     local LAZY_DIR="$NVIM_DATA/lazy"
-    
+
     # Clean up stale lazy.nvim lock files that can cause SIGKILL failures
     if [[ -d "$LAZY_DIR" ]]; then
         find "$LAZY_DIR" -maxdepth 1 -name "*.cloning" -delete 2>/dev/null
     fi
-    
+
     # Clean up stale treesitter temp directories
     if [[ -d "$NVIM_DATA" ]]; then
         find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*-tmp" -type d -exec rm -rf {} + 2>/dev/null
     fi
-    
+
     nvim --headless -c "lua require('lazy').sync()" -c "qa" 2>/dev/null || true
     color_echo GREEN "  ✅  Neovim plugins updated"
-    
+
     # Install treesitter parsers if tree-sitter CLI is available
     if command -v tree-sitter >/dev/null 2>&1; then
         local ts_version
@@ -690,7 +690,7 @@ create_hushlogin() {
 run_os_install() {
     local install_script=""
     local os_type=""
-    
+
     if is_macos; then
         os_type="macOS"
         install_script="$DOTDOTFILES/lib/setup/platform/mac.sh"
@@ -705,9 +705,9 @@ run_os_install() {
     else
         return 0
     fi
-    
+
     color_echo BLUE "💡  Running $os_type setup script..."
-    
+
     if [[ "${USE_DEFAULTS:-false}" == "true" ]]; then
         "$install_script" --use-defaults "$@"
     else
@@ -729,14 +729,14 @@ main() {
     sync_cursor_user_rules
     check_git_hooks_path
     sync_git_hooks
-    
+
     # Run OS-specific install
     run_os_install "$@"
-    
+
     # Install custom tools
     progress_step "Installing custom tools"
     progress_exec_stream "$DOTDOTFILES/lib/setup/platform/tools.sh" "$@"
-    
+
     update_neovim_plugins
     cleanup_homebrew_repair
     cleanup_neovim_repair
