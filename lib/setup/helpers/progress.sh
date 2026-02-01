@@ -75,6 +75,13 @@ function progress_done() {
     _PROGRESS_LINE_COUNT=0
 }
 
+# Terminal width for truncation (avoid wrapping). Prefix "  " uses 2 cols.
+function _progress_term_cols() {
+    local cols
+    cols=$(tput cols 2>/dev/null) || cols="${COLUMNS:-80}"
+    echo $((cols > 2 ? cols - 2 : 80))
+}
+
 # Clear N lines above current position
 function progress_clear_lines() {
     local count=$1
@@ -111,25 +118,30 @@ function progress_exec_stream() {
 
     # In CI/Non-interactive/Non-TTY, just stream output linearly without cursor magic
     if [[ "${GITHUB_ACTIONS:-}" == "true" ]] || [[ "${CI:-}" == "true" ]] || [[ ! -t 1 ]]; then
+        local max_len
+        max_len=$(_progress_term_cols)
         while IFS= read -r line || [[ -n "$line" ]]; do
             if [[ "$line" == "$exit_token:"* ]]; then
                 exit_code="${line#$exit_token:}"
                 continue
             fi
-            echo "  $line"
             progress_log "$line"
+            line="${line##*$'\r'}"
+            line="${line//$'\r'/}"
+            [[ ${#line} -gt $max_len ]] && line="${line:0:$max_len}"
+            echo "  $line"
         done < <(set +e; "$@" 2>&1; printf "\n%s:%d\n" "$exit_token" $?)
 
         # Fallback if for some reason we didn't get the exit code
         [[ "$exit_code" == "-1" ]] && exit_code=1
 
         if [[ $exit_code -eq 0 ]]; then
-            echo -e "${COLOR_GREEN}  ✓ Completed${TEXT_RESET}"
-            progress_log "  ✓ Completed"
+            echo -e "${COLOR_GREEN}  ? Completed${TEXT_RESET}"
+            progress_log "  ? Completed"
         else
-            echo -e "${COLOR_RED}  ✗ Failed (exit code: $exit_code)${TEXT_RESET}"
+            echo -e "${COLOR_RED}  ? Failed (exit code: $exit_code)${TEXT_RESET}"
             echo -e "${COLOR_RED}  Command: $*${TEXT_RESET}"
-            progress_log "  ✗ Failed (exit code: $exit_code)"
+            progress_log "  ? Failed (exit code: $exit_code)"
             progress_log "  Command: $*"
         fi
         return $exit_code
@@ -150,6 +162,10 @@ function progress_exec_stream() {
         # Log full output to file
         progress_log "$line"
         ((line_count++)) || true
+
+        # Normalize: content after last \r (progress bar), then strip any remaining \r
+        line="${line##*$'\r'}"
+        line="${line//$'\r'/}"
 
         # Buffer logic for display
         buffer+=("$line")
@@ -173,8 +189,11 @@ function progress_exec_stream() {
             echo -ne "${ESC}[${visible_lines}A"
         fi
 
-        # 3. Print the window
+        # 3. Print the window (truncate to terminal width to avoid wrap/concatenation)
+        local max_len
+        max_len=$(_progress_term_cols)
         for l in "${lines_to_print[@]}"; do
+            [[ ${#l} -gt $max_len ]] && l="${l:0:$max_len}"
             echo -ne "${ERASE_LINE}"
             echo -e "${TEXT_DIM}  ${l}${TEXT_RESET}"
         done
@@ -196,10 +215,10 @@ function progress_exec_stream() {
     local duration=$(($(date +%s) - _PROGRESS_STEP_START))
     local summary
     if [[ $exit_code -eq 0 ]]; then
-        summary="  ✓ Completed in ${duration}s"
+        summary="  ? Completed in ${duration}s"
         echo -e "${COLOR_GREEN}${summary}${TEXT_RESET}"
     else
-        summary="  ✗ Failed in ${duration}s (exit code: $exit_code)"
+        summary="  ? Failed in ${duration}s (exit code: $exit_code)"
         echo -e "${COLOR_RED}${summary}${TEXT_RESET}"
         echo -e "${COLOR_RED}  Command: $*${TEXT_RESET}"
         progress_log "  Command: $*"
