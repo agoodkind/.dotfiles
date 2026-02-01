@@ -54,27 +54,42 @@ requires_classic_confinement() {
 }
 
 # =============================================================================
+# Helper function to add PPAs
+# =============================================================================
+
+ensure_ppa() {
+    local ppa="$1"
+    # Extract just the user/repo part for grep (e.g. ppa:user/repo -> user/repo)
+    local ppa_name="${ppa#ppa:}"
+
+    if ! grep -q "^deb .*$ppa_name" /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null; then
+        color_echo YELLOW "  📦  Adding PPA: $ppa..."
+        sudo add-apt-repository -y "$ppa"
+        # Update immediately after adding a PPA
+        sudo apt-get update -qq
+    fi
+}
+
+# =============================================================================
 # Build ALL_APT_PACKAGES array
 # =============================================================================
 
+# Process APT_PPAS first
+for pkg in "${!APT_PPAS[@]}"; do
+    # Check if the package is in COMMON_PACKAGES or APT_SPECIFIC
+    if is_in_array "$pkg" "${COMMON_PACKAGES[@]}" || is_in_array "$pkg" "${APT_SPECIFIC[@]}"; then
+        ensure_ppa "${APT_PPAS[$pkg]}"
+    fi
+done
+
 ALL_APT_PACKAGES=()
 
-# Add fastfetch PPA if needed (Ubuntu only)
-if is_ubuntu && is_in_array "fastfetch" "${COMMON_PACKAGES[@]}"; then
-    if ! grep -q "^deb .*zhangsongcui3371/fastfetch" /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null; then
-        color_echo YELLOW "  📦  Adding fastfetch PPA..."
-        sudo add-apt-repository -y ppa:zhangsongcui3371/fastfetch
-        sudo apt-get update -qq
-    fi
-fi
-
-# Add mapped common packages (skip duplicates that are in APT_SPECIFIC or SNAP_PACKAGES)
 for package in "${COMMON_PACKAGES[@]}"; do
 	# Skip packages that should be installed via snap
 	if is_in_array "$package" "${SNAP_PACKAGES[@]}"; then
 		continue
 	fi
-	
+
 	mapped=$(map_to_apt_name "$package")
 	# Handle multi-word output (like openssh -> openssh-client openssh-server)
 	for pkg in $mapped; do
@@ -97,21 +112,21 @@ ALL_APT_PACKAGES+=("${APT_SPECIFIC[@]}")
 
 install_packages() {
     debug_echo "install_packages() called with $# package(s)"
-    
+
     local packages_to_install_via_apt=()
     local packages_to_install_via_snap=()
-    
+
     debug_echo "Processing $# packages..."
     debug_echo "Package list: $*"
-    
+
     for package in "$@"; do
         debug_echo "--- Processing package: $package ---"
-        
+
         # Check if this package should be installed via snap
         if is_in_array "$package" "${SNAP_PACKAGES[@]}"; then
             debug_echo "  Package $package is in SNAP_PACKAGES, will install via snap"
             local snap_name=$(map_to_snap_name "$package")
-            
+
             if is_installed_via_snap "$snap_name"; then
                 debug_echo "  SKIP: $snap_name already installed via snap"
             else
@@ -128,7 +143,7 @@ install_packages() {
             fi
         fi
     done
-    
+
     debug_echo "Summary:"
     debug_echo "  packages_to_install_via_apt: ${#packages_to_install_via_apt[@]} packages"
     debug_echo "  packages_to_install_via_snap: ${#packages_to_install_via_snap[@]} packages"
@@ -150,7 +165,7 @@ install_packages() {
         for snap_package in "${packages_to_install_via_snap[@]}"; do
             debug_echo "--- Installing snap package: $snap_package ---"
             color_echo CYAN "Installing $snap_package via snap..."
-            
+
             # Find the original package name from SNAP_PACKAGES that maps to this snap name
             local original_package=""
             for pkg in "${SNAP_PACKAGES[@]}"; do
@@ -159,7 +174,7 @@ install_packages() {
                     break
                 fi
             done
-            
+
             # Remove apt equivalent if installed
             if [ -n "$original_package" ]; then
                 local apt_name=$(map_to_apt_name "$original_package")
@@ -172,10 +187,10 @@ install_packages() {
                     fi
                 done
             fi
-            
+
             local install_output
             local install_status
-            
+
             if requires_classic_confinement "$snap_package"; then
                 debug_echo "  Package requires classic confinement, installing with --classic"
                 install_output=$(sudo snap install --classic "$snap_package" 2>&1)
@@ -184,7 +199,7 @@ install_packages() {
                 debug_echo "  Package does not require classic confinement, installing normally"
                 install_output=$(sudo snap install "$snap_package" 2>&1)
                 install_status=$?
-                
+
                 # If it failed and error mentions classic confinement, retry with --classic
                 if [ $install_status -ne 0 ] && echo "$install_output" | grep -qi "classic confinement"; then
                     debug_echo "  Installation failed, error mentions classic confinement, retrying with --classic"
@@ -193,7 +208,7 @@ install_packages() {
                     install_status=$?
                 fi
             fi
-            
+
             if [ $install_status -eq 0 ]; then
                 debug_echo "  SUCCESS: $snap_package installed via snap"
                 color_echo GREEN "  -> Successfully installed $snap_package via snap"
@@ -207,7 +222,7 @@ install_packages() {
     else
         debug_echo "No snap packages to install"
     fi
-    
+
     debug_echo "install_packages() completed"
 }
 
@@ -348,7 +363,7 @@ if [ -n "$RELEASE_CODENAME" ]; then
         2>/dev/null; then
         color_echo BLUE \
             "Adding backports repository for $RELEASE_CODENAME..."
-        
+
         # Determine repository URL and components based on distribution
         if [ "$DISTRO_ID" = "debian" ]; then
             # Debian backports
@@ -390,7 +405,7 @@ $DISTRO_ID, skipping backports..."
                 REPO_URL=""
             fi
         fi
-        
+
         # Add backports repository if we determined the structure
         if [ -n "$REPO_URL" ]; then
             BACKPORTS_LIST="/etc/apt/sources.list.d/backports.list"
@@ -477,7 +492,7 @@ kill_nano() {
     if is_installed_via_snap nano; then
         sudo snap remove nano
     fi
-    
+
     if command -v nano &>/dev/null; then
         sudo rm -rf "$(which nano)"
     fi
