@@ -121,7 +121,6 @@ color_echo YELLOW "  📍  Target zsh path: $ZSH_PATH"
 # Check if current shell is zsh (by path match or by basename)
 if [[ "$CURRENT_SHELL" == "$ZSH_PATH" ]] || [[ "$(basename "$CURRENT_SHELL" 2>/dev/null)" == "zsh" ]]; then
     color_echo GREEN "  ✅  Shell is already zsh"
-    color_echo GREEN "  ✅  Installation complete!"
 else
     color_echo YELLOW "  🔄  Changing login shell to zsh..."
     if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
@@ -133,3 +132,5 @@ else
         color_echo RED "  ❌  Failed to change shell (may need sudo)"
     fi
 fi
+
+color_echo GREEN "✅  Installation complete!"
