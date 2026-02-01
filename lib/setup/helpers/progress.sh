@@ -77,6 +77,10 @@ function progress_exec_stream() {
     local buffer=()
     local line_count=0
     local exit_code=0
+    local exit_file="/tmp/progress_exit_$$"
+    
+    # We use a temp file to capture the exit code because capturing it
+    # from process substitution is unreliable across bash versions.
     
     while IFS= read -r line; do
         echo -e "${TEXT_DIM}  ${line}${TEXT_RESET}"
@@ -88,8 +92,14 @@ function progress_exec_stream() {
         if [[ ${#buffer[@]} -gt 100 ]]; then
             buffer=("${buffer[@]:1}")
         fi
-    done < <("$@" 2>&1)
-    exit_code=$?
+    done < <("$@" 2>&1; echo $? > "$exit_file")
+    
+    if [[ -f "$exit_file" ]]; then
+        exit_code=$(cat "$exit_file")
+        rm -f "$exit_file"
+    else
+        exit_code=1 # Fallback error if something went wrong
+    fi
     
     # Clear verbose output
     if [[ $line_count -gt 0 ]]; then
@@ -105,7 +115,7 @@ function progress_exec_stream() {
     else
         summary="  ✗ Failed in ${duration}s"
         echo -e "${COLOR_RED}${summary}${TEXT_RESET}"
-        # Show last 10 lines on error
+        # Show last 10 lines on error so the user can see WHY it failed
         echo -e "${TEXT_DIM}"
         for line in "${buffer[@]: -10}"; do
             echo "  $line"
