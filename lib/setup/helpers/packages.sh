@@ -42,6 +42,7 @@ export COMMON_PACKAGES=(
 	ipv6calc
 	jq
 	less
+    mosh
 	most
 	moreutils
 	msmtp
@@ -75,6 +76,7 @@ export COMMON_PACKAGES=(
 # APT-specific packages (different names or apt-only)
 export APT_SPECIFIC=(
 	ack-grep
+	et
 	golang-go
 	golang
 	gpg
@@ -104,6 +106,7 @@ export BREW_SPECIFIC=(
 	curlie
 	doggo
 	dust
+	MisterTea/et/et
 	fx
 	gitui
 	glow
@@ -201,6 +204,7 @@ get_package_name() {
 # Format: [package_name]="ppa:user/repo"
 # The PPA will only be added if the package is in the install list
 declare -A APT_PPAS=(
+	[et]="ppa:jgmath2000/et"
 	[fastfetch]="ppa:zhangsongcui3371/fastfetch"
 )
 

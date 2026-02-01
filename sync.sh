@@ -439,26 +439,29 @@ sync_cursor_user_rules() {
         return 0
     fi
 
-    color_echo BLUE "Syncing Cursor User Rules..."
-    "$sync_script"
+    progress_step "Syncing Cursor User Rules"
+    progress_exec_stream "$sync_script"
 }
 
 sync_git_hooks() {
-    color_echo BLUE "Syncing git hooks..."
+    progress_step "Syncing git hooks"
 
-    local hooks_dir="$DOTDOTFILES/.git/hooks"
-    local src_hooks="$DOTDOTFILES/.githooks"
+    if [[ ! -d "$DOTDOTFILES/.githooks" ]]; then
+        progress_exec_stream sh -c "echo 'No .githooks directory'"
+        return 0
+    fi
 
-    if [[ -d "$src_hooks" ]]; then
+    progress_exec_stream env DOTDOTFILES="$DOTDOTFILES" sh -c '
+        hooks_dir="$DOTDOTFILES/.git/hooks"
+        src_hooks="$DOTDOTFILES/.githooks"
         mkdir -p "$hooks_dir"
         for hook in "$src_hooks"/*; do
             [[ -f "$hook" ]] || continue
-            local hook_name
             hook_name=$(basename "$hook")
             ln -sf "../../.githooks/$hook_name" "$hooks_dir/$hook_name"
-            color_echo GREEN "  Linked hook: $hook_name"
+            echo "Linked hook: $hook_name"
         done
-    fi
+    '
 }
 
 check_git_hooks_path() {
@@ -496,21 +499,16 @@ cleanup_homebrew_repair() {
         return 0
     fi
 
-    color_echo YELLOW "Repair mode: cleaning up Homebrew..."
+    progress_step "Repair mode: cleaning up Homebrew"
 
-    # Remove incomplete downloads that can cause lock issues
-    local incomplete_files
-    incomplete_files=$(find "$HOME/Library/Caches/Homebrew/downloads" -name "*.incomplete" 2>/dev/null | wc -l | tr -d ' ')
-    if [[ "$incomplete_files" -gt 0 ]]; then
-        color_echo YELLOW "  Removing $incomplete_files incomplete download(s)..."
-        rm -rf "$HOME/Library/Caches/Homebrew/downloads"/*.incomplete 2>/dev/null
-    fi
-
-    # Run brew cleanup
-    color_echo YELLOW "  Running brew cleanup..."
-    brew cleanup --prune=all 2>/dev/null || true
-
-    color_echo GREEN "  Homebrew cleanup complete"
+    progress_exec_stream sh -c '
+        incomplete_files=$(find "$HOME/Library/Caches/Homebrew/downloads" -name "*.incomplete" 2>/dev/null | wc -l | tr -d " ")
+        if [[ "$incomplete_files" -gt 0 ]]; then
+            echo "Removing $incomplete_files incomplete download(s)..."
+            rm -rf "$HOME/Library/Caches/Homebrew/downloads"/*.incomplete 2>/dev/null
+        fi
+        brew cleanup --prune=all 2>/dev/null || true
+    '
 }
 
 cleanup_neovim_repair() {
@@ -521,49 +519,48 @@ cleanup_neovim_repair() {
 
     progress_step "Repair mode: cleaning up Neovim"
 
-    local NVIM_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/nvim"
-    local LAZY_DIR="$NVIM_DATA/lazy"
+    progress_exec_stream sh -c '
+        NVIM_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/nvim"
+        LAZY_DIR="$NVIM_DATA/lazy"
 
-    if [[ -d "$LAZY_DIR" ]]; then
-        find "$LAZY_DIR" -maxdepth 1 -name "*.cloning" -delete 2>/dev/null
+        if [ -d "$LAZY_DIR" ]; then
+            find "$LAZY_DIR" -maxdepth 1 -name "*.cloning" -delete 2>/dev/null
+            for dir in "$LAZY_DIR"/*/; do
+                [ -d "$dir" ] || continue
+                if [ ! -d "$dir/.git" ] || [ -z "$(ls -A "$dir" 2>/dev/null)" ]; then
+                    echo "Removing incomplete plugin: $(basename "$dir")"
+                    rm -rf "$dir"
+                fi
+            done
+        fi
 
-        # Remove failed/partial plugin directories (empty or missing .git)
-        local dir
-        for dir in "$LAZY_DIR"/*/; do
-            [[ -d "$dir" ]] || continue
-            if [[ ! -d "$dir/.git" ]] || [[ -z "$(ls -A "$dir" 2>/dev/null)" ]]; then
-                color_echo YELLOW "  Removing incomplete plugin: $(basename "$dir")"
-                rm -rf "$dir"
+        if [ -d "$NVIM_DATA" ]; then
+            find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*-tmp" -type d \
+                -exec rm -rf {} + 2>/dev/null
+            find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*" -type d ! -name "*.so" \
+                -exec rm -rf {} + 2>/dev/null
+        fi
+
+        NVIM_SWAP="${XDG_STATE_HOME:-$HOME/.local/state}/nvim/swap"
+        if [ -d "$NVIM_SWAP" ]; then
+            swap_count=$(find "$NVIM_SWAP" -name "*.swp" -type f 2>/dev/null | wc -l | tr -d " ")
+            if [ "$swap_count" -gt 0 ]; then
+                find "$NVIM_SWAP" -name "*.swp" -type f -delete 2>/dev/null
+                echo "Removed $swap_count swap file(s)"
             fi
-        done
-    fi
-
-    if [[ -d "$NVIM_DATA" ]]; then
-        find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*-tmp" -type d -exec rm -rf {} + 2>/dev/null
-        find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*" -type d ! -name "*.so" -exec rm -rf {} + 2>/dev/null
-    fi
-
-    # Clean up swap files in repair mode
-    local NVIM_SWAP="${XDG_STATE_HOME:-$HOME/.local/state}/nvim/swap"
-    local swap_count=0
-    if [[ -d "$NVIM_SWAP" ]]; then
-        swap_count=$(find "$NVIM_SWAP" -name "*.swp" -type f 2>/dev/null | wc -l)
-        if [[ "$swap_count" -gt 0 ]]; then
-            find "$NVIM_SWAP" -name "*.swp" -type f -delete 2>/dev/null
-            color_echo YELLOW "  Removed $swap_count swap file(s)"
         fi
-    fi
-    # Also check legacy swap location
-    local NVIM_SWAP_LEGACY="$NVIM_DATA/swap"
-    if [[ -d "$NVIM_SWAP_LEGACY" ]]; then
-        swap_count=$(find "$NVIM_SWAP_LEGACY" -name "*.swp" -type f 2>/dev/null | wc -l)
-        if [[ "$swap_count" -gt 0 ]]; then
-            find "$NVIM_SWAP_LEGACY" -name "*.swp" -type f -delete 2>/dev/null
-            color_echo YELLOW "  Removed $swap_count swap file(s) from legacy location"
-        fi
-    fi
 
-    color_echo GREEN "  Neovim cleanup complete"
+        NVIM_SWAP_LEGACY="$NVIM_DATA/swap"
+        if [ -d "$NVIM_SWAP_LEGACY" ]; then
+            swap_count=$(find "$NVIM_SWAP_LEGACY" -name "*.swp" -type f 2>/dev/null | wc -l | tr -d " ")
+            if [ "$swap_count" -gt 0 ]; then
+                find "$NVIM_SWAP_LEGACY" -name "*.swp" -type f -delete 2>/dev/null
+                echo "Removed $swap_count swap file(s) from legacy location"
+            fi
+        fi
+
+        echo "Neovim cleanup complete"
+        '
 }
 
 update_neovim_plugins() {
@@ -639,10 +636,9 @@ run_os_install() {
     if is_macos; then
         os_type="macOS"
         install_script="$DOTDOTFILES/lib/setup/platform/mac.sh"
-        # Only cleanup if brew is already installed
         if command -v brew >/dev/null 2>&1; then
-            color_echo YELLOW "Cleaning up Homebrew..."
-            brew cleanup
+            progress_step "Cleaning up Homebrew"
+            progress_exec_stream brew cleanup
         fi
     elif is_ubuntu; then
         os_type="Debian/Ubuntu/Proxmox"

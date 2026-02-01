@@ -209,10 +209,10 @@ _init_cache_if_needed() {
         if (( $+functions[dotfiles_changed_hash] )); then
             _CURRENT_HASH=$(dotfiles_changed_hash)
         fi
-        
+
         # Ensure directory exists
         mkdir -p "$(dirname "$PREFER_CACHE_FILE")"
-        
+
         # If cache file doesn't exist or is empty (newly created), add header
         if [[ ! -f "$PREFER_CACHE_FILE" ]] || [[ ! -s "$PREFER_CACHE_FILE" ]]; then
             echo "# HASH: $_CURRENT_HASH" > "$PREFER_CACHE_FILE"
@@ -239,14 +239,14 @@ _prefer_impl() {
     local name="$1"
     local binary="$2"
     shift 2 || true
-    
+
     _resolve_prefer_target "$binary" "$@" || return
 
     # Define alias in current session
     alias "$name=$_PREFER_RESOLVED"
-    
+
     # Append to cache file
-    # We only init cache if it wasn't there at start. 
+    # We only init cache if it wasn't there at start.
     # If we are falling back to impl, it means alias wasn't in cache.
     # We should ensure cache exists before appending.
     # But checking hash again is slow.
@@ -261,7 +261,7 @@ _prefer_tty_impl() {
     local name="$1"
     local binary="$2"
     shift 2 || true
-    
+
     _resolve_prefer_target "$binary" "$@" || return
 
     # Define logic for TTY check
@@ -273,10 +273,10 @@ $name() {
         command $name \"\$@\";
     fi;
 }"
-    
+
     # Eval in current session
     eval "$func_body"
-    
+
     # Append to cache file
     if [[ ! -f "$PREFER_CACHE_FILE" ]]; then
          _init_cache_if_needed
@@ -293,7 +293,7 @@ prefer() {
     local name="$1"
     # Fast path: if alias exists (from cache), return immediately (0 cost)
     [[ -n "${aliases[$name]}" ]] && return 0
-    
+
     # Slow path: resolve and cache
     _prefer_impl "$@"
 }
@@ -303,10 +303,42 @@ prefer_tty() {
     local name="$1"
     # Fast path: if function exists (from cache), return immediately
     (( $+functions[$name] )) && return 0
-    
+
     # Slow path: resolve and cache
     _prefer_tty_impl "$@"
 }
+
+# -----------------------------------------------------------------------------
+# Mosh / ET wrappers: rewrite sshpiper-style syntax to two-hop via proxy
+# -----------------------------------------------------------------------------
+
+_sshpiper_proxy_host="root@ssh.home.goodkind.io"
+_sshpiper_dest_regex='^(.+)@(.+)@ssh\.home\.goodkind\.io$'
+
+_sshpiper_two_hop_inner() {
+    local dest="$1"
+    [[ "$dest" =~ $_sshpiper_dest_regex ]] || return 1
+    printf '%s@%s@localhost' "${match[1]}" "${match[2]}"
+}
+
+_sshpiper_run_two_hop() {
+    local cmd="$1"
+    local inner_flag="$2"
+    shift 2
+    local argv=("$@")
+    local dest="${argv[-1]}"
+    local args=("${argv[1,$#argv-1]}")
+    local inner
+    inner=$(_sshpiper_two_hop_inner "$dest") || { command $cmd "$@"; return; }
+    if [[ "$inner_flag" == '--' ]]; then
+        command $cmd "${args[@]}" $_sshpiper_proxy_host -- ssh "$inner"
+    else
+        command $cmd "${args[@]}" $_sshpiper_proxy_host -c "ssh $inner"
+    fi
+}
+
+mosh() { _sshpiper_run_two_hop mosh '--' "$@"; }
+et() { _sshpiper_run_two_hop et '-c' "$@"; }
 
 # -----------------------------------------------------------------------------
 # Other Utilities
