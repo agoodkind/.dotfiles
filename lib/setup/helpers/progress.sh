@@ -19,6 +19,7 @@ readonly COLOR_YELLOW="${ESC}[33m"
 # Track line count for cleanup
 _PROGRESS_LINE_COUNT=0
 _PROGRESS_STEP_START=0
+_PROGRESS_STEP_HEADER=""
 _PROGRESS_LOG_FILE=""
 
 # Initialize display (hide cursor)
@@ -91,19 +92,18 @@ function progress_clear_lines() {
     done
 }
 
-# Print step header
+# Print step header ([-] while expanded; rewritten to [+] when collapsed on success)
 function progress_step() {
     local step_name="$1"
     local step_num="${2:-}"
 
-    _PROGRESS_STEP_START=$(date +%s)
-
     local header
     if [[ -n "$step_num" ]]; then
-        header="[+] Step ${step_num}: ${step_name}"
+        header="[-] Step ${step_num}: ${step_name}"
     else
-        header="[+] ${step_name}"
+        header="[-] ${step_name}"
     fi
+    _PROGRESS_STEP_HEADER="$header"
 
     echo "$header"
     progress_log "$header"
@@ -111,6 +111,7 @@ function progress_step() {
 
 # Live streaming version (docker-style)
 function progress_exec_stream() {
+    _PROGRESS_STEP_START=$(date +%s)
     local buffer=()
     local line_count=0
     local exit_code=-1
@@ -136,12 +137,12 @@ function progress_exec_stream() {
         [[ "$exit_code" == "-1" ]] && exit_code=1
 
         if [[ $exit_code -eq 0 ]]; then
-            echo -e "${COLOR_GREEN}  ? Completed${TEXT_RESET}"
-            progress_log "  ? Completed"
+            echo -e "${COLOR_GREEN}  + Completed${TEXT_RESET}"
+            progress_log "  + Completed"
         else
-            echo -e "${COLOR_RED}  ? Failed (exit code: $exit_code)${TEXT_RESET}"
+            echo -e "${COLOR_RED}  x Failed (exit code: $exit_code)${TEXT_RESET}"
             echo -e "${COLOR_RED}  Command: $*${TEXT_RESET}"
-            progress_log "  ? Failed (exit code: $exit_code)"
+            progress_log "  x Failed (exit code: $exit_code)"
             progress_log "  Command: $*"
         fi
         return $exit_code
@@ -211,14 +212,15 @@ function progress_exec_stream() {
         progress_clear_lines $visible_lines
     fi
 
-    # Show result
     local duration=$(($(date +%s) - _PROGRESS_STEP_START))
     local summary
     if [[ $exit_code -eq 0 ]]; then
-        summary="  ? Completed in ${duration}s"
+        echo -ne "${CURSOR_UP}${ERASE_LINE}"
+        echo "${_PROGRESS_STEP_HEADER/[-]/[+]}"
+        summary="  + Completed in ${duration}s"
         echo -e "${COLOR_GREEN}${summary}${TEXT_RESET}"
     else
-        summary="  ? Failed in ${duration}s (exit code: $exit_code)"
+        summary="  x Failed in ${duration}s (exit code: $exit_code)"
         echo -e "${COLOR_RED}${summary}${TEXT_RESET}"
         echo -e "${COLOR_RED}  Command: $*${TEXT_RESET}"
         progress_log "  Command: $*"
