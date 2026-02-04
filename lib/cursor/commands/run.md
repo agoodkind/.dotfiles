@@ -10,13 +10,13 @@ Carry out the command referenced in this message or the latest context.
 - Present commands inside code blocks.
 - Do not include Cursor slash-commands inside shell commands (no `/run`, `/pr`,
   `/commit`, etc. in the command text).
-- Use `/usr/bin/env bash -lc` when running shell commands to avoid zsh
-  expansion surprises.
-- When running commands over SSH, run bash explicitly on the remote side too:
-  `ssh <host> '/usr/bin/env bash -lc "<remote command>"'`.
+- Use `/usr/bin/env bash -lc` when running BASH scripts and/or shell commands that require special expansion to avoid zsh expansion surprises UNLESS you are explicitly testing zsh/zshrc functionality.
+- When running commands over SSH, run commands non-interactively:
+  `ssh <host> <command>` if user says "please ssh into <host>" you should do `ssh <host> <command>" assume "<host>" is valid as written, user will specify user if necessary.
+- DO NOT MAKE ANY CHANGES UNLESS USER EXPLICITLY GRANTS PERMISSION. Permission to make changes should be obtained after each logical conversation point, and should not be assumed when in doubt.
 - SSHPiper routing format `user@target@proxy` (e.g., `root@service@ssh.home.goodkind.io`)
   is valid and should not be questioned.
-- Check `@.dotfiles/lib/ssh/config` first to see what shortcuts are available for the desired host.
+- Check `~/.dotfiles/lib/ssh/config` first to see what shortcuts are available for the desired host.
 - When multiple commands are provided, run each in the given order.
 - Avoid indefinite hangs; set a reasonable timeout when a command could block.
 - If the instruction is contextual, restate the exact command before running it
