@@ -507,7 +507,8 @@ function _git_wkm_cleanup_repo_worker() {
 
         if [[ "$should_fetch" == "true" ]]; then
             _cleanup_log "status:fetching"
-            command git -C "$rp" fetch origin --quiet 2>/dev/null || true
+            timeout 30 command git -C "$rp" fetch origin \
+                --quiet 2>/dev/null || true
         fi
 
         local wt_root="${rp}-worktrees"
@@ -680,6 +681,15 @@ function _git_wkm_cleanup() {
         spawn_poll[$i]=0
     done
 
+    # Kill background workers on Ctrl+C.
+    trap '
+        for _j in "${repo_pids[@]}"; do
+            [[ -n "$_j" ]] && kill "$_j" 2>/dev/null
+        done
+        command rm -rf "$tmp_dir" 2>/dev/null
+        return 130
+    ' INT
+
     # Print initial status lines (will be updated in place).
     for i in {1..$total}; do
         print "  ⏳ ${repos[$i]##*/} (queued)"
@@ -700,7 +710,7 @@ function _git_wkm_cleanup() {
         (
             _git_wkm_cleanup_repo_worker "${repos[$started]}" "$parent_dir" \
                 "$branch_filter" "$should_fetch" "$tmp_dir/$started"
-        ) 2>"${err_files[$started]}" &
+        ) 2>"${err_files[$started]}" &!
         repo_pids[$started]=$!
     done
 
@@ -760,7 +770,7 @@ function _git_wkm_cleanup() {
                                 _git_wkm_cleanup_repo_worker "${repos[$started]}" \
                                     "$parent_dir" "$branch_filter" "$should_fetch" \
                                     "$tmp_dir/$started"
-                            ) 2>"${err_files[$started]}" &
+                            ) 2>"${err_files[$started]}" &!
                             repo_pids[$started]=$!
                         fi
                         ;;
@@ -790,7 +800,7 @@ function _git_wkm_cleanup() {
                             _git_wkm_cleanup_repo_worker "${repos[$started]}" \
                                 "$parent_dir" "$branch_filter" "$should_fetch" \
                                 "$tmp_dir/$started"
-                        ) 2>"${err_files[$started]}" &
+                        ) 2>"${err_files[$started]}" &!
                         repo_pids[$started]=$!
                     fi
                 fi
@@ -831,14 +841,11 @@ function _git_wkm_cleanup() {
         (( completed < total )) && sleep 0.1
     done
 
-    # Wait for all background workers to finish.
+    # Kill any lingering workers (disowned, can't wait).
     for j in {1..$total}; do
-        if [[ -n "${repo_pids[$j]}" ]] && [[ "${repo_pids[$j]}" != "0" ]]; then
-            wait "${repo_pids[$j]}" 2>/dev/null || true
-        fi
+        [[ -n "${repo_pids[$j]:-}" ]] && \
+            kill "${repo_pids[$j]}" 2>/dev/null || true
     done
-    # Belt-and-suspenders: wait for any stragglers not tracked in repo_pids.
-    wait 2>/dev/null || true
 
     # Final redraw to ensure all repos show final state.
     printf "\033[%dA" "$total"
@@ -900,13 +907,28 @@ function _git_wkm_cleanup() {
         local branch="${rest##*$'\t'}"
 
         print "Removing ${rp##*/}: $branch"
-        command git -C "$rp" worktree remove "$wt" >/dev/null 2>&1 || true
-        command git -C "$rp" branch -d "$branch" >/dev/null 2>&1 || true
-        command git -C "$rp" worktree prune >/dev/null 2>&1 || true
+        command git -C "$rp" worktree remove "$wt" \
+            >/dev/null 2>&1 || true
+        command git -C "$rp" branch -d "$branch" \
+            >/dev/null 2>&1 || true
+        command git -C "$rp" worktree prune \
+            >/dev/null 2>&1 || true
+
+        # Call cleanup hook if defined (e.g., halo integration).
+        if (( ${+functions[_git_wkm_cleanup_hook]} )); then
+            _git_wkm_cleanup_hook "$wt" "$rp" "$branch"
+        fi
     done
 
         return 0
     } always {
+        # Kill any surviving workers on abnormal exit.
+        for _j in "${repo_pids[@]:-}"; do
+            [[ -n "$_j" ]] && kill "$_j" 2>/dev/null
+        done
+        [[ -n "${tmp_dir:-}" ]] && \
+            command rm -rf "$tmp_dir" 2>/dev/null
+        trap - INT
         XTRACEFD=$saved_xtracefd
         exec {xtrace_devnull_fd}>&- 2>/dev/null
     }
@@ -1316,11 +1338,11 @@ _git_wkm_worker" >/dev/null 2>&1
     _git_wkm_clear_cursor_state "$ws_file"
 
     # Open in Cursor BEFORE linking so IDE is ready while services sync.
-    # Prefer `open` on macOS for reliable window focus, fall back to CLI.
-    if [[ "$OSTYPE" == darwin* ]]; then
-        open -a "Cursor" "$ws_file" &>/dev/null &!
-    elif command -v cursor >/dev/null 2>&1; then
-        cursor --reuse-window "$ws_file" &>/dev/null &!
+    # Prefer `cursor` CLI (workspace-aware) over `open -a` (just file open).
+    if command -v cursor >/dev/null 2>&1; then
+        cursor "$ws_file" &>/dev/null &!
+    elif [[ "$OSTYPE" == darwin* ]]; then
+        open "$ws_file" &>/dev/null &!
     fi
 
     # Call post-hook if defined (e.g., for halo integration in .zshrc.local)
