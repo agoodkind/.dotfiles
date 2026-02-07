@@ -119,8 +119,6 @@ function progress_exec_stream() {
 
     # In CI/Non-interactive/Non-TTY, just stream output linearly without cursor magic
     if [[ "${GITHUB_ACTIONS:-}" == "true" ]] || [[ "${CI:-}" == "true" ]] || [[ ! -t 1 ]]; then
-        local max_len
-        max_len=$(_progress_term_cols)
         while IFS= read -r line || [[ -n "$line" ]]; do
             if [[ "$line" == "$exit_token:"* ]]; then
                 exit_code="${line#$exit_token:}"
@@ -129,7 +127,6 @@ function progress_exec_stream() {
             progress_log "$line"
             line="${line##*$'\r'}"
             line="${line//$'\r'/}"
-            [[ ${#line} -gt $max_len ]] && line="${line:0:$max_len}"
             echo "  $line"
         done < <(set +e; "$@" 2>&1; printf "\n%s:%d\n" "$exit_token" $?)
 
@@ -190,7 +187,7 @@ function progress_exec_stream() {
             echo -ne "${ESC}[${visible_lines}A"
         fi
 
-        # 3. Print the window (truncate to terminal width to avoid wrap/concatenation)
+        # 3. Print the window (truncate to terminal width to avoid wrap breaking cursor math)
         local max_len
         max_len=$(_progress_term_cols)
         for l in "${lines_to_print[@]}"; do
