@@ -70,6 +70,21 @@ Flow: Context/motivation → What it adds → Implementation approach
 - Reference specific methods, classes, or values that changed
 - Code references add precision—use them when naming things matters
 
+## Uploading Images and Videos
+
+When including screenshots or videos in PR descriptions, upload files to the repo's orphan `agoodkind/pr-assets` branch. This pushes via the GitHub Contents API with timestamped names. Since the asset lives in the same repo, GitHub renders it inline, even for private repos. First run per-repo auto-creates the orphan branch.
+
+If the `gh_upload` MCP tool is available, use it with `file` (absolute path) and optional `cwd`. It returns `{ "url": "..." }`.
+
+Otherwise, run the shell command directly:
+
+```bash
+gh upload screenshot.png
+gh upload demo.mp4
+```
+
+Both return the raw download URL. Use it in markdown as `![alt](URL)` or `[filename](URL)`.
+
 ## Before/After Image Table Conversion
 
 When the PR description (existing or being created) contains before/after images, automatically convert them to a side-by-side table format.

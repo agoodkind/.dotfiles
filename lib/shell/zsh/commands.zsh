@@ -400,6 +400,16 @@ pbcopy() {
     fi
 }
 
+# gh wrapper: intercept `gh upload` subcommand
+gh() {
+    if [[ "${1:-}" == "upload" ]]; then
+        shift
+        "${DOTFILES_DIR:-$HOME/.dotfiles}/lib/scripts/gh-upload" "$@"
+    else
+        command gh "$@"
+    fi
+}
+
 # thefuck wrapper: lazy load on first use
 fuck() {
     # Undefine this function and source the real one on first use
