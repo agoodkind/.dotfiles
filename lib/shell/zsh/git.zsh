@@ -89,7 +89,8 @@ function _git_wtk() {
         return 0
     fi
 
-    local dir_name="${branch_name//\//-}"
+    local repo_name="${main_root##*/}"
+    local dir_name="${repo_name}-${branch_name//\//-}"
     local worktree_path="$base_dir/$dir_name"
 
     command git "${git_prefix[@]}" fetch origin >/dev/null 2>&1
@@ -265,7 +266,8 @@ function _git_wkm_worker() {
     [[ "$rp" != /* ]] && rp="$_WKM_PWD/$rp"
     rp="${rp:A}"
 
-    local dir_name="${_WKM_BRANCH//\//-}"
+    local repo_name="${rp##*/}"
+    local dir_name="${repo_name}-${_WKM_BRANCH//\//-}"
     local wt_path="${rp}-worktrees/$dir_name"
 
     # Check if worktree already exists at expected path.
@@ -526,7 +528,8 @@ function _git_wkm_cleanup_repo_worker() {
     local dir_name=""
     local target_wt=""
     if [[ -n "$branch_filter" ]]; then
-        dir_name="${branch_filter//\//-}"
+        local repo_name="${rp##*/}"
+        dir_name="${repo_name}-${branch_filter//\//-}"
         target_wt="$wt_root/$dir_name"
     fi
 
@@ -1058,16 +1061,14 @@ function _git_wkm() {
     if [[ -f "$ws_file" ]]; then
         local -a ws_repos
         ws_repos=()
-        local dir_name="${branch_name//\//-}"
-        local suffix="-worktrees/$dir_name"
 
         # Extract repo paths from workspace folders.
         local folder_path
         while IFS= read -r folder_path; do
             [[ -z "$folder_path" ]] && continue
-            # Strip the -worktrees/branch suffix to get repo path.
-            if [[ "$folder_path" == *"$suffix" ]]; then
-                ws_repos+=("${folder_path%$suffix}")
+            # Strip the -worktrees/<dir> suffix to get repo path.
+            if [[ "$folder_path" == *"-worktrees/"* ]]; then
+                ws_repos+=("${folder_path%-worktrees/*}")
             fi
         done < <(jq -r '.folders[].path // empty' "$ws_file" 2>/dev/null)
 
