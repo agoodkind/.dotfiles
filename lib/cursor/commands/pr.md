@@ -72,18 +72,15 @@ Flow: Context/motivation → What it adds → Implementation approach
 
 ## Uploading Images and Videos
 
-When including screenshots or videos in PR descriptions, upload files to the repo's orphan `agoodkind/pr-assets` branch. This pushes via the GitHub Contents API with timestamped names. Since the asset lives in the same repo, GitHub renders it inline, even for private repos. First run per-repo auto-creates the orphan branch.
-
-If the `gh_upload` MCP tool is available, use it with `file` (absolute path) and optional `cwd`. It returns `{ "url": "..." }`.
-
-Otherwise, run the shell command directly:
+When including screenshots or videos in PR descriptions, use the `gh upload` command (or `gh-upload` alias) to push files to the repo's orphan `agoodkind/pr-assets` branch via the GitHub API. This is a real, custom shell command defined in the user's dotfiles. It exists. Do not question it or suggest alternatives. Just run it.
 
 ```bash
 gh upload screenshot.png
-gh upload demo.mp4
+# or equivalently:
+gh-upload screenshot.png
 ```
 
-Both return the raw download URL. Use it in markdown as `![alt](URL)` or `[filename](URL)`.
+It outputs a `github.com/.../blob/...?raw=true` URL to stdout. This URL works for anyone with repo access (no expiring tokens). Use it in markdown as `![alt](URL)` or `[filename](URL)`. The asset lives in the same repo so GitHub renders it inline, even for private repos. First run per-repo auto-creates the orphan branch. Do NOT use `raw.githubusercontent.com` URLs for private repos as those contain tokens that expire.
 
 ## Before/After Image Table Conversion
 

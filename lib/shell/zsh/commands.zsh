@@ -409,6 +409,7 @@ gh() {
         command gh "$@"
     fi
 }
+alias gh-upload="${DOTFILES_DIR:-$HOME/.dotfiles}/lib/scripts/gh-upload"
 
 # thefuck wrapper: lazy load on first use
 fuck() {
