@@ -25,8 +25,13 @@ Use the current conversation context to draft a reply for GitHub (PR comment, is
 - Issue/PR refs: `#1234`
 - Collapsible sections: `<details><summary>...</summary>...</details>`
 
-## Tone
+## Writing Style
 
+- **No emdashes**: Never use emdashes (—) or emdash-like constructs (--). Restructure sentences to use periods, commas, colons, or parentheses instead.
+- **No filler words**: Avoid "improves", "enhances", "streamlines", "ensures", "allows", "enables" when used as justification. State facts directly.
+- **No sycophancy or AI-isms**: No "delve", "tapestry", "I'd be happy to", "Great question!". Write like an engineer, not a chatbot.
+- **Concise**: No fluff or preambles. Get to the point.
+- **Direct**: Present tense, direct facts. State what is, not what "should be noted".
 - Match the user's voice and tone from context.
 - Technical and direct. GitHub comments are read by engineers.
 - Keep it focused on the point being made.
