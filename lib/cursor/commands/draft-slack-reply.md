@@ -1,0 +1,49 @@
+# Draft Slack Reply
+
+Use the current conversation context to draft a reply for Slack. Output ONLY the reply in a copy-pasteable code block.
+
+## Critical Rules
+
+- **Slack mrkdwn, NOT Markdown**: Slack uses its own `mrkdwn` format. It is NOT standard or GitHub-flavored markdown.
+- **Output only the reply**: No preamble, no explanation, no "here's your reply". Just the code block.
+- **Copy-pasteable**: The reply inside the code block should be directly pasteable into Slack with correct formatting.
+
+## Slack mrkdwn Syntax (use these, not standard markdown)
+
+| Element        | Slack mrkdwn          | Standard Markdown (DO NOT USE) |
+|----------------|-----------------------|-------------------------------|
+| Bold           | `*bold*`              | `**bold**`                    |
+| Italic         | `_italic_`            | `*italic*`                    |
+| Strikethrough  | `~struck~`            | `~~struck~~`                  |
+| Inline code    | `` `code` ``          | `` `code` ``                  |
+| Code block     | ` ``` `               | ` ```lang `                   |
+| Link           | `<https://url\|text>` | `[text](url)`                 |
+| Bulleted list  | `• item` or `- item`  | `- item`                      |
+| Blockquote     | `> quote`             | `> quote`                     |
+| User mention   | `<@U12345>`           | N/A                           |
+| Emoji          | `:emoji_name:`        | N/A                           |
+
+## NOT supported in Slack mrkdwn (never use these)
+
+- No headings (`#`, `##`, etc.)
+- No tables
+- No syntax highlighting on code blocks (no language after triple backticks)
+- No nested blockquotes
+- No images or inline HTML
+- No numbered lists with auto-incrementing (use manual numbers or bullets)
+
+## Tone
+
+- Match the user's voice and tone from context.
+- Keep it concise and conversational. Slack is not email.
+- Use thread-appropriate formality (match the context).
+
+## Steps
+
+1. Read the current conversation context to understand what's being replied to.
+2. Draft a reply using Slack mrkdwn formatting.
+3. Output the reply inside a single fenced code block, nothing else.
+
+## Output Format
+
+A single fenced code block containing the Slack-ready reply. Nothing before it, nothing after it.
