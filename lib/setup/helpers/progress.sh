@@ -148,6 +148,10 @@ function progress_exec_stream() {
     # TTY Mode: Fixed height scrolling window
     local max_height=10  # Maximum lines to show at once
     local visible_lines=0
+    local display_start=0
+    local lines_to_print=()
+    local new_visible_count=0
+    local max_len=80
 
     # Disable set -e in the subshell so we can capture the exit code
     # We append the exit code to the stream to avoid race conditions with temp files
@@ -175,12 +179,12 @@ function progress_exec_stream() {
         # --- Display Update (Fixed Height Scrolling) ---
 
         # 1. Determine lines to show (last N lines)
-        local display_start=0
+        display_start=0
         if [[ ${#buffer[@]} -gt $max_height ]]; then
             display_start=$(( ${#buffer[@]} - max_height ))
         fi
-        local lines_to_print=("${buffer[@]:$display_start}")
-        local new_visible_count=${#lines_to_print[@]}
+        lines_to_print=("${buffer[@]:$display_start}")
+        new_visible_count=${#lines_to_print[@]}
 
         # 2. Move cursor to top of the visible block
         if [[ $visible_lines -gt 0 ]]; then
@@ -188,7 +192,6 @@ function progress_exec_stream() {
         fi
 
         # 3. Print the window (truncate to terminal width to avoid wrap breaking cursor math)
-        local max_len
         max_len=$(_progress_term_cols)
         for l in "${lines_to_print[@]}"; do
             [[ ${#l} -gt $max_len ]] && l="${l:0:$max_len}"
