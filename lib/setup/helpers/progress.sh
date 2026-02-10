@@ -213,7 +213,7 @@ function progress_exec_stream() {
     local summary
     if [[ $exit_code -eq 0 ]]; then
         echo -ne "${CURSOR_UP}${ERASE_LINE}"
-        echo "${_PROGRESS_STEP_HEADER/[-]/[+]}"
+        echo "${_PROGRESS_STEP_HEADER/\[-\]/[+]}"
         summary="  + Completed in ${duration}s"
         echo -e "${COLOR_GREEN}${summary}${TEXT_RESET}"
     else
