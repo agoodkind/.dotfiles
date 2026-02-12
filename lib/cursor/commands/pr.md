@@ -18,6 +18,7 @@ Analyze the branch changes and create a pull request using the GitHub CLI, follo
 - **Direct Statement**: Use imperative mood, state what changed
 - **Specific**: Be specific about what changed and where
 - **Backticks for code**: Use single backticks for code symbols, class names, method names, file names, etc. in the title (e.g. "Reset `offset` state on pull-to-refresh in `SilverList`")
+- **No escaping backticks**: When passing the title to `gh pr create` or `gh pr edit`, use single-quoted strings so backticks are literal. Never backslash-escape backticks in the title.
 
 ## PR Type Classification
 
@@ -169,8 +170,9 @@ Examples:
 8. If before/after images are provided (in user input or existing PR description), convert them to the table format described above
 9. Add ticket link at the start of description when a ticket exists: `Ticket: https://ag.atlassian.net/browse/AG-12345` (infer the correct atlassian subdomain from context or company); omit if no ticket
 10. Execute the command:
-    - If PR exists: `gh pr edit --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
-    - If no PR: `gh pr create --draft --title "<title>" --body "<description>"` (use `required_permissions: ["network"]`)
+    - If PR exists: `gh pr edit --title '<title>' --body "<description>"` (use `required_permissions: ["network"]`)
+    - If no PR: `gh pr create --draft --title '<title>' --body "<description>"` (use `required_permissions: ["network"]`)
+    - **Title quoting**: Always use single quotes for `--title` so backticks pass through literally (e.g. `--title 'Permit `status` in `AchAccountController`'`). Double quotes cause the shell to interpret backticks as command substitution, resulting in backslash escapes.
 11. After PR is created/updated, output:
     - A Slack message for the review request channel
     - The PR URL in a single-line code fence for easy copying
