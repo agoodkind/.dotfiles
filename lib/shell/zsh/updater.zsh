@@ -69,13 +69,13 @@ do_apt_upgrade() {
 
 # Fetch latest from remote
 fetch_latest() {
-    git --git-dir="$DOTFILES_GIT_DIR" --work-tree="$DOTDOTFILES" fetch --quiet --all 2>/dev/null && return 0
+    config fetch --quiet 2>/dev/null && return 0
     
     # If fetch failed, try removing commit-graph lock file and retry
     local lock_file="$DOTFILES_GIT_DIR/objects/info/commit-graphs/commit-graph-chain.lock"
     if [[ -f "$lock_file" ]]; then
         rm -f "$lock_file" 2>/dev/null
-        git --git-dir="$DOTFILES_GIT_DIR" --work-tree="$DOTDOTFILES" fetch --quiet --all 2>/dev/null || return 1
+        config fetch --quiet 2>/dev/null || return 1
     else
         return 1
     fi
@@ -102,7 +102,7 @@ update_repo_files() {
     cd "$DOTDOTFILES" || { error "Failed to cd to dotfiles"; return 1; }
     
     # Pull latest
-    if ! git pull --quiet 2>&1 >> "$LOG_FILE"; then
+    if ! config pull --quiet 2>&1 >> "$LOG_FILE"; then
         error "git pull failed"
         return 1
     fi

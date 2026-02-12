@@ -11,6 +11,18 @@
 # Run command asynchronously (background job)
 async_run() { "$@" &! }
 
+# Resolve the dotfiles remote URL.
+# Returns origin URL from git config if present, otherwise
+# reads from .git/wsm-url (set by git-wsm strip).
+_dotfiles_remote() {
+    local url
+    url=$(git --git-dir="$DOTDOTFILES/.git" \
+        config remote.origin.url 2>/dev/null) \
+        && echo "$url" && return
+    [[ -f "$DOTDOTFILES/.git/wsm-url" ]] \
+        && cat "$DOTDOTFILES/.git/wsm-url"
+}
+
 ###############################################################################
 # OS Detection & Caching
 ###############################################################################
@@ -240,8 +252,7 @@ repair() {
     # Pull latest changes
     config pull || {
         # If pull fails, force reset to remote
-        git --git-dir="$DOTDOTFILES/.git" \
-            --work-tree="$DOTDOTFILES" fetch origin
+        config fetch
         config reset --hard origin/main
         config clean -fd
     }
@@ -267,8 +278,7 @@ config() {
             backup_local_changes
             
             # Fetch latest changes first
-            git --git-dir="$DOTDOTFILES/.git" \
-                --work-tree="$DOTDOTFILES" fetch --all
+            config fetch
             # Discard all local changes to tracked files
             config reset --hard origin/main 2>/dev/null || true
             # Remove untracked files and directories that might conflict
@@ -286,9 +296,40 @@ config() {
         sync)
             sync "$@"
             ;;
+        fetch|pull|push)
+            if git --git-dir="$DOTDOTFILES/.git" \
+                remote | grep -q .; then
+                git --git-dir="$DOTDOTFILES/.git" \
+                    --work-tree="$DOTDOTFILES" \
+                    "$subcommand" "$@"
+            else
+                local _url
+                _url=$(_dotfiles_remote) || {
+                    echo "wsm: no remote configured" >&2
+                    return 1
+                }
+                case "$subcommand" in
+                    fetch)
+                        git --git-dir="$DOTDOTFILES/.git" \
+                            --work-tree="$DOTDOTFILES" \
+                            fetch "$_url" \
+                            '+refs/heads/*:refs/remotes/origin/*' \
+                            "$@"
+                        ;;
+                    pull)
+                        git --git-dir="$DOTDOTFILES/.git" \
+                            --work-tree="$DOTDOTFILES" \
+                            pull "$_url" main "$@"
+                        ;;
+                    push)
+                        git --git-dir="$DOTDOTFILES/.git" \
+                            --work-tree="$DOTDOTFILES" \
+                            push "$_url" main "$@"
+                        ;;
+                esac
+            fi
+            ;;
         *)
-            # Restore original arguments for git command
-            # (subcommand + remaining args)
             git --git-dir="$DOTDOTFILES/.git" \
                 --work-tree="$DOTDOTFILES" \
                 "$subcommand" "$@"

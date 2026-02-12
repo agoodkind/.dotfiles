@@ -85,13 +85,26 @@ update_git_repo() {
 
     handle_git_lock
 
+    # Resolve remote URL (origin config or .git/wsm-url fallback)
+    local remote_url
+    remote_url=$(git -C "$DOTDOTFILES" \
+        config remote.origin.url 2>/dev/null || true)
+    if [[ -z "$remote_url" \
+        && -f "$DOTDOTFILES/.git/wsm-url" ]]; then
+        read -r remote_url < "$DOTDOTFILES/.git/wsm-url"
+    fi
+
     local git_cmd="cd \"$DOTDOTFILES\""
 
-    # Only pull if we're on a branch (avoids failure in CI/detached HEAD)
-    if git -C "$DOTDOTFILES" symbolic-ref -q HEAD >/dev/null; then
-        git_cmd="$git_cmd && git pull"
+    if git -C "$DOTDOTFILES" symbolic-ref -q HEAD >/dev/null \
+        && [[ -n "$remote_url" ]]; then
+        if git -C "$DOTDOTFILES" remote | grep -q .; then
+            git_cmd="$git_cmd && git pull"
+        else
+            git_cmd="$git_cmd && git pull '${remote_url}' main"
+        fi
     else
-        progress_log "  Skipping git pull (detached HEAD)"
+        progress_log "  Skipping git pull (detached HEAD or no remote)"
     fi
 
     git_cmd="$git_cmd && git submodule update --init --recursive"
