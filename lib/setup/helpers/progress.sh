@@ -77,10 +77,13 @@ function progress_done() {
 }
 
 # Terminal width for truncation (avoid wrapping). Prefix "  " uses 2 cols.
+# Uses $COLUMNS directly (no subshell) when available.
 function _progress_term_cols() {
-    local cols
-    cols=$(tput cols 2>/dev/null) || cols="${COLUMNS:-80}"
-    echo $((cols > 2 ? cols - 2 : 80))
+    local cols="${COLUMNS:-0}"
+    if [[ "$cols" -lt 10 ]]; then
+        cols=$(tput cols 2>/dev/null) || cols=80
+    fi
+    echo $((cols > 4 ? cols - 4 : 76))
 }
 
 # Clear N lines above current position
@@ -165,9 +168,12 @@ function progress_exec_stream() {
         progress_log "$line"
         ((line_count++)) || true
 
-        # Normalize: content after last \r (progress bar), then strip any remaining \r
+        # Normalize: content after last \r (progress bar), strip \r, expand tabs.
+        # Tabs count as 1 char in ${#line} but render as up to 8, breaking
+        # the truncation math and causing line wraps that corrupt cursor movement.
         line="${line##*$'\r'}"
         line="${line//$'\r'/}"
+        line="${line//$'\t'/    }"
 
         # Buffer logic for display
         buffer+=("$line")

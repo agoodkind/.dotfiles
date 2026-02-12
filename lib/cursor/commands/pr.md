@@ -17,6 +17,7 @@ Analyze the branch changes and create a pull request using the GitHub CLI, follo
 - **No Ticket Numbers**: Never include ticket numbers in the title - they go in the body
 - **Direct Statement**: Use imperative mood, state what changed
 - **Specific**: Be specific about what changed and where
+- **Backticks for code**: Use single backticks for code symbols, class names, method names, file names, etc. in the title (e.g. "Reset `offset` state on pull-to-refresh in `SilverList`")
 
 ## PR Type Classification
 
@@ -56,10 +57,10 @@ Flow: Context/motivation → What it adds → Implementation approach
 
 **Avoid laundry lists**: Don't enumerate every method, class, or file changed. Instead, describe the approach empirically — what happens, how data flows, what the user sees. Reviewers can see the diff; they need context, not a changelog.
 
-## Code References
+## Code References (applies to BOTH title and description)
 
-- Use inline code for identifiers: `method_name`, `ClassName`, `variable`
-- Use fenced code blocks for multi-line snippets:
+- Use single backticks for all code symbols, function names, variable names, class names, file names, reserved keywords, CLI flags, etc. This applies in both the PR title and the description body.
+- Use fenced code blocks for multi-line snippets (description only):
 
   ```ruby
   def example
@@ -68,7 +69,7 @@ Flow: Context/motivation → What it adds → Implementation approach
   ```
 
 - Reference specific methods, classes, or values that changed
-- Code references add precision—use them when naming things matters
+- Code references add precision. Use them when naming things matters.
 
 ## Uploading Images and Videos
 

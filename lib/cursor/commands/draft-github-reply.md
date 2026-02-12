@@ -1,12 +1,14 @@
 # Draft GitHub Reply
 
-Use the current conversation context to draft a reply for GitHub (PR comment, issue comment, review). Output ONLY the reply in a copy-pasteable code block.
+Use the current conversation context to draft a reply for GitHub (PR comment, issue comment, review). Output ONLY the reply, copy-pasteable.
 
 ## Critical Rules
 
 - **GitHub Flavored Markdown**: Use GFM syntax (headings, tables, task lists, syntax-highlighted code blocks, etc.)
-- **Output only the reply**: No preamble, no explanation, no "here's your reply". Just the code block.
-- **Copy-pasteable**: The reply inside the code block should be directly pasteable into GitHub with correct rendering.
+- **Zero preamble/postamble**: The ENTIRE assistant message must be the reply itself. No "Here's your reply:", no "Let me draft that", no summary after. Nothing before, nothing after.
+- **Copy-pasteable**: The reply should be directly pasteable into GitHub with correct rendering.
+- **No nested fences**: If the reply contains fenced code blocks, do NOT wrap the entire reply in an outer code fence. The inner triple backticks close the outer fence, breaking the output.
+- **Inline code for symbols**: Use single backticks for code symbols, function names, variable names, file names, class names, reserved keywords, CLI flags, etc. (e.g. `updateTransactionDetails`, `isFromMerchantContext`, `--verbose`).
 
 ## GitHub Flavored Markdown Features (use freely)
 
@@ -40,8 +42,12 @@ Use the current conversation context to draft a reply for GitHub (PR comment, is
 
 1. Read the current conversation context to understand what's being replied to.
 2. Draft a reply using GitHub Flavored Markdown.
-3. Output the reply inside a single fenced code block, nothing else.
+3. Check if the reply contains fenced code blocks (triple backticks).
+4. Output ONLY the reply. No other text in the message.
 
 ## Output Format
 
-A single fenced code block containing the GitHub-ready reply. Nothing before it, nothing after it.
+- **Reply has NO code blocks**: Wrap the entire reply in a single fenced code block.
+- **Reply HAS code blocks**: Output the reply as plain text (no outer fence). Nesting fenced code blocks inside a fenced code block breaks rendering. The inner triple backticks close the outer fence prematurely, cutting off the rest of the reply.
+
+The assistant message must contain the reply and absolutely nothing else.
