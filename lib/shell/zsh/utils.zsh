@@ -319,7 +319,16 @@ config() {
                     pull)
                         git --git-dir="$DOTDOTFILES/.git" \
                             --work-tree="$DOTDOTFILES" \
-                            pull "$_url" main "$@"
+                            fetch "$_url" \
+                            '+refs/heads/*:refs/remotes/origin/*'
+                        local _pull_cmd=merge
+                        [[ "$(git --git-dir="$DOTDOTFILES/.git" \
+                            config --get pull.rebase \
+                            2>/dev/null)" == "true" ]] \
+                            && _pull_cmd=rebase
+                        git --git-dir="$DOTDOTFILES/.git" \
+                            --work-tree="$DOTDOTFILES" \
+                            "$_pull_cmd" origin/main "$@"
                         ;;
                     push)
                         git --git-dir="$DOTDOTFILES/.git" \

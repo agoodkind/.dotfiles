@@ -240,6 +240,18 @@ function git() {
     shift
 
     case "$subcmd" in
+        -C)
+            # git -C <dir> <subcmd> ... -> dispatch to _git_<subcmd>
+            local _c_dir="${1:-}"; shift || true
+            local _c_sub="${1:-}"; shift || true
+            if [[ -n "$_c_sub" ]] \
+                && (( ${+functions[_git_${_c_sub}]} )); then
+                _git_${_c_sub} --git-c "$_c_dir" "$@"
+            else
+                command git -C "$_c_dir" "$_c_sub" "$@"
+            fi
+            return $?
+            ;;
         wtk|wkt|wk|wt)
             local branch_name=""
             local repo_override=""

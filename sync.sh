@@ -101,7 +101,12 @@ update_git_repo() {
         if git -C "$DOTDOTFILES" remote | grep -q .; then
             git_cmd="$git_cmd && git pull"
         else
-            git_cmd="$git_cmd && git pull '${remote_url}' main"
+            git_cmd="$git_cmd && git fetch '${remote_url}' '+refs/heads/*:refs/remotes/origin/*'"
+            local pull_mode="merge"
+            if [[ "$(git -C "$DOTDOTFILES" config --get pull.rebase 2>/dev/null)" == "true" ]]; then
+                pull_mode="rebase"
+            fi
+            git_cmd="$git_cmd && git $pull_mode origin/main"
         fi
     else
         progress_log "  Skipping git pull (detached HEAD or no remote)"
