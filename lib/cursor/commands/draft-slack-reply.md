@@ -32,6 +32,25 @@ Use the current conversation context to draft a reply for Slack. Output ONLY the
 - No images or inline HTML
 - No numbered lists with auto-incrementing (use manual numbers or bullets)
 
+## Inline Code (Backticks)
+
+Use backticks for:
+- Function/method names: `` `handleSubmit` ``, `` `fetchUser()` ``
+- Variable/constant names: `` `userId` ``, `` `MAX_RETRIES` ``
+- Class/module names: `` `UserService` ``, `` `ApplicationController` ``
+- File paths: `` `src/utils/api.ts` ``
+- CLI commands: `` `git rebase` ``, `` `bundle exec rspec` ``
+- Config keys, env vars: `` `RAILS_ENV` ``, `` `database.yml` ``
+- HTTP methods/status codes: `` `POST` ``, `` `404` ``
+- Boolean/keyword values: `` `true` ``, `` `nil` ``, `` `undefined` ``
+- Error names/types: `` `TypeError` ``, `` `ActiveRecord::RecordNotFound` ``
+- Gem/package names: `` `sidekiq` ``, `` `lodash` ``
+
+Do NOT backtick:
+- General technical concepts ("the API", "the database", "caching")
+- Product/service names ("Redis", "Postgres", "Kubernetes") unless referring to a CLI command or config value
+- Plain English descriptions of behavior
+
 ## Writing Style
 
 - **No emdashes**: Never use emdashes (—) or emdash-like constructs (--). Restructure sentences to use periods, commas, colons, or parentheses instead.
