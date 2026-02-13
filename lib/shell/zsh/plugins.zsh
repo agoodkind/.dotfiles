@@ -65,4 +65,8 @@ zinit wait'1' lucid atload'
     Aloxaf/fzf-tab \
     Freed-Wu/fzf-tab-source
 
+# fzf key-bindings: Ctrl-R history, Ctrl-T files, Alt-C cd
+zinit wait lucid for \
+    is-snippet /opt/homebrew/opt/fzf/shell/key-bindings.zsh
+
 ###############################################################################

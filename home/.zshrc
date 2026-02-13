@@ -51,10 +51,10 @@ fi
 # zsh Configs #################################################################
 ###############################################################################
 export HISTFILE=~/.zsh_history
-export HISTSIZE=9223372036854775807  # 2^63 - 1 (max signed 64-bit)
-export SAVEHIST=9223372036854775807
+export HISTSIZE=10000000
+export SAVEHIST=10000000
 setopt appendhistory
-setopt incappendhistory
+setopt extended_history
 setopt share_history
 setopt interactive_comments
 setopt auto_cd
