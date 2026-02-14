@@ -482,6 +482,17 @@ sync_git_hooks() {
     '
 }
 
+sync_global_git_hooks() {
+    progress_step "Configuring global git hooks"
+    local hooks_dir="$DOTDOTFILES/git-global-hooks"
+    if [[ -d "$hooks_dir" ]]; then
+        progress_exec_stream sh -c "
+            git config --global core.hooksPath '$hooks_dir'
+            echo 'Set core.hooksPath -> $hooks_dir'
+        "
+    fi
+}
+
 check_git_hooks_path() {
     # This repo does not auto-run git config changes.
     # If you want git to use .githooks directly, set core.hooksPath manually:
@@ -687,6 +698,7 @@ main() {
     sync_cursor_user_rules
     check_git_hooks_path
     sync_git_hooks
+    sync_global_git_hooks
 
     # Run OS-specific install
     run_os_install "$@"

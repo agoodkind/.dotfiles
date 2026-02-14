@@ -1,0 +1,4 @@
+# <path_prefix> <allowed_email>
+# More specific paths take precedence. First match wins.
+# * is the fallback.
+* alex@goodkind.io

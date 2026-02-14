@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+source "$(dirname "$0")/email-guard.sh"
+
+allowed=$(resolve_allowed_email)
+if [[ -n "$allowed" ]]; then
+    current=$(git config user.email)
+    if [[ "$current" != "$allowed" ]]; then
+        echo "error: commit blocked"
+        echo "  author email: $current"
+        echo "  allowed: $allowed"
+        echo ""
+        echo "Fix: git config user.email $allowed"
+        exit 1
+    fi
+fi
+
+# Chain to per-repo pre-commit hook
+local_hook="$(git rev-parse --git-dir)/hooks/pre-commit"
+if [[ -x "$local_hook" ]]; then
+    exec "$local_hook" "$@"
+fi

@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+source "$(dirname "$0")/email-guard.sh"
+
+push_input=$(cat)
+
+allowed=$(resolve_allowed_email)
+if [[ -n "$allowed" ]]; then
+    while read -r local_ref local_oid remote_ref remote_oid; do
+        [[ "$local_oid" =~ ^0+$ ]] && continue
+
+        if [[ "$remote_oid" =~ ^0+$ ]]; then
+            range="$local_oid"
+        else
+            range="$remote_oid..$local_oid"
+        fi
+
+        bad=$(git log "$range" \
+            --format="%H %ae" 2>/dev/null \
+            | awk -v e="$allowed" '$2 != e {print}')
+
+        if [[ -n "$bad" ]]; then
+            echo "error: push blocked, bad author email"
+            echo "$bad" | while read -r sha email; do
+                echo "  ${sha:0:8} $email"
+            done
+            exit 1
+        fi
+    done <<< "$push_input"
+fi
+
+# Chain to per-repo pre-push hook
+local_hook="$(git rev-parse --git-dir)/hooks/pre-push"
+if [[ -x "$local_hook" ]]; then
+    exec "$local_hook" "$@" <<< "$push_input"
+fi
