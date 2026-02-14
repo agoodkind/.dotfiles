@@ -1,21 +1,29 @@
 #!/usr/bin/env bash
 source "$(dirname "$0")/email-guard.sh"
+source "$(dirname "$0")/chain-hook.sh"
 
-allowed=$(resolve_allowed_email)
-if [[ -n "$allowed" ]]; then
-    current=$(git config user.email)
-    if [[ "$current" != "$allowed" ]]; then
+identity=$(resolve_allowed_identity)
+if [[ -n "$identity" ]]; then
+    allowed_email=$(echo "$identity" | head -1)
+    allowed_name=$(echo "$identity" | tail -1)
+    current_email=$(git config user.email)
+    current_name=$(git config user.name)
+
+    if [[ "$current_email" != "$allowed_email" \
+        || "$current_name" != "$allowed_name" ]]; then
         echo "error: commit blocked"
-        echo "  author email: $current"
-        echo "  allowed: $allowed"
+        echo "  current: $current_name <$current_email>"
+        echo "  allowed: $allowed_name <$allowed_email>"
         echo ""
-        echo "Fix: git config user.email $allowed"
+        echo "Fix:"
+        if [[ "$current_email" != "$allowed_email" ]]; then
+            echo "  git config user.email $allowed_email"
+        fi
+        if [[ "$current_name" != "$allowed_name" ]]; then
+            echo "  git config user.name \"$allowed_name\""
+        fi
         exit 1
     fi
 fi
 
-# Chain to per-repo pre-commit hook
-local_hook="$(git rev-parse --git-dir)/hooks/pre-commit"
-if [[ -x "$local_hook" ]]; then
-    exec "$local_hook" "$@"
-fi
+chain_hook pre-commit "$@"
