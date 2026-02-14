@@ -3,14 +3,39 @@
 # Command Wrappers & Customizations ##########################################
 ###############################################################################
 
-# man wrapper: use default pager when not in a TTY (e.g., Cursor commands)
 man() {
+    local -a resolved_args
+    local arg val
+    for arg in "$@"; do
+        if [[ "$arg" == -* ]] || [[ "$arg" == [0-9] ]]; then
+            resolved_args+=("$arg")
+            continue
+        fi
+        val=""
+        if [[ -n "${aliases[$arg]}" ]]; then
+            val="${aliases[$arg]}"
+        elif (( $+functions[$arg] )); then
+            local body="${functions[$arg]}"
+            local inner="${body#*command }"
+            inner="${inner%%[[:space:]]*}"
+            if [[ -n "${aliases[$inner]}" ]]; then
+                val="${aliases[$inner]}"
+            elif [[ -n "$inner" ]]; then
+                val="$inner"
+            fi
+        fi
+        if [[ -n "$val" ]]; then
+            val="${val#command }"
+            val="${val%%[[:space:]]*}"
+            resolved_args+=("$val")
+        else
+            resolved_args+=("$arg")
+        fi
+    done
     if [[ -t 1 ]]; then
-        # TTY: use custom MANPAGER
-        command man "$@"
+        command man "${resolved_args[@]}"
     else
-        # Non-TTY: use default pager
-        MANPAGER= PAGER=less command man "$@"
+        MANPAGER= PAGER=less command man "${resolved_args[@]}"
     fi
 }
 
@@ -151,17 +176,21 @@ _resolve_prefer_target() {
     shift
     local args=("$@")
 
-    # If binary is NOT an alias AND NOT installed, skip it
-    if [[ -z "${aliases[$binary]}" ]] && ! isinstalled "$binary"; then
-        return 1
-    fi
-
     local qargs=""
     local arg
     for arg in "${args[@]}"; do
         [[ -z "$arg" ]] && continue
         qargs+=" ${(q)arg}"
     done
+
+    if [[ "$binary" == /* ]] && [[ -x "$binary" ]]; then
+        _PREFER_RESOLVED="command $binary$qargs"
+        return 0
+    fi
+
+    if [[ -z "${aliases[$binary]}" ]] && ! isinstalled "$binary"; then
+        return 1
+    fi
 
     # Resolve target
     if [[ -n "${aliases[$binary]}" ]]; then

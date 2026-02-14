@@ -84,9 +84,13 @@ prefer rgl rg -l
 prefer top btop
 prefer htop btop
 
+prefer cp /bin/cp
+
 # helper CLIs
 prefer help tldr
 prefer lg lazygit
+
+
 
 # npm wrapper prefers pnpm implementation
 # npm() { command pnpm "$@"; }
