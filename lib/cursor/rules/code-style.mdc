@@ -6,5 +6,4 @@ alwaysApply: true
 
 # General Code Style
 
-- **Lines**: Keep under 90 columns.
 - **Comments**: Avoid unless code itself is not self explanatory. Write Technical only. No conversational context ("# as discussed", "# (P0)", "# (simple route)", etc.).
