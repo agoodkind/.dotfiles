@@ -1,4 +1,4 @@
 # <path_prefix> <email> <name...>
 # More specific paths take precedence.
 # * is the fallback.
-* alex@goodkind.io Alex Goodkind
+* alex@goodkind.io Alexander Goodkind
