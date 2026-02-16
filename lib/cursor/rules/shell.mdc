@@ -17,3 +17,10 @@ alwaysApply: true
   - Scope variables with `local` inside functions.
   - Use `source` instead of `.`.
   - Include `# shellcheck` directives when needed.
+- **Signal Handling**:
+  - Scripts that spawn background processes (`&`) MUST trap INT/TERM to kill them.
+  - Track PIDs in an array; the trap handler iterates and kills all tracked PIDs.
+  - Long-running loops (polling, retries, sync waits) MUST check an interrupt flag each iteration.
+  - Exit with code 130 after handling INT (standard SIGINT exit code).
+  - Clean up temp files/dirs in the trap handler, not just on normal exit.
+  - `wait "$pid" || true` swallows SIGINT. Always pair with a trap that sets an interrupt flag or kills workers.
