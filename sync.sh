@@ -80,43 +80,43 @@ handle_git_lock() {
     fi
 }
 
+_dotfiles_remote_url() {
+    local url
+    url=$(git -C "$DOTDOTFILES" config remote.origin.url 2>/dev/null || true)
+    if [[ -z "$url" && -f "$DOTDOTFILES/.git/wsm-url" ]]; then
+        read -r url < "$DOTDOTFILES/.git/wsm-url"
+    fi
+    printf '%s' "$url"
+}
+
 update_git_repo() {
     progress_step "Updating git repo"
 
     handle_git_lock
 
-    # Resolve remote URL (origin config or .git/wsm-url fallback)
     local remote_url
-    remote_url=$(git -C "$DOTDOTFILES" \
-        config remote.origin.url 2>/dev/null || true)
-    if [[ -z "$remote_url" \
-        && -f "$DOTDOTFILES/.git/wsm-url" ]]; then
-        read -r remote_url < "$DOTDOTFILES/.git/wsm-url"
-    fi
+    remote_url=$(_dotfiles_remote_url)
+    local has_remote=false
+    git -C "$DOTDOTFILES" remote | grep -q . && has_remote=true
 
-    local git_cmd="cd \"$DOTDOTFILES\""
-
-    if git -C "$DOTDOTFILES" symbolic-ref -q HEAD >/dev/null \
-        && [[ -n "$remote_url" ]]; then
-        if git -C "$DOTDOTFILES" remote | grep -q .; then
-            git_cmd="$git_cmd && git pull"
-        else
-            git_cmd="$git_cmd && git fetch '${remote_url}' '+refs/heads/*:refs/remotes/origin/*'"
-            local pull_mode="merge"
-            if [[ "$(git -C "$DOTDOTFILES" config --get pull.rebase 2>/dev/null)" == "true" ]]; then
-                pull_mode="rebase"
-            fi
-            git_cmd="$git_cmd && git $pull_mode origin/main"
-        fi
-    else
+    if ! git -C "$DOTDOTFILES" symbolic-ref -q HEAD >/dev/null \
+        || [[ -z "$remote_url" ]]; then
         progress_log "  Skipping git pull (detached HEAD or no remote)"
+    elif [[ "$has_remote" == true ]]; then
+        progress_exec_stream git -C "$DOTDOTFILES" pull
+    else
+        local pull_mode="merge"
+        if [[ "$(git -C "$DOTDOTFILES" config --get pull.rebase 2>/dev/null)" == "true" ]]; then
+            pull_mode="rebase"
+        fi
+        progress_exec_stream sh -c "
+            git -C '$DOTDOTFILES' fetch '$remote_url' '+refs/heads/*:refs/remotes/origin/*' \
+                && git -C '$DOTDOTFILES' $pull_mode origin/main
+        "
     fi
 
-    git_cmd="$git_cmd && git submodule update --init --recursive"
+    progress_exec_stream git -C "$DOTDOTFILES" submodule update --init --recursive --remote
 
-    progress_exec_stream sh -c "$git_cmd"
-
-    # Update timestamp after git operations (matches original behavior)
     timestamp=$(date +"%Y%m%d_%H%M%S")
 }
 
