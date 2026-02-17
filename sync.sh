@@ -115,7 +115,7 @@ update_git_repo() {
         "
     fi
 
-    progress_exec_stream git -C "$DOTDOTFILES" submodule update --init --recursive --remote
+    progress_exec_stream git -C "$DOTDOTFILES" submodule update --init --recursive
 
     timestamp=$(date +"%Y%m%d_%H%M%S")
 }

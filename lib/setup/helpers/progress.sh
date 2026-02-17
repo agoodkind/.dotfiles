@@ -112,6 +112,16 @@ function progress_step() {
     progress_log "$header"
 }
 
+# Check if running in interactive TTY mode.
+# Returns true if: stdout is a TTY OR PROGRESS_FORCE_TTY=1 (and not in CI).
+function _progress_is_tty() {
+    [[ "${GITHUB_ACTIONS:-}" == "true" ]] && return 1
+    [[ "${CI:-}" == "true" ]] && return 1
+    [[ -t 1 ]] && return 0
+    [[ "${PROGRESS_FORCE_TTY:-0}" == "1" ]] && return 0
+    return 1
+}
+
 # Live streaming version (docker-style)
 function progress_exec_stream() {
     _PROGRESS_STEP_START=$(date +%s)
@@ -121,7 +131,7 @@ function progress_exec_stream() {
     local exit_token="PROGRESS_EXIT_CODE_$(date +%s)_$RANDOM"
 
     # In CI/Non-interactive/Non-TTY, just stream output linearly without cursor magic
-    if [[ "${GITHUB_ACTIONS:-}" == "true" ]] || [[ "${CI:-}" == "true" ]] || [[ ! -t 1 ]]; then
+    if ! _progress_is_tty; then
         while IFS= read -r line || [[ -n "$line" ]]; do
             if [[ "$line" == "$exit_token:"* ]]; then
                 exit_code="${line#$exit_token:}"
