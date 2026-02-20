@@ -4,7 +4,7 @@ Analyze the branch changes and create a pull request using the GitHub CLI, follo
 
 ## Critical Rules
 
-- **Check Existing PR First**: ALWAYS run `gh pr view --json body,title` to check for an existing PR description before creating or updating—preserve user content and only enhance it
+- **Check Existing PR First**: ALWAYS run `gh pr view --json body,title` to check for an existing PR description before creating or updating. Preserve user content and only enhance it.
 - **Draft Mode Required**: ALWAYS use `--draft` flag when executing `gh pr create` - never create non-draft PRs
 - **Prose Paragraphs**: Write descriptions as concise prose, NOT bullet lists
 - **Present Tense**: Use present tense throughout
@@ -24,12 +24,12 @@ Analyze the branch changes and create a pull request using the GitHub CLI, follo
 
 Before writing the description, classify the PR:
 
-**Bug Fix PR** — Something was broken and this fixes it:
+**Bug Fix PR**: Something was broken and this fixes it:
 - Users/devs experienced unexpected behavior
 - Error states, crashes, incorrect data
 - Regressions from previous changes
 
-**Feature/Iteration PR** — Adding or extending functionality:
+**Feature/Iteration PR**: Adding or extending functionality:
 - New capabilities that didn't exist before
 - Implementing spec'd behavior (even if prior code was scaffolded)
 - Enhancements to existing features
@@ -51,10 +51,10 @@ Flow: Context/motivation → What it adds → Implementation approach
 
 1. Start with context: what capability is being added and why it's needed
 2. Describe what the PR implements (the "what", not framed as fixing)
-3. Summarize the approach at a high level — how it works conceptually
+3. Summarize the approach at a high level: how it works conceptually
 4. Note dependencies or follow-up work if relevant
 
-**Key difference**: Feature PRs describe what's being *built*, not what was *broken*. Avoid framing scaffolded/stub code as "bugs" — if prior code returned empty arrays as placeholder, that's not a symptom to fix, it's a feature to implement.
+**Key difference**: Feature PRs describe what's being *built*, not what was *broken*. Avoid framing scaffolded/stub code as "bugs". If prior code returned empty arrays as a placeholder, that's not a symptom to fix, it's a feature to implement.
 
 **Avoid laundry lists**: Don't enumerate every method, class, or file changed. Instead, describe the approach empirically — what happens, how data flows, what the user sees. Reviewers can see the diff; they need context, not a changelog.
 
@@ -138,6 +138,7 @@ Output:
 - "This PR fixes..." as an opener
 - Filler phrases like "improves the user experience"
 - Purpose clauses explaining why ("to improve...", "for better...")
+- Emdashes (—) or emdash-like constructs (--); restructure sentences to use periods, commas, colons, or parentheses instead
 
 ## Branch Naming Convention
 
@@ -151,7 +152,7 @@ Examples:
 ## Steps
 
 1. **Check for existing PR**: Run `gh pr view --json body,title` to see if a PR already exists for this branch
-   - If a PR exists, read its current title and description—preserve user content when updating
+   - If a PR exists, read its current title and description. Preserve user content when updating.
    - If no PR exists, proceed with creating a new one
 2. Check for ticket number in this order:
    - First check current branch name (e.g. `agoodkind/AG-12345/fix-bug` → `AG-12345`)
@@ -233,7 +234,7 @@ After PR creation succeeds, output a Slack message for the code review channel:
 <What it does/fixes> <PR_URL>
 ```
 
-Keep it concise—one line describing the change followed by the URL. Examples:
+Keep it concise: one line describing the change followed by the URL. Examples:
 
 - Bug fix: "Fix duplicate silver entries by resetting list state https://..."
 - Feature: "Add account logos to spending insights resolvers https://..."
