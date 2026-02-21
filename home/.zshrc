@@ -7,7 +7,7 @@ START_TIME=$EPOCHREALTIME
 export DOTDOTFILES="$HOME/.dotfiles"
 ###############################################################################
 # Include OS specific and common zshrc configs ################################
-source $DOTDOTFILES/lib/shell/zsh/incl.zsh
+source $DOTDOTFILES/zshrc/incl.zsh
 ###############################################################################
 
 ###############################################################################

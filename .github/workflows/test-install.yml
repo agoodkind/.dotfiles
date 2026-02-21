@@ -28,7 +28,7 @@ jobs:
           path: |
             ~/Library/Caches/Homebrew
             /usr/local/Homebrew
-          key: ${{ runner.os }}-brew-${{ hashFiles('lib/setup/helpers/packages.sh') }}
+          key: ${{ runner.os }}-brew-${{ hashFiles('bash/core/packages.bash') }}
           restore-keys: |
             ${{ runner.os }}-brew-
 
@@ -40,7 +40,7 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('lib/setup/helpers/packages.sh') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('bash/core/packages.bash') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
@@ -50,7 +50,7 @@ jobs:
           path: |
             ~/go/pkg/mod
             ~/.cache/go-build
-          key: ${{ runner.os }}-go-${{ hashFiles('lib/setup/helpers/packages.sh') }}
+          key: ${{ runner.os }}-go-${{ hashFiles('bash/core/packages.bash') }}
           restore-keys: |
             ${{ runner.os }}-go-
 
