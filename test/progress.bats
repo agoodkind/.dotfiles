@@ -1,0 +1,139 @@
+#!/usr/bin/env bats
+
+setup() {
+    source "${BATS_TEST_DIRNAME}/../bash/core/progress.bash"
+    export STATE_DIR="${BATS_TMPDIR}/progress-state"
+    export LOG_FILE="${BATS_TMPDIR}/progress.log"
+    mkdir -p "$STATE_DIR"
+    _PROGRESS_STATE_DIR="$STATE_DIR"
+    _PROGRESS_VERTEX_NEXT=0
+}
+
+teardown() {
+    rm -rf "$STATE_DIR"
+    rm -f "$LOG_FILE"
+}
+
+@test "progress_vertex_exec works without calling progress_begin first" {
+    local progress_lib="${BATS_TEST_DIRNAME}/../bash/core/progress.bash"
+    run bash --norc --noprofile -c "
+        set -euo pipefail
+        source '${progress_lib}'
+        progress_vertex_exec 'Auto Init' bash -c 'echo hello'
+    "
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"hello"* ]]
+    [[ "$output" == *"+ Completed"* ]]
+}
+
+@test "vertex lifecycle functions (start, complete, error, cached)" {
+    local vid
+    vid=$(progress_vertex_start "Test Start")
+    [ -f "${STATE_DIR}/${vid}.vertex" ]
+
+    local content
+    content=$(cat "${STATE_DIR}/${vid}.vertex")
+    [[ "$content" == started\|Test\ Start\|* ]]
+
+    progress_vertex_complete "$vid" "Test Complete"
+    content=$(cat "${STATE_DIR}/${vid}.vertex")
+    [[ "$content" == completed\|Test\ Complete\|* ]]
+
+    vid=$(progress_vertex_start "Test Error")
+    progress_vertex_error "$vid" "Test Error"
+    content=$(cat "${STATE_DIR}/${vid}.vertex")
+    [[ "$content" == error\|Test\ Error\|* ]]
+
+    vid=$(progress_vertex_start "Test Cached")
+    progress_vertex_cached "$vid" "Test Cached"
+    content=$(cat "${STATE_DIR}/${vid}.vertex")
+    [[ "$content" == cached\|Test\ Cached\|* ]]
+}
+
+@test "crash safety (EXIT trap marks started as error)" {
+    local vid
+    vid=$(progress_vertex_start "Incomplete Vertex")
+
+    local content
+    content=$(cat "${STATE_DIR}/${vid}.vertex")
+    [[ "$content" == started* ]]
+
+    # Simulate the marking portion of _progress_exit_trap (without the exit/cleanup)
+    local i=1
+    while [[ -f "${STATE_DIR}/${i}.vertex" ]]; do
+        content=$(cat "${STATE_DIR}/${i}.vertex" 2>/dev/null)
+        [[ "$content" == started* ]] && _progress_vertex_write "$i" "error" "${content#*|}" "${content##*|}"
+        ((i++)) || true
+    done
+
+    content=$(cat "${STATE_DIR}/${vid}.vertex")
+    [[ "$content" == error* ]]
+}
+
+@test "non-TTY mode linear output (command output shown inline)" {
+    export PROGRESS_FORCE_TTY=0
+    local progress_lib="${BATS_TEST_DIRNAME}/../bash/core/progress.bash"
+    local dummy_script="${BATS_TMPDIR}/dummy.sh"
+    cat > "$dummy_script" << EOF
+#!/usr/bin/env bash
+set -euo pipefail
+source "${progress_lib}"
+progress_begin
+progress_vertex_exec "Test Non-TTY" bash -c "echo 'hello world'"
+progress_end
+EOF
+    chmod +x "$dummy_script"
+
+    run "$dummy_script"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"hello world"* ]]
+    [[ "$output" == *"+ Completed"* ]]
+}
+
+@test "grid mode (parallel workers)" {
+    export PROGRESS_FORCE_TTY=0
+    progress_grid_start "$STATE_DIR" 2
+
+    [ -f "${STATE_DIR}/.grid" ]
+    [ -f "${STATE_DIR}/.grid_tmp" ]
+    [ -f "${STATE_DIR}/.grid_total" ]
+
+    echo "ok|Worker 1|done" > "${STATE_DIR}/1.status"
+    echo "error|Worker 2|failed" > "${STATE_DIR}/2.status"
+
+    progress_grid_done
+
+    [ ! -f "${STATE_DIR}/.grid" ]
+}
+
+@test "nested progress_begin/end preserves parent session" {
+    local progress_lib="${BATS_TEST_DIRNAME}/../bash/core/progress.bash"
+    run bash --norc --noprofile -c "
+        set -euo pipefail
+        source '${progress_lib}'
+        progress_begin
+        echo \"depth after outer begin: \$_PROGRESS_SESSION_DEPTH\"
+        progress_begin
+        echo \"depth after inner begin: \$_PROGRESS_SESSION_DEPTH\"
+        progress_end
+        echo \"depth after inner end: \$_PROGRESS_SESSION_DEPTH\"
+        progress_end
+        echo \"depth after outer end: \$_PROGRESS_SESSION_DEPTH\"
+    "
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"depth after outer begin: 1"* ]]
+    [[ "$output" == *"depth after inner begin: 2"* ]]
+    [[ "$output" == *"depth after inner end: 1"* ]]
+    [[ "$output" == *"depth after outer end: 0"* ]]
+}
+
+@test "logging strips ANSI escapes from log file" {
+    progress_set_log_file "$LOG_FILE"
+
+    progress_log "Test ${ESC}[31mRedText${ESC}[0m"
+
+    local content
+    content=$(cat "$LOG_FILE")
+    [[ "$content" == *"Test RedText"* ]]
+    [[ "$content" != *$'\033'* ]]
+}
