@@ -19,17 +19,11 @@ source "${DOTDOTFILES}/bash/core/packages.bash"
 source "${DOTDOTFILES}/bash/core/progress.bash"
 source "${DOTDOTFILES}/bash/core/tools.bash"
 
-# Always log to file (full verbose output for error diagnosis)
-progress_set_log_file "${HOME}/.cache/dotfiles/sync-${timestamp}.log"
-trap progress_on_exit_trap EXIT
 
 ###############################################################################
 # Sync-specific helpers
 ###############################################################################
 
-skip_on_work_laptop() {
-    is_work_laptop && progress_log "Skipping $1 on work laptop"
-}
 
 ###############################################################################
 # Parse Command Line Flags
@@ -58,7 +52,8 @@ parse_flags() {
 ###############################################################################
 
 link_dotfiles() {
-    progress_step "Linking dotfiles"
+    local vid
+    vid=$(progress_vertex_start "Linking dotfiles")
 
     local BACKUPS_PATH="$DOTDOTFILES/backups/$timestamp"
     local files
@@ -114,8 +109,7 @@ link_dotfiles() {
         progress_log "  $backed_up_count file(s) backed up to: $BACKUPS_PATH"
     fi
 
-    # Simulate work for progress display
-    progress_exec_stream sh -c "echo 'Linked $linked_count files, skipped $skipped_count, backed up $backed_up_count'"
+    progress_vertex_complete "$vid" "Linking dotfiles (Linked $linked_count, skipped $skipped_count, backed up $backed_up_count)"
 }
 
 ###############################################################################
@@ -123,9 +117,13 @@ link_dotfiles() {
 ###############################################################################
 
 sync_ssh_config() {
-    progress_step "Syncing SSH config"
+    local vid
+    vid=$(progress_vertex_start "Syncing SSH config")
 
-    skip_on_work_laptop "SSH config" && return 0
+    if is_work_laptop; then
+        progress_vertex_cached "$vid" "Syncing SSH config (work laptop)"
+        return 0
+    fi
 
     mkdir -p "$HOME/.ssh"
     chmod 700 "$HOME/.ssh"
@@ -134,9 +132,10 @@ sync_ssh_config() {
     local dst="$HOME/.ssh/config"
 
     if [[ -f "$src" ]]; then
-        progress_exec_stream sh -c "ln -sf \"$src\" \"$dst\" && chmod 600 \"$src\""
+        ln -sf "$src" "$dst" && chmod 600 "$src"
         progress_log "  SSH config synced"
     fi
+    progress_vertex_complete "$vid" "Syncing SSH config"
 }
 
 ###############################################################################
@@ -144,13 +143,16 @@ sync_ssh_config() {
 ###############################################################################
 
 update_authorized_keys() {
-    progress_step "Updating authorized keys"
+    local vid
+    vid=$(progress_vertex_start "Updating authorized keys")
 
-    skip_on_work_laptop "authorized keys" && return 0
+    if is_work_laptop; then
+        progress_vertex_cached "$vid" "Updating authorized keys (work laptop)"
+        return 0
+    fi
 
     # Use curl (available on fresh macOS) instead of wget
-    progress_exec_stream sh -c "curl -fsSL https://github.com/agoodkind.keys \
-        -o \"$HOME/.ssh/authorized_keys.tmp\""
+    curl -fsSL https://github.com/agoodkind.keys -o "$HOME/.ssh/authorized_keys.tmp"
 
     # Append missing keys to ~/.ssh/authorized_keys
     mkdir -p "$HOME/.ssh"
@@ -166,6 +168,7 @@ update_authorized_keys() {
 
     rm -f "$HOME/.ssh/authorized_keys.tmp"
     progress_log "  Authorized keys updated (added $added_count keys)"
+    progress_vertex_complete "$vid" "Updating authorized keys"
 }
 
 ###############################################################################
@@ -247,7 +250,7 @@ sync_scripts_to_local() {
                 2>/dev/null || true
         fi
         # Trigger an update
-        progress_exec_stream sudo launchctl start "${DAEMON_NAME}"
+        progress_vertex_exec "Triggering update" sudo launchctl start "${DAEMON_NAME}"
         return 0
     fi
 
@@ -259,7 +262,7 @@ sync_scripts_to_local() {
     fi
 
     # Run the macOS installer script
-    progress_exec_stream "$DOTDOTFILES/lib/scripts/install-updater" --platform macos
+    progress_vertex_exec "Installing launchd updater" "$DOTDOTFILES/lib/scripts/install-updater" --platform macos
 }
 
 # Simple symlink method for work laptops (no sudo required)
@@ -305,7 +308,10 @@ sync_scripts_to_opt() {
         return 0
     fi
 
-    skip_on_work_laptop "/opt/scripts" && return 0
+    if is_work_laptop; then
+        progress_log "Skipping /opt/scripts on work laptop"
+        return 0
+    fi
 
     if ! has_sudo_access; then
         color_echo RED "  Skipping /opt/scripts (no sudo access)"
@@ -328,13 +334,15 @@ sync_scripts_to_opt() {
     fi
 
     # Run the installer script
-    progress_exec_stream sudo "$DOTDOTFILES/lib/scripts/install-updater" --platform linux
+    progress_vertex_exec "Installing systemd timer" sudo "$DOTDOTFILES/lib/scripts/install-updater" --platform linux
 }
 
 sync_all_scripts() {
-    progress_step "Syncing scripts"
+    local vid
+    vid=$(progress_vertex_start "Syncing scripts")
     sync_scripts_to_local
     sync_scripts_to_opt
+    progress_vertex_complete "$vid" "Syncing scripts"
 }
 
 ###############################################################################
@@ -342,7 +350,8 @@ sync_all_scripts() {
 ###############################################################################
 
 sync_cursor_config() {
-    progress_step "Syncing Cursor configuration"
+    local vid
+    vid=$(progress_vertex_start "Syncing Cursor configuration")
 
     local cursor_dir="$HOME/.cursor"
     local src_rules="$DOTDOTFILES/.cursor/rules"
@@ -372,8 +381,7 @@ sync_cursor_config() {
         done
     fi
 
-    # Simulate work for progress display
-    progress_exec_stream sh -c "echo 'Synced Cursor configuration files'"
+    progress_vertex_complete "$vid" "Syncing Cursor configuration"
 }
 
 sync_cursor_user_rules() {
@@ -390,19 +398,19 @@ sync_cursor_user_rules() {
         return 0
     fi
 
-    progress_step "Syncing Cursor User Rules"
-    progress_exec_stream "$sync_script"
+    progress_vertex_exec "Syncing Cursor User Rules" "$sync_script"
 }
 
 sync_git_hooks() {
-    progress_step "Syncing git hooks"
+    local vid
+    vid=$(progress_vertex_start "Syncing git hooks")
 
     if [[ ! -d "$DOTDOTFILES/.githooks" ]]; then
-        progress_exec_stream sh -c "echo 'No .githooks directory'"
+        progress_vertex_cached "$vid" "Syncing git hooks (no directory)"
         return 0
     fi
 
-    progress_exec_stream env DOTDOTFILES="$DOTDOTFILES" sh -c '
+    env DOTDOTFILES="$DOTDOTFILES" sh -c '
         hooks_dir="$DOTDOTFILES/.git/hooks"
         src_hooks="$DOTDOTFILES/.githooks"
         mkdir -p "$hooks_dir"
@@ -413,17 +421,17 @@ sync_git_hooks() {
             echo "Linked hook: $hook_name"
         done
     '
+    progress_vertex_complete "$vid" "Syncing git hooks"
 }
 
 sync_global_git_hooks() {
-    progress_step "Configuring global git hooks"
+    local vid
+    vid=$(progress_vertex_start "Configuring global git hooks")
     local hooks_dir="$DOTDOTFILES/git-global-hooks"
     if [[ -d "$hooks_dir" ]]; then
-        progress_exec_stream sh -c "
-            git config --global core.hooksPath '$hooks_dir'
-            echo 'Set core.hooksPath -> $hooks_dir'
-        "
+        git config --global core.hooksPath "$hooks_dir"
     fi
+    progress_vertex_complete "$vid" "Configuring global git hooks"
 }
 
 check_git_hooks_path() {
@@ -461,9 +469,7 @@ cleanup_homebrew_repair() {
         return 0
     fi
 
-    progress_step "Repair mode: cleaning up Homebrew"
-
-    progress_exec_stream sh -c '
+    progress_vertex_exec "Repair mode: cleaning up Homebrew" sh -c '
         incomplete_files=$(find "$HOME/Library/Caches/Homebrew/downloads" -name "*.incomplete" 2>/dev/null | wc -l | tr -d " ")
         if [[ "$incomplete_files" -gt 0 ]]; then
             echo "Removing $incomplete_files incomplete download(s)..."
@@ -479,9 +485,7 @@ cleanup_neovim_repair() {
         return 0
     fi
 
-    progress_step "Repair mode: cleaning up Neovim"
-
-    progress_exec_stream sh -c '
+    progress_vertex_exec "Repair mode: cleaning up Neovim" sh -c '
         NVIM_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/nvim"
         LAZY_DIR="$NVIM_DATA/lazy"
 
@@ -526,10 +530,12 @@ cleanup_neovim_repair() {
 }
 
 update_neovim_plugins() {
-    progress_step "Updating Neovim plugins"
+    local vid
+    vid=$(progress_vertex_start "Updating Neovim plugins")
 
     if ! command -v nvim >/dev/null 2>&1; then
         progress_log "  Skipping Neovim plugins (nvim not installed)"
+        progress_vertex_cached "$vid" "Updating Neovim plugins (nvim not installed)"
         return 0
     fi
 
@@ -547,7 +553,7 @@ update_neovim_plugins() {
     fi
 
     progress_log "Running lazy.sync()..."
-    progress_exec_stream nvim --headless -c "lua require('lazy').sync()" -c "qa"
+    progress_vertex_exec "lazy.sync()" nvim --headless -c "lua require('lazy').sync()" -c "qa"
 
     # Install treesitter parsers if tree-sitter CLI is available
     if command -v tree-sitter >/dev/null 2>&1; then
@@ -557,11 +563,12 @@ update_neovim_plugins() {
         if [[ "$(printf '%s\n' "0.21.0" "$ts_version" | sort -V | head -1)" == "0.21.0" ]]; then
             progress_log "Installing treesitter parsers..."
             local parsers="bash,lua,vim,vimdoc,python,javascript,typescript,json,yaml"
-            progress_exec_stream nvim --headless "+lua require('nvim-treesitter').install({'${parsers//,/\',\'}'})" "+sleep 10" "+qa"
+            progress_vertex_exec "treesitter parsers" nvim --headless "+lua require('nvim-treesitter').install({'${parsers//,/\',\'}'})" "+sleep 10" "+qa"
         else
             color_echo YELLOW "  tree-sitter CLI too old ($ts_version), skipping parser install"
         fi
     fi
+    progress_vertex_complete "$vid" "Updating Neovim plugins"
 }
 
 ###############################################################################
@@ -578,12 +585,15 @@ cleanup_zcompdump() {
 }
 
 create_hushlogin() {
-    progress_step "Creating hushlogin"
+    local vid
+    vid=$(progress_vertex_start "Creating hushlogin")
     if [[ ! -f "$HOME/.hushlogin" ]]; then
         progress_log "  Suppressing default last login message..."
         touch "$HOME/.hushlogin"
+        progress_vertex_complete "$vid" "Creating hushlogin"
     else
         progress_log "  Skipping hushlogin (already exists)"
+        progress_vertex_cached "$vid" "Creating hushlogin"
     fi
 }
 
@@ -599,8 +609,7 @@ run_os_install() {
         os_type="macOS"
         install_script="$DOTDOTFILES/bash/setup/platform/mac.bash"
         if command -v brew >/dev/null 2>&1; then
-            progress_step "Cleaning up Homebrew"
-            progress_exec_stream brew cleanup
+            progress_vertex_exec "Cleaning up Homebrew" brew cleanup
         fi
     elif is_ubuntu; then
         os_type="Debian/Ubuntu/Proxmox"
@@ -609,11 +618,10 @@ run_os_install() {
         return 0
     fi
 
-    progress_step "Running $os_type setup"
     if [[ "${USE_DEFAULTS:-false}" == "true" ]]; then
-        progress_exec_stream "$install_script" --use-defaults "$@"
+        progress_vertex_exec "Running $os_type setup" "$install_script" --use-defaults "$@"
     else
-        progress_exec_stream "$install_script" "$@"
+        progress_vertex_exec "Running $os_type setup" "$install_script" "$@"
     fi
 }
 
@@ -622,13 +630,17 @@ run_os_install() {
 ###############################################################################
 
 main() {
+    progress_begin "${HOME}/.cache/dotfiles/sync-${timestamp}.log"
     if [[ "$skip_git" != true ]]; then
-        progress_step "Updating git repo"
+        local vid
+        vid=$(progress_vertex_start "Updating git repo")
         local update_msg
         if update_msg=$(dotfiles_update_repo 2>&1); then
             progress_log "  git update succeeded"
+            progress_vertex_complete "$vid" "Updating git repo"
         else
             progress_log "  git update: $update_msg"
+            progress_vertex_error "$vid" "Updating git repo failed"
         fi
     fi
 
@@ -646,8 +658,7 @@ main() {
     run_os_install "$@"
 
     # Install custom tools
-    progress_step "Installing custom tools"
-    progress_exec_stream "$DOTDOTFILES/bash/setup/platform/tools.bash" "$@"
+    progress_vertex_exec "Installing custom tools" "$DOTDOTFILES/bash/setup/platform/tools.bash" "$@"
 
     update_neovim_plugins
     cleanup_homebrew_repair
@@ -655,7 +666,7 @@ main() {
     cleanup_zcompdump
     create_hushlogin
 
-    progress_done
+    progress_end
     echo -e "${COLOR_GREEN}Dotfiles synced${TEXT_RESET}"
 }
 
