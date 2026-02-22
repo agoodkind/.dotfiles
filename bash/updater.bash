@@ -72,20 +72,12 @@ do_apt_upgrade() {
 needs_weekly_update() {
     [[ ! -f "$WEEKLY_TIMESTAMP" ]] && return 0
     local last_update now
-    if is_macos; then
-        last_update=$(/usr/bin/stat -f %m "$WEEKLY_TIMESTAMP" 2>/dev/null) || {
-            log "ERROR: /usr/bin/stat failed on $WEEKLY_TIMESTAMP"
-            echo "Background updater: stat failed reading weekly timestamp. See ~/.cache/dotfiles_update.log" \
-                > "$HOME/.cache/dotfiles_update_error"
-            return 1
-        }
-    else
-        last_update=$(stat -c %Y "$WEEKLY_TIMESTAMP" 2>/dev/null) || {
-            log "ERROR: stat -c %Y failed on $WEEKLY_TIMESTAMP"
-            echo "Background updater: stat failed reading weekly timestamp. See ~/.cache/dotfiles_update.log" \
-                > "$HOME/.cache/dotfiles_update_error"
-            return 1
-        }
+    last_update=$(<"$WEEKLY_TIMESTAMP") 2>/dev/null
+    if [[ ! "$last_update" =~ ^[0-9]+$ ]]; then
+        log "WARN: weekly timestamp file missing or corrupt, migrating to epoch format"
+        last_update=$(date +%s)
+        echo "$last_update" > "$WEEKLY_TIMESTAMP"
+        return 1
     fi
     now=$(date +%s)
     (( now - last_update > WEEKLY_SECONDS ))
@@ -121,13 +113,16 @@ do_weekly_update() {
     do_apt_upgrade
     do_brew_upgrade
 
-    touch "$WEEKLY_TIMESTAMP"
+    date +%s > "$WEEKLY_TIMESTAMP"
     log "Weekly full update completed"
     touch "$HOME/.cache/dotfiles_weekly_update_success"
 }
 
 main() {
     has_internet || return 0
+
+    local pre_head
+    pre_head=$(git -C "$DOTDOTFILES" rev-parse HEAD 2>/dev/null)
 
     local update_output
     if update_output=$(dotfiles_update_repo 2>&1); then
@@ -139,8 +134,11 @@ main() {
         fi
     fi
 
+    local post_head
+    post_head=$(git -C "$DOTDOTFILES" rev-parse HEAD 2>/dev/null)
+
     local repo_updated=false
-    [[ -n "$update_output" ]] && repo_updated=true
+    [[ "$pre_head" != "$post_head" ]] && repo_updated=true
 
     local weekly_needed=false
     needs_weekly_update && weekly_needed=true
