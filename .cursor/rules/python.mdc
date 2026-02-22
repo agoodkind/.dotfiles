@@ -8,7 +8,7 @@ alwaysApply: false
 
 ## Readability
 
-Code should be easy to read and follow for someone unfamiliar with it. Prefer clarity over cleverness:
+Code should be easy to read and follow for someone unfamiliar with it, and prefer clarity over cleverness:
 
 ```python
 # ❌ BAD - clever but unclear
@@ -35,14 +35,12 @@ Use `typing` module for complex types (e.g., `Optional`, `Union`, `Callable`).
 
 ## Comments
 
-Comment where code is not obvious. Explain the "why" for non-trivial logic, not the "what":
+Comment where code is not obvious and explain the "why" for non-trivial logic, not the "what". Avoid comments that restate what the code does.
 
 ```python
 # Use binary search because the list is sorted and large (>10k items)
 result = bisect.bisect_left(sorted_list, target)
 ```
-
-Avoid comments that restate what the code does.
 
 ## DRY Abstractions
 
@@ -62,7 +60,7 @@ def admin_has_permission(user: User, permission: str) -> bool:
 
 ## No Magic Variables
 
-Avoid magic numbers, strings, or values. Use named constants or configuration:
+Avoid magic numbers, strings, or values by using named constants or configuration, and extract magic strings into constants or configuration files.
 
 ```python
 # ❌ BAD - magic number
@@ -74,8 +72,6 @@ MAX_BATCH_SIZE = 42
 if len(items) > MAX_BATCH_SIZE:
     ...
 ```
-
-Extract magic strings into constants or configuration files.
 
 Avoid single-letter variable names (e.g., `a`, `n`, `b`). Use descriptive names:
 

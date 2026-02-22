@@ -6,21 +6,6 @@ alwaysApply: true
 
 # Shell Script Style
 
-- **Shebang**: Use `#!/usr/bin/env bash` or `#!/usr/bin/env zsh`.
-- **Naming**:
-  - Functions: `snake_case` (e.g., `do_update`, `backup_local_changes`).
-  - Variables: `snake_case` for local, `UPPER_CASE` for globals/constants.
-- **Formatting**:
-  - Indentation: 4 spaces.
-  - Tests: Prefer `[[ ... ]]` over `[ ... ]`.
-- **Best Practices**:
-  - Scope variables with `local` inside functions.
-  - Use `source` instead of `.`.
-  - Include `# shellcheck` directives when needed.
-- **Signal Handling**:
-  - Scripts that spawn background processes (`&`) MUST trap INT/TERM to kill them.
-  - Track PIDs in an array; the trap handler iterates and kills all tracked PIDs.
-  - Long-running loops (polling, retries, sync waits) MUST check an interrupt flag each iteration.
-  - Exit with code 130 after handling INT (standard SIGINT exit code).
-  - Clean up temp files/dirs in the trap handler, not just on normal exit.
-  - `wait "$pid" || true` swallows SIGINT. Always pair with a trap that sets an interrupt flag or kills workers.
+- Use a shebang: `#!/usr/bin/env bash` or `#!/usr/bin/env zsh`. Use `snake_case` for functions (e.g. `do_update`, `backup_local_changes`) and for local variables, and `UPPER_CASE` for globals and constants.
+- Indent with 4 spaces and prefer `[[ ... ]]` over `[ ... ]` for tests. Scope variables with `local` inside functions, use `source` instead of `.`, and add `# shellcheck` directives when they help.
+- Scripts that spawn background processes (`&`) must trap INT/TERM and kill those processes. Track PIDs in an array and have the trap handler iterate and kill them. Long-running loops (polling, retries, sync waits) must check an interrupt flag each iteration. Exit with 130 after handling INT. Clean up temp files and dirs in the trap handler, not only on normal exit. Note that `wait "$pid" || true` swallows SIGINT, so pair it with a trap that sets an interrupt flag or kills workers.
