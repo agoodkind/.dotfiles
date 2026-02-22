@@ -1,23 +1,25 @@
 #!/usr/bin/env bash
 # Reactive BuildKit-style progress engine: state files + background display loop + EXIT trap.
 
-# ANSI escape codes (unchanged)
-readonly ESC=$'\033'
-readonly CURSOR_UP="${ESC}[A"
-readonly CURSOR_DOWN="${ESC}[B"
-readonly CURSOR_HIDE="${ESC}[?25l"
-readonly CURSOR_SHOW="${ESC}[?25h"
-readonly ERASE_LINE="${ESC}[2K"
-readonly TEXT_DIM="${ESC}[2m"
-readonly TEXT_RESET="${ESC}[0m"
-readonly COLOR_GREEN="${ESC}[32m"
-readonly COLOR_RED="${ESC}[31m"
-readonly COLOR_YELLOW="${ESC}[33m"
+if [[ -z "${ESC:-}" ]]; then
+    readonly ESC=$'\033'
+    readonly CURSOR_UP="${ESC}[A"
+    readonly CURSOR_DOWN="${ESC}[B"
+    readonly CURSOR_HIDE="${ESC}[?25l"
+    readonly CURSOR_SHOW="${ESC}[?25h"
+    readonly ERASE_LINE="${ESC}[2K"
+    readonly CURSOR_SAVE="${ESC}[s"
+    readonly CURSOR_RESTORE="${ESC}[u"
+    readonly TEXT_DIM="${ESC}[2m"
+    readonly TEXT_RESET="${ESC}[0m"
+    readonly COLOR_GREEN="${ESC}[32m"
+    readonly COLOR_RED="${ESC}[31m"
+    readonly COLOR_YELLOW="${ESC}[33m"
+fi
 
 _PROGRESS_LOG_FILE=""
 _PROGRESS_STATE_DIR=""
 _PROGRESS_DISPLAY_PID=""
-_PROGRESS_VERTEX_NEXT=0
 _PROGRESS_SESSION_DEPTH=0
 _PROGRESS_GRID_MODE=false
 _PROGRESS_GRID_TMP_DIR=""
@@ -25,12 +27,21 @@ _PROGRESS_GRID_TOTAL=0
 _PROGRESS_GRID_FORMAT_FN=""
 _PROGRESS_GRID_STATE_DIR=""
 _PROGRESS_GRID_DISPLAY_PID=""
+_PROGRESS_TERM_ROWS=24
+_PROGRESS_TERM_COLS=80
+
+function _progress_term_size() {
+    local size
+    size=$(stty size < /dev/tty 2>/dev/null) || size="24 80"
+    _PROGRESS_TERM_ROWS="${size%% *}"
+    _PROGRESS_TERM_COLS="${size##* }"
+}
 
 function _progress_is_tty() {
+    [[ "${PROGRESS_NO_TTY:-}" == "1" ]] && return 1
     [[ "${GITHUB_ACTIONS:-}" == "true" ]] && return 1
     [[ "${CI:-}" == "true" ]] && return 1
-    [[ -t 1 ]] && return 0
-    [[ "${PROGRESS_FORCE_TTY:-0}" == "1" ]] && return 0
+    [[ -c /dev/tty ]] && return 0
     return 1
 }
 
@@ -56,8 +67,13 @@ function _progress_vertex_write() {
 function progress_vertex_start() {
     local label="$1"
     [[ -z "${_PROGRESS_STATE_DIR:-}" ]] && _progress_state_dir_create
-    _PROGRESS_VERTEX_NEXT=$((_PROGRESS_VERTEX_NEXT + 1))
-    local n=$_PROGRESS_VERTEX_NEXT
+    local counter_file="${_PROGRESS_STATE_DIR}/.counter"
+    local n=1
+    if [[ -f "$counter_file" ]]; then
+        n=$(cat "$counter_file")
+        ((n++)) || true
+    fi
+    echo "$n" > "$counter_file"
     _progress_vertex_write "$n" "started" "$label"
     if [[ -n "${_PROGRESS_LOG_FILE:-}" ]]; then
         echo "$(date +%Y-%m-%dT%H:%M:%S) [vertex $n] started: $label" >> "$_PROGRESS_LOG_FILE"
@@ -107,11 +123,29 @@ function _progress_render_vertex_line() {
     esac
 }
 
+_PROGRESS_OUTPUT_COUNT=0
+
+function _progress_render_output_lines() {
+    local out_file="$1"
+    local max_lines="$2"
+    local max_width=$(( ${_PROGRESS_TERM_COLS:-80} - 6 ))
+    [[ $max_width -lt 10 ]] && max_width=10
+    _PROGRESS_OUTPUT_COUNT=0
+    [[ ! -f "$out_file" ]] && return 0
+    local line
+    while IFS= read -r line; do
+        line="${line//$'\r'/}"
+        [[ ${#line} -gt $max_width ]] && line="${line:0:$max_width}"
+        printf '%s    %s%s%s\n' "$ERASE_LINE" "$TEXT_DIM" "$line" "$TEXT_RESET" >/dev/tty
+        ((_PROGRESS_OUTPUT_COUNT++)) || true
+    done < <(tail -n "$max_lines" "$out_file" 2>/dev/null)
+}
+
 function _progress_render_grid_line() {
     local status="$1"
     local name="$2"
     local detail="$3"
-    local cols="${COLUMNS:-80}"
+    local cols="${_PROGRESS_TERM_COLS:-80}"
     local prefix_len=30
     local max_detail=$(( cols - prefix_len - 1 ))
     [[ $max_detail -lt 4 ]] && max_detail=4
@@ -128,7 +162,6 @@ function _progress_render_grid_line() {
 function _progress_render_grid() {
     local grid_tmp="$1"
     local grid_total="$2"
-    local rendered=()
     local i=1
     for (( i=1; i <= grid_total; i++ )); do
         local content=""
@@ -144,9 +177,8 @@ function _progress_render_grid() {
         [[ -z "$status" ]] && status="pending"
         [[ -z "$name" ]] && name="..."
         [[ -z "$detail" ]] && detail=""
-        rendered+=("$(_progress_render_grid_line "$status" "$name" "$detail")")
+        _progress_render_grid_line "$status" "$name" "$detail"
     done
-    printf '%s' "${rendered[@]}"
 }
 
 function _progress_grid_loop() {
@@ -155,27 +187,31 @@ function _progress_grid_loop() {
     grid_tmp=$(cat "${state_dir}/.grid_tmp" 2>/dev/null) || return 0
     grid_total=$(cat "${state_dir}/.grid_total" 2>/dev/null) || return 0
     printf '%s' "$CURSOR_HIDE" >/dev/tty
-    local prev_frame="" prev_lines=0
+    local prev_content="" prev_lines=0
     while [[ -f "${state_dir}/.grid" ]]; do
-        local frame
-        frame=$(_progress_render_grid "$grid_tmp" "$grid_total")
-        local line_count=0
-        while IFS= read -r _; do (( line_count++ )); done <<< "$frame"
-        if [[ "$frame" != "$prev_frame" ]]; then
+        local content=""
+        local i=1
+        for (( i=1; i <= grid_total; i++ )); do
+            content+=$(cat "$grid_tmp/${i}.status" 2>/dev/null) || true
+            content+="|"
+        done
+        if [[ "$content" != "$prev_content" ]]; then
             local j=0
             for (( j=0; j<prev_lines; j++ )); do
-                printf '%s%s' "$CURSOR_UP" "$ERASE_LINE" >/dev/tty
+                printf '\r%s%s' "$ERASE_LINE" "$CURSOR_UP" >/dev/tty
             done
-            printf '%s' "$frame" >/dev/tty
-            prev_lines=$line_count
-            prev_frame="$frame"
+            [[ $prev_lines -gt 0 ]] && printf '\r%s' "$ERASE_LINE" >/dev/tty
+            _progress_render_grid "$grid_tmp" "$grid_total" >/dev/tty
+            prev_lines=$grid_total
+            prev_content="$content"
         fi
         sleep 0.1
     done
     local j=0
     for (( j=0; j<prev_lines; j++ )); do
-        printf '%s%s' "$CURSOR_UP" "$ERASE_LINE" >/dev/tty
+        printf '\r%s%s' "$ERASE_LINE" "$CURSOR_UP" >/dev/tty
     done
+    [[ $prev_lines -gt 0 ]] && printf '\r%s' "$ERASE_LINE" >/dev/tty
     printf '%s' "$CURSOR_SHOW" >/dev/tty
 }
 
@@ -191,70 +227,85 @@ function _progress_display_loop() {
         return 0
     fi
 
+    local grid_content=""
+
     while [[ ! -f "${state_dir}/.done" ]]; do
+        _progress_term_size
+
         if [[ -f "${state_dir}/.grid" ]]; then
             local grid_tmp grid_total
             grid_tmp=$(cat "${state_dir}/.grid_tmp" 2>/dev/null) || grid_tmp=""
             grid_total=$(cat "${state_dir}/.grid_total" 2>/dev/null) || grid_total=0
             if [[ -n "$grid_tmp" && "$grid_total" -gt 0 ]]; then
-                local frame
-                frame=$(_progress_render_grid "$grid_tmp" "$grid_total")
-                local line_count=0
-                while IFS= read -r _; do (( line_count++ )); done <<< "$frame"
-                local j=0
-                for (( j=0; j<prev_lines; j++ )); do
-                    printf '%s%s' "$CURSOR_UP" "$ERASE_LINE" >/dev/tty
+                local content=""
+                local gi=1
+                for (( gi=1; gi <= grid_total; gi++ )); do
+                    content+=$(cat "$grid_tmp/${gi}.status" 2>/dev/null) || true
+                    content+="|"
                 done
-                printf '%s' "$frame" >/dev/tty
-                prev_lines=$line_count
+                if [[ "$content" != "$grid_content" ]]; then
+                    local j=0
+                    for (( j=0; j<prev_lines; j++ )); do
+                        printf '\r%s%s' "$ERASE_LINE" "$CURSOR_UP" >/dev/tty
+                    done
+                    [[ $prev_lines -gt 0 ]] && printf '\r%s' "$ERASE_LINE" >/dev/tty
+                    _progress_render_grid "$grid_tmp" "$grid_total" >/dev/tty
+                    grid_content="$content"
+                    prev_lines=$grid_total
+                fi
                 sleep 0.1
                 continue
             fi
         fi
 
+        grid_content=""
+
         local rendered=()
+        local vertex_statuses=()
         local snapshot=""
         local i=1
         while [[ -f "${state_dir}/${i}.vertex" ]]; do
             local content
             content=$(cat "${state_dir}/${i}.vertex" 2>/dev/null) || content=""
-            snapshot+="${content}|"
             local status="${content%%|*}"
             local rest="${content#*|}"
             local label="${rest%%|*}"
+            snapshot+="${content}|"
+            if [[ "$status" == "started" && -f "${state_dir}/${i}.out" ]]; then
+                snapshot+="$(tail -c 512 "${state_dir}/${i}.out" 2>/dev/null)"
+            fi
             rendered+=("$(_progress_render_vertex_line "$status" "$label")")
+            vertex_statuses+=("$status")
             ((i++)) || true
         done
 
-        if [[ "$snapshot" != "$prev_snapshot" ]]; then
-            local num=${#rendered[@]}
+        local num=${#rendered[@]}
+        if [[ "$snapshot" != "$prev_snapshot" && $num -gt 0 ]]; then
             local j=0
-            for ((j=0; j<prev_lines; j++)); do
-                printf '%s%s' "$CURSOR_UP" "$ERASE_LINE" >/dev/tty
+            for (( j=0; j<prev_lines; j++ )); do
+                printf '\r%s%s' "$ERASE_LINE" "$CURSOR_UP" >/dev/tty
             done
+            [[ $prev_lines -gt 0 ]] && printf '\r%s' "$ERASE_LINE" >/dev/tty
+
+            local total_rendered=0
+            local output_max=$(( _PROGRESS_TERM_ROWS - num - 2 ))
+            [[ $output_max -lt 3 ]] && output_max=3
+            [[ $output_max -gt 15 ]] && output_max=15
+
             for ((j=0; j<num; j++)); do
-                printf '%s' "${rendered[$j]}" >/dev/tty
+                printf '%s\n' "${rendered[$j]}" >/dev/tty
+                ((total_rendered++)) || true
+                local vid=$(( j + 1 ))
+                if [[ "${vertex_statuses[$j]}" == "started" && -f "${state_dir}/${vid}.out" ]]; then
+                    _progress_render_output_lines "${state_dir}/${vid}.out" "$output_max"
+                    ((total_rendered += _PROGRESS_OUTPUT_COUNT)) || true
+                fi
             done
-            prev_lines=$num
+            prev_lines=$total_rendered
             prev_snapshot="$snapshot"
         fi
         sleep 0.1
     done
-
-    if [[ -f "${state_dir}/.grid" ]]; then
-        local grid_tmp grid_total
-        grid_tmp=$(cat "${state_dir}/.grid_tmp" 2>/dev/null) || grid_tmp=""
-        grid_total=$(cat "${state_dir}/.grid_total" 2>/dev/null) || grid_total=0
-        if [[ -n "$grid_tmp" && "$grid_total" -gt 0 ]]; then
-            local frame
-            frame=$(_progress_render_grid "$grid_tmp" "$grid_total")
-            local j=0
-            for (( j=0; j<prev_lines; j++ )); do
-                printf '%s%s' "$CURSOR_UP" "$ERASE_LINE" >/dev/tty
-            done
-            printf '%s' "$frame" >/dev/tty
-        fi
-    fi
 
     local rendered=()
     local i=1
@@ -268,13 +319,16 @@ function _progress_display_loop() {
         ((i++)) || true
     done
     local num=${#rendered[@]}
-    local j=0
-    for ((j=0; j<prev_lines; j++)); do
-        printf '%s%s' "$CURSOR_UP" "$ERASE_LINE" >/dev/tty
-    done
-    for ((j=0; j<num; j++)); do
-        printf '%s' "${rendered[$j]}" >/dev/tty
-    done
+    if [[ $num -gt 0 ]]; then
+        local j=0
+        for (( j=0; j<prev_lines; j++ )); do
+            printf '\r%s%s' "$ERASE_LINE" "$CURSOR_UP" >/dev/tty
+        done
+        [[ $prev_lines -gt 0 ]] && printf '\r%s' "$ERASE_LINE" >/dev/tty
+        for ((j=0; j<num; j++)); do
+            printf '%s\n' "${rendered[$j]}" >/dev/tty
+        done
+    fi
 
     printf '%s' "$CURSOR_SHOW" >/dev/tty
 }
@@ -293,7 +347,7 @@ function _progress_exit_trap() {
         touch "${_PROGRESS_STATE_DIR}/.done"
         [[ -n "${_PROGRESS_DISPLAY_PID:-}" ]] && wait "$_PROGRESS_DISPLAY_PID" 2>/dev/null || true
     fi
-    printf '%s' "$CURSOR_SHOW" >/dev/tty 2>/dev/null || true
+    (printf '%s' "$CURSOR_SHOW" >/dev/tty) 2>/dev/null || true
     _progress_state_dir_cleanup
     _PROGRESS_DISPLAY_PID=""
     if [[ $ec -ne 0 ]]; then
@@ -311,7 +365,6 @@ function progress_begin() {
     ((_PROGRESS_SESSION_DEPTH++)) || true
     (( _PROGRESS_SESSION_DEPTH > 1 )) && return 0
     local log_file="${1:-}"
-    _PROGRESS_VERTEX_NEXT=0
     if [[ -n "$log_file" ]]; then
         _PROGRESS_LOG_FILE="$log_file"
         mkdir -p "$(dirname "$log_file")"
@@ -333,7 +386,7 @@ function progress_end() {
     (( _PROGRESS_SESSION_DEPTH > 0 )) && return 0
     if [[ -n "${_PROGRESS_CURRENT_VERTEX:-}" ]] && [[ -n "${_PROGRESS_STATE_DIR:-}" ]]; then
         progress_vertex_complete "$_PROGRESS_CURRENT_VERTEX" ""
-            fi
+    fi
     if [[ -z "${_PROGRESS_STATE_DIR:-}" ]]; then
         trap - EXIT
         return 0
@@ -341,7 +394,7 @@ function progress_end() {
     trap - EXIT
     touch "${_PROGRESS_STATE_DIR}/.done"
     [[ -n "${_PROGRESS_DISPLAY_PID:-}" ]] && wait "$_PROGRESS_DISPLAY_PID" 2>/dev/null || true
-    printf '%s' "$CURSOR_SHOW" >/dev/tty 2>/dev/null || true
+    (printf '%s' "$CURSOR_SHOW" >/dev/tty) 2>/dev/null || true
     _progress_state_dir_cleanup
     _PROGRESS_DISPLAY_PID=""
 }
