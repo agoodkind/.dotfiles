@@ -75,11 +75,11 @@ needs_weekly_update() {
     last_update=$(<"$WEEKLY_TIMESTAMP") 2>/dev/null
     if [[ ! "$last_update" =~ ^[0-9]+$ ]]; then
         log "WARN: weekly timestamp file missing or corrupt, migrating to epoch format"
-        last_update=$(date +%s)
+        last_update=$(epoch_now)
         echo "$last_update" > "$WEEKLY_TIMESTAMP"
         return 1
     fi
-    now=$(date +%s)
+    now=$(epoch_now)
     (( now - last_update > WEEKLY_SECONDS ))
 }
 
@@ -113,45 +113,60 @@ do_weekly_update() {
     do_apt_upgrade
     do_brew_upgrade
 
-    date +%s > "$WEEKLY_TIMESTAMP"
-    log "Weekly full update completed"
+    epoch_now > "$WEEKLY_TIMESTAMP"
+    log "weekly update completed"
     touch "$HOME/.cache/dotfiles_weekly_update_success"
 }
 
 main() {
-    has_internet || return 0
+    if ! has_internet; then
+        log "no internet, skipping"
+        return 0
+    fi
 
-    local pre_head
+    local pre_head post_head
     pre_head=$(git -C "$DOTDOTFILES" rev-parse HEAD 2>/dev/null)
 
+    log "checking for latest changes"
     local update_output
-    if update_output=$(dotfiles_update_repo 2>&1); then
-        log "repo updated"
-    else
-        log "repo update: $update_output"
+    if ! update_output=$(dotfiles_update_repo 2>&1); then
+        log "fetch failed: $update_output"
         if [[ "$update_output" == *"conflict"* ]]; then
             echo "$update_output" > "$HOME/.cache/dotfiles_local_changes"
         fi
+        return 1
     fi
 
-    local post_head
     post_head=$(git -C "$DOTDOTFILES" rev-parse HEAD 2>/dev/null)
 
     local repo_updated=false
     [[ "$pre_head" != "$post_head" ]] && repo_updated=true
 
-    local weekly_needed=false
-    needs_weekly_update && weekly_needed=true
-
-    if [[ "$repo_updated" == false && "$weekly_needed" == false ]]; then
+    if [[ "$repo_updated" == true ]]; then
+        log "new changes found (${pre_head:0:7} -> ${post_head:0:7})... running sync"
+        echo "sync" > "$LOCK_FILE"
+        do_sync_only
+        log "sync completed"
         return 0
     fi
 
-    if [[ "$weekly_needed" == true ]]; then
+    log "no new changes"
+    log "checking if weekly update is due"
+
+    local weekly_needed=false
+    if needs_weekly_update; then
+        weekly_needed=true
+        local last_epoch last_date
+        last_epoch=$(<"$WEEKLY_TIMESTAMP")
+        last_date=$(epoch_to_date "$last_epoch")
+        log "weekly update due (last: $last_date)... running"
+        echo "weekly" > "$LOCK_FILE"
         do_weekly_update
-    elif [[ "$repo_updated" == true ]]; then
-        do_sync_only
+        return 0
     fi
+
+    log "weekly update not due"
+    log "nothing to do"
 }
 
 main

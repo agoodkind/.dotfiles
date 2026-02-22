@@ -73,6 +73,29 @@ relative_path_from() {
     fi
 }
 
+###############################################################################
+# Portable Date Helpers
+###############################################################################
+
+# Convert a unix epoch to a formatted date string.
+# Uses awk strftime, which is POSIX-standard and works on BSD awk (macOS),
+# mawk, and gawk (Linux) without any platform detection.
+# Usage: epoch_to_date <epoch> [format]
+# Default format: %Y-%m-%d
+epoch_to_date() {
+    local epoch="$1"
+    local fmt="${2:-%Y-%m-%d}"
+    awk -v ts="$epoch" -v fmt="$fmt" 'BEGIN { print strftime(fmt, ts) }'
+}
+
+# Current unix epoch.
+# Usage: epoch_now
+epoch_now() {
+    date +%s
+}
+
+###############################################################################
+
 get_checksum_cmd() {
     if command -v shasum >/dev/null 2>&1; then
         echo "shasum -a 256"
