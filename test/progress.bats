@@ -6,7 +6,6 @@ setup() {
     export LOG_FILE="${BATS_TMPDIR}/progress.log"
     mkdir -p "$STATE_DIR"
     _PROGRESS_STATE_DIR="$STATE_DIR"
-    _PROGRESS_VERTEX_NEXT=0
 }
 
 teardown() {
@@ -18,12 +17,29 @@ teardown() {
     local progress_lib="${BATS_TEST_DIRNAME}/../bash/core/progress.bash"
     run bash --norc --noprofile -c "
         set -euo pipefail
+        export CI=true
         source '${progress_lib}'
         progress_vertex_exec 'Auto Init' bash -c 'echo hello'
     "
     [ "$status" -eq 0 ]
     [[ "$output" == *"hello"* ]]
     [[ "$output" == *"+ Completed"* ]]
+}
+
+@test "sequential vertex starts get unique incrementing IDs" {
+    local progress_lib="${BATS_TEST_DIRNAME}/../bash/core/progress.bash"
+    run bash --norc --noprofile -c "
+        set -euo pipefail
+        source '${progress_lib}'
+        progress_begin
+        v1=\$(progress_vertex_start 'Step one')
+        v2=\$(progress_vertex_start 'Step two')
+        v3=\$(progress_vertex_start 'Step three')
+        echo \"ids: \$v1 \$v2 \$v3\"
+        progress_end
+    "
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"ids: 1 2 3"* ]]
 }
 
 @test "vertex lifecycle functions (start, complete, error, cached)" {
@@ -71,7 +87,7 @@ teardown() {
 }
 
 @test "non-TTY mode linear output (command output shown inline)" {
-    export PROGRESS_FORCE_TTY=0
+    export CI=true
     local progress_lib="${BATS_TEST_DIRNAME}/../bash/core/progress.bash"
     local dummy_script="${BATS_TMPDIR}/dummy.sh"
     cat > "$dummy_script" << EOF
@@ -91,7 +107,7 @@ EOF
 }
 
 @test "grid mode (parallel workers)" {
-    export PROGRESS_FORCE_TTY=0
+    export CI=true
     progress_grid_start "$STATE_DIR" 2
 
     [ -f "${STATE_DIR}/.grid" ]
