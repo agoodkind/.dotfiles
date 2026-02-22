@@ -143,6 +143,48 @@ EOF
     [[ "$output" == *"depth after outer end: 0"* ]]
 }
 
+@test "progress_vertex_detail sets detail on vertex file" {
+    local vid
+    vid=$(progress_vertex_start "Build check")
+    progress_vertex_detail "$vid" "no cached build found"
+
+    local content
+    content=$(cat "${STATE_DIR}/${vid}.vertex")
+    local detail="${content##*|}"
+    [[ "$detail" == "no cached build found" ]]
+}
+
+@test "detail persists through vertex_complete" {
+    local vid
+    vid=$(progress_vertex_start "Build check")
+    progress_vertex_detail "$vid" "no cached build found"
+    progress_vertex_complete "$vid"
+
+    local content
+    content=$(cat "${STATE_DIR}/${vid}.vertex")
+    [[ "$content" == completed* ]]
+    [[ "${content##*|}" == "no cached build found" ]]
+}
+
+@test "detail persists through vertex_error" {
+    local vid
+    vid=$(progress_vertex_start "Build check")
+    progress_vertex_detail "$vid" "upstream not reachable"
+    progress_vertex_error "$vid"
+
+    local content
+    content=$(cat "${STATE_DIR}/${vid}.vertex")
+    [[ "$content" == error* ]]
+    [[ "${content##*|}" == "upstream not reachable" ]]
+}
+
+@test "render includes detail suffix" {
+    local output
+    output=$(_progress_render_vertex_line "completed" "My Step" "cache hit")
+    [[ "$output" == *"My Step"* ]]
+    [[ "$output" == *"cache hit"* ]]
+}
+
 @test "logging strips ANSI escapes from log file" {
     progress_set_log_file "$LOG_FILE"
 
