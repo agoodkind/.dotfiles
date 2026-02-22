@@ -1,60 +1,75 @@
 # Reactive progress engine
 
-BuildKit-style progress display: state files plus a background display loop that polls and redraws. No cursor math in the main script; the loop writes to `/dev/tty`.
+BuildKit-style progress display: state files plus a background display loop that polls and redraws. Callers write state, the loop renders to `/dev/tty`.
 
 ## API
 
-- **progress_begin [log_file]**  
-  Create state dir, start display loop (TTY only), set EXIT trap. Optionally set log file and write header.
+- **progress_begin [log_file]**
+  Create state dir, start display loop (TTY only), set EXIT trap. Supports nesting via `_PROGRESS_SESSION_DEPTH`: nested calls increment the counter and return early, so inner callers (e.g. `cleanup_worktrees` inside `wkm.sh`) share the parent session.
 
-- **progress_end**  
-  Touch `.done`, wait for display process, restore cursor, remove state dir.
+- **progress_end**
+  Decrement session depth. When depth reaches 0: touch `.done`, wait for display process, restore cursor, remove state dir. Nested calls decrement and return early.
 
-- **progress_vertex_start \<label\>**  
-  Write `started|label|ts` to next `N.vertex`. Returns vertex id.
+- **progress_vertex_start \<label\>**
+  Write `started|label|ts` to next `N.vertex`. Vertex IDs are assigned from a file-based counter (`.counter`) that persists across subshells. Returns vertex id on stdout.
 
-- **progress_vertex_complete \<id\> [label]**  
-  Overwrite vertex with `completed|...`.
+- **progress_vertex_complete \<id\> [label]**
+  Overwrite vertex file with `completed|...`.
 
-- **progress_vertex_error \<id\> [label]**  
-  Overwrite vertex with `error|...`.
+- **progress_vertex_error \<id\> [label]**
+  Overwrite vertex file with `error|...`.
 
-- **progress_vertex_cached \<id\> [label]**  
-  Overwrite vertex with `cached|...`.
+- **progress_vertex_cached \<id\> [label]**
+  Overwrite vertex file with `cached|...`.
 
-- **progress_vertex_exec \<label\> -- \<command\> [args...]**  
-  Start a vertex, run command, stream stdout/stderr to log (and in TTY to state), then complete or error the vertex.
+- **progress_vertex_detail \<id\> \<detail\>**
+  Attach a short annotation to a vertex. Can be called at any point: while the vertex is `started`, or before calling complete/error/cached. The detail survives through status transitions and renders as a dimmed suffix after the label: `[-] Checking build  (no cached build found)` while running, `[+] Checking build  (no cached build found)` when complete.
 
-- **progress_grid_start \<tmp_dir\> \<total\> [format_fn]**  
-  (Stub) Switch display loop to grid mode; poll `tmp_dir/1` … `tmp_dir/total` for `tag|rest` lines. Not yet wired into the display loop.
+- **progress_vertex_exec \<label\> \<command\> [args...]**
+  Start a vertex, run command, stream stdout/stderr to `N.out` (TTY mode) or inline (non-TTY), then complete or error the vertex based on exit code. In TTY mode, the display loop picks up `N.out` and renders a scrolling output window below the active vertex.
 
-- **progress_grid_done**  
-  (Stub) Leave grid mode.
+- **progress_grid_start \<tmp_dir\> \<total\> [format_fn]**
+  Switch display loop to grid mode. Workers write `status|name|detail` to `tmp_dir/N.status`. The display loop polls those files and renders a grid of workers with status icons (pending/active/ok/error). If called within a `progress_begin` session, the grid integrates into the main display loop. If called standalone, it spawns its own grid loop.
 
-## Backward compatibility
+- **progress_grid_done**
+  Leave grid mode. Remove `.grid` control file, wait for standalone grid display process if any, clean up.
 
-- **progress_init [log_file]** → progress_begin
-- **progress_done** → progress_end
-- **progress_step \<name\> [num]** → progress_vertex_start (and store as current vertex for next exec).
-- **progress_exec_stream \<cmd\> [args...]** → If there is a current vertex (from progress_step), run command and complete/error that vertex; else progress_vertex_exec.
+- **progress_log \<message\>**
+  Append to log file with ANSI escapes stripped.
 
-Scripts that only use progress_set_log_file + trap progress_on_exit_trap and never call progress_begin keep the legacy behaviour: progress_step echoes and logs, progress_exec_stream uses the old inline TTY streaming. Call progress_begin at the start of main to use the reactive engine.
+- **progress_set_log_file \<path\>**
+  Set log file path and write header. Can be used independently of `progress_begin`.
+
+## Scrolling output window
+
+When a vertex is `started` and has a `.out` file, the display loop renders the last N lines of output below the vertex status line. Lines are dimmed, indented, and truncated to terminal width. The window height adapts to terminal size: `output_max = terminal_rows - vertex_count - 2`, clamped between 3 and 15 lines. On completion, the output window collapses (final render omits output lines). Terminal dimensions are re-read each loop iteration via `stty size`, so resizing the terminal adjusts the layout live.
 
 ## State protocol
 
-- State dir: created by progress_begin, removed by progress_end or EXIT trap.
-- `N.vertex`: one file per vertex; content `status|label|timestamp` with status in `started`, `completed`, `error`, `cached`.
-- `.done`: created when the session is ending; display loop exits when it sees this.
+- **State dir**: created by `progress_begin`, removed by `progress_end` or EXIT trap.
+- **`N.vertex`**: one file per vertex. Content: `status|label|timestamp|detail`. The `detail` field is optional (empty string when unset). Status values: `started`, `completed`, `error`, `cached`.
+- **`N.out`**: command output from `progress_vertex_exec`. Written by the exec function, read by the display loop for the scrolling output window.
+- **`.counter`**: integer file tracking the next vertex ID. Incremented by `progress_vertex_start`. File-based (not a shell variable) so it persists across `$(...)` subshells.
+- **`.done`**: created when the session ends. Display loop exits when it sees this file.
+- **`.grid`**: presence signals grid mode is active.
+- **`.grid_tmp`**: path to the grid worker status directory.
+- **`.grid_total`**: number of grid workers.
+
+## TTY detection
+
+`_progress_is_tty` returns false when:
+- `PROGRESS_NO_TTY=1` (used by the background updater)
+- `GITHUB_ACTIONS=true` or `CI=true`
+- `/dev/tty` is not a character device
+
+When not a TTY, `progress_begin` still creates the state dir and sets the log file, but skips the display loop and EXIT trap. `progress_vertex_exec` falls back to linear inline output with log-only streaming.
 
 ## Crash safety
 
-EXIT trap runs on any exit. It marks all `started` vertices as `error`, touches `.done`, waits for the display process to render and exit, restores cursor, then cleans up and exits with the original code.
-
-## Non-TTY / CI
-
-When not a TTY (or CI), progress_begin does nothing (no state dir, no loop). progress_vertex_* and progress_vertex_exec fall back to linear output and logging.
+EXIT trap runs on any exit (including SIGINT). It marks all `started` vertices as `error`, touches `.done`, waits for the display process to render the final state, restores the cursor, cleans up the state dir, and exits with the original code. If a log file was set, the trap prints its path to stderr on non-zero exit.
 
 ## Logging
 
-- progress_set_log_file, progress_log, progress_on_exit_trap unchanged.
-- progress_begin can set the log file; vertex transitions and exec output are appended (ANSI stripped).
+- `progress_log` and `progress_set_log_file` work independently of the display engine.
+- `progress_begin` can set the log file. Vertex transitions and exec output are appended with ANSI escapes stripped.
+- Display output (ANSI cursor control, grid rendering) never reaches the log file.

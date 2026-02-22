@@ -60,8 +60,8 @@ function _progress_vertex_write() {
     local status="$2"
     local label="$3"
     local ts="${4:-$(date +%s)}"
-    local f="${_PROGRESS_STATE_DIR}/${n}.vertex"
-    printf '%s|%s|%s\n' "$status" "$label" "$ts" > "$f"
+    local detail="${5:-}"
+    printf '%s|%s|%s|%s\n' "$status" "$label" "$ts" "$detail" > "${_PROGRESS_STATE_DIR}/${n}.vertex"
 }
 
 function progress_vertex_start() {
@@ -84,8 +84,15 @@ function progress_vertex_start() {
 function progress_vertex_complete() {
     local n="$1"
     local label="${2:-}"
-    [[ -z "$label" ]] && [[ -f "${_PROGRESS_STATE_DIR}/${n}.vertex" ]] && IFS='|' read -r _ label _ < "${_PROGRESS_STATE_DIR}/${n}.vertex"
-    _progress_vertex_write "$n" "completed" "$label"
+    local detail=""
+    if [[ -f "${_PROGRESS_STATE_DIR}/${n}.vertex" ]]; then
+        local _c; _c=$(<"${_PROGRESS_STATE_DIR}/${n}.vertex")
+        local _r="${_c#*|}"
+        [[ -z "$label" ]] && label="${_r%%|*}"
+        local _r2="${_r#*|}"; local _r3="${_r2#*|}"
+        detail="${_r3%%|*}"
+    fi
+    _progress_vertex_write "$n" "completed" "$label" "" "$detail"
     if [[ -n "${_PROGRESS_LOG_FILE:-}" ]]; then
         echo "$(date +%Y-%m-%dT%H:%M:%S) [vertex $n] completed: $label" >> "$_PROGRESS_LOG_FILE"
     fi
@@ -94,8 +101,15 @@ function progress_vertex_complete() {
 function progress_vertex_error() {
     local n="$1"
     local label="${2:-}"
-    [[ -z "$label" ]] && [[ -f "${_PROGRESS_STATE_DIR}/${n}.vertex" ]] && IFS='|' read -r _ label _ < "${_PROGRESS_STATE_DIR}/${n}.vertex"
-    _progress_vertex_write "$n" "error" "$label"
+    local detail=""
+    if [[ -f "${_PROGRESS_STATE_DIR}/${n}.vertex" ]]; then
+        local _c; _c=$(<"${_PROGRESS_STATE_DIR}/${n}.vertex")
+        local _r="${_c#*|}"
+        [[ -z "$label" ]] && label="${_r%%|*}"
+        local _r2="${_r#*|}"; local _r3="${_r2#*|}"
+        detail="${_r3%%|*}"
+    fi
+    _progress_vertex_write "$n" "error" "$label" "" "$detail"
     if [[ -n "${_PROGRESS_LOG_FILE:-}" ]]; then
         echo "$(date +%Y-%m-%dT%H:%M:%S) [vertex $n] error: $label" >> "$_PROGRESS_LOG_FILE"
     fi
@@ -104,22 +118,50 @@ function progress_vertex_error() {
 function progress_vertex_cached() {
     local n="$1"
     local label="${2:-}"
-    [[ -z "$label" ]] && [[ -f "${_PROGRESS_STATE_DIR}/${n}.vertex" ]] && IFS='|' read -r _ label _ < "${_PROGRESS_STATE_DIR}/${n}.vertex"
-    _progress_vertex_write "$n" "cached" "$label"
+    local detail=""
+    if [[ -f "${_PROGRESS_STATE_DIR}/${n}.vertex" ]]; then
+        local _c; _c=$(<"${_PROGRESS_STATE_DIR}/${n}.vertex")
+        local _r="${_c#*|}"
+        [[ -z "$label" ]] && label="${_r%%|*}"
+        local _r2="${_r#*|}"; local _r3="${_r2#*|}"
+        detail="${_r3%%|*}"
+    fi
+    _progress_vertex_write "$n" "cached" "$label" "" "$detail"
     if [[ -n "${_PROGRESS_LOG_FILE:-}" ]]; then
         echo "$(date +%Y-%m-%dT%H:%M:%S) [vertex $n] cached: $label" >> "$_PROGRESS_LOG_FILE"
+    fi
+}
+
+function progress_vertex_detail() {
+    local n="$1"
+    local detail="$2"
+    local f="${_PROGRESS_STATE_DIR}/${n}.vertex"
+    [[ ! -f "$f" ]] && return 0
+    local content
+    content=$(<"$f")
+    local status="${content%%|*}"
+    local rest="${content#*|}"
+    local label="${rest%%|*}"
+    local rest2="${rest#*|}"
+    local ts="${rest2%%|*}"
+    _progress_vertex_write "$n" "$status" "$label" "$ts" "$detail"
+    if [[ -n "${_PROGRESS_LOG_FILE:-}" ]]; then
+        echo "$(date +%Y-%m-%dT%H:%M:%S) [vertex $n] detail: $detail" >> "$_PROGRESS_LOG_FILE"
     fi
 }
 
 function _progress_render_vertex_line() {
     local status="$1"
     local label="$2"
+    local detail="${3:-}"
+    local suffix=""
+    [[ -n "$detail" ]] && suffix="  ${TEXT_DIM}(${detail})${TEXT_RESET}"
     case "$status" in
-        started)  printf '[-] %s\n' "$label" ;;
-        completed) printf '%s[+] %s%s\n' "$COLOR_GREEN" "$label" "$TEXT_RESET" ;;
-        error)    printf '%s[x] %s%s\n' "$COLOR_RED" "$label" "$TEXT_RESET" ;;
-        cached)   printf '%s[+] %s (cached)%s\n' "$COLOR_GREEN" "$label" "$TEXT_RESET" ;;
-        *)       printf '[-] %s\n' "$label" ;;
+        started)   printf '[-] %s%s\n' "$label" "$suffix" ;;
+        completed) printf '%s[+] %s%s%s\n' "$COLOR_GREEN" "$label" "$TEXT_RESET" "$suffix" ;;
+        error)     printf '%s[x] %s%s%s\n' "$COLOR_RED" "$label" "$TEXT_RESET" "$suffix" ;;
+        cached)    printf '%s[+] %s (cached)%s%s\n' "$COLOR_GREEN" "$label" "$TEXT_RESET" "$suffix" ;;
+        *)         printf '[-] %s%s\n' "$label" "$suffix" ;;
     esac
 }
 
@@ -220,6 +262,8 @@ function _progress_display_loop() {
     local grid_only="${2:-false}"
     local prev_snapshot=""
     local prev_lines=0
+    local prev_rows=0
+    local prev_cols=0
     printf '%s' "$CURSOR_HIDE" >/dev/tty
 
     if [[ "$grid_only" == "true" ]]; then
@@ -231,6 +275,18 @@ function _progress_display_loop() {
 
     while [[ ! -f "${state_dir}/.done" ]]; do
         _progress_term_size
+        if [[ "$_PROGRESS_TERM_ROWS" != "$prev_rows" || "$_PROGRESS_TERM_COLS" != "$prev_cols" ]]; then
+            # Terminal resized: clear conservatively then force full redraw.
+            local j=0
+            for (( j=0; j<prev_lines; j++ )); do
+                printf '\r%s%s' "$ERASE_LINE" "$CURSOR_UP" >/dev/tty
+            done
+            [[ $prev_lines -gt 0 ]] && printf '\r%s' "$ERASE_LINE" >/dev/tty
+            prev_lines=0
+            prev_snapshot=""
+            prev_rows="$_PROGRESS_TERM_ROWS"
+            prev_cols="$_PROGRESS_TERM_COLS"
+        fi
 
         if [[ -f "${state_dir}/.grid" ]]; then
             local grid_tmp grid_total
@@ -270,11 +326,13 @@ function _progress_display_loop() {
             local status="${content%%|*}"
             local rest="${content#*|}"
             local label="${rest%%|*}"
+            local rest2="${rest#*|}"; local rest3="${rest2#*|}"
+            local detail="${rest3%%|*}"
             snapshot+="${content}|"
             if [[ "$status" == "started" && -f "${state_dir}/${i}.out" ]]; then
                 snapshot+="$(tail -c 512 "${state_dir}/${i}.out" 2>/dev/null)"
             fi
-            rendered+=("$(_progress_render_vertex_line "$status" "$label")")
+            rendered+=("$(_progress_render_vertex_line "$status" "$label" "$detail")")
             vertex_statuses+=("$status")
             ((i++)) || true
         done
@@ -315,7 +373,9 @@ function _progress_display_loop() {
         local status="${content%%|*}"
         local rest="${content#*|}"
         local label="${rest%%|*}"
-        rendered+=("$(_progress_render_vertex_line "$status" "$label")")
+        local rest2="${rest#*|}"; local rest3="${rest2#*|}"
+        local detail="${rest3%%|*}"
+        rendered+=("$(_progress_render_vertex_line "$status" "$label" "$detail")")
         ((i++)) || true
     done
     local num=${#rendered[@]}
@@ -341,7 +401,13 @@ function _progress_exit_trap() {
         while [[ -f "${_PROGRESS_STATE_DIR}/${i}.vertex" ]]; do
             local content
             content=$(cat "${_PROGRESS_STATE_DIR}/${i}.vertex" 2>/dev/null)
-            [[ "$content" == started* ]] && _progress_vertex_write "$i" "error" "${content#*|}" "${content##*|}"
+            if [[ "$content" == started* ]]; then
+                local _r="${content#*|}"
+                local _label="${_r%%|*}"
+                local _r2="${_r#*|}"; local _ts="${_r2%%|*}"
+                local _r3="${_r2#*|}"; local _detail="${_r3%%|*}"
+                _progress_vertex_write "$i" "error" "$_label" "$_ts" "$_detail"
+            fi
             ((i++)) || true
         done
         touch "${_PROGRESS_STATE_DIR}/.done"

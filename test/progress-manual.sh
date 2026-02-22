@@ -3,12 +3,26 @@ set -euo pipefail
 
 source "${HOME}/.dotfiles/bash/core/progress.bash"
 
+START_TEST="${1:-1}"
+_CURRENT_TEST=0
+
 PASS=0
 FAIL=0
 TOTAL=0
 
 function header() {
-    printf "\n\033[1;36m━━━ %s ━━━\033[0m\n" "$1"
+    local title="$1"
+    local num="${title%%.*}"
+    _CURRENT_TEST="${num// /}"
+    if (( _CURRENT_TEST >= START_TEST )); then
+        printf "\n\033[1;36m━━━ %s ━━━\033[0m\n" "$title"
+    else
+        printf "\n\033[2m━━━ %s (skipped) ━━━\033[0m\n" "$title"
+    fi
+}
+
+function should_run() {
+    (( _CURRENT_TEST >= START_TEST ))
 }
 
 function wait_key() {
@@ -19,9 +33,10 @@ function wait_key() {
 function check() {
     local desc="$1"
     ((TOTAL++)) || true
-    printf "  \033[33m?\033[0m %s " "$desc"
+    printf "  \033[33m?\033[0m %s [y/n] " "$desc"
     local response
-    read -rp "[y/n] " response
+    read -rsn1 response
+    echo
     if [[ "$response" == "y" || "$response" == "Y" ]]; then
         ((PASS++)) || true
         printf "  \033[32m✓\033[0m %s\n" "$desc"
@@ -34,6 +49,7 @@ function check() {
 # ──────────────────────────────────────────────────────────
 header "1. Vertex: sequential start → complete"
 # ──────────────────────────────────────────────────────────
+if should_run; then
 (
     set -euo pipefail
     source "${HOME}/.dotfiles/bash/core/progress.bash"
@@ -47,10 +63,12 @@ header "1. Vertex: sequential start → complete"
     progress_end
 )
 check "Saw [-] Installing deps, then [+] Installing deps, then [-] Compiling, then [+] Compiling?"
+fi
 
 # ──────────────────────────────────────────────────────────
 header "2. Vertex: start → error"
 # ──────────────────────────────────────────────────────────
+if should_run; then
 (
     set -euo pipefail
     source "${HOME}/.dotfiles/bash/core/progress.bash"
@@ -61,10 +79,12 @@ header "2. Vertex: start → error"
     progress_end
 )
 check "Saw [-] Downloading artifact, then [✗] Downloading artifact (red)?"
+fi
 
 # ──────────────────────────────────────────────────────────
 header "3. Vertex: mixed complete + error + cached"
 # ──────────────────────────────────────────────────────────
+if should_run; then
 (
     set -euo pipefail
     source "${HOME}/.dotfiles/bash/core/progress.bash"
@@ -82,10 +102,12 @@ header "3. Vertex: mixed complete + error + cached"
     progress_end
 )
 check "Saw [+] Step A, [✗] Step B (red), [◆] Step C (cached)?"
+fi
 
 # ──────────────────────────────────────────────────────────
 header "4. Grid: static workers (no status change)"
 # ──────────────────────────────────────────────────────────
+if should_run; then
 (
     set -euo pipefail
     source "${HOME}/.dotfiles/bash/core/progress.bash"
@@ -101,10 +123,12 @@ header "4. Grid: static workers (no status change)"
     rm -rf "$tmp_dir"
 )
 check "Saw 3 grid lines (· Worker-1/2/3 waiting) stable for 2s, no flicker?"
+fi
 
 # ──────────────────────────────────────────────────────────
 header "5. Grid: workers progress through states"
 # ──────────────────────────────────────────────────────────
+if should_run; then
 (
     set -euo pipefail
     source "${HOME}/.dotfiles/bash/core/progress.bash"
@@ -133,10 +157,12 @@ header "5. Grid: workers progress through states"
     rm -rf "$tmp_dir"
 )
 check "Saw workers transition: pending→active→ok/error? alpha/bravo/delta green, charlie red?"
+fi
 
 # ──────────────────────────────────────────────────────────
 header "6. Grid: large grid (12 workers)"
 # ──────────────────────────────────────────────────────────
+if should_run; then
 (
     set -euo pipefail
     source "${HOME}/.dotfiles/bash/core/progress.bash"
@@ -174,10 +200,12 @@ header "6. Grid: large grid (12 workers)"
     rm -rf "$tmp_dir"
 )
 check "Saw 12-row grid scrolling through waves of active→ok?"
+fi
 
 # ──────────────────────────────────────────────────────────
 header "7. Vertex → Grid → Vertex (mixed session)"
 # ──────────────────────────────────────────────────────────
+if should_run; then
 (
     set -euo pipefail
     source "${HOME}/.dotfiles/bash/core/progress.bash"
@@ -212,10 +240,12 @@ header "7. Vertex → Grid → Vertex (mixed session)"
     rm -rf "$tmp_dir"
 )
 check "Saw vertex (Preparing), then grid (3 workers), then vertex (Running tests)?"
+fi
 
 # ──────────────────────────────────────────────────────────
 header "8. Crash safety: error mid-vertex (EXIT trap)"
 # ──────────────────────────────────────────────────────────
+if should_run; then
 printf "  (this one will show an error, that's expected)\n"
 (
     bash --norc --noprofile -c "
@@ -229,10 +259,12 @@ printf "  (this one will show an error, that's expected)\n"
 ) || true
 sleep 0.3
 check "Saw [-] Risky operation, then [✗] Risky operation (red, from EXIT trap)?"
+fi
 
 # ──────────────────────────────────────────────────────────
 header "9. Crash safety: error mid-grid (EXIT trap)"
 # ──────────────────────────────────────────────────────────
+if should_run; then
 printf "  (this one will show an error, that's expected)\n"
 (
     bash --norc --noprofile -c "
@@ -249,10 +281,12 @@ printf "  (this one will show an error, that's expected)\n"
 ) || true
 sleep 0.3
 check "Saw grid with task-1 active, task-2 pending, then clean exit (cursor restored)?"
+fi
 
 # ──────────────────────────────────────────────────────────
 header "10. progress_vertex_exec (wrapper)"
 # ──────────────────────────────────────────────────────────
+if should_run; then
 (
     set -euo pipefail
     source "${HOME}/.dotfiles/bash/core/progress.bash"
@@ -261,10 +295,12 @@ header "10. progress_vertex_exec (wrapper)"
     progress_end
 )
 check "Saw [-] Quick task, then [+] Quick task?"
+fi
 
 # ──────────────────────────────────────────────────────────
 header "11. progress_vertex_exec with command failure"
 # ──────────────────────────────────────────────────────────
+if should_run; then
 (
     set -euo pipefail
     source "${HOME}/.dotfiles/bash/core/progress.bash"
@@ -273,10 +309,12 @@ header "11. progress_vertex_exec with command failure"
     progress_end
 )
 check "Saw [-] Failing task, then [✗] Failing task (red)?"
+fi
 
 # ──────────────────────────────────────────────────────────
 header "12. Long label text (truncation / overflow)"
 # ──────────────────────────────────────────────────────────
+if should_run; then
 (
     set -euo pipefail
     source "${HOME}/.dotfiles/bash/core/progress.bash"
@@ -287,10 +325,12 @@ header "12. Long label text (truncation / overflow)"
     progress_end
 )
 check "Long label displayed without corrupting the terminal layout?"
+fi
 
 # ──────────────────────────────────────────────────────────
 header "13. Grid with long detail text"
 # ──────────────────────────────────────────────────────────
+if should_run; then
 (
     set -euo pipefail
     source "${HOME}/.dotfiles/bash/core/progress.bash"
@@ -305,10 +345,12 @@ header "13. Grid with long detail text"
     rm -rf "$tmp_dir"
 )
 check "Long detail truncated cleanly, no terminal corruption?"
+fi
 
 # ──────────────────────────────────────────────────────────
 header "14. Nested progress_begin/end"
 # ──────────────────────────────────────────────────────────
+if should_run; then
 (
     set -euo pipefail
     source "${HOME}/.dotfiles/bash/core/progress.bash"
@@ -329,10 +371,12 @@ header "14. Nested progress_begin/end"
     progress_end
 )
 check "Saw Outer step, Inner step, Back to outer, all displayed without resetting?"
+fi
 
 # ──────────────────────────────────────────────────────────
 header "15. Rapid vertex succession (stress test)"
 # ──────────────────────────────────────────────────────────
+if should_run; then
 (
     set -euo pipefail
     source "${HOME}/.dotfiles/bash/core/progress.bash"
@@ -345,10 +389,12 @@ header "15. Rapid vertex succession (stress test)"
     progress_end
 )
 check "Saw 8 steps flash by quickly, each showing [-] then [+]?"
+fi
 
 # ──────────────────────────────────────────────────────────
 header "16. Scrolling output window (progress_vertex_exec)"
 # ──────────────────────────────────────────────────────────
+if should_run; then
 (
     set -euo pipefail
     source "${HOME}/.dotfiles/bash/core/progress.bash"
@@ -362,10 +408,12 @@ header "16. Scrolling output window (progress_vertex_exec)"
     progress_end
 )
 check "Saw [-] Building project with dimmed scrolling output below it, then [+] Building project (output collapsed)?"
+fi
 
 # ──────────────────────────────────────────────────────────
 header "17. Rapid output (100 lines in 2s)"
 # ──────────────────────────────────────────────────────────
+if should_run; then
 (
     set -euo pipefail
     source "${HOME}/.dotfiles/bash/core/progress.bash"
@@ -379,10 +427,12 @@ header "17. Rapid output (100 lines in 2s)"
     progress_end
 )
 check "Saw rapid scrolling dimmed output below [-] Stress test, display kept up without corruption?"
+fi
 
 # ──────────────────────────────────────────────────────────
 header "18. Command failure with output visible"
 # ──────────────────────────────────────────────────────────
+if should_run; then
 (
     set -euo pipefail
     source "${HOME}/.dotfiles/bash/core/progress.bash"
@@ -399,10 +449,12 @@ header "18. Command failure with output visible"
     progress_end
 )
 check "Saw dimmed output lines, then [✗] Compile with errors (red), output collapsed?"
+fi
 
 # ──────────────────────────────────────────────────────────
 header "19. Resize during output (manual resize test)"
 # ──────────────────────────────────────────────────────────
+if should_run; then
 printf "  \033[2mResize your terminal window during this test.\033[0m\n"
 (
     set -euo pipefail
@@ -417,6 +469,25 @@ printf "  \033[2mResize your terminal window during this test.\033[0m\n"
     progress_end
 )
 check "Resized terminal during output, layout adjusted without corruption?"
+fi
+
+# ──────────────────────────────────────────────────────────
+header "20. Vertex detail annotation"
+# ──────────────────────────────────────────────────────────
+if should_run; then
+(
+    set -euo pipefail
+    source "${HOME}/.dotfiles/bash/core/progress.bash"
+    progress_begin "/tmp/progress-manual-20.log"
+    vid=$(progress_vertex_start "Checking golden build")
+    sleep 0.4
+    progress_vertex_detail "$vid" "no cached build found"
+    sleep 0.4
+    progress_vertex_complete "$vid"
+    progress_end
+)
+check "Saw [-] Checking golden build, then [+] Checking golden build  (no cached build found) dimmed?"
+fi
 
 # ──────────────────────────────────────────────────────────
 # Summary
