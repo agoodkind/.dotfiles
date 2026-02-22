@@ -73,9 +73,19 @@ needs_weekly_update() {
     [[ ! -f "$WEEKLY_TIMESTAMP" ]] && return 0
     local last_update now
     if is_macos; then
-        last_update=$(stat -f %m "$WEEKLY_TIMESTAMP" 2>/dev/null) || return 0
+        last_update=$(/usr/bin/stat -f %m "$WEEKLY_TIMESTAMP" 2>/dev/null) || {
+            log "ERROR: /usr/bin/stat failed on $WEEKLY_TIMESTAMP"
+            echo "Background updater: stat failed reading weekly timestamp. See ~/.cache/dotfiles_update.log" \
+                > "$HOME/.cache/dotfiles_update_error"
+            return 1
+        }
     else
-        last_update=$(stat -c %Y "$WEEKLY_TIMESTAMP" 2>/dev/null) || return 0
+        last_update=$(stat -c %Y "$WEEKLY_TIMESTAMP" 2>/dev/null) || {
+            log "ERROR: stat -c %Y failed on $WEEKLY_TIMESTAMP"
+            echo "Background updater: stat failed reading weekly timestamp. See ~/.cache/dotfiles_update.log" \
+                > "$HOME/.cache/dotfiles_update_error"
+            return 1
+        }
     fi
     now=$(date +%s)
     (( now - last_update > WEEKLY_SECONDS ))
@@ -84,7 +94,7 @@ needs_weekly_update() {
 do_sync_only() {
     log "Running sync.sh --quick --skip-git"
     local out
-    out=$(USE_DEFAULTS=true "$DOTDOTFILES/sync.sh" --non-interactive --quick --skip-git 2>&1)
+    out=$(USE_DEFAULTS=true PROGRESS_NO_TTY=1 "$DOTDOTFILES/sync.sh" --non-interactive --quick --skip-git 2>&1)
     echo "$out" >> "$LOG_FILE"
     log "sync.sh exited"
     touch "$HOME/.cache/dotfiles_update_success"
@@ -94,7 +104,7 @@ do_weekly_update() {
     log "Weekly full update started"
 
     local sync_output
-    sync_output=$(USE_DEFAULTS=true "$DOTDOTFILES/sync.sh" --non-interactive --repair --skip-git 2>&1)
+    sync_output=$(USE_DEFAULTS=true PROGRESS_NO_TTY=1 "$DOTDOTFILES/sync.sh" --non-interactive --repair --skip-git 2>&1)
     echo "$sync_output" >> "$LOG_FILE"
     log "sync.sh --repair exited"
 
@@ -129,8 +139,8 @@ main() {
         fi
     fi
 
-    local repo_updated=true
-    [[ -n "$update_output" ]] && repo_updated=false
+    local repo_updated=false
+    [[ -n "$update_output" ]] && repo_updated=true
 
     local weekly_needed=false
     needs_weekly_update && weekly_needed=true
