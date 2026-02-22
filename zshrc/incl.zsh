@@ -35,7 +35,17 @@ source "$DOTDOTFILES/zshrc/integrations/motd.zsh"
 [[ ! -f "$DOTDOTFILES/.zshrc.local" ]] || source "$DOTDOTFILES/.zshrc.local"
 
 # Check for update status from background updater
-if [[ -f ~/.cache/dotfiles_local_changes ]]; then
+if [[ -f ~/.cache/dotfiles_update.lock ]]; then
+    local update_type
+    update_type=$(<~/.cache/dotfiles_update.lock)
+    if [[ "$update_type" == "weekly" ]]; then
+        print -P "%F{blue}↻ weekly update running in background%f"
+    elif [[ "$update_type" == "sync" ]]; then
+        print -P "%F{blue}↻ dotfiles sync running in background%f"
+    else
+        print -P "%F{blue}↻ checking for dotfiles updates...%f"
+    fi
+elif [[ -f ~/.cache/dotfiles_local_changes ]]; then
     local msg
     msg=$(<~/.cache/dotfiles_local_changes)
     print -P "%F{yellow}⚠️  ${msg}%f"
