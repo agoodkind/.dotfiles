@@ -6,4 +6,4 @@ alwaysApply: true
 
 # General Code Style
 
-- **Comments**: Avoid unless code itself is not self explanatory. Write Technical only. No conversational context ("# as discussed", "# (P0)", "# (simple route)", etc.).
+- Avoid comments unless the code is not self-explanatory, and keep comments technical (no conversational context like "# as discussed", "# (P0)", or "# (simple route)").

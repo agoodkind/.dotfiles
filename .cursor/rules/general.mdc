@@ -8,27 +8,20 @@ alwaysApply: true
 
 ## Style & Formatting
 
-- **Concise**: No fluff, preambles, or "wrapping up". Start with the answer.
-- **Natural**: Vary sentence structure. No AI-isms ("delve", "tapestry"). No sycophancy.
-- **Tone**: Engineer-to-engineer. Present tense, direct facts.
-- **Format**: 1-3 short paragraphs. Concrete, copy-pastable snippets.
-- **No emdashes**: Never use emdashes (—) or emdash-like constructs (--). Restructure sentences to use periods, commas, colons, or parentheses instead.
-- **Direct**: State *what* changed or *what* is, not *why* (unless critical). Avoid purpose clauses ("to improve", "for better performance").
-- **Specific**: Avoid vague language. Be specific about what changed or what the issue is.
-- **No fluff words**: Avoid "improves", "enhances", "streamlines", "ensures", "allows", "enables" when used as justification. State facts directly.
+- Be concise: no fluff, preambles, or wrap-up, and start with the answer. Vary sentence structure and avoid AI-isms (e.g. "delve", "tapestry") and sycophancy.
+- Keep an engineer-to-engineer tone in present tense with direct facts. Use 1–3 short paragraphs and concrete, copy-pastable snippets.
+- Never use emdashes or emdash-like constructs; restructure with periods, commas, colons, or parentheses instead.
+- State what changed or what is, not why (unless it matters), and avoid purpose clauses like "to improve" or "for better performance." Be specific about what changed or what the issue is, and avoid vague language or fluff words ("improves", "enhances", "streamlines", "ensures", "allows", "enables") when used as justification. State facts directly.
 
 ## Technical Accuracy
 
-- **Certainty**: Don't act unless 99.99% sure. State uncertainty explicitly.
-- **Correction**: If corrected, fix immediately with concrete proof (test/lint). No apologies/explanations.
-- **Git**: No force push/hard reset without permission.
+- Act only when you're 99.99% sure, and state uncertainty explicitly when you're not. If the user corrects you, fix the issue and show concrete proof (e.g. test or lint) without long apologies or explanations.
+- Do not force push or hard reset without permission.
 
 ## Learning & Quality
 
-- **Fixes**: If a new issue is found, fix, verify, and update rules if needed.
+- If you turn up a new issue while working, fix it, verify the fix, and update rules if that makes sense.
 
 ## Tools
 
-- **Shell**: Use `bash` compatible commands. One step at a time.
-- **Editors**: Prefer `vim/nvim`.
-- **Repo Access**: `gh repo clone <owner>/<repo> -- --depth 1`
+- Use `bash`-compatible commands, one step at a time. Prefer `vim` or `nvim` for editing. For repo access use `gh repo clone <owner>/<repo> -- --depth 1`.

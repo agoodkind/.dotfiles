@@ -6,7 +6,7 @@ alwaysApply: true
 
 # JavaScript / TypeScript Style
 
-- **Functions**: Use `function` definitions, not arrow functions for top-level.
+- Use `function` definitions for top-level functions, not arrow functions.
 
 ```typescript
 function handleClick(event) { ... } // ✅

@@ -8,10 +8,8 @@ alwaysApply: false
 
 ## Before Pushing
 
-After all changes are made and before pushing, run RuboCop on all files:
+After all changes are made and before pushing, run RuboCop on all files (command below) and fix any remaining issues before pushing.
 
 ```bash
 bundle install && bundle exec rubocop --parallel --disable-pending-cops --display-style-guide -A
 ```
-
-Fix any remaining issues before pushing.
