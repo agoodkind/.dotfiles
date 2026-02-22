@@ -41,7 +41,9 @@ if [[ -f ~/.cache/dotfiles_local_changes ]]; then
     print -P "%F{yellow}⚠️  ${msg}%f"
     rm -f ~/.cache/dotfiles_local_changes
 elif [[ -f ~/.cache/dotfiles_update_error ]]; then
-    print -P "%F{red}⚠️  Dotfiles update failed. See: ~/.cache/dotfiles_update.log%f"
+    local err_msg
+    err_msg=$(<~/.cache/dotfiles_update_error)
+    print -P "%F{red}⚠️  ${err_msg}%f"
     rm -f ~/.cache/dotfiles_update_error
 elif [[ -f ~/.cache/dotfiles_weekly_update_success ]]; then
     print -P "%F{green}✓ Weekly full update completed (zinit, nvim, repair)%f"
