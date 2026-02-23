@@ -489,6 +489,52 @@ if should_run; then
 check "Saw [-] Checking golden build, then [+] Checking golden build  (no cached build found) dimmed?"
 fi
 
+header "21. Direct stdout writes during progress (stacking bug)"
+# ──────────────────────────────────────────────────────────
+if should_run; then
+(
+    set -euo pipefail
+    source "${HOME}/.dotfiles/bash/core/progress.bash"
+    progress_begin "/tmp/progress-manual-21.log"
+    vid1=$(progress_vertex_start "First vertex")
+    sleep 0.3
+    progress_vertex_complete "$vid1"
+    vid2=$(progress_vertex_start "Second vertex (manual)")
+    echo "   Step 1: Starting..."; sleep 0.3
+    echo "   Step 2: Processing..."; sleep 0.3
+    echo "   Step 3: Done!"
+    progress_vertex_complete "$vid2"
+    vid3=$(progress_vertex_start "Third vertex")
+    sleep 0.3
+    progress_vertex_complete "$vid3"
+    progress_end
+)
+check "Did you see stacked/duplicated vertex lines? (y=bug visible, n=clean)"
+fi
+
+header "22. Correct: progress_vertex_exec captures stdout"
+# ──────────────────────────────────────────────────────────
+if should_run; then
+(
+    set -euo pipefail
+    source "${HOME}/.dotfiles/bash/core/progress.bash"
+    progress_begin "/tmp/progress-manual-22.log"
+    vid1=$(progress_vertex_start "First vertex")
+    sleep 0.3
+    progress_vertex_complete "$vid1"
+    progress_vertex_exec "Second vertex (exec)" bash -c '
+        echo "   Step 1: Starting..."; sleep 0.3
+        echo "   Step 2: Processing..."; sleep 0.3
+        echo "   Step 3: Done!"
+    '
+    vid3=$(progress_vertex_start "Third vertex")
+    sleep 0.3
+    progress_vertex_complete "$vid3"
+    progress_end
+)
+check "No stacking, and Step 1/2/3 appeared in dimmed output window?"
+fi
+
 # ──────────────────────────────────────────────────────────
 # Summary
 # ──────────────────────────────────────────────────────────
