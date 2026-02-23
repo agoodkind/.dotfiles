@@ -32,9 +32,12 @@ _PROGRESS_TERM_COLS=80
 
 function _progress_term_size() {
     local size
-    size=$(stty size < /dev/tty 2>/dev/null) || size="24 80"
-    _PROGRESS_TERM_ROWS="${size%% *}"
-    _PROGRESS_TERM_COLS="${size##* }"
+    size=$(stty size < /dev/tty 2>/dev/null) || size=""
+    local rows="${size%% *}" cols="${size##* }"
+    if [[ -n "$rows" && -n "$cols" && "$rows" != "0" && "$cols" != "0" ]]; then
+        _PROGRESS_TERM_ROWS="$rows"
+        _PROGRESS_TERM_COLS="$cols"
+    fi
 }
 
 function _progress_is_tty() {
@@ -276,14 +279,12 @@ function _progress_display_loop() {
     while [[ ! -f "${state_dir}/.done" ]]; do
         _progress_term_size
         if [[ "$_PROGRESS_TERM_ROWS" != "$prev_rows" || "$_PROGRESS_TERM_COLS" != "$prev_cols" ]]; then
-            # Terminal resized: clear conservatively then force full redraw.
             local j=0
             for (( j=0; j<prev_lines; j++ )); do
                 printf '\r%s%s' "$ERASE_LINE" "$CURSOR_UP" >/dev/tty
             done
             [[ $prev_lines -gt 0 ]] && printf '\r%s' "$ERASE_LINE" >/dev/tty
             prev_lines=0
-            prev_snapshot=""
             prev_rows="$_PROGRESS_TERM_ROWS"
             prev_cols="$_PROGRESS_TERM_COLS"
         fi
