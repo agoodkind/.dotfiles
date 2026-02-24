@@ -1,12 +1,11 @@
 # Draft Slack Reply
 
-Use the current conversation context to draft a reply for Slack. Output ONLY the reply in a copy-pasteable code block.
+Use the current conversation context to draft a reply for Slack. Output ONLY the reply text directly in chat (no wrapper).
 
 ## Critical Rules
 
 - **Slack mrkdwn, NOT Markdown**: Slack uses its own `mrkdwn` format. It is NOT standard or GitHub-flavored markdown.
-- **Output only the reply**: No preamble, no explanation, no "here's your reply". Just the code block.
-- **Copy-pasteable**: The reply inside the code block should be directly pasteable into Slack with correct formatting.
+- **Output ONLY the reply**: No preamble, no explanation, no "here's your reply", no code fences. Just output the raw Slack message text directly. The user will copy it from the chat.
 
 ## Slack mrkdwn Syntax (use these, not standard markdown)
 
@@ -17,11 +16,19 @@ Use the current conversation context to draft a reply for Slack. Output ONLY the
 | Strikethrough  | `~struck~`            | `~~struck~~`                  |
 | Inline code    | `` `code` ``          | `` `code` ``                  |
 | Code block     | ` ``` `               | ` ```lang `                   |
-| Link           | `<https://url\|text>` | `[text](url)`                 |
+| Link           | plain URL only (see below) | `[text](url)`            |
 | Bulleted list  | `• item` or `- item`  | `- item`                      |
 | Blockquote     | `> quote`             | `> quote`                     |
 | User mention   | `<@U12345>`           | N/A                           |
 | Emoji          | `:emoji_name:`        | N/A                           |
+
+## Links
+
+The `<url|text>` hyperlink syntax only works for messages sent programmatically via the Slack API. For messages the user will copy-paste into Slack manually, it renders as literal text. For copy-paste messages:
+
+- Use plain URLs only: Slack will auto-link them
+- Do NOT use `<url|text>` anchor text syntax
+- If you need to reference an external page inline, name it in prose and put the URL on its own line or at the end
 
 ## NOT supported in Slack mrkdwn (never use these)
 
@@ -66,8 +73,8 @@ Do NOT backtick:
 
 1. Read the current conversation context to understand what's being replied to.
 2. Draft a reply using Slack mrkdwn formatting.
-3. Output the reply inside a single fenced code block, nothing else.
+3. Output the reply directly as your entire response. No code fences, no preamble, no explanation.
 
 ## Output Format
 
-A single fenced code block containing the Slack-ready reply. Nothing before it, nothing after it.
+The raw Slack message text, output directly. Your entire response IS the Slack message. Do not wrap it in anything.
