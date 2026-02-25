@@ -280,7 +280,8 @@ function _progress_display_loop() {
         _progress_term_size
         if [[ "$_PROGRESS_TERM_ROWS" != "$prev_rows" || "$_PROGRESS_TERM_COLS" != "$prev_cols" ]]; then
             local j=0
-            for (( j=0; j<prev_lines; j++ )); do
+            local clear_count=$(( prev_lines > 0 ? prev_lines + 2 : 0 ))
+            for (( j=0; j<clear_count; j++ )); do
                 printf '\r%s%s' "$ERASE_LINE" "$CURSOR_UP" >/dev/tty
             done
             [[ $prev_lines -gt 0 ]] && printf '\r%s' "$ERASE_LINE" >/dev/tty
@@ -367,6 +368,7 @@ function _progress_display_loop() {
     done
 
     local rendered=()
+    local vertex_statuses=()
     local i=1
     while [[ -f "${state_dir}/${i}.vertex" ]]; do
         local content
@@ -377,6 +379,7 @@ function _progress_display_loop() {
         local rest2="${rest#*|}"; local rest3="${rest2#*|}"
         local detail="${rest3%%|*}"
         rendered+=("$(_progress_render_vertex_line "$status" "$label" "$detail")")
+        vertex_statuses+=("$status")
         ((i++)) || true
     done
     local num=${#rendered[@]}
@@ -388,6 +391,10 @@ function _progress_display_loop() {
         [[ $prev_lines -gt 0 ]] && printf '\r%s' "$ERASE_LINE" >/dev/tty
         for ((j=0; j<num; j++)); do
             printf '%s\n' "${rendered[$j]}" >/dev/tty
+            local vid=$(( j + 1 ))
+            if [[ "${vertex_statuses[$j]}" == "error" && -f "${state_dir}/${vid}.out" ]]; then
+                _progress_render_output_lines "${state_dir}/${vid}.out" 8
+            fi
         done
     fi
 
