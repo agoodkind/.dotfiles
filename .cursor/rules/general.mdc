@@ -12,6 +12,7 @@ alwaysApply: true
 - Keep an engineer-to-engineer tone in present tense with direct facts. Use 1–3 short paragraphs and concrete, copy-pastable snippets.
 - Never use emdashes or emdash-like constructs; restructure with periods, commas, colons, or parentheses instead.
 - State what changed or what is, not why (unless it matters), and avoid purpose clauses like "to improve" or "for better performance." Be specific about what changed or what the issue is, and avoid vague language or fluff words ("improves", "enhances", "streamlines", "ensures", "allows", "enables") when used as justification. State facts directly.
+- Do not give unsolicited recommendations or tell the user what to do next. Avoid directive fragments like "Worth doing X", "Consider doing X", or "You should X" unless the user asked for suggestions. Present findings and let the user decide what to act on.
 
 ## Technical Accuracy
 
@@ -24,4 +25,4 @@ alwaysApply: true
 
 ## Tools
 
-- Use `bash`-compatible commands, one step at a time. Prefer `vim` or `nvim` for editing. For repo access use `gh repo clone <owner>/<repo> -- --depth 1`.
+- Use `bash & zsh`-compatible commands, one step at a time. Prefer `vim` or `nvim` for editing. For repo access use `gh repo clone <owner>/<repo> -- --depth 1`.
