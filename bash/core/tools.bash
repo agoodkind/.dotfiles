@@ -411,6 +411,12 @@ dotfiles_update_repo() {
         fi
     fi
 
+    local post_pull_head
+    post_pull_head=$(git -C "$d" rev-parse HEAD)
+    if [[ "$pre_pull_head" != "$post_pull_head" ]]; then
+        echo "pulled:${pre_pull_head}:${post_pull_head}"
+    fi
+
     git -C "$d" submodule update --init --recursive --quiet
     git -C "$d/lib/scripts" checkout main --quiet 2>/dev/null || true
     return 0

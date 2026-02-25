@@ -124,9 +124,6 @@ main() {
         return 0
     fi
 
-    local pre_head post_head
-    pre_head=$(git -C "$DOTDOTFILES" rev-parse HEAD 2>/dev/null)
-
     log "checking for latest changes"
     local update_output
     if ! update_output=$(dotfiles_update_repo 2>&1); then
@@ -137,13 +134,13 @@ main() {
         return 1
     fi
 
-    post_head=$(git -C "$DOTDOTFILES" rev-parse HEAD 2>/dev/null)
+    local pull_line old_sha new_sha
+    pull_line=$(grep '^pulled:' <<< "$update_output" || true)
 
-    local repo_updated=false
-    [[ "$pre_head" != "$post_head" ]] && repo_updated=true
-
-    if [[ "$repo_updated" == true ]]; then
-        log "new changes found (${pre_head:0:7} -> ${post_head:0:7})... running sync"
+    if [[ -n "$pull_line" ]]; then
+        old_sha="${pull_line#pulled:}"; old_sha="${old_sha%%:*}"
+        new_sha="${pull_line##*:}"
+        log "new changes found (${old_sha:0:7} -> ${new_sha:0:7})... running sync"
         echo "sync" > "$LOCK_FILE"
         do_sync_only
         log "sync completed"
