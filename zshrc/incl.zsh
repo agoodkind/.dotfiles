@@ -42,8 +42,6 @@ if [[ -f ~/.cache/dotfiles_update.lock ]]; then
         print -P "%F{blue}↻ weekly update running in background%f"
     elif [[ "$update_type" == "sync" ]]; then
         print -P "%F{blue}↻ dotfiles sync running in background%f"
-    else
-        print -P "%F{blue}↻ checking for dotfiles updates...%f"
     fi
 elif [[ -f ~/.cache/dotfiles_local_changes ]]; then
     local msg
