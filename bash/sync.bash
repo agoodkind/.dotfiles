@@ -575,6 +575,25 @@ update_neovim_plugins() {
 # Cleanup Operations
 ###############################################################################
 
+cleanup_zinit_completions() {
+    local completions_dir="$HOME/.local/share/zinit/completions"
+
+    if [[ ! -d "$completions_dir" ]]; then
+        return 0
+    fi
+
+    local removed=0
+    while IFS= read -r -d '' link; do
+        rm -f "$link"
+        progress_log "  Removed stale completion symlink: $(basename "$link")"
+        removed=$((removed + 1))
+    done < <(find "$completions_dir" -maxdepth 1 -type l ! -exec test -e {} \; -print0 2>/dev/null)
+
+    if [[ $removed -gt 0 ]]; then
+        progress_log "  Removed $removed stale zinit completion symlink(s)"
+    fi
+}
+
 cleanup_zcompdump() {
     if [[ -n "${ZSH_COMPDUMP:-}" ]]; then
         progress_log "  Removing zcompdump file: $ZSH_COMPDUMP"
@@ -663,6 +682,7 @@ main() {
     update_neovim_plugins
     cleanup_homebrew_repair
     cleanup_neovim_repair
+    cleanup_zinit_completions
     cleanup_zcompdump
     create_hushlogin
 
