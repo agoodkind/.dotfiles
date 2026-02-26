@@ -36,6 +36,11 @@ zinit wait lucid atload'_zsh_autosuggest_start' for \
 # Syntax highlighting with compinit (must run before zicdreplay)
 # shellcheck disable=SC2016
 zinit wait lucid atinit'
+    local _zc_dir="${ZINIT[COMPLETIONS_DIR]:-$HOME/.local/share/zinit/completions}"
+    for _zc_link in "$_zc_dir"/*(N@); do
+        [[ -e "$_zc_link" ]] || rm -f "$_zc_link"
+    done
+    unset _zc_dir _zc_link
     ZINIT[COMPINIT_OPTS]=-C
     zicompinit
     zicdreplay
