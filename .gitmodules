@@ -6,3 +6,6 @@
 	path = lib/scripts
 	url = https://github.com/agoodkind/scripts.git
 	branch = main
+[submodule "lib/zsh-defer"]
+	path = lib/zsh-defer
+	url = https://github.com/romkatv/zsh-defer.git

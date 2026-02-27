@@ -2,76 +2,75 @@
 # plugins #####################################################################
 ###############################################################################
 
-# Reduce disk access for faster startup
-typeset -A ZINIT
-ZINIT[OPTIMIZE_OUT_DISK_ACCESSES]=1
-
-### Zinit
-source "$DOTDOTFILES/lib/zinit/zinit.zsh"
-autoload -Uz _zinit
-(( ${+_comps} )) && _comps[zinit]=_zinit
-
-# Completions with custom fpath
+# fpath must be set synchronously so completions work on first tab
 fpath=("$DOTDOTFILES/zshrc/completions" $fpath)
 
-# Core plugins with staggered loading
-# shellcheck disable=SC2016
-zinit wait lucid atload'
-    # OMZP::git creates gcp alias for git cherry-pick
-    # Remove it so the real gcp command is used on Linux
-    if (( $+commands[gcp] )); then
-        unalias gcp 2>/dev/null
-        compdef -d gcp 2>/dev/null
-        compdef _files gcp 2>/dev/null
-    fi
-' for \
-    OMZP::git
+# Must be declared before zsh-defer fires so zinit doesn't
+# hit an already-typed scalar on re-source
+typeset -gA ZINIT
+ZINIT[OPTIMIZE_OUT_DISK_ACCESSES]=1
 
-zinit wait lucid blockf atpull'zinit creinstall -q .' for \
-    zsh-users/zsh-completions
+source "$DOTDOTFILES/lib/zsh-defer/zsh-defer.plugin.zsh"
 
-zinit wait lucid atload'_zsh_autosuggest_start' for \
-    zsh-users/zsh-autosuggestions
+_load_zinit() {
 
-# Syntax highlighting with compinit (must run before zicdreplay)
-# shellcheck disable=SC2016
-zinit wait lucid atinit'
-    local _zc_dir="${ZINIT[COMPLETIONS_DIR]:-$HOME/.local/share/zinit/completions}"
-    for _zc_link in "$_zc_dir"/*(N@); do
-        [[ -e "$_zc_link" ]] || rm -f "$_zc_link"
-    done
-    unset _zc_dir _zc_link
-    ZINIT[COMPINIT_OPTS]=-C
-    zicompinit
-    zicdreplay
-    # Ensure gcp uses file completion (not git)
-    if (( $+commands[gcp] )); then
-        unalias gcp 2>/dev/null
-        compdef -d gcp 2>/dev/null
-        compdef _files gcp 2>/dev/null
-    fi
-' for \
-    zdharma-continuum/fast-syntax-highlighting
+    source "$DOTDOTFILES/lib/zinit/zinit.zsh"
+    autoload -Uz _zinit
+    (( ${+_comps} )) && _comps[zinit]=_zinit
 
-# fzf-tab with configuration
-# shellcheck disable=SC2016
-zinit wait'1' lucid atload'
-    zstyle ":fzf-tab:complete:cd:*" fzf-preview "eza -1 --color=always \$realpath"
-    zstyle ":fzf-tab:complete:git-(add|diff|restore):*" fzf-preview "git diff \$word | delta"
-    zstyle ":completion:*" list-colors ${(s.:.)LS_COLORS}
-    zstyle ":completion:*" menu no
-    # Ensure gcp uses file completion (not git)
-    if (( $+commands[gcp] )); then
-        unalias gcp 2>/dev/null
-        compdef -d gcp 2>/dev/null
-        compdef _files gcp 2>/dev/null
-    fi
-' for \
-    Aloxaf/fzf-tab \
-    Freed-Wu/fzf-tab-source
+    # shellcheck disable=SC2016
+    zinit wait lucid atload'
+        if (( $+commands[gcp] )); then
+            unalias gcp 2>/dev/null
+            compdef -d gcp 2>/dev/null
+            compdef _files gcp 2>/dev/null
+        fi
+    ' for \
+        OMZP::git
 
-# fzf key-bindings: Ctrl-R history, Ctrl-T files, Alt-C cd
-zinit wait lucid for \
-    is-snippet /opt/homebrew/opt/fzf/shell/key-bindings.zsh
+    zinit wait lucid blockf atpull'zinit creinstall -q .' for \
+        zsh-users/zsh-completions
+
+    zinit wait lucid atload'_zsh_autosuggest_start' for \
+        zsh-users/zsh-autosuggestions
+
+    # shellcheck disable=SC2016
+    zinit wait lucid atinit'
+        local _zc_dir="${ZINIT[COMPLETIONS_DIR]:-$HOME/.local/share/zinit/completions}"
+        for _zc_link in "$_zc_dir"/*(N@); do
+            [[ -e "$_zc_link" ]] || rm -f "$_zc_link"
+        done
+        unset _zc_dir _zc_link
+        ZINIT[COMPINIT_OPTS]=-C
+        zicompinit
+        zicdreplay
+        if (( $+commands[gcp] )); then
+            unalias gcp 2>/dev/null
+            compdef -d gcp 2>/dev/null
+            compdef _files gcp 2>/dev/null
+        fi
+    ' for \
+        zdharma-continuum/fast-syntax-highlighting
+
+    # shellcheck disable=SC2016
+    zinit wait'1' lucid atload'
+        zstyle ":fzf-tab:complete:cd:*" fzf-preview "eza -1 --color=always \$realpath"
+        zstyle ":fzf-tab:complete:git-(add|diff|restore):*" fzf-preview "git diff \$word | delta"
+        zstyle ":completion:*" list-colors ${(s.:.)LS_COLORS}
+        zstyle ":completion:*" menu no
+        if (( $+commands[gcp] )); then
+            unalias gcp 2>/dev/null
+            compdef -d gcp 2>/dev/null
+            compdef _files gcp 2>/dev/null
+        fi
+    ' for \
+        Aloxaf/fzf-tab \
+        Freed-Wu/fzf-tab-source
+
+    zinit wait lucid for \
+        is-snippet /opt/homebrew/opt/fzf/shell/key-bindings.zsh
+}
+
+zsh-defer _load_zinit
 
 ###############################################################################

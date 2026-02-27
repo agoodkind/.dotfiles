@@ -111,44 +111,32 @@ has_internet() {
 # Portable command existence check (lazy PATH lookup, avoids 10ms full hash build)
 isinstalled() { command -v "$1" >/dev/null 2>&1; }
 
-# Check if dotfiles have changed since last check (git HEAD + local modifications)
 dotfiles_changed_hash() {
-    # Fast path: check if .git/HEAD changed (very cheap)
-    local head_hash
+    local head_hash=""
     if [[ -f "$DOTDOTFILES/.git/HEAD" ]]; then
         read -r head_hash < "$DOTDOTFILES/.git/HEAD"
-        # If it's a ref, follow it
         if [[ "$head_hash" == ref:* ]]; then
             local ref="${head_hash#ref: }"
-            if [[ -f "$DOTDOTFILES/.git/$ref" ]]; then
+            [[ -f "$DOTDOTFILES/.git/$ref" ]] && \
                 read -r head_hash < "$DOTDOTFILES/.git/$ref"
-            fi
         fi
     fi
 
-    # Fast path: check mtime of specific key files instead of scanning everything
-    # We only care if:
-    # 1. zshrc/commands/ changed (prefer logic)
-    # 2. home/.zshrc changed (aliases defined)
-    # 3. .zshrc.local changed
-    
-    local last_mod
-    # Use zsh/stat for fast, consistent, cross-platform timestamp checking
+    # Include mtime of key files so local edits (pre-commit) also
+    # invalidate the prefer cache without needing a git commit.
     zmodload -F zsh/stat b:zstat 2>/dev/null
-    
-    local -a files=("$DOTDOTFILES/zshrc/commands/prefer.zsh" "$DOTDOTFILES/home/.zshrc" "$DOTDOTFILES/.zshrc.local")
-    local max_mtime=0
-    local f
+    local max_mtime=0 f
     local -a file_stat
-    
-    for f in "${files[@]}"; do
+    for f in \
+        "$DOTDOTFILES/zshrc/commands/prefer.zsh" \
+        "$DOTDOTFILES/home/.zshrc" \
+        "$DOTDOTFILES/.zshrc.local"; do
         if zstat -A file_stat +mtime "$f" 2>/dev/null; then
             (( file_stat[1] > max_mtime )) && max_mtime=$file_stat[1]
         fi
     done
-    last_mod=$max_mtime
-    
-    echo "${head_hash}-${last_mod}"
+
+    echo "${head_hash}-${max_mtime}"
 }
 
 ###############################################################################
