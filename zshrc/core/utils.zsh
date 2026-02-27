@@ -108,8 +108,8 @@ has_internet() {
     return 1
 }
 
-# Portable command existence check (zsh builtin, no fork)
-isinstalled() { (( $+commands[$1] )); }
+# Portable command existence check (lazy PATH lookup, avoids 10ms full hash build)
+isinstalled() { command -v "$1" >/dev/null 2>&1; }
 
 # Check if dotfiles have changed since last check (git HEAD + local modifications)
 dotfiles_changed_hash() {
@@ -154,13 +154,6 @@ dotfiles_changed_hash() {
 ###############################################################################
 # Shell Management
 ###############################################################################
-
-# Enable performance profiling for the next shell session
-zsh_profile() {
-    mkdir -p ~/.cache
-    touch ~/.cache/zsh_profile_next
-    echo "Performance profiling enabled for next shell session"
-}
 
 # Reload the shell
 reload() {

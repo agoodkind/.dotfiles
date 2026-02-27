@@ -603,6 +603,33 @@ cleanup_zcompdump() {
     fi
 }
 
+compile_zsh_files() {
+    local compiled=0
+    local f
+    local dirs=(
+        "$DOTDOTFILES/zshrc"
+        "$DOTDOTFILES/lib/zinit"
+        "$DOTDOTFILES/home"
+        "$DOTDOTFILES/bin"
+    )
+    while IFS= read -r -d '' f; do
+        if [[ "$f" -nt "${f}.zwc" ]] \
+            || [[ ! -f "${f}.zwc" ]]; then
+            zsh -c "zcompile '$f'" 2>/dev/null \
+                && compiled=$((compiled + 1))
+        fi
+    done < <(
+        find "${dirs[@]}" \
+            \( -name '*.zsh' -o -name '.zshrc' \) \
+            -print0 2>/dev/null
+    )
+
+    if [[ $compiled -gt 0 ]]; then
+        progress_log \
+            "  Compiled $compiled zsh file(s)"
+    fi
+}
+
 create_hushlogin() {
     local vid
     vid=$(progress_vertex_start "Creating hushlogin")
@@ -684,6 +711,7 @@ main() {
     cleanup_neovim_repair
     cleanup_zinit_completions
     cleanup_zcompdump
+    compile_zsh_files
     create_hushlogin
 
     progress_end
