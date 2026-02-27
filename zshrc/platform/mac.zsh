@@ -9,7 +9,7 @@ _mac_load_ssh_key() {
         /usr/bin/ssh-add --apple-use-keychain ~/.ssh/id_ed25519
     fi
 } >> ~/.cache/ssh-add.log 2>&1
-async_run _mac_load_ssh_key
+_async _mac_load_ssh_key
 ########################
 
 ########################
@@ -30,14 +30,14 @@ else
     HOMEBREW_PREFIX=""
 fi
 
-# Cache brew shellenv to avoid slow eval on every startup
+# Set Homebrew environment directly (avoids slow path_helper subprocess from brew shellenv)
 if [[ -n "$HOMEBREW_PREFIX" ]]; then
-    BREW_BIN="$HOMEBREW_PREFIX/bin/brew"
-    if [[ ! -f ~/.cache/brew-shellenv.cache ]] || [[ "$BREW_BIN" -nt ~/.cache/brew-shellenv.cache ]]; then
-        mkdir -p ~/.cache
-        "$BREW_BIN" shellenv > ~/.cache/brew-shellenv.cache
-    fi
-    source "$HOME/.cache/brew-shellenv.cache"
+    export HOMEBREW_CELLAR="$HOMEBREW_PREFIX/Cellar"
+    export HOMEBREW_REPOSITORY="$HOMEBREW_PREFIX"
+    fpath[1,0]="$HOMEBREW_PREFIX/share/zsh/site-functions"
+    export PATH="$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:$PATH"
+    [[ -z "${MANPATH-}" ]] || export MANPATH=":${MANPATH#:}"
+    export INFOPATH="$HOMEBREW_PREFIX/share/info:${INFOPATH:-}"
 fi
 ############
 

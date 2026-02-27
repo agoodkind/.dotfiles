@@ -6,33 +6,29 @@ export PATH="$PATH:$HOME/go/bin"
 export NVM_LAZY_LOAD=true
 
 # shellcheck shell=bash
-# Check if profiling was requested and load zprof module early if needed
-SHOULD_PROFILE=false
-if [[ -f ~/.cache/zsh_profile_next ]]; then
-    SHOULD_PROFILE=true
-    zmodload zsh/zprof
-    rm ~/.cache/zsh_profile_next
+source "$DOTDOTFILES/zshrc/core/profile.zsh"
 
-    do_profile() {
-        echo "Zsh performance profiling results:"
-        zprof
-        printf "Zsh initialization time: %.0f ms\n" "$(( (EPOCHREALTIME - START_TIME) * 1000 ))"
-    }
+# plugins.zsh uses plain source (zinit turbo mode stores scope references
+# that break when sourced inside a function). Timing is done inline instead.
+if [[ "$SHOULD_PROFILE" == "true" ]]; then
+    local _t0=$EPOCHREALTIME
+    source "$DOTDOTFILES/zshrc/core/plugins.zsh"
+    _PROFILE_TIMES[plugins]=$(( (EPOCHREALTIME - _t0) * 1000 ))
+else
+    source "$DOTDOTFILES/zshrc/core/plugins.zsh"
 fi
-export SHOULD_PROFILE
 
-source "$DOTDOTFILES/zshrc/core/plugins.zsh"
-source "$DOTDOTFILES/zshrc/core/utils.zsh"
-source "$DOTDOTFILES/zshrc/commands/prefer.zsh"
-source "$DOTDOTFILES/zshrc/commands/editors.zsh"
-source "$DOTDOTFILES/zshrc/commands/remote.zsh"
-source "$DOTDOTFILES/zshrc/commands/aliases.zsh"
-source "$DOTDOTFILES/zshrc/commands/git.zsh"
-(bash "$DOTDOTFILES/bash/updater.bash" >/dev/null 2>&1 &)
-source "$DOTDOTFILES/zshrc/integrations/zoxide.zsh"
-source "$DOTDOTFILES/zshrc/integrations/motd.zsh"
-# Load local zshrc customizations that are not to be tracked by git
-[[ ! -f "$DOTDOTFILES/.zshrc.local" ]] || source "$DOTDOTFILES/.zshrc.local"
+_source "$DOTDOTFILES/zshrc/core/utils.zsh"
+_source "$DOTDOTFILES/zshrc/commands/prefer.zsh"
+_source "$DOTDOTFILES/zshrc/commands/editors.zsh"
+_source "$DOTDOTFILES/zshrc/commands/remote.zsh"
+_source "$DOTDOTFILES/zshrc/commands/aliases.zsh"
+_source "$DOTDOTFILES/zshrc/commands/git.zsh"
+_async bash "$DOTDOTFILES/bash/updater.bash"
+_async zsh "$DOTDOTFILES/bin/zwc-recompile.zsh"
+_source "$DOTDOTFILES/zshrc/integrations/zoxide.zsh"
+_source "$DOTDOTFILES/zshrc/integrations/motd.zsh"
+[[ ! -f "$DOTDOTFILES/.zshrc.local" ]] || _source "$DOTDOTFILES/.zshrc.local"
 
 # Check for update status from background updater
 if [[ -f ~/.cache/dotfiles_update.lock ]]; then
