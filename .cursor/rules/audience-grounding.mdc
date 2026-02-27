@@ -1,0 +1,15 @@
+---
+description: Ground all output artifacts in what the audience sees, not conversation history
+globs: 
+alwaysApply: true
+---
+
+# Audience Grounding
+
+When producing any artifact that has an audience (PR descriptions, commit messages, docs, Slack messages, comments, changelogs, summaries), describe the **current state relative to what the audience can see**, not the journey through conversation history or intermediate iterations.
+
+- The audience sees the end result, not the iterations. Don't reference intermediate states, reverted experiments, abandoned approaches, or things that were tried and undone during the course of the work.
+- "Removed X", "deleted Y", "reverted Z" are only valid if X, Y, or Z exist in the baseline the audience is comparing against. If something only existed as an intermediate step, it was never there from the audience's perspective.
+- "Changed X to Y" is only valid if the audience can see the prior value of X. If X was only an intermediate value, just describe Y as the current state.
+- The conversation history is not the audience's context. Don't let it leak into artifacts. If the user and I discussed five approaches before landing on one, the artifact should describe the one, not the five.
+- When the baseline is a git branch, `git diff` against the base is the source of truth. When the baseline is a document or message, the last published version is. When there is no prior baseline, describe the current state as new.
