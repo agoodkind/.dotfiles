@@ -82,7 +82,7 @@ check "Saw [-] Downloading artifact, then [✗] Downloading artifact (red)?"
 fi
 
 # ──────────────────────────────────────────────────────────
-header "3. Vertex: mixed complete + error + cached"
+header "3. Vertex: mixed complete + error"
 # ──────────────────────────────────────────────────────────
 if should_run; then
 (
@@ -97,11 +97,11 @@ if should_run; then
     progress_vertex_error "$v2"
     v3=$(progress_vertex_start "Step C")
     sleep 0.5
-    progress_vertex_cached "$v3"
+    progress_vertex_complete "$v3"
     sleep 0.5
     progress_end
 )
-check "Saw [+] Step A, [✗] Step B (red), [◆] Step C (cached)?"
+check "Saw [+] Step A, [✗] Step B (red), [+] Step C?"
 fi
 
 # ──────────────────────────────────────────────────────────

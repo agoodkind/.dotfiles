@@ -121,7 +121,7 @@ sync_ssh_config() {
     vid=$(progress_vertex_start "Syncing SSH config")
 
     if is_work_laptop; then
-        progress_vertex_cached "$vid" "Syncing SSH config (work laptop)"
+        progress_vertex_complete "$vid" "Syncing SSH config" "work laptop"
         return 0
     fi
 
@@ -147,7 +147,7 @@ update_authorized_keys() {
     vid=$(progress_vertex_start "Updating authorized keys")
 
     if is_work_laptop; then
-        progress_vertex_cached "$vid" "Updating authorized keys (work laptop)"
+        progress_vertex_complete "$vid" "Updating authorized keys" "work laptop"
         return 0
     fi
 
@@ -406,7 +406,7 @@ sync_git_hooks() {
     vid=$(progress_vertex_start "Syncing git hooks")
 
     if [[ ! -d "$DOTDOTFILES/.githooks" ]]; then
-        progress_vertex_cached "$vid" "Syncing git hooks (no directory)"
+        progress_vertex_complete "$vid" "Syncing git hooks" "no directory"
         return 0
     fi
 
@@ -464,12 +464,12 @@ cleanup_homebrew_repair() {
     vid=$(progress_vertex_start "Repair: cleaning up Homebrew")
 
     if [[ "$repair_mode" != "true" ]]; then
-        progress_vertex_cached "$vid" "Repair: cleaning up Homebrew (skipped)"
+        progress_vertex_complete "$vid" "Repair: cleaning up Homebrew" "skipped"
         return 0
     fi
 
     if ! is_macos || ! command -v brew >/dev/null 2>&1; then
-        progress_vertex_cached "$vid" "Repair: cleaning up Homebrew (n/a)"
+        progress_vertex_complete "$vid" "Repair: cleaning up Homebrew" "n/a"
         return 0
     fi
 
@@ -490,7 +490,7 @@ cleanup_neovim_repair() {
     vid=$(progress_vertex_start "Repair: cleaning up Neovim")
 
     if [[ "$repair_mode" != "true" ]]; then
-        progress_vertex_cached "$vid" "Repair: cleaning up Neovim (skipped)"
+        progress_vertex_complete "$vid" "Repair: cleaning up Neovim" "skipped"
         return 0
     fi
 
@@ -544,7 +544,7 @@ update_neovim_plugins() {
 
     if ! command -v nvim >/dev/null 2>&1; then
         progress_log "  Skipping Neovim plugins (nvim not installed)"
-        progress_vertex_cached "$vid" "Updating Neovim plugins (nvim not installed)"
+        progress_vertex_complete "$vid" "Updating Neovim plugins" "nvim not installed"
         return 0
     fi
 
@@ -591,7 +591,7 @@ cleanup_zinit_completions() {
     local completions_dir="$HOME/.local/share/zinit/completions"
 
     if [[ ! -d "$completions_dir" ]]; then
-        progress_vertex_cached "$vid" "Cleaning zinit completions (no dir)"
+        progress_vertex_complete "$vid" "Cleaning zinit completions" "no dir"
         return 0
     fi
 
@@ -605,7 +605,7 @@ cleanup_zinit_completions() {
     if [[ $removed -gt 0 ]]; then
         progress_vertex_complete "$vid" "Cleaning zinit completions (removed $removed)"
     else
-        progress_vertex_cached "$vid" "Cleaning zinit completions (no stale links)"
+        progress_vertex_complete "$vid" "Cleaning zinit completions" "no stale links"
     fi
 }
 
@@ -617,7 +617,7 @@ cleanup_zcompdump() {
         rm -f "$ZSH_COMPDUMP"
         progress_vertex_complete "$vid" "Cleaning zcompdump"
     else
-        progress_vertex_cached "$vid" "Cleaning zcompdump (not set)"
+        progress_vertex_complete "$vid" "Cleaning zcompdump" "not set"
     fi
 }
 
@@ -656,7 +656,7 @@ compile_zsh_files() {
     if [[ $compiled -gt 0 ]]; then
         progress_vertex_complete "$vid" "Compiling zsh files ($compiled compiled)"
     else
-        progress_vertex_cached "$vid" "Compiling zsh files (all current)"
+        progress_vertex_complete "$vid" "Compiling zsh files" "all current"
     fi
 }
 
@@ -669,7 +669,7 @@ create_hushlogin() {
         progress_vertex_complete "$vid" "Creating hushlogin"
     else
         progress_log "  Skipping hushlogin (already exists)"
-        progress_vertex_cached "$vid" "Creating hushlogin"
+        progress_vertex_complete "$vid" "Creating hushlogin" "already exists"
     fi
 }
 
