@@ -38,23 +38,6 @@ _resolve_prefer_target() {
 PREFER_CACHE_FILE="$HOME/.cache/zsh_prefer_aliases.zsh"
 _CURRENT_HASH=""
 
-_check_prefer_cache_async() {
-    local current_hash
-    if (( $+functions[dotfiles_changed_hash] )); then
-        current_hash=$(dotfiles_changed_hash)
-    else
-        return
-    fi
-
-    local cached_hash
-    if [[ -f "$PREFER_CACHE_FILE" ]]; then
-        read -r cached_hash < <(head -n 1 "$PREFER_CACHE_FILE" | sed 's/# HASH: //')
-    fi
-
-    if [[ "$current_hash" != "$cached_hash" ]]; then
-        rm -f "$PREFER_CACHE_FILE"
-    fi
-}
 
 _init_cache_if_needed() {
     if [[ -z "$_CURRENT_HASH" ]]; then
@@ -72,7 +55,6 @@ _init_cache_if_needed() {
 
 if [[ -f "$PREFER_CACHE_FILE" ]]; then
     source "$PREFER_CACHE_FILE"
-    async_run _check_prefer_cache_async
 else
     _init_cache_if_needed
 fi
