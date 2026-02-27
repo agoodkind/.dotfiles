@@ -87,13 +87,13 @@ function progress_vertex_start() {
 function progress_vertex_complete() {
     local n="$1"
     local label="${2:-}"
-    local detail=""
+    local detail="${3:-}"
     if [[ -f "${_PROGRESS_STATE_DIR}/${n}.vertex" ]]; then
         local _c; _c=$(<"${_PROGRESS_STATE_DIR}/${n}.vertex")
         local _r="${_c#*|}"
         [[ -z "$label" ]] && label="${_r%%|*}"
         local _r2="${_r#*|}"; local _r3="${_r2#*|}"
-        detail="${_r3%%|*}"
+        [[ -z "$detail" ]] && detail="${_r3%%|*}"
     fi
     _progress_vertex_write "$n" "completed" "$label" "" "$detail"
     if [[ -n "${_PROGRESS_LOG_FILE:-}" ]]; then
@@ -118,22 +118,6 @@ function progress_vertex_error() {
     fi
 }
 
-function progress_vertex_cached() {
-    local n="$1"
-    local label="${2:-}"
-    local detail=""
-    if [[ -f "${_PROGRESS_STATE_DIR}/${n}.vertex" ]]; then
-        local _c; _c=$(<"${_PROGRESS_STATE_DIR}/${n}.vertex")
-        local _r="${_c#*|}"
-        [[ -z "$label" ]] && label="${_r%%|*}"
-        local _r2="${_r#*|}"; local _r3="${_r2#*|}"
-        detail="${_r3%%|*}"
-    fi
-    _progress_vertex_write "$n" "cached" "$label" "" "$detail"
-    if [[ -n "${_PROGRESS_LOG_FILE:-}" ]]; then
-        echo "$(date +%Y-%m-%dT%H:%M:%S) [vertex $n] cached: $label" >> "$_PROGRESS_LOG_FILE"
-    fi
-}
 
 function progress_vertex_detail() {
     local n="$1"
@@ -163,7 +147,6 @@ function _progress_render_vertex_line() {
         started)   printf '[-] %s%s\n' "$label" "$suffix" ;;
         completed) printf '%s[+] %s%s%s\n' "$COLOR_GREEN" "$label" "$TEXT_RESET" "$suffix" ;;
         error)     printf '%s[x] %s%s%s\n' "$COLOR_RED" "$label" "$TEXT_RESET" "$suffix" ;;
-        cached)    printf '%s[+] %s (cached)%s%s\n' "$COLOR_GREEN" "$label" "$TEXT_RESET" "$suffix" ;;
         *)         printf '[-] %s%s\n' "$label" "$suffix" ;;
     esac
 }

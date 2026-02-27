@@ -13,17 +13,15 @@ BuildKit-style progress display: state files plus a background display loop that
 - **progress_vertex_start \<label\>**
   Write `started|label|ts` to next `N.vertex`. Vertex IDs are assigned from a file-based counter (`.counter`) that persists across subshells. Returns vertex id on stdout.
 
-- **progress_vertex_complete \<id\> [label]**
-  Overwrite vertex file with `completed|...`.
+- **progress_vertex_complete \<id\> [label] [suffix]**
+  Overwrite vertex file with `completed|...`. The optional `suffix` renders as a dimmed parenthetical after the label: `[+] Syncing SSH config  (work laptop)`.
 
 - **progress_vertex_error \<id\> [label]**
   Overwrite vertex file with `error|...`.
 
-- **progress_vertex_cached \<id\> [label]**
-  Overwrite vertex file with `cached|...`.
 
 - **progress_vertex_detail \<id\> \<detail\>**
-  Attach a short annotation to a vertex. Can be called at any point: while the vertex is `started`, or before calling complete/error/cached. The detail survives through status transitions and renders as a dimmed suffix after the label: `[-] Checking build  (no cached build found)` while running, `[+] Checking build  (no cached build found)` when complete.
+  Attach a short annotation to a vertex. Can be called at any point while the vertex is `started`, or before calling complete/error. The detail survives through status transitions and renders as a dimmed suffix after the label: `[-] Checking build  (no cached build found)` while running, `[+] Checking build  (no cached build found)` when complete.
 
 - **progress_vertex_exec \<label\> \<command\> [args...]**
   Start a vertex, run command, stream stdout/stderr to `N.out` (TTY mode) or inline (non-TTY), then complete or error the vertex based on exit code. In TTY mode, the display loop picks up `N.out` and renders a scrolling output window below the active vertex.
@@ -47,7 +45,7 @@ When a vertex is `started` and has a `.out` file, the display loop renders the l
 ## State protocol
 
 - **State dir**: created by `progress_begin`, removed by `progress_end` or EXIT trap.
-- **`N.vertex`**: one file per vertex. Content: `status|label|timestamp|detail`. The `detail` field is optional (empty string when unset). Status values: `started`, `completed`, `error`, `cached`.
+- **`N.vertex`**: one file per vertex. Content: `status|label|timestamp|detail`. The `detail` field is optional (empty string when unset). Status values: `started`, `completed`, `error`.
 - **`N.out`**: command output from `progress_vertex_exec`. Written by the exec function, read by the display loop for the scrolling output window.
 - **`.counter`**: integer file tracking the next vertex ID. Incremented by `progress_vertex_start`. File-based (not a shell variable) so it persists across `$(...)` subshells.
 - **`.done`**: created when the session ends. Display loop exits when it sees this file.

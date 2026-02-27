@@ -42,7 +42,7 @@ teardown() {
     [[ "$output" == *"ids: 1 2 3"* ]]
 }
 
-@test "vertex lifecycle functions (start, complete, error, cached)" {
+@test "vertex lifecycle functions (start, complete, error)" {
     local vid
     vid=$(progress_vertex_start "Test Start")
     [ -f "${STATE_DIR}/${vid}.vertex" ]
@@ -61,9 +61,9 @@ teardown() {
     [[ "$content" == error\|Test\ Error\|* ]]
 
     vid=$(progress_vertex_start "Test Cached")
-    progress_vertex_cached "$vid" "Test Cached"
+    progress_vertex_complete "$vid" "Test Cached"
     content=$(cat "${STATE_DIR}/${vid}.vertex")
-    [[ "$content" == cached\|Test\ Cached\|* ]]
+    [[ "$content" == completed\|Test\ Cached\|* ]]
 }
 
 @test "crash safety (EXIT trap marks started as error)" {
