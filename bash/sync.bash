@@ -410,18 +410,20 @@ sync_git_hooks() {
         return 0
     fi
 
-    env DOTDOTFILES="$DOTDOTFILES" sh -c '
-        hooks_dir="$DOTDOTFILES/.git/hooks"
-        src_hooks="$DOTDOTFILES/.githooks"
-        mkdir -p "$hooks_dir"
-        for hook in "$src_hooks"/*; do
-            [[ -f "$hook" ]] || continue
-            hook_name=$(basename "$hook")
-            ln -sf "../../.githooks/$hook_name" "$hooks_dir/$hook_name"
-            echo "Linked hook: $hook_name"
-        done
-    '
-    progress_vertex_complete "$vid" "Syncing git hooks"
+    local hooks_dir="$DOTDOTFILES/.git/hooks"
+    local src_hooks="$DOTDOTFILES/.githooks"
+    mkdir -p "$hooks_dir"
+
+    local hook hook_name linked=0
+    for hook in "$src_hooks"/*; do
+        [[ -f "$hook" ]] || continue
+        hook_name=$(basename "$hook")
+        ln -sf "../../.githooks/$hook_name" "$hooks_dir/$hook_name"
+        progress_log "  Linked hook: $hook_name"
+        linked=$((linked + 1))
+    done
+
+    progress_vertex_complete "$vid" "Syncing git hooks ($linked linked)"
 }
 
 sync_global_git_hooks() {
@@ -435,22 +437,22 @@ sync_global_git_hooks() {
 }
 
 check_git_hooks_path() {
+    local vid
+    vid=$(progress_vertex_start "Checking git hooks path")
+
     # This repo does not auto-run git config changes.
     # If you want git to use .githooks directly, set core.hooksPath manually:
     #   git -C "$DOTDOTFILES" config --local core.hooksPath ".githooks"
     local configured
     configured=$(git -C "$DOTDOTFILES" config --local --get core.hooksPath 2>/dev/null || true)
 
-    if [[ -z "$configured" ]]; then
+    if [[ -z "$configured" ]] || [[ "$configured" == ".githooks" ]]; then
+        progress_vertex_complete "$vid" "Checking git hooks path"
         return 0
     fi
 
-    if [[ "$configured" != ".githooks" ]]; then
-        color_echo YELLOW "  core.hooksPath is set to: $configured"
-        color_echo YELLOW "  Expected: .githooks"
-        color_echo YELLOW "  Run:"
-        color_echo YELLOW "    git -C \"$DOTDOTFILES\" config --local core.hooksPath \".githooks\""
-    fi
+    progress_log "  core.hooksPath is set to: $configured (expected .githooks)"
+    progress_vertex_complete "$vid" "Checking git hooks path (warning: $configured)"
 }
 
 ###############################################################################
@@ -458,75 +460,82 @@ check_git_hooks_path() {
 ###############################################################################
 
 cleanup_homebrew_repair() {
+    local vid
+    vid=$(progress_vertex_start "Repair: cleaning up Homebrew")
+
     if [[ "$repair_mode" != "true" ]]; then
-        color_echo GRAY "  Skipping Homebrew repair (not in repair mode)"
+        progress_vertex_cached "$vid" "Repair: cleaning up Homebrew (skipped)"
         return 0
     fi
 
-    is_macos "Homebrew repair is macOS-only" || return 0
-
-    if ! command -v brew >/dev/null 2>&1; then
+    if ! is_macos || ! command -v brew >/dev/null 2>&1; then
+        progress_vertex_cached "$vid" "Repair: cleaning up Homebrew (n/a)"
         return 0
     fi
 
-    progress_vertex_exec "Repair mode: cleaning up Homebrew" sh -c '
-        incomplete_files=$(find "$HOME/Library/Caches/Homebrew/downloads" -name "*.incomplete" 2>/dev/null | wc -l | tr -d " ")
-        if [[ "$incomplete_files" -gt 0 ]]; then
-            echo "Removing $incomplete_files incomplete download(s)..."
-            rm -rf "$HOME/Library/Caches/Homebrew/downloads"/*.incomplete 2>/dev/null
-        fi
-        brew cleanup --prune=all 2>/dev/null || true
-    '
+    local cache_dir="$HOME/Library/Caches/Homebrew/downloads"
+    local incomplete_files
+    incomplete_files=$(find "$cache_dir" -name "*.incomplete" 2>/dev/null | wc -l | tr -d " ")
+    if [[ "$incomplete_files" -gt 0 ]]; then
+        progress_log "  Removing $incomplete_files incomplete download(s)..."
+        rm -rf "$cache_dir"/*.incomplete 2>/dev/null || true
+    fi
+
+    brew cleanup --prune=all 2>/dev/null || true
+    progress_vertex_complete "$vid" "Repair: cleaning up Homebrew"
 }
 
 cleanup_neovim_repair() {
+    local vid
+    vid=$(progress_vertex_start "Repair: cleaning up Neovim")
+
     if [[ "$repair_mode" != "true" ]]; then
-        progress_log "  Skipping Neovim repair (not in repair mode)"
+        progress_vertex_cached "$vid" "Repair: cleaning up Neovim (skipped)"
         return 0
     fi
 
-    progress_vertex_exec "Repair mode: cleaning up Neovim" sh -c '
-        NVIM_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/nvim"
-        LAZY_DIR="$NVIM_DATA/lazy"
+    local nvim_data="${XDG_DATA_HOME:-$HOME/.local/share}/nvim"
+    local lazy_dir="$nvim_data/lazy"
 
-        if [ -d "$LAZY_DIR" ]; then
-            find "$LAZY_DIR" -maxdepth 1 -name "*.cloning" -delete 2>/dev/null
-            for dir in "$LAZY_DIR"/*/; do
-                [ -d "$dir" ] || continue
-                if [ ! -d "$dir/.git" ] || [ -z "$(ls -A "$dir" 2>/dev/null)" ]; then
-                    echo "Removing incomplete plugin: $(basename "$dir")"
-                    rm -rf "$dir"
-                fi
-            done
-        fi
-
-        if [ -d "$NVIM_DATA" ]; then
-            find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*-tmp" -type d \
-                -exec rm -rf {} + 2>/dev/null
-            find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*" -type d ! -name "*.so" \
-                -exec rm -rf {} + 2>/dev/null
-        fi
-
-        NVIM_SWAP="${XDG_STATE_HOME:-$HOME/.local/state}/nvim/swap"
-        if [ -d "$NVIM_SWAP" ]; then
-            swap_count=$(find "$NVIM_SWAP" -name "*.swp" -type f 2>/dev/null | wc -l | tr -d " ")
-            if [ "$swap_count" -gt 0 ]; then
-                find "$NVIM_SWAP" -name "*.swp" -type f -delete 2>/dev/null
-                echo "Removed $swap_count swap file(s)"
+    if [[ -d "$lazy_dir" ]]; then
+        find "$lazy_dir" -maxdepth 1 -name "*.cloning" -delete 2>/dev/null
+        local dir
+        for dir in "$lazy_dir"/*/; do
+            [[ -d "$dir" ]] || continue
+            if [[ ! -d "$dir/.git" ]] || [[ -z "$(ls -A "$dir" 2>/dev/null)" ]]; then
+                progress_log "  Removing incomplete plugin: $(basename "$dir")"
+                rm -rf "$dir"
             fi
-        fi
+        done
+    fi
 
-        NVIM_SWAP_LEGACY="$NVIM_DATA/swap"
-        if [ -d "$NVIM_SWAP_LEGACY" ]; then
-            swap_count=$(find "$NVIM_SWAP_LEGACY" -name "*.swp" -type f 2>/dev/null | wc -l | tr -d " ")
-            if [ "$swap_count" -gt 0 ]; then
-                find "$NVIM_SWAP_LEGACY" -name "*.swp" -type f -delete 2>/dev/null
-                echo "Removed $swap_count swap file(s) from legacy location"
-            fi
-        fi
+    if [[ -d "$nvim_data" ]]; then
+        find "$nvim_data" -maxdepth 1 -name "tree-sitter-*-tmp" -type d \
+            -exec rm -rf {} + 2>/dev/null
+        find "$nvim_data" -maxdepth 1 -name "tree-sitter-*" -type d ! -name "*.so" \
+            -exec rm -rf {} + 2>/dev/null
+    fi
 
-        echo "Neovim cleanup complete"
-        '
+    local nvim_swap="${XDG_STATE_HOME:-$HOME/.local/state}/nvim/swap"
+    local swap_count
+    if [[ -d "$nvim_swap" ]]; then
+        swap_count=$(find "$nvim_swap" -name "*.swp" -type f 2>/dev/null | wc -l | tr -d " ")
+        if [[ "$swap_count" -gt 0 ]]; then
+            find "$nvim_swap" -name "*.swp" -type f -delete 2>/dev/null
+            progress_log "  Removed $swap_count swap file(s)"
+        fi
+    fi
+
+    local nvim_swap_legacy="$nvim_data/swap"
+    if [[ -d "$nvim_swap_legacy" ]]; then
+        swap_count=$(find "$nvim_swap_legacy" -name "*.swp" -type f 2>/dev/null | wc -l | tr -d " ")
+        if [[ "$swap_count" -gt 0 ]]; then
+            find "$nvim_swap_legacy" -name "*.swp" -type f -delete 2>/dev/null
+            progress_log "  Removed $swap_count swap file(s) from legacy location"
+        fi
+    fi
+
+    progress_vertex_complete "$vid" "Repair: cleaning up Neovim"
 }
 
 update_neovim_plugins() {
@@ -576,9 +585,13 @@ update_neovim_plugins() {
 ###############################################################################
 
 cleanup_zinit_completions() {
+    local vid
+    vid=$(progress_vertex_start "Cleaning zinit completions")
+
     local completions_dir="$HOME/.local/share/zinit/completions"
 
     if [[ ! -d "$completions_dir" ]]; then
+        progress_vertex_cached "$vid" "Cleaning zinit completions (no dir)"
         return 0
     fi
 
@@ -590,25 +603,41 @@ cleanup_zinit_completions() {
     done < <(find "$completions_dir" -maxdepth 1 -type l ! -exec test -e {} \; -print0 2>/dev/null)
 
     if [[ $removed -gt 0 ]]; then
-        progress_log "  Removed $removed stale zinit completion symlink(s)"
+        progress_vertex_complete "$vid" "Cleaning zinit completions (removed $removed)"
+    else
+        progress_vertex_cached "$vid" "Cleaning zinit completions (no stale links)"
     fi
 }
 
 cleanup_zcompdump() {
+    local vid
+    vid=$(progress_vertex_start "Cleaning zcompdump")
+
     if [[ -n "${ZSH_COMPDUMP:-}" ]]; then
-        progress_log "  Removing zcompdump file: $ZSH_COMPDUMP"
         rm -f "$ZSH_COMPDUMP"
+        progress_vertex_complete "$vid" "Cleaning zcompdump"
     else
-        progress_log "  Skipping zcompdump cleanup (ZSH_COMPDUMP not set)"
+        progress_vertex_cached "$vid" "Cleaning zcompdump (not set)"
     fi
 }
 
+cleanup_prefer_cache() {
+    local vid
+    vid=$(progress_vertex_start "Cleaning prefer cache")
+    rm -f "$HOME/.cache/zsh_prefer_aliases.zsh"
+    progress_vertex_complete "$vid" "Cleaning prefer cache"
+}
+
 compile_zsh_files() {
+    local vid
+    vid=$(progress_vertex_start "Compiling zsh files")
+
     local compiled=0
     local f
     local dirs=(
         "$DOTDOTFILES/zshrc"
         "$DOTDOTFILES/lib/zinit"
+        "$DOTDOTFILES/lib/zsh-defer"
         "$DOTDOTFILES/home"
         "$DOTDOTFILES/bin"
     )
@@ -625,8 +654,9 @@ compile_zsh_files() {
     )
 
     if [[ $compiled -gt 0 ]]; then
-        progress_log \
-            "  Compiled $compiled zsh file(s)"
+        progress_vertex_complete "$vid" "Compiling zsh files ($compiled compiled)"
+    else
+        progress_vertex_cached "$vid" "Compiling zsh files (all current)"
     fi
 }
 
@@ -672,45 +702,67 @@ run_os_install() {
 }
 
 ###############################################################################
+# Git Repository Operations
+###############################################################################
+
+update_git_repo_sync() {
+    if [[ "$skip_git" == true ]]; then
+        return 0
+    fi
+
+    local vid
+    vid=$(progress_vertex_start "Updating git repo")
+    local update_msg
+    if update_msg=$(dotfiles_update_repo 2>&1); then
+        progress_log "  git update succeeded"
+        progress_vertex_complete "$vid" "Updating git repo"
+    else
+        progress_log "  git update: $update_msg"
+        progress_vertex_error "$vid" "Updating git repo failed"
+    fi
+}
+
+###############################################################################
 # Main Execution
 ###############################################################################
 
 main() {
     progress_begin "${HOME}/.cache/dotfiles/sync-${timestamp}.log"
-    if [[ "$skip_git" != true ]]; then
-        local vid
-        vid=$(progress_vertex_start "Updating git repo")
-        local update_msg
-        if update_msg=$(dotfiles_update_repo 2>&1); then
-            progress_log "  git update succeeded"
-            progress_vertex_complete "$vid" "Updating git repo"
-        else
-            progress_log "  git update: $update_msg"
-            progress_vertex_error "$vid" "Updating git repo failed"
-        fi
-    fi
 
+    # Phase 1: Git
+    update_git_repo_sync
+
+    # Phase 2: Pre-install cleanups (invalidate caches before linking)
+    cleanup_zinit_completions
+    cleanup_zcompdump
+    cleanup_prefer_cache
+
+    # Phase 3: Core dotfile linking
     link_dotfiles
     sync_ssh_config
     update_authorized_keys
+
+    # Phase 4: Scripts and Cursor config
     sync_all_scripts
     sync_cursor_config
     sync_cursor_user_rules
+
+    # Phase 5: Git hooks
     check_git_hooks_path
     sync_git_hooks
     sync_global_git_hooks
 
-    # Run OS-specific install
+    # Phase 6: OS-specific setup and tools
     run_os_install "$@"
+    progress_vertex_exec "Installing custom tools" \
+        "$DOTDOTFILES/bash/setup/platform/tools.bash" "$@"
 
-    # Install custom tools
-    progress_vertex_exec "Installing custom tools" "$DOTDOTFILES/bash/setup/platform/tools.bash" "$@"
-
+    # Phase 7: Neovim
     update_neovim_plugins
+
+    # Phase 8: Post-install tasks (repair cleanups, compilation)
     cleanup_homebrew_repair
     cleanup_neovim_repair
-    cleanup_zinit_completions
-    cleanup_zcompdump
     compile_zsh_files
     create_hushlogin
 
