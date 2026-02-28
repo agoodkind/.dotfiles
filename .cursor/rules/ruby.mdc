@@ -6,10 +6,14 @@ alwaysApply: false
 
 # Ruby Development Standards
 
-## Before Pushing
+## Guard Clauses
 
-After all changes are made and before pushing, run RuboCop on all files (command below) and fix any remaining issues before pushing.
+Use one guard clause per condition:
 
-```bash
-bundle install && bundle exec rubocop --parallel --disable-pending-cops --display-style-guide -A
+```ruby
+return foo unless bar
+return bar if foo
+return unless x
+return unless y
+return if z
 ```

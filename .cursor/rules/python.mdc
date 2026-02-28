@@ -8,18 +8,12 @@ alwaysApply: false
 
 ## Readability
 
-Code should be easy to read and follow for someone unfamiliar with it, and prefer clarity over cleverness:
+Code should be easy to read and follow for someone unfamiliar with it. Prefer clarity over cleverness by breaking complex expressions into intermediate variables with descriptive names. Structure code to tell a story:
 
 ```python
-# ❌ BAD - clever but unclear
-result = [x for x in items if x.status == 'active' and x.score > threshold]
-
-# ✅ GOOD - clear intent
 active_items = [item for item in items if item.status == 'active']
 high_scoring = [item for item in active_items if item.score > threshold]
 ```
-
-Break complex expressions into intermediate variables with descriptive names. Structure code to tell a story.
 
 ## Type Annotations
 
@@ -35,7 +29,7 @@ Use `typing` module for complex types (e.g., `Optional`, `Union`, `Callable`).
 
 ## Comments
 
-Comment where code is not obvious and explain the "why" for non-trivial logic, not the "what". Avoid comments that restate what the code does.
+Add comments when code is not obvious. Explain the "why" for non-trivial logic, not what the code literally does:
 
 ```python
 # Use binary search because the list is sorted and large (>10k items)
@@ -47,41 +41,23 @@ result = bisect.bisect_left(sorted_list, target)
 Extract repeated patterns into functions, classes, or utilities. Prefer composition over duplication:
 
 ```python
-# ❌ BAD - repeated pattern
-if user.is_admin() and user.has_permission('read'):
-    ...
-if user.is_admin() and user.has_permission('write'):
-    ...
-
-# ✅ GOOD - abstracted
 def admin_has_permission(user: User, permission: str) -> bool:
     return user.is_admin() and user.has_permission(permission)
 ```
 
-## No Magic Variables
+## Named Constants
 
-Avoid magic numbers, strings, or values by using named constants or configuration, and extract magic strings into constants or configuration files.
+Use named constants or configuration for literal values. Extract magic numbers, strings, and values into constants or configuration files:
 
 ```python
-# ❌ BAD - magic number
-if len(items) > 42:
-    ...
-
-# ✅ GOOD - named constant
 MAX_BATCH_SIZE = 42
 if len(items) > MAX_BATCH_SIZE:
     ...
 ```
 
-Avoid single-letter variable names (e.g., `a`, `n`, `b`). Use descriptive names:
+Use descriptive variable names:
 
 ```python
-# ❌ BAD - single-letter variables
-a = get_data()
-n = len(a)
-b = process(n)
-
-# ✅ GOOD - descriptive names
 data = get_data()
 item_count = len(data)
 result = process(item_count)

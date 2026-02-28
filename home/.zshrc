@@ -134,7 +134,3 @@ edit() { "$EDITOR_BIN" "$@"; }
 nano() { edit "$@"; }
 emacs() { edit "$@"; }
 
-# Show profiling results if module was loaded
-if [[ "${SHOULD_PROFILE:-false}" == "true" ]]; then
-    do_profile
-fi

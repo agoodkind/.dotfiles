@@ -1,9 +1,0 @@
----
-description: General code style conventions applying to all files
-globs: "*.*"
-alwaysApply: true
----
-
-# General Code Style
-
-- Avoid comments unless the code is not self-explanatory, and keep comments technical (no conversational context like "# as discussed", "# (P0)", or "# (simple route)").
