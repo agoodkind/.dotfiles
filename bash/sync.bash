@@ -584,6 +584,30 @@ update_neovim_plugins() {
 # Cleanup Operations
 ###############################################################################
 
+update_zinit_plugins() {
+    local vid
+    vid=$(progress_vertex_start "Updating zinit plugins")
+
+    if ! command -v zsh &>/dev/null; then
+        progress_vertex_error "$vid" "Updating zinit plugins" "zsh not found"
+        return 1
+    fi
+
+    local out
+    out=$(zsh -c '
+        source "${DOTDOTFILES:-$HOME/.dotfiles}/lib/zinit/zinit.zsh"
+        zinit update --all --quiet 2>&1
+    ' 2>&1) || {
+        progress_vertex_error "$vid" "Updating zinit plugins"
+        progress_log "$out"
+        return 1
+    }
+
+    progress_vertex_complete "$vid" "Updating zinit plugins"
+}
+
+###############################################################################
+
 cleanup_zinit_completions() {
     local vid
     vid=$(progress_vertex_start "Cleaning zinit completions")
@@ -753,6 +777,7 @@ main() {
     sync_global_git_hooks
 
     # Phase 6: OS-specific setup and tools
+    update_zinit_plugins
     run_os_install "$@"
     progress_vertex_exec "Installing custom tools" \
         "$DOTDOTFILES/bash/setup/platform/tools.bash" "$@"

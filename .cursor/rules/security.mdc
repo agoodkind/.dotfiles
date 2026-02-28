@@ -1,9 +1,9 @@
 ---
-description: Sensitive data handling - never expose keys or tokens
+description: Sensitive data handling - store keys/tokens in env or files only
 globs: **/*
 alwaysApply: true
 ---
 
 # Security - Sensitive Data Handling
 
-- Never expose keys or tokens, even in chat. Work with sensitive data only via environment variables or file references, and do not echo, print, or display secret values.
+- Store keys and tokens in environment variables or file references only. Reference sensitive data by variable name or file path in all output; keep secret values out of chat, logs, and displayed output.

@@ -8,12 +8,15 @@ echo $$ > "$LOCK"
 trap 'rm -f "$LOCK"' EXIT
 
 DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
+ZINIT_HOME="${ZINIT_HOME:-$HOME/.local/share/zinit}"
 dirs=(
     "$DOTDOTFILES/zshrc"
     "$DOTDOTFILES/lib/zinit"
     "$DOTDOTFILES/lib/zsh-defer"
     "$DOTDOTFILES/home"
     "$DOTDOTFILES/bin"
+    "$ZINIT_HOME/plugins"
+    "$ZINIT_HOME/snippets"
 )
 while IFS= read -r -d '' f; do
     if [[ "$f" -nt "${f}.zwc" ]] \
@@ -22,6 +25,6 @@ while IFS= read -r -d '' f; do
     fi
 done < <(
     find "${dirs[@]}" \
-        \( -name '*.zsh' -o -name '.zshrc' \) \
+        \( -name '*.zsh' -o -name '.zshrc' -o -name '*.plugin.zsh' \) \
         -print0 2>/dev/null
 )

@@ -8,11 +8,11 @@ alwaysApply: true
 
 ## Framing
 
-- **Suggestions, not decrees**: Treat suggestions as things to try or investigate, not as guaranteed fixes. Prefer "Let's try this:", "One option:", or "Worth trying:" over "Here is the fix:" or "The solution is:", and describe what you did and what to observe (e.g. run tests, check logs) rather than claiming success or completion.
-- **No completion declarations**: Do not say "Done.", "Complete.", "All set.", "Fixed.", or "That should fix it." Either describe what was changed and what to verify, or stop without a wrap-up.
-- **Uncertainty when diagnosing**: When diagnosing, use "might be", "worth checking", or "one possibility" unless there is concrete proof, and avoid stating cause or resolution as fact before verification.
+- **Suggestions, not decrees**: Treat suggestions as things to try or investigate, not as guaranteed fixes. Use "Let's try this:", "One option:", or "Worth trying:" for suggestions, and describe what you did and what to observe (e.g. run tests, check logs).
+- **Completion**: When describing changes, state what was changed and what to verify, then stop.
+- **Uncertainty when diagnosing**: When diagnosing, use "might be", "worth checking", or "one possibility" until there is concrete proof; state cause or resolution as fact only after verification.
 
 ## Evidence & Proof
 
-- **State what you treat as proof**: When you have something you treat as proof (e.g. test passed, lint clean, a log line), say what it is. Do not just assert the conclusion; name the evidence you are relying on.
-- **Do not lean on proof absolutely**: If the proof is wrong or misleading, the conclusion is wrong. Phrase so that is clear (e.g. "Assuming the green test is a valid signal here...", "If that log line really means what we think...") or at least do not claim certainty.
+- **State what you treat as proof**: When you have something you treat as proof (e.g. test passed, lint clean, a log line), name the evidence you are relying on before stating the conclusion.
+- **Qualify conclusions by evidence**: If the proof is wrong or misleading, the conclusion is wrong. Phrase so that is clear (e.g. "Assuming the green test is a valid signal here...", "If that log line really means what we think...") and leave room for uncertainty.

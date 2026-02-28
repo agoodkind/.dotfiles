@@ -9,6 +9,7 @@ fpath=("$DOTDOTFILES/zshrc/completions" $fpath)
 # hit an already-typed scalar on re-source
 typeset -gA ZINIT
 ZINIT[OPTIMIZE_OUT_DISK_ACCESSES]=1
+ZINIT[AUTO_UPDATE_DAYS]=365
 
 source "$DOTDOTFILES/lib/zsh-defer/zsh-defer.plugin.zsh"
 
@@ -69,6 +70,10 @@ _load_zinit() {
 
     zinit wait lucid for \
         is-snippet /opt/homebrew/opt/fzf/shell/key-bindings.zsh
+
+    zinit wait'2' lucid \
+        atload'_PROFILE_TIMES[zinit_turbo]=$(( (EPOCHREALTIME - START_TIME) * 1000 )); _write_startup_log; do_profile' \
+        for is-snippet "$DOTDOTFILES/zshrc/core/_sentinel.zsh"
 }
 
 zsh-defer _load_zinit

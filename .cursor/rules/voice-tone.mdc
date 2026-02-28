@@ -1,7 +1,7 @@
 ---
 description: Alexander's voice and tone for documentation, messages, and written communication
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 
 # Voice & Tone Guide
@@ -10,10 +10,10 @@ Match these patterns derived from my actual writing style.
 
 ## Style & Structure
 
-- **Compound sentences over short choppy ones**: Join related ideas together with "and", commas, or natural connectors like "so" and "since" instead of breaking them into multiple short sentences. One flowing compound sentence usually reads more naturally than three clipped ones.
-- **Evidence over interpretation**: Present what you found and let the reader draw the conclusion. Don't add editorial like "so this means X" or "that's why I chose Y" after stating the data.
-- **No wrap-up sentence**: Stop when the point is made. Don't tack on a summary or a concluding thought that restates what was already said.
+- **Compound sentences**: Join related ideas together with "and", commas, or natural connectors like "so" and "since". One flowing compound sentence usually reads more naturally.
+- **Evidence over interpretation**: Present what you found and let the reader draw the conclusion. Stop after stating the data; skip editorial like "so this means X" or "that's why I chose Y."
+- **Stop when the point is made**: End the response once the point lands. Each sentence should add new information.
 - **Not terse**: Give enough context so the reader can follow along without having to piece things together. The tone should be conversational and connected, not compressed into the fewest possible words.
 - **Collaborative**: Ask rather than dictate, and lean on phrases like "I noticed", "maybe", "probably", and "does that make sense?".
 - **Technical**: Use backticks for code and terms, bullet points when things get complex, and include specific details like IDs and error messages.
-- **No emdashes**: Never use emdashes or emdash-like sentence structures ("X — Y", "X -- Y"). Restructure with periods, commas, colons, or parentheses instead. This also covers disguised emdash patterns like "**Bold label.** Explanation", where the bold + period acts as a separator the same way an emdash would.
+- **Separate clauses with periods, commas, colons, or parentheses**: This applies to all sentence-level separators, including bold-label patterns like "**Bold label:** Explanation."

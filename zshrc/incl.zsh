@@ -10,13 +10,9 @@ source "$DOTDOTFILES/zshrc/core/profile.zsh"
 
 # plugins.zsh uses plain source (zinit turbo mode stores scope references
 # that break when sourced inside a function). Timing is done inline instead.
-if [[ "$SHOULD_PROFILE" == "true" ]]; then
-    local _t0=$EPOCHREALTIME
-    source "$DOTDOTFILES/zshrc/core/plugins.zsh"
-    _PROFILE_TIMES[plugins]=$(( (EPOCHREALTIME - _t0) * 1000 ))
-else
-    source "$DOTDOTFILES/zshrc/core/plugins.zsh"
-fi
+local _t0=$EPOCHREALTIME
+source "$DOTDOTFILES/zshrc/core/plugins.zsh"
+_PROFILE_TIMES[plugins]=$(( (EPOCHREALTIME - _t0) * 1000 ))
 
 _source "$DOTDOTFILES/zshrc/core/utils.zsh"
 _source "$DOTDOTFILES/zshrc/commands/prefer.zsh"

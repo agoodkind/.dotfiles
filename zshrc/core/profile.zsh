@@ -1,38 +1,48 @@
+typeset -gA _PROFILE_TIMES
+
 SHOULD_PROFILE=false
 if [[ -f ~/.cache/zsh_profile_next ]]; then
     SHOULD_PROFILE=true
     zmodload zsh/zprof
     rm ~/.cache/zsh_profile_next
-    typeset -gA _PROFILE_TIMES
 fi
 export SHOULD_PROFILE
 
 _source() {
-    if [[ "$SHOULD_PROFILE" == "true" ]]; then
-        local label=${1:t:r}
-        local t0=$EPOCHREALTIME
-        source "$1"
-        _PROFILE_TIMES[$label]=$(( (EPOCHREALTIME - t0) * 1000 ))
-    else
-        source "$1"
-    fi
+    local label=${1:t:r}
+    local t0=$EPOCHREALTIME
+    source "$1"
+    _PROFILE_TIMES[$label]=$(( (EPOCHREALTIME - t0) * 1000 ))
 }
 
 _async() {
-    if [[ "$SHOULD_PROFILE" == "true" ]]; then
-        local label=${1:t:r}
-        local t0=$EPOCHREALTIME
-        ("$@" >/dev/null 2>&1 &)
-        _PROFILE_TIMES["${label}(async)"]=$(( (EPOCHREALTIME - t0) * 1000 ))
-    else
-        ("$@" >/dev/null 2>&1 &)
-    fi
+    local label=${1:t:r}
+    local t0=$EPOCHREALTIME
+    ("$@" >/dev/null 2>&1 &)
+    _PROFILE_TIMES["${label}(async)"]=$(( (EPOCHREALTIME - t0) * 1000 ))
 }
 
 zsh_profile() {
     mkdir -p ~/.cache
     touch ~/.cache/zsh_profile_next
     echo "Performance profiling enabled for next shell session"
+}
+
+_write_startup_log() {
+    local log=~/.cache/zsh_startup_last.log
+    mkdir -p ~/.cache
+    {
+        printf "# %s\n" "$(date '+%Y-%m-%d %H:%M:%S %Z')"
+        printf ".zshrc time:   %.0f ms\n" "$(( (EPOCHREALTIME - START_TIME) * 1000 ))"
+        if [[ -n "${_PROFILE_TIMES[zinit_turbo]:-}" ]]; then
+            printf "time-to-ready: %.0f ms  (includes zinit turbo)\n" \
+                "${_PROFILE_TIMES[zinit_turbo]}"
+        fi
+        printf "\nPer-file source times:\n"
+        for k in ${(ok)_PROFILE_TIMES}; do
+            printf "  %-20s %5.1f ms\n" "$k" "${_PROFILE_TIMES[$k]}"
+        done
+    } > "$log"
 }
 
 do_profile() {
@@ -44,5 +54,9 @@ do_profile() {
     for k in ${(ok)_PROFILE_TIMES}; do
         printf "  %-20s %5.1f ms\n" "$k" "${_PROFILE_TIMES[$k]}"
     done
-    printf "\nZsh initialization time: %.0f ms\n" "$(( (EPOCHREALTIME - START_TIME) * 1000 ))"
+    printf "\n.zshrc time:   %.0f ms\n" "$(( (EPOCHREALTIME - START_TIME) * 1000 ))"
+    if [[ -n "${_PROFILE_TIMES[zinit_turbo]:-}" ]]; then
+        printf "time-to-ready: %.0f ms  (includes zinit turbo)\n" \
+            "${_PROFILE_TIMES[zinit_turbo]}"
+    fi
 }
