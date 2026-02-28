@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 
 # pbcopy wrapper: on macOS use native, otherwise ssh to source host
-pbcopy() {
+function pbcopy() {
     if is_macos; then
         if [[ $# -gt 0 ]]; then
             echo -n "$*" | /usr/bin/pbcopy
@@ -22,7 +22,7 @@ pbcopy() {
 }
 
 # gh wrapper: intercept `gh upload` subcommand
-gh() {
+function gh() {
     if [[ "${1:-}" == "upload" ]]; then
         shift
         "${DOTFILES_DIR:-$HOME/.dotfiles}/lib/scripts/gh-upload" "$@"
@@ -33,7 +33,7 @@ gh() {
 alias gh-upload="${DOTFILES_DIR:-$HOME/.dotfiles}/lib/scripts/gh-upload"
 
 # thefuck wrapper: lazy load on first use
-fuck() {
+function fuck() {
     unfunction fuck
     eval "$(thefuck --alias)"
     fuck "$(fc -ln -1)"

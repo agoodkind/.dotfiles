@@ -9,13 +9,13 @@ fpath=("$DOTDOTFILES/zshrc/completions" $fpath)
 # hit an already-typed scalar on re-source
 typeset -gA ZINIT
 ZINIT[OPTIMIZE_OUT_DISK_ACCESSES]=1
-ZINIT[AUTO_UPDATE_DAYS]=365
 
 source "$DOTDOTFILES/lib/zsh-defer/zsh-defer.plugin.zsh"
 
-_load_zinit() {
+function _load_zinit() {
 
     source "$DOTDOTFILES/lib/zinit/zinit.zsh"
+    ZINIT[AUTO_UPDATE_DAYS]=365
     autoload -Uz _zinit
     (( ${+_comps} )) && _comps[zinit]=_zinit
 
@@ -57,6 +57,9 @@ _load_zinit() {
     zinit wait'1' lucid atload'
         zstyle ":fzf-tab:complete:cd:*" fzf-preview "eza -1 --color=always \$realpath"
         zstyle ":fzf-tab:complete:git-(add|diff|restore):*" fzf-preview "git diff \$word | delta"
+        zstyle ":fzf-tab:complete:curl:*" fzf-preview "echo \$desc"
+        zstyle ":fzf-tab:complete:*:options" fzf-preview "echo \$desc"
+        zstyle ":fzf-tab:complete:*:argument-rest" fzf-preview
         zstyle ":completion:*" list-colors ${(s.:.)LS_COLORS}
         zstyle ":completion:*" menu no
         if (( $+commands[gcp] )); then
@@ -71,8 +74,7 @@ _load_zinit() {
     zinit wait lucid for \
         is-snippet /opt/homebrew/opt/fzf/shell/key-bindings.zsh
 
-    zinit wait'2' lucid \
-        atload'_PROFILE_TIMES[zinit_turbo]=$(( (EPOCHREALTIME - START_TIME) * 1000 )); _write_startup_log; do_profile' \
+    zinit wait'2' lucid atload'_write_startup_log' \
         for is-snippet "$DOTDOTFILES/zshrc/core/_sentinel.zsh"
 }
 

@@ -1,13 +1,14 @@
 # shellcheck shell=bash
 
 ###############################################################################
-###############################################################################
+# Profiling support ###########################################################
 zmodload zsh/datetime
-START_TIME=$EPOCHREALTIME
+[[ -z "$START_TIME" ]] && START_TIME=$EPOCHREALTIME
 export DOTDOTFILES="$HOME/.dotfiles"
 ###############################################################################
 # Include OS specific and common zshrc configs ################################
 source $DOTDOTFILES/zshrc/incl.zsh
+local _t_zshrc=$EPOCHREALTIME
 ###############################################################################
 
 ###############################################################################
@@ -64,10 +65,10 @@ setopt pushd_silent
 
 ###############################################################################
 # Aliases #####################################################################
+# Use prefer <alias> <target_command> #########################################
 ###############################################################################
 
-# Prefer enhanced replacements when the binaries exist
-
+# ls
 prefer ll eza -lah --icons --group-directories-first
 prefer la eza -a --icons --group-directories-first
 prefer lt eza --tree --level=2 --icons
@@ -90,47 +91,37 @@ prefer cp /bin/cp
 prefer help tldr
 prefer lg lazygit
 
-
-
 # npm wrapper prefers pnpm implementation
-# npm() { command pnpm "$@"; }
-
-# ssh helper
-sshrm() { command ssh-keygen -R "$@"; }
+prefer npm pnpm
 
 prefer docker podman
 
-# Editor preference: nvim > vim > vi
-# This logic must come AFTER all other `prefer` calls and alias definitions
-# to avoid conflicts (since we are aliasing vim/nvim below)
-EDITOR_BIN=
+# ssh helper
+prefer sshrm command ssh-keygen -R 
+
+# Editor: nvim > vim > vi (with sudoedit wrappers)
 if isinstalled nvim; then
-    EDITOR_BIN=nvim
-    export SUDO_EDITOR="nvim -u $HOME/.config/nvim/init.lua"
-    export MANPAGER='nvim +Man!'
-    export PAGER="$DOTDOTFILES/bin/nvim-pager"
-    export MANWIDTH=999
+    export EDITOR=nvim SUDO_EDITOR="nvim -u $HOME/.config/nvim/init.lua"
+    export MANPAGER='nvim +Man!' PAGER="$DOTDOTFILES/bin/nvim-pager" MANWIDTH=999
 elif isinstalled vim; then
-    EDITOR_BIN=vim
-    export MANPAGER="vim -M +MANPAGER --not-a-term -"
-    export PAGER=$MANPAGER
-    export SUDO_EDITOR=vim
+    export EDITOR=vim SUDO_EDITOR=vim
+    export MANPAGER="vim -M +MANPAGER --not-a-term -" PAGER=$MANPAGER
 else
-    EDITOR_BIN=vi
-    export SUDO_EDITOR=vi
+    export EDITOR=vi SUDO_EDITOR=vi
 fi
 
-# Fallback if nothing above matched
-[[ -z "$EDITOR_BIN" ]] && EDITOR_BIN=vi
-export EDITOR="$EDITOR_BIN"
+prefer edit "$EDITOR"
+prefer nano "$EDITOR"
+prefer emacs "$EDITOR"
+prefer vim _edit_maybe_sudoedit "$EDITOR"
+prefer vi _edit_maybe_sudoedit "$EDITOR"
+prefer nvim _edit_maybe_sudoedit nvim
 
-# Define wrappers using `function` keyword to override any potential aliases
-# or ensure they take precedence
-function vim() { _edit_maybe_sudoedit "$EDITOR_BIN" "$@"; }
-function vi() { _edit_maybe_sudoedit "$EDITOR_BIN" "$@"; }
-function nvim() { _edit_maybe_sudoedit nvim "$@"; }
-
-edit() { "$EDITOR_BIN" "$@"; }
-nano() { edit "$@"; }
-emacs() { edit "$@"; }
-
+###############################################################################
+# Profiling support ###########################################################
+###############################################################################
+# Do not edit below this line #################################################
+###############################################################################
+_PROFILE_TIMES[zshrc-local]=$(( (EPOCHREALTIME - _t_zshrc) * 1000 ))
+_PROFILE_TIMES[_time_to_prompt]=$(( (EPOCHREALTIME - START_TIME) * 1000 ))
+do_profile

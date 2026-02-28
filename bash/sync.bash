@@ -34,6 +34,7 @@ parse_flags() {
     non_interactive=false
     quick_mode=false
     skip_git=false
+    skip_network=false
 
     for arg in "$@"; do
         case $arg in
@@ -41,10 +42,11 @@ parse_flags() {
             --non-interactive)  non_interactive=true ;;
             --quick)            quick_mode=true ;;
             --skip-git)         skip_git=true ;;
+            --skip-network)     skip_network=true; skip_git=true ;;
         esac
     done
 
-    export repair_mode non_interactive quick_mode skip_git
+    export repair_mode non_interactive quick_mode skip_git skip_network
 }
 
 ###############################################################################
@@ -148,6 +150,11 @@ update_authorized_keys() {
 
     if is_work_laptop; then
         progress_vertex_complete "$vid" "Updating authorized keys" "work laptop"
+        return 0
+    fi
+
+    if [[ "$skip_network" == true ]]; then
+        progress_vertex_complete "$vid" "Updating authorized keys" "skipped (--skip-network)"
         return 0
     fi
 
@@ -340,6 +347,15 @@ sync_scripts_to_opt() {
 sync_all_scripts() {
     local vid
     vid=$(progress_vertex_start "Syncing scripts")
+
+    if [[ "$skip_network" == true ]]; then
+        if is_work_laptop; then
+            sync_scripts_to_local_symlinks
+        fi
+        progress_vertex_complete "$vid" "Syncing scripts" "local only (--skip-network)"
+        return 0
+    fi
+
     sync_scripts_to_local
     sync_scripts_to_opt
     progress_vertex_complete "$vid" "Syncing scripts"
@@ -542,6 +558,11 @@ update_neovim_plugins() {
     local vid
     vid=$(progress_vertex_start "Updating Neovim plugins")
 
+    if [[ "$skip_network" == true ]]; then
+        progress_vertex_complete "$vid" "Updating Neovim plugins" "skipped (--skip-network)"
+        return 0
+    fi
+
     if ! command -v nvim >/dev/null 2>&1; then
         progress_log "  Skipping Neovim plugins (nvim not installed)"
         progress_vertex_complete "$vid" "Updating Neovim plugins" "nvim not installed"
@@ -586,7 +607,12 @@ update_neovim_plugins() {
 
 update_zinit_plugins() {
     local vid
-    vid=$(progress_vertex_start "Updating zinit plugins")
+    vid=$(progress_vertex_start "Updating and compiling zinit plugins")
+
+    if [[ "$skip_network" == true ]]; then
+        progress_vertex_complete "$vid" "Updating zinit plugins" "skipped (--skip-network)"
+        return 0
+    fi
 
     if ! command -v zsh &>/dev/null; then
         progress_vertex_error "$vid" "Updating zinit plugins" "zsh not found"
@@ -597,13 +623,14 @@ update_zinit_plugins() {
     out=$(zsh -c '
         source "${DOTDOTFILES:-$HOME/.dotfiles}/lib/zinit/zinit.zsh"
         zinit update --all --quiet 2>&1
+        zinit compile --all 2>&1
     ' 2>&1) || {
         progress_vertex_error "$vid" "Updating zinit plugins"
         progress_log "$out"
         return 1
     }
 
-    progress_vertex_complete "$vid" "Updating zinit plugins"
+    progress_vertex_complete "$vid" "Updating and compiling zinit plugins"
 }
 
 ###############################################################################
@@ -633,23 +660,44 @@ cleanup_zinit_completions() {
     fi
 }
 
-cleanup_zcompdump() {
+rebuild_zcompdump() {
     local vid
-    vid=$(progress_vertex_start "Cleaning zcompdump")
+    vid=$(progress_vertex_start "Rebuilding zcompdump")
 
-    if [[ -n "${ZSH_COMPDUMP:-}" ]]; then
-        rm -f "$ZSH_COMPDUMP"
-        progress_vertex_complete "$vid" "Cleaning zcompdump"
+    rm -f ~/.zcompdump* 2>/dev/null
+
+    if ! command -v zsh &>/dev/null; then
+        progress_vertex_error "$vid" "Rebuilding zcompdump" "zsh not found"
+        return 1
+    fi
+
+    zsh -c '
+        fpath=("'"$DOTDOTFILES"'/zshrc/completions" $fpath)
+        autoload -Uz compinit
+        compinit -d ~/.zcompdump
+        zcompile ~/.zcompdump
+    ' 2>/dev/null || true
+
+    if [[ -f "$HOME/.zcompdump" ]]; then
+        progress_vertex_complete "$vid" "Rebuilding zcompdump"
     else
-        progress_vertex_complete "$vid" "Cleaning zcompdump" "not set"
+        progress_vertex_complete "$vid" "Rebuilding zcompdump" "failed"
     fi
 }
 
-cleanup_prefer_cache() {
+rebuild_prefer_cache() {
     local vid
-    vid=$(progress_vertex_start "Cleaning prefer cache")
-    rm -f "$HOME/.cache/zsh_prefer_aliases.zsh"
-    progress_vertex_complete "$vid" "Cleaning prefer cache"
+    vid=$(progress_vertex_start "Rebuilding prefer cache")
+
+    if bash "$DOTDOTFILES/bash/background/prefer-cache-rebuild.bash" --force; then
+        if [[ -f "$HOME/.cache/zsh_prefer_aliases.zsh" ]]; then
+            progress_vertex_complete "$vid" "Rebuilding prefer cache"
+        else
+            progress_vertex_error "$vid" "Rebuilding prefer cache" "failed to generate"
+        fi
+    else
+        progress_vertex_error "$vid" "Rebuilding prefer cache" "script failed"
+    fi
 }
 
 compile_zsh_files() {
@@ -756,10 +804,8 @@ main() {
     # Phase 1: Git
     update_git_repo_sync
 
-    # Phase 2: Pre-install cleanups (invalidate caches before linking)
+    # Phase 2: Cleanup stale symlinks
     cleanup_zinit_completions
-    cleanup_zcompdump
-    cleanup_prefer_cache
 
     # Phase 3: Core dotfile linking
     link_dotfiles
@@ -785,10 +831,14 @@ main() {
     # Phase 7: Neovim
     update_neovim_plugins
 
-    # Phase 8: Post-install tasks (repair cleanups, compilation)
+    # Phase 8: Repair cleanups
     cleanup_homebrew_repair
     cleanup_neovim_repair
+
+    # Phase 9: Compile and warm caches (order matters: compile first, then caches)
     compile_zsh_files
+    rebuild_zcompdump
+    rebuild_prefer_cache
     create_hushlogin
 
     progress_end

@@ -9,12 +9,12 @@
 ###############################################################################
 
 # Run command asynchronously (background job)
-async_run() { "$@" &! }
+function async_run() { "$@" &! }
 
 # Resolve the dotfiles remote URL.
 # Returns origin URL from git config if present, otherwise
 # reads from .git/wsm-url (set by git-wsm strip).
-_dotfiles_remote() {
+function _dotfiles_remote() {
     local url
     url=$(git --git-dir="$DOTDOTFILES/.git" \
         config remote.origin.url 2>/dev/null) \
@@ -68,15 +68,15 @@ read -r OS_TYPE < ~/.cache/os-type.cache
 export OS_TYPE
 
 # OS detection helpers
-is_macos() {
+function is_macos() {
     [[ "$OS_TYPE" == "mac" ]]
 }
 
-is_debian_based() {
+function is_debian_based() {
     [[ "$OS_TYPE" == "ubuntu" || "$OS_TYPE" == "debian" ]]
 }
 
-is_ubuntu() {
+function is_ubuntu() {
     [[ "$OS_TYPE" == "ubuntu" ]]
 }
 
@@ -98,7 +98,7 @@ esac
 ###############################################################################
 
 # Check for internet connectivity
-has_internet() {
+function has_internet() {
     if command -v ping6 >/dev/null; then
         if ping -c 1 -W 2 google.com >/dev/null 2>&1; then
             return 0
@@ -109,9 +109,9 @@ has_internet() {
 }
 
 # Portable command existence check (lazy PATH lookup, avoids 10ms full hash build)
-isinstalled() { command -v "$1" >/dev/null 2>&1; }
+function isinstalled() { command -v "$1" >/dev/null 2>&1; }
 
-dotfiles_changed_hash() {
+function dotfiles_changed_hash() {
     local head_hash=""
     if [[ -f "$DOTDOTFILES/.git/HEAD" ]]; then
         read -r head_hash < "$DOTDOTFILES/.git/HEAD"
@@ -144,7 +144,7 @@ dotfiles_changed_hash() {
 ###############################################################################
 
 # Reload the shell
-reload() {
+function reload() {
     echo "🔄  Reloading shell..."
     exec zsh
 }
@@ -154,7 +154,7 @@ reload() {
 ###############################################################################
 
 # Backup local changes before destructive operations
-backup_local_changes() {
+function backup_local_changes() {
     local timestamp=$(date +"%Y%m%d_%H%M%S")
     local has_changes=false
     local has_untracked=false
@@ -219,7 +219,7 @@ backup_local_changes() {
 }
 
 # Repair dotfiles by resetting to remote state
-repair() {
+function repair() {
     echo "Repairing dotfiles..."
     # Backup local changes before discarding
     backup_local_changes
@@ -244,12 +244,12 @@ repair() {
 }
 
 # Quick sync dotfiles
-sync() {
+function sync() {
     "$DOTDOTFILES/sync.sh" --quick "$@"
 }
 
 # Dotfile management wrapper for git operations
-config() {
+function config() {
     local subcommand="$1"
     shift  # Remove subcommand from arguments
     

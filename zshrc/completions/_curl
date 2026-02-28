@@ -1,21 +1,15 @@
-# shellcheck shell=bash
 #compdef curl
 
-# based on curl 7.24.0
-
-# shellcheck disable=SC2168
 local curcontext="$curcontext" state line
 typeset -A opt_args
 
-_curl_crypto_engine() {
+function _curl_crypto_engine() {
     local vals
-    # shellcheck disable=SC2298
-    # shellcheck disable=SC2296
     vals=( ${${(f)"$(curl --engine list)":gs/ /}[2,$]} )
     _describe -t outputs 'engines' vals && return 0
 }
 
-_curl_post_data() {
+function _curl_post_data() {
 
     # don't do anything further if this is raw content
     compset -P '=' && _message 'raw content' && return 0
@@ -24,7 +18,6 @@ _curl_post_data() {
     compset -P '*@' && {
         local expl
         _description files expl stdin
-        # shellcheck disable=SC1087
         compadd "$expl[@]" - "-"
         _files
         return 0
@@ -38,13 +31,10 @@ _curl_post_data() {
 
 }
 
-_curl_headers() {
+function _curl_headers() {
     # Handle header value completion for common headers
     if compset -P '*:'; then
-        # We have "Header:", now complete the value
-        # shellcheck disable=SC2299
         local header_name="${${IPREFIX##*-H}##*--header}"
-        # shellcheck disable=SC2299
         header_name="${${header_name#[[:space:]]##}%%:*}"
         header_name="${header_name#[\"\']}"
         
@@ -190,7 +180,7 @@ _curl_headers() {
 local arg_http arg_ftp arg_other arg_proxy arg_crypto arg_connection arg_auth arg_input arg_output
 
 # HTTP Arguments
-arg_http=(''\
+arg_http=(
   {-0,--http1.0}'[force use of use http 1.0 instead of 1.1]' \
   {-b,--cookie}'[pass data to http server as cookie]:data or file' \
   {-c,--cookie-jar}'[specify cookie file]:file name:_files' \
@@ -363,7 +353,7 @@ arg_output=(\
   {-X,--request}'[specifies request method for HTTP server]:method:(GET POST PUT DELETE HEAD OPTIONS TRACE CONNECT PATCH LINK UNLINK)' \
   )
 
-_arguments -C -s $arg_http $arg_ftp $arg_other $arg_crypto $arg_connection $arg_auth $arg_input $arg_output \
+_arguments -C -s $arg_http $arg_ftp $arg_other $arg_proxy $arg_crypto $arg_connection $arg_auth $arg_input $arg_output \
   {-h,--help}'[print usage]' \
   {-M,--manual}'[print manual]' \
   '*'{-K,--config}'[use other config file to read arguments from]:config file:_files' \

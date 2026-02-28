@@ -7,7 +7,7 @@ export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
 # SSH key persistence  #
 # Ensure SSH key is loaded in agent after reboot
 # Run in background to not block shell startup
-_ubuntu_load_ssh_key() {
+function _ubuntu_load_ssh_key() {
     if ! ssh-add -l 2>/dev/null | grep -q "id_ed25519"; then
         ssh-add ~/.ssh/id_ed25519
     fi
@@ -23,7 +23,7 @@ alias ip="ip --color=always"
 alias ifconfig="ip a"
 ####################################
 
-flush_dns() {
+function flush_dns() {
     echo "Flushing DNS..."
     local did_any=false
 
@@ -58,7 +58,7 @@ flush_dns() {
     fi
 }
 
-change_hostname() {
+function change_hostname() {
     if [[ -z "$1" ]]; then
         echo "Usage: change_hostname <new_name>"
         return 1

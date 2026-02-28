@@ -6,12 +6,12 @@
 #
 
 # pwd based on the value of _ZO_RESOLVE_SYMLINKS.
-__zoxide_pwd() {
+function __zoxide_pwd() {
     \builtin pwd -L
 }
 
 # cd + custom logic based on the value of _ZO_ECHO.
-__zoxide_cd() {
+function __zoxide_cd() {
     # shellcheck disable=SC2164
     \builtin cd -- "$@"
 }
@@ -22,7 +22,7 @@ __zoxide_cd() {
 #
 
 # Hook to add new entries to the database.
-__zoxide_hook() {
+function __zoxide_hook() {
     # shellcheck disable=SC2312
     \command zoxide add -- "$(__zoxide_pwd)"
 }
@@ -37,7 +37,7 @@ chpwd_functions=("${(@)chpwd_functions:#__zoxide_hook}")
 chpwd_functions+=(__zoxide_hook)
 
 # Report common issues.
-__zoxide_doctor() {
+function __zoxide_doctor() {
     [[ ${_ZO_DOCTOR:-1} -ne 0 ]] || return 0
     [[ ${chpwd_functions[(Ie)__zoxide_hook]:-} -eq 0 ]] || return 0
 
@@ -59,7 +59,7 @@ __zoxide_doctor() {
 #
 
 # Jump to a directory using only keywords.
-__zoxide_z() {
+function __zoxide_z() {
     __zoxide_doctor
     if [[ "$#" -eq 0 ]]; then
         __zoxide_cd ~
@@ -75,7 +75,7 @@ __zoxide_z() {
 }
 
 # Jump to a directory using interactive search.
-__zoxide_zi() {
+function __zoxide_zi() {
     __zoxide_doctor
     \builtin local result
     result="$(\command zoxide query --interactive -- "$@")" && __zoxide_cd "${result}"
