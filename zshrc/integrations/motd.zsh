@@ -16,7 +16,7 @@ MOTD_FORCE_FILE="$HOME/.cache/motd_show_next"
 MOTD_DISABLE_SSH="$HOME/.cache/motd_disable_ssh"
 LOGININFO_CACHE="$HOME/.cache/logininfo_session"
 
-_motd_run_scripts() {
+function _motd_run_scripts() {
   local motd_dir="$DOTDOTFILES/lib/motd"
   [[ -d "$motd_dir" ]] || return 0
   local script
@@ -25,9 +25,9 @@ _motd_run_scripts() {
   done
 }
 
-motd() { _motd_run_scripts; }
+function motd() { _motd_run_scripts; }
 
-_motd_cache_expired() {
+function _motd_cache_expired() {
   (( $+builtins[zstat] )) || return 0
   local -a last_shown
   zstat -A last_shown +mtime "$MOTD_CACHE_FILE"
@@ -44,7 +44,7 @@ _motd_cache_expired() {
 # LOGIN INFO (hot path)
 # ==============================================================================
 
-_logininfo() {
+function _logininfo() {
   local now=$EPOCHSECONDS this_year
   strftime -s this_year "%Y" $now
 

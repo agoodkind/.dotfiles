@@ -45,7 +45,7 @@ fi
 export PATH="${HOME}/.rbenv/shims:${PATH}"
 export RBENV_SHELL=zsh
 
-rbenv() {
+function rbenv() {
   local command
   command="${1:-}"
   if [ "$#" -gt 0 ]; then
@@ -64,7 +64,7 @@ rbenv() {
 #######
 # nvm (lazy-loaded, no completions)
 export NVM_DIR="$HOME/.nvm"
-nvm() {
+function nvm() {
   unset -f nvm
   [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
   nvm "$@"
@@ -82,13 +82,13 @@ esac
 
 alias dircolors="gdircolors"
 
-flush_dns() {
+function flush_dns() {
     echo "Flushing DNS..."
     sudo dscacheutil -flushcache
     sudo killall -HUP mDNSResponder
 }
 
-change_hostname() {
+function change_hostname() {
     if [[ -z "$1" ]]; then
         echo "Usage: change_hostname <new_name>"
         return 1

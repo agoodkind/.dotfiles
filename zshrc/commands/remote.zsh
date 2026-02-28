@@ -10,7 +10,7 @@ _sshpiper_proxy_inner_key="/root/.ssh/sshpiper_upstream"
 _sshpiper_dest_regex='^(.+)@(.+)@ssh\.home\.goodkind\.io$'
 _sshpiper_user_svc_regex='^(.+)@(.+)$'
 
-_sshpiper_two_hop_inner() {
+function _sshpiper_two_hop_inner() {
     local dest="$1"
 
     if [[ "$dest" =~ $_sshpiper_dest_regex ]]; then
@@ -29,7 +29,7 @@ _sshpiper_two_hop_inner() {
     printf '%s@%s@localhost' "${match[1]}" "${match[2]}"
 }
 
-_sshpiper_run_two_hop() {
+function _sshpiper_run_two_hop() {
     local cmd="$1"
     local inner_flag="$2"
     shift 2
@@ -61,5 +61,5 @@ _sshpiper_run_two_hop() {
     fi
 }
 
-mosh() { _sshpiper_run_two_hop mosh '--' "$@"; }
-et() { _sshpiper_run_two_hop et '-c' "$@"; }
+function mosh() { _sshpiper_run_two_hop mosh '--' "$@"; }
+function et() { _sshpiper_run_two_hop et '-c' "$@"; }

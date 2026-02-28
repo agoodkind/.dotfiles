@@ -2,7 +2,7 @@
 
 # Helper to resolve binary target and args
 # Sets _PREFER_RESOLVED variable to the full command string
-_resolve_prefer_target() {
+function _resolve_prefer_target() {
     local binary="$1"
     shift
     local args=("$@")
@@ -19,15 +19,18 @@ _resolve_prefer_target() {
         return 0
     fi
 
-    if [[ -z "${aliases[$binary]}" ]] && ! isinstalled "$binary"; then
-        return 1
+    if (( $+functions[$binary] )); then
+        _PREFER_RESOLVED="$binary$qargs"
+        return 0
     fi
 
     if [[ -n "${aliases[$binary]}" ]]; then
         _PREFER_RESOLVED="${aliases[$binary]}$qargs"
-    else
-        _PREFER_RESOLVED="command $binary$qargs"
+        return 0
     fi
+
+    isinstalled "$binary" || return 1
+    _PREFER_RESOLVED="command $binary$qargs"
     return 0
 }
 
@@ -36,34 +39,29 @@ _resolve_prefer_target() {
 # -----------------------------------------------------------------------------
 
 PREFER_CACHE_FILE="$HOME/.cache/zsh_prefer_aliases.zsh"
-_CURRENT_HASH=""
+_PREFER_CACHE_VALID=false
 
-
-_init_cache_if_needed() {
-    if [[ -z "$_CURRENT_HASH" ]]; then
-        if (( $+functions[dotfiles_changed_hash] )); then
-            _CURRENT_HASH=$(dotfiles_changed_hash)
-        fi
-
-        mkdir -p "$(dirname "$PREFER_CACHE_FILE")"
-
-        if [[ ! -f "$PREFER_CACHE_FILE" ]] || [[ ! -s "$PREFER_CACHE_FILE" ]]; then
-            echo "# HASH: $_CURRENT_HASH" > "$PREFER_CACHE_FILE"
-        fi
-    fi
+function _prefer_check_cache() {
+    [[ -f "$PREFER_CACHE_FILE" ]] && [[ -s "$PREFER_CACHE_FILE" ]]
 }
 
-if [[ -f "$PREFER_CACHE_FILE" ]]; then
+function _prefer_init_cache() {
+    mkdir -p "$(dirname "$PREFER_CACHE_FILE")"
+    : > "$PREFER_CACHE_FILE"
+}
+
+if _prefer_check_cache; then
     source "$PREFER_CACHE_FILE"
+    _PREFER_CACHE_VALID=true
 else
-    _init_cache_if_needed
+    _prefer_init_cache
 fi
 
 # -----------------------------------------------------------------------------
 # Implementation Functions (Slow Path)
 # -----------------------------------------------------------------------------
 
-_prefer_impl() {
+function _prefer_impl() {
     local name="$1"
     local binary="$2"
     shift 2 || true
@@ -71,14 +69,10 @@ _prefer_impl() {
     _resolve_prefer_target "$binary" "$@" || return
 
     alias "$name=$_PREFER_RESOLVED"
-
-    if [[ ! -f "$PREFER_CACHE_FILE" ]]; then
-         _init_cache_if_needed
-    fi
     echo "alias ${(q)name}=${(q)_PREFER_RESOLVED}" >> "$PREFER_CACHE_FILE"
 }
 
-_prefer_tty_impl() {
+function _prefer_tty_impl() {
     local name="$1"
     local binary="$2"
     shift 2 || true
@@ -95,10 +89,6 @@ $name() {
 }"
 
     eval "$func_body"
-
-    if [[ ! -f "$PREFER_CACHE_FILE" ]]; then
-         _init_cache_if_needed
-    fi
     echo "$func_body" >> "$PREFER_CACHE_FILE"
 }
 
@@ -106,13 +96,13 @@ $name() {
 # Public API (Fast Check + Fallback)
 # -----------------------------------------------------------------------------
 
-prefer() {
+function prefer() {
     local name="$1"
     [[ -n "${aliases[$name]}" ]] && return 0
     _prefer_impl "$@"
 }
 
-prefer_tty() {
+function prefer_tty() {
     local name="$1"
     (( $+functions[$name] )) && return 0
     _prefer_tty_impl "$@"

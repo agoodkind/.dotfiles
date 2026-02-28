@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 
-man() {
+function man() {
     local -a resolved_args
     local arg val
     for arg in "$@"; do
@@ -36,7 +36,7 @@ man() {
     fi
 }
 
-_needs_sudoedit_for_any_path() {
+function _needs_sudoedit_for_any_path() {
     emulate -L zsh
     setopt localoptions no_unset
 
@@ -59,7 +59,7 @@ _needs_sudoedit_for_any_path() {
     return 1
 }
 
-_edit_maybe_sudoedit() {
+function _edit_maybe_sudoedit() {
     emulate -L zsh
     setopt localoptions noshwordsplit
 
@@ -89,7 +89,7 @@ _edit_maybe_sudoedit() {
 
 # When you type `sudo vim/nvim/vi/nano <file>`, use sudoedit instead.
 # This avoids running an editor as root, and ensures proper temp-file flow.
-sudo() {
+function sudo() {
     emulate -L zsh
     setopt localoptions noshwordsplit
 

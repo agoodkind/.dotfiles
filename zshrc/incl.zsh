@@ -6,7 +6,7 @@ export PATH="$PATH:$HOME/go/bin"
 export NVM_LAZY_LOAD=true
 
 # shellcheck shell=bash
-source "$DOTDOTFILES/zshrc/core/profile.zsh"
+source "$DOTDOTFILES/zshrc/core/perf.zsh"
 
 # plugins.zsh uses plain source (zinit turbo mode stores scope references
 # that break when sourced inside a function). Timing is done inline instead.
