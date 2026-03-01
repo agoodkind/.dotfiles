@@ -26,4 +26,4 @@ Dates: Determine the current year dynamically using: date +"%Y-%m-%d %H:%M:%S %Z
 
 Code comments: Add comments only when the code is not self-explanatory. Keep comments technical: explain the "why" behind non-obvious decisions.
 
-Audience grounding: When producing any artifact with an audience (PR descriptions, commit messages, docs, Slack messages, comments, changelogs, summaries), prefer to describe the current state as it exists. When a baseline exists for comparison, describe changes relative to that baseline. When the baseline is a git branch, use git diff against the base as the source of truth.
+Current state: Ground all descriptions in what exists right now, at the moment of writing, treating the current state as the primary reference frame. The reader sees the end result, so use the conversation as context for understanding the task and ground the response in what the reader can see.
