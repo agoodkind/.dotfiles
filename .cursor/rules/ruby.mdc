@@ -1,12 +1,12 @@
 ---
-description: Ruby development standards
+description: 
 globs: "**/*.rb"
 alwaysApply: false
 ---
 
 # Ruby Development Standards
 
-## Guard Clauses
+## Guard Clause
 
 Use one guard clause per condition:
 
