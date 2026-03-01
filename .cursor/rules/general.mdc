@@ -25,3 +25,5 @@ Tools: Use bash and zsh compatible commands, one step at a time. Prefer vim or n
 Dates: Determine the current year dynamically using: date +"%Y-%m-%d %H:%M:%S %Z"
 
 Code comments: Add comments only when the code is not self-explanatory. Keep comments technical: explain the "why" behind non-obvious decisions.
+
+Audience grounding: When producing any artifact with an audience (PR descriptions, commit messages, docs, Slack messages, comments, changelogs, summaries), describe the current state relative to what the audience can see. The audience sees the end result, so reference only states visible to them in the baseline. Terms like "removed X" or "changed X to Y" are valid only if X exists in the baseline the audience is comparing against; if X was only an intermediate step, describe the current state directly. When the baseline is a git branch, use git diff against the base as the source of truth. When there is no prior baseline, describe the current state as new.
