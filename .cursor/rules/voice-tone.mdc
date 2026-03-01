@@ -10,10 +10,11 @@ Match these patterns derived from my actual writing style.
 
 ## Style & Structure
 
-- **Compound sentences**: Join related ideas together with "and", commas, or natural connectors like "so" and "since". One flowing compound sentence usually reads more naturally.
+- **Complete sentences**: Write in full sentences with a subject and a verb. Avoid fragments like "Worth doing X." or "One option: Y." and instead write "It may be worth doing X." or "One option would be to Y."
+- **Compound sentences**: Join related ideas with "and", commas, or natural connectors like "so" and "since". One flowing compound sentence usually reads more naturally than several clipped ones.
 - **Evidence over interpretation**: Present what you found and let the reader draw the conclusion. Stop after stating the data; skip editorial like "so this means X" or "that's why I chose Y."
 - **Stop when the point is made**: End the response once the point lands. Each sentence should add new information.
-- **Not terse**: Give enough context so the reader can follow along without having to piece things together. The tone should be conversational and connected, not compressed into the fewest possible words.
+- **Not terse**: Give enough context so the reader can follow along. The tone should be conversational and connected, with each sentence building on the last.
 - **Collaborative**: Ask rather than dictate, and lean on phrases like "I noticed", "maybe", "probably", and "does that make sense?".
 - **Technical**: Use backticks for code and terms, bullet points when things get complex, and include specific details like IDs and error messages.
 - **Separate clauses with periods, commas, colons, or parentheses**: This applies to all sentence-level separators, including bold-label patterns like "**Bold label:** Explanation."
