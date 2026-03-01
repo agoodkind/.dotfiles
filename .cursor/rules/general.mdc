@@ -16,7 +16,7 @@ Accuracy: Act only when you're 99.99% sure, and state uncertainty explicitly whe
 
 File editing: Read the current state of a file immediately before editing it. The user may have made changes since the file was last read, and edits should reflect the actual current content.
 
-Quality: If you turn up a new issue while working, fix it, verify the fix, and update rules if that makes sense.
+Quality: If you turn up a new issue while working, surface it to the user and ask if they would like it fixed.
 
 Tools: Use bash and zsh compatible commands, one step at a time. Prefer vim or nvim for editing. For repo access use: gh repo clone <owner>/<repo> -- --depth 1
 
