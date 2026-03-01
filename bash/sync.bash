@@ -370,20 +370,7 @@ sync_cursor_config() {
     vid=$(progress_vertex_start "Syncing Cursor configuration")
 
     local cursor_dir="$HOME/.cursor"
-    local src_rules="$DOTDOTFILES/.cursor/rules"
     local src_commands="$DOTDOTFILES/.cursor/commands"
-
-    # Sync rules locally
-    if [[ -d "$src_rules" ]]; then
-        mkdir -p "$cursor_dir/rules"
-        for rule in "$src_rules"/*; do
-            [[ -f "$rule" ]] || continue
-            local rule_name
-            rule_name=$(basename "$rule")
-            ln -sf "$rule" "$cursor_dir/rules/$rule_name"
-            progress_log "  Linked rule: $rule_name"
-        done
-    fi
 
     # Sync commands
     if [[ -d "$src_commands" ]]; then
