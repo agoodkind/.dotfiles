@@ -309,8 +309,9 @@ def sync_rules() -> None:
         if not rule_file.exists():
             continue
 
-        content = parse_mdc(rule_file.read_text())
         title = rule_file.stem
+        body = parse_mdc(rule_file.read_text())
+        content = f"{title}\n\n{body}"
         attempted += 1
 
         log(f"  📄 [{attempted}/{total_files}] {title}")
@@ -341,8 +342,8 @@ def sync_rules() -> None:
         if not rule_file.exists():
             continue
 
-        expected_content = parse_mdc(rule_file.read_text())
         title = rule_file.stem
+        expected_content = f"{title}\n\n{parse_mdc(rule_file.read_text())}"
 
         cloud_rule = cloud_by_title.get(title)
         if not cloud_rule:
