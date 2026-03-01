@@ -339,7 +339,7 @@ function _progress_display_loop() {
                 printf '%s\n' "${rendered[$j]}" >/dev/tty
                 ((total_rendered++)) || true
                 local vid=$(( j + 1 ))
-                if [[ "${vertex_statuses[$j]}" == "started" && -f "${state_dir}/${vid}.out" ]]; then
+                if [[ "${vertex_statuses[$j]}" == "started" || "${vertex_statuses[$j]}" == "error" ]] && [[ -f "${state_dir}/${vid}.out" ]]; then
                     _progress_render_output_lines "${state_dir}/${vid}.out" "$output_max"
                     ((total_rendered += _PROGRESS_OUTPUT_COUNT)) || true
                 fi
