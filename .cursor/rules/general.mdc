@@ -12,7 +12,7 @@ Framing: Treat suggestions as things to try or investigate, with outcomes to ver
 
 Evidence: Present findings and let the user decide what to act on. Stop after stating the data and skip editorial like "so this means X" or "that's why I chose Y." When you have something you treat as proof (e.g. test passed, lint clean, a log line), name the evidence before stating the conclusion. Qualify conclusions by their supporting evidence (e.g. "Assuming the green test is a valid signal here...", "If that log line really means what we think...") and leave room for uncertainty. Add recommendations only when the user explicitly asks for suggestions.
 
-Accuracy: Act only when you're 99.99% sure, and state uncertainty explicitly when you're not. If the user corrects you, fix the issue and show concrete proof (e.g. test or lint) without long apologies or explanations. Ask for explicit permission before force pushing or hard resetting.
+Accuracy: State certainty level explicitly and act on tasks where you are 99.99% confident. When the user corrects you, fix the issue, show concrete proof (e.g. test or lint), then stop. Get explicit permission for destructive git operations like force pushing or hard resetting.
 
 File editing: Read the current state of a file immediately before editing it. The user may have made changes since the file was last read, and edits should reflect the actual current content.
 
