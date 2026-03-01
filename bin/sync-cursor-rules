@@ -24,9 +24,8 @@ INTERACTIVE = sys.stdout.isatty()
 # Minimal protobuf encoding/decoding (no external dependencies)
 # =============================================================================
 
-def encode_varint(value):
-    """Encode an integer as a protobuf varint."""
-    result = []
+def encode_varint(value: int) -> bytes:
+    result: list[int] = []
     while value > 0x7F:
         result.append((value & 0x7F) | 0x80)
         value >>= 7
@@ -34,8 +33,7 @@ def encode_varint(value):
     return bytes(result)
 
 
-def read_varint(data, pos):
-    """Read a varint from data at position, return (value, new_position)."""
+def read_varint(data: bytes, pos: int) -> tuple[int, int]:
     result = 0
     shift = 0
     while pos < len(data):
@@ -48,16 +46,14 @@ def read_varint(data, pos):
     return result, pos
 
 
-def encode_bytes_field(field_num, value):
-    """Encode a protobuf bytes/string field (wire type 2)."""
+def encode_bytes_field(field_num: int, value: str | bytes) -> bytes:
     if isinstance(value, str):
         value = value.encode("utf-8")
     tag = (field_num << 3) | 2
     return bytes([tag]) + encode_varint(len(value)) + value
 
 
-def parse_field(data, pos):
-    """Parse a single protobuf field, return (field_num, wire_type, value, new_pos)."""
+def parse_field(data: bytes, pos: int) -> tuple[int | None, int | None, int | bytes | None, int]:
     if pos >= len(data):
         return None, None, None, pos
 
@@ -65,31 +61,29 @@ def parse_field(data, pos):
     field_num = tag >> 3
     wire_type = tag & 0x07
 
-    if wire_type == 0:  # varint
+    if wire_type == 0:
         val, pos = read_varint(data, pos)
         return field_num, wire_type, val, pos
-    elif wire_type == 2:  # length-delimited (bytes/string/message)
+    elif wire_type == 2:
         length, pos = read_varint(data, pos)
         val = data[pos:pos + length]
         return field_num, wire_type, val, pos + length
     else:
-        # Skip unknown wire types
         return None, None, None, len(data)
 
 
-def parse_message(data):
-    """Parse all fields from a protobuf message into a dict."""
-    fields = {}
+def parse_message(data: bytes) -> dict[int, bytes | int | list[bytes | int]]:
+    fields: dict[int, bytes | int | list[bytes | int]] = {}
     pos = 0
     while pos < len(data):
         field_num, wire_type, val, pos = parse_field(data, pos)
-        if field_num is None:
+        if field_num is None or val is None:
             break
-        # Store as list if field repeats
         if field_num in fields:
-            if not isinstance(fields[field_num], list):
-                fields[field_num] = [fields[field_num]]
-            fields[field_num].append(val)
+            existing = fields[field_num]
+            if not isinstance(existing, list):
+                fields[field_num] = [existing]
+            fields[field_num] = [*fields[field_num], val]  # type: ignore[list-item]
         else:
             fields[field_num] = val
     return fields
@@ -99,48 +93,35 @@ def parse_message(data):
 # Logging
 # =============================================================================
 
-def log(msg):
-    """Print message unless quiet mode."""
+def log(msg: str) -> None:
     if not QUIET:
         print(msg)
 
 
-def log_verbose(msg):
-    """Print indented message unless quiet mode."""
+def log_verbose(msg: str) -> None:
     if not QUIET:
         print(f"    {msg}")
 
 
-def get_auth_token():
-    """Extract auth token from Cursor's database."""
+def get_auth_token() -> str:
     conn = sqlite3.connect(CURSOR_DB)
     cursor = conn.execute(
         "SELECT value FROM ItemTable WHERE key = 'cursorAuth/accessToken'"
     )
-    token = cursor.fetchone()[0].strip('"')
+    token: str = cursor.fetchone()[0].strip('"')
     conn.close()
     return token
 
 
-
-
-def api_call(token, endpoint, payload):
-    """Make API call to Cursor."""
+def api_call(token: str, endpoint: str, payload: bytes) -> bytes:
     result = subprocess.run(
         [
-            "curl",
-            "-s",
-            "-X",
-            "POST",
+            "curl", "-s", "-X", "POST",
             f"{API_BASE}/{endpoint}",
-            "-H",
-            f"authorization: Bearer {token}",
-            "-H",
-            "content-type: application/proto",
-            "-H",
-            "connect-protocol-version: 1",
-            "--data-binary",
-            "@-",
+            "-H", f"authorization: Bearer {token}",
+            "-H", "content-type: application/proto",
+            "-H", "connect-protocol-version: 1",
+            "--data-binary", "@-",
         ],
         input=payload,
         capture_output=True,
@@ -148,45 +129,42 @@ def api_call(token, endpoint, payload):
     return result.stdout
 
 
-def api_call_with_status(token, endpoint, payload):
-    """Make API call and return (http_code, body)."""
+def api_call_with_status(token: str, endpoint: str, payload: bytes) -> tuple[int, str]:
     result = subprocess.run(
         [
-            "curl",
-            "-s",
-            "-w",
-            "%{http_code}",
-            "-X",
-            "POST",
+            "curl", "-s", "-w", "%{http_code}", "-X", "POST",
             f"{API_BASE}/{endpoint}",
-            "-H",
-            f"authorization: Bearer {token}",
-            "-H",
-            "content-type: application/proto",
-            "-H",
-            "connect-protocol-version: 1",
-            "--data-binary",
-            "@-",
+            "-H", f"authorization: Bearer {token}",
+            "-H", "content-type: application/proto",
+            "-H", "connect-protocol-version: 1",
+            "--data-binary", "@-",
         ],
         input=payload,
         capture_output=True,
     )
     output = result.stdout.decode("utf-8", errors="ignore")
-    # Last 3 chars are HTTP status code
     http_code = int(output[-3:]) if len(output) >= 3 else 0
     body = output[:-3] if len(output) >= 3 else output
     return http_code, body
 
 
-def decode_bytes(value, default=""):
-    """Decode bytes to string, handling both bytes and string input."""
+def decode_bytes(value: bytes | str | None, default: str = "") -> str:
     if isinstance(value, bytes):
         return value.decode("utf-8")
     return value if value is not None else default
 
 
-def list_rules(token):
-    """List all user rules with full data (id, title, content)."""
+def parse_mdc(content: str) -> str:
+    """Strip YAML frontmatter from an MDC file and return the body."""
+    body = content
+    if body.startswith("---"):
+        end = body.find("\n---", 3)
+        if end != -1:
+            body = body[end + 4:].lstrip("\n")
+    return body.strip()
+
+
+def list_rules(token: str) -> list[dict[str, str]]:
     response = api_call(token, "KnowledgeBaseList", b"")
     if not response:
         return []
@@ -194,57 +172,49 @@ def list_rules(token):
     decoded = parse_message(response)
     raw_rules = decoded.get(2, [])
 
-    # Normalize to list (single item comes as bytes, multiple as list)
     if isinstance(raw_rules, bytes):
         raw_rules = [raw_rules]
 
-    rules = []
+    rules: list[dict[str, str]] = []
     for entry_bytes in raw_rules:
+        if not isinstance(entry_bytes, bytes):
+            continue
         entry = parse_message(entry_bytes)
-        # Field mapping: 1=id, 2=content, 3=title, 4=timestamp
         rule = {
-            "id": decode_bytes(entry.get(1, b"")),
-            "content": decode_bytes(entry.get(2, b"")),
-            "title": decode_bytes(entry.get(3, b"")),
-            "timestamp": decode_bytes(entry.get(4, b"")),
+            "id": decode_bytes(entry.get(1)),  # type: ignore[arg-type]
+            "content": decode_bytes(entry.get(2)),  # type: ignore[arg-type]
+            "title": decode_bytes(entry.get(3)),  # type: ignore[arg-type]
+            "timestamp": decode_bytes(entry.get(4)),  # type: ignore[arg-type]
         }
         if rule["id"]:
             rules.append(rule)
     return rules
 
 
-def list_rule_ids(token):
-    """List all user rules and extract IDs."""
+def list_rule_ids(token: str) -> list[str]:
     return [r["id"] for r in list_rules(token) if r.get("id")]
 
 
-def get_rule_count(token):
-    """Get count of rules in cloud."""
+def get_rule_count(token: str) -> int:
     return len(list_rule_ids(token))
 
 
-def remove_rule(token, rule_id):
-    """Remove a rule by ID."""
-    # Field 1 = id
+def remove_rule(token: str, rule_id: str) -> bytes:
     payload = encode_bytes_field(1, rule_id)
     return api_call(token, "KnowledgeBaseRemove", payload)
 
 
-def add_rule(token, title, content):
-    """Add a new rule. Returns (success, response)."""
-    # Field 1 = content, Field 2 = title, Field 3 = workspace_url
+def add_rule(token: str, title: str, content: str) -> tuple[bool, str]:
     payload = b""
     payload += encode_bytes_field(1, content)
     payload += encode_bytes_field(2, title)
     payload += encode_bytes_field(3, WORKSPACE_URL)
 
     http_code, body = api_call_with_status(token, "KnowledgeBaseAdd", payload)
-    success = 200 <= http_code < 300
-    return success, body
+    return 200 <= http_code < 300, body
 
 
-def delete_all_rules(token):
-    """Delete all existing cloud rules with progress display."""
+def delete_all_rules(token: str) -> int:
     rule_ids = list_rule_ids(token)
 
     if not rule_ids:
@@ -255,43 +225,38 @@ def delete_all_rules(token):
     log(f"  🗑️  Removing {total} existing rule(s) in parallel...")
 
     if QUIET:
-        # Quiet mode: parallel with no output
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             list(executor.map(lambda rid: remove_rule(token, rid), rule_ids))
     elif INTERACTIVE:
-        # Interactive: show progress bar
         completed = 0
         bar_width = 40
-
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            futures = {
-                executor.submit(remove_rule, token, rid): rid for rid in rule_ids
-            }
-            for future in concurrent.futures.as_completed(futures):
+            futures = {executor.submit(remove_rule, token, rid): rid for rid in rule_ids}
+            for _ in concurrent.futures.as_completed(futures):
                 completed += 1
                 pct = completed * 100 // total
                 filled = completed * bar_width // total
-                empty = bar_width - filled
-                bar = "█" * filled + "░" * empty
+                bar = "█" * filled + "░" * (bar_width - filled)
                 print(f"\r    [{bar}] {completed}/{total} ({pct}%)", end="", flush=True)
-            print()
+        print()
     else:
-        # Non-interactive: line-by-line output
         for i, rule_id in enumerate(rule_ids, 1):
             remove_rule(token, rule_id)
             log(f"    Deleted rule ID: {rule_id} ({i}/{total})")
 
-    log(f"  ✅ Removed {total} cloud rule(s)")
+    remaining = get_rule_count(token)
+    if remaining > 0:
+        log(f"  ⚠️  {remaining} rule(s) still present after deletion — API may have rejected some removes")
+    else:
+        log(f"  ✅ Removed {total} cloud rule(s)")
     return total
 
 
-def sync_rules():
-    """Main sync function."""
+def sync_rules() -> None:
     log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     log("☁️  Cursor Cloud Rules Sync")
     log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-    # Verify prerequisites
     if not CURSOR_DB.exists():
         log(f"❌ Cursor database not found: {CURSOR_DB}")
         log("   Make sure Cursor is installed and you're logged in.")
@@ -306,7 +271,6 @@ def sync_rules():
     log(f"🔗 API endpoint: {API_BASE}")
     log("")
 
-    # Get auth token
     log("🔐 Authenticating...")
     token = get_auth_token()
 
@@ -317,12 +281,10 @@ def sync_rules():
     log("  ✅ Authentication successful")
     log("")
 
-    # Delete all existing rules first
     log("🧹 Clearing existing cloud rules...")
     delete_all_rules(token)
     log("")
 
-    # Count available rules
     rule_files = sorted(RULES_DIR.glob("*.mdc"))
     if not rule_files:
         log(f"⚠️  No .mdc files found in {RULES_DIR}")
@@ -332,7 +294,6 @@ def sync_rules():
     log(f"📤 Uploading {total_files} rule(s) to cloud...")
     log("")
 
-    # Sync each .mdc file
     attempted = 0
     succeeded = 0
     failed = 0
@@ -340,24 +301,21 @@ def sync_rules():
     for rule_file in rule_files:
         display_file = str(rule_file)
 
-        # Follow symlink if needed
         if rule_file.is_symlink():
             resolved = rule_file.resolve()
             display_file = f"{rule_file} → {resolved}"
             rule_file = resolved
 
-        # Skip if file doesn't exist (broken symlink)
         if not rule_file.exists():
             continue
 
+        content = parse_mdc(rule_file.read_text())
         title = rule_file.stem
-        content = rule_file.read_text()
-        content_size = len(content)
-
         attempted += 1
+
         log(f"  📄 [{attempted}/{total_files}] {title}")
         log_verbose(f"Source: {display_file}")
-        log_verbose(f"Size: {content_size} bytes")
+        log_verbose(f"Size: {len(content)} bytes")
 
         success, response = add_rule(token, title, content)
         if success:
@@ -370,15 +328,10 @@ def sync_rules():
             log(f"    ❌ Failed to upload: {response}")
         log("")
 
-    # Verify rules were actually added to cloud with content comparison
     log("🔍 Verifying cloud rules...")
     cloud_rules = list_rules(token)
-    cloud_count = len(cloud_rules)
+    cloud_by_title = {r.get("title", ""): r for r in cloud_rules}
 
-    # Build lookup of cloud rules by title
-    cloud_by_title = {r.get("title"): r for r in cloud_rules}
-
-    # Compare each uploaded rule
     verified = 0
     verify_failed = 0
 
@@ -388,8 +341,8 @@ def sync_rules():
         if not rule_file.exists():
             continue
 
+        expected_content = parse_mdc(rule_file.read_text())
         title = rule_file.stem
-        expected_content = rule_file.read_text()
 
         cloud_rule = cloud_by_title.get(title)
         if not cloud_rule:
@@ -397,8 +350,10 @@ def sync_rules():
             verify_failed += 1
         elif cloud_rule.get("content") != expected_content:
             log(f"  ❌ Content mismatch: {title}")
-            log_verbose(f"Expected {len(expected_content)} bytes, "
-                        f"got {len(cloud_rule.get('content', ''))} bytes")
+            log_verbose(
+                f"Expected {len(expected_content)} bytes, "
+                f"got {len(cloud_rule.get('content', ''))} bytes"
+            )
             verify_failed += 1
         else:
             log_verbose(f"✅ {title}: content verified")
@@ -420,9 +375,7 @@ def sync_rules():
             f"{failed} failed"
         )
     elif verify_failed > 0:
-        log(
-            f"⚠️  Sync completed but {verify_failed} rule(s) failed content verification"
-        )
+        log(f"⚠️  Sync completed but {verify_failed} rule(s) failed content verification")
     log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 
