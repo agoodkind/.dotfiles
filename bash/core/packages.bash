@@ -64,6 +64,7 @@ export COMMON_PACKAGES=(
 	tealdeer
 	thefuck
 	tree
+	trippy
 	tshark
 	vim
 	watch
@@ -131,12 +132,6 @@ export BREW_SPECIFIC=(
 export CARGO_PACKAGES=(
 )
 
-# Go packages (installed via go install)
-# Format: package-name=install-path
-declare -A GO_PACKAGES=(
-	[lazygit]="github.com/jesseduffield/lazygit@latest"
-)
-
 # Cargo packages requiring git installation - associative arrays
 # Format: [package]="url|features"
 declare -A CARGO_GIT_PACKAGES=(
@@ -152,6 +147,12 @@ function get_cargo_git_details() {
 	fi
 	return 1
 }
+
+# Go packages (installed via go install)
+# Format: package-name=install-path
+declare -A GO_PACKAGES=(
+	[lazygit]="github.com/jesseduffield/lazygit@latest"
+)
 
 # Brew casks - associative array mapping cask name to app name
 # Empty value means CLI-only or font (no .app to check)
@@ -206,6 +207,7 @@ get_package_name() {
 declare -A APT_PPAS=(
 	[et]="ppa:jgmath2000/et"
 	[fastfetch]="ppa:zhangsongcui3371/fastfetch"
+	[trippy]="ppa:fujiapple/trippy"
 )
 
 # Check if a package is in an array
