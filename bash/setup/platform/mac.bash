@@ -57,4 +57,11 @@ defaults write com.google.Chrome BuiltInDnsClientEnabled -bool false
 # if installed 
 sh <( curl -sL git.io/sudo-touch-id )
 
+# Patch /etc/zprofile and /etc/zshrc with performance instrumentation and bypass guards.
+# Only invoke sudo if at least one file still needs patching (avoids unnecessary prompts).
+if ! grep -qF "# DOTFILES_PERF_PATCH" /etc/zprofile 2>/dev/null \
+    || ! grep -qF "# DOTFILES_PERF_PATCH" /etc/zshrc 2>/dev/null; then
+    sudo "$DOTDOTFILES/bash/setup/platform/patch-etc-zsh.bash"
+fi
+
 echo "Mac setup complete!"

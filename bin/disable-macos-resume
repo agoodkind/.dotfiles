@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+# Disables macOS Resume feature that reopens apps after restart
+
+set -euo pipefail
+
+echo "Disabling NSQuitAlwaysKeepsWindows..."
+defaults write com.apple.systempreferences NSQuitAlwaysKeepsWindows -bool false
+defaults write -g NSQuitAlwaysKeepsWindows -bool false
+
+echo "Clearing saved application states..."
+rm -rf ~/Library/Saved\ Application\ State/*
+
+echo "Making Saved Application State directory unwritable..."
+chmod 000 ~/Library/Saved\ Application\ State
+
+echo "Done. Restart your Mac for changes to take effect."

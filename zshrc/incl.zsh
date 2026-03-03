@@ -12,7 +12,9 @@ source "$DOTDOTFILES/zshrc/core/perf.zsh"
 # that break when sourced inside a function). Timing is done inline instead.
 local _t0=$EPOCHREALTIME
 source "$DOTDOTFILES/zshrc/core/plugins.zsh"
-_PROFILE_TIMES[plugins]=$(( (EPOCHREALTIME - _t0) * 1000 ))
+local _pms=$(( (EPOCHREALTIME - _t0) * 1000 ))
+_PROFILE_TIMES[plugins]=$_pms
+_SOURCE_ORDER+=("${_SOURCE_DEPTH}:plugins:${_pms}")
 
 _source "$DOTDOTFILES/zshrc/core/utils.zsh"
 _source "$DOTDOTFILES/zshrc/commands/prefer.zsh"

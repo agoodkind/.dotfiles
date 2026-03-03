@@ -27,6 +27,7 @@ launch() {
 
 launch "$DOTDOTFILES/bash/background/updater.bash"
 launch "$DOTDOTFILES/bash/background/prefer-cache-rebuild.bash"
+launch "$DOTDOTFILES/bash/background/path-cache-rebuild.bash"
 launch "$DOTDOTFILES/bash/background/zwc-recompile.bash"
 launch "$DOTDOTFILES/bash/background/ssh-key-load-mac.bash"
 
