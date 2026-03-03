@@ -30,7 +30,8 @@ function gh() {
         command gh "$@"
     fi
 }
-alias gh-upload="${DOTFILES_DIR:-$HOME/.dotfiles}/lib/scripts/gh-upload"
+prefer gh-upload "${DOTFILES_DIR:-$HOME/.dotfiles}/lib/scripts/gh-upload"
+prefer disable-macos-resume "${DOTFILES_DIR:-$HOME/.dotfiles}/bin/disable-macos-resume"
 
 # thefuck wrapper: lazy load on first use
 function fuck() {

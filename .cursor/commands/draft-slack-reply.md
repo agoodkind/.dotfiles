@@ -53,21 +53,16 @@ Use backticks for:
 - Error names/types: `` `TypeError` ``, `` `ActiveRecord::RecordNotFound` ``
 - Gem/package names: `` `sidekiq` ``, `` `lodash` ``
 
-Do NOT backtick:
-- General technical concepts ("the API", "the database", "caching")
-- Product/service names ("Redis", "Postgres", "Kubernetes") unless referring to a CLI command or config value
-- Plain English descriptions of behavior
-
 ## Writing Style
 
-- **No emdashes**: Never use emdashes (—) or emdash-like constructs (--). Restructure sentences to use periods, commas, colons, or parentheses instead.
-- **No filler words**: Avoid "improves", "enhances", "streamlines", "ensures", "allows", "enables" when used as justification. State facts directly.
-- **No sycophancy or AI-isms**: No "delve", "tapestry", "I'd be happy to", "Great question!". Write like an engineer, not a chatbot.
-- **Concise**: No fluff or preambles. Get to the point.
-- **Direct**: Present tense, direct facts. State what is, not what "should be noted".
-- Match the user's voice and tone from context.
-- Keep it conversational. Slack is not email.
-- Use thread-appropriate formality (match the context).
+- **No emdashes**: Never use emdashes (—) or emdash-like constructs (--). Restructure or reflow the sentence as needed to avoid them.
+- **No filler words**: Do not use words like "improves", "enhances", "streamlines", "ensures", "allows", or "enables" as justification for a change, since they add no information. State the actual fact instead.
+- **No sycophancy**: Do not use phrases like "delve", "tapestry", "I'd be happy to", or "Great question!", because they are AI-isms that make the message sound unnatural and hollow.
+- **Tone**: Write like a human talking to a colleague, not like a bug report. Avoid openers that add no information, like "Just wanted to flag" or "Quick note:", where the first sentence could simply be the message itself.
+- **No fragments**: Every sentence must have a subject and a verb, must begin with a capital letter, and must end with punctuation.
+- **Be concise**: Do not add preamble or restate what the reader already knows, since that forces them to read more to get to the point.
+- **Use present tense**: State what is happening, not what "should be noted" or "may be worth considering".
+- Write conversationally and match the formality level of the thread or channel being replied to, since Slack is not email and formal constructions feel out of place.
 
 ## Steps
 

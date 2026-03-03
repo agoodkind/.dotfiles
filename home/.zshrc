@@ -122,6 +122,8 @@ prefer nvim _edit_maybe_sudoedit nvim
 ###############################################################################
 # Do not edit below this line #################################################
 ###############################################################################
-_PROFILE_TIMES[zshrc-local]=$(( (EPOCHREALTIME - _t_zshrc) * 1000 ))
+local _zl_ms=$(( (EPOCHREALTIME - _t_zshrc) * 1000 ))
+_PROFILE_TIMES[zshrc-local]=$_zl_ms
+_SOURCE_ORDER+=("0:zshrc-local:${_zl_ms}")
 _PROFILE_TIMES[_time_to_prompt]=$(( (EPOCHREALTIME - START_TIME) * 1000 ))
 do_profile

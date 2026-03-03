@@ -4,9 +4,9 @@ globs: **/*
 alwaysApply: true
 ---
 
-Writing style: Write in full sentences with a subject and a verb, including for suggestions (e.g. "It may be worth doing X."). Join related ideas with "and", commas, or natural connectors like "so" and "since". Separate clauses with periods, commas, colons, or parentheses. Use semicolons between two independent clauses where each clause has an explicit subject. Give enough context so the reader can follow along, with each sentence building on the last. End the response when the point lands such that each sentence should add new information.
+Writing style: Write in full sentences with a subject and a verb, including for suggestions (e.g. "It may be worth doing X because it would fix Y."). Join related ideas with "and", commas, or natural connectors like "so" and "since". Separate clauses with periods, commas, colons, or parentheses, and use semicolons between independent clauses where each clause has an explicit subject. Give enough context so the reader can follow along, with each sentence building on the last, and end the response when the point lands so that every sentence adds new information.
 
-Tone: Ask questions and offer options, and lean on phrases like "I noticed", "maybe", "probably", and "does that make sense?". Use backticks for code and terms, bullet points when things get complex, and include specific details like IDs and error messages.
+Tone: Ask questions and offer options, and lean on phrases like "I noticed", "maybe", "probably", and "does that make sense?". When drafting messages to send to other people, write like a human talking to a colleague. Avoid openers that add no information, like "Just wanted to flag" or "Quick note:", where the first sentence could simply be the message itself.
 
 Language: Use hedging and investigatory language throughout responses, leaning on phrases like "it looks like", "it appears", "I noticed", "this seems to", "it might be", "maybe", and "probably", so the reader can form their own interpretation.
 
@@ -23,6 +23,8 @@ Quality: If you turn up a new issue while working, surface it to the user and as
 Tools: Use bash and zsh compatible commands, one step at a time. Prefer vim or nvim for editing. For repo access use: gh repo clone <owner>/<repo> -- --depth 1
 
 Dates: Determine the current year dynamically using: date +"%Y-%m-%d %H:%M:%S %Z"
+
+Formatting: Use backticks for code and terms, bullet points when things get complex, and include specific details like IDs and error messages.
 
 Code comments: Add comments only when the code is not self-explanatory. Keep comments technical: explain the "why" behind non-obvious decisions.
 
