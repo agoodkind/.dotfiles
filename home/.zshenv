@@ -10,17 +10,19 @@ if [[ -f ~/.zsh_profile_next ]]; then
     zmodload zsh/zprof 2>/dev/null && _ZPROF_LOADED=1
 fi
 
-typeset -gA _ZSHENV_TIMES
-_ZSHENV_TIMES[start]=$EPOCHREALTIME
+# Unified perf tree: all callsites push depth:label:ms[:tag] entries.
+# lib/tree.zsh renders the array as a tree; perf.zsh is a thin consumer.
+typeset -ga _PERF_TREE=()
+typeset -gF _PERF_LAP=$EPOCHREALTIME
 
-# System timeline: ordered probes of depth:label:epoch[:tag] populated by _sys_probe.
-# Callsites in /etc/zprofile, ~/.zprofile, /etc/zshrc push entries; perf.zsh
-# computes deltas between consecutive probes and renders the tree.
-typeset -ga _SYSTEM_ORDER=()
-
-function _sys_probe() {
-    local probe_depth=$1 probe_label=$2 probe_tag=${3:-}
-    _SYSTEM_ORDER+=("${probe_depth}:${probe_label}:${EPOCHREALTIME}${probe_tag:+:${probe_tag}}")
+# Delta-based probe: computes ms since last probe, pushes into _PERF_TREE.
+# Callsites in /etc/zprofile, ~/.zprofile, /etc/zshrc use this.
+function _perf_push() {
+    local push_depth=$1 push_label=$2 push_tag=${3:-}
+    local push_now=$EPOCHREALTIME
+    local push_ms=$(( (push_now - _PERF_LAP) * 1000 ))
+    _PERF_TREE+=("${push_depth}:${push_label}:${push_ms}${push_tag:+:${push_tag}}")
+    _PERF_LAP=$push_now
 }
 
 # Bypass /etc/zshrc locale fork: LC_CTYPE is always UTF-8 on modern macOS.
@@ -41,9 +43,12 @@ unset _path_cache
 
 [[ -f "$HOME/.cargo/env" ]] && . "$HOME/.cargo/env"
 
-_ZSHENV_TIMES[end]=$EPOCHREALTIME
-# Anchor for the system timeline: the next _sys_probe captures .zshenv→/etc/zprofile gap
-_sys_probe 0 .zshenv_end
+# .zshenv self-time: everything between START_TIME and now
+typeset -gA _PROFILE_TIMES
+_PROFILE_TIMES[_zshenv_self]=$(( (EPOCHREALTIME - START_TIME) * 1000 ))
+
+# Anchor: reset lap so the next _perf_push captures the .zshenv→/etc/zprofile gap
+_PERF_LAP=$EPOCHREALTIME
 
 # Capture system snapshot at startup for diagnosing pre-zshrc slowness.
 # Runs in a subshell so it never blocks the shell startup path.
