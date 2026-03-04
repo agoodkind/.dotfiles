@@ -2,9 +2,9 @@
 # Apply performance patches to macOS system zsh startup files.
 #
 # Patches applied:
-#   /etc/zprofile  – adds _sys_probe instrumentation and a _PATH_HELPER_DONE
+#   /etc/zprofile  – adds _perf_push instrumentation and a _PATH_HELPER_DONE
 #                    bypass guard so .zshenv can serve a cached PATH.
-#   /etc/zshrc     – adds _sys_probe instrumentation and a _LOCALE_DONE bypass
+#   /etc/zshrc     – adds _perf_push instrumentation and a _LOCALE_DONE bypass
 #                    guard so .zshenv can skip the locale(1) subprocess fork.
 #
 # Both patches are idempotent: a sentinel comment is checked first.
@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-SENTINEL="# DOTFILES_PERF_PATCH_V2"
+SENTINEL="# DOTFILES_PERF_PATCH_V4"
 DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 BACKUPS_PATH=""
 
@@ -72,23 +72,23 @@ ZPROFILE_CONTENT="${SENTINEL}
 # Setup user specific overrides for this in ~/.zprofile. See zshbuiltins(1)
 # and zshoptions(1) for more details.
 
-# No-op fallback when .zshenv didn't define _sys_probe (e.g. zsh -c '...')
-(( \${+functions[_sys_probe]} )) || function _sys_probe() { : }
+# No-op fallback when .zshenv didn't define _perf_push (e.g. zsh -c '...')
+(( \${+functions[_perf_push]} )) || function _perf_push() { : }
 
-_sys_probe 0 '[.zshenv→zprofile]'
+_perf_push 2 '[gap .zshenv→zprofile]'
+_perf_push 2 /etc/zprofile
 
 if [ -z \"\$LANG\" ]; then
 	export LANG=C.UTF-8
 fi
-
-_sys_probe 0 zprofile_preamble
+_perf_push 3 preamble
 
 if [ -x /usr/libexec/path_helper ]; then
 	if (( ! \${_PATH_HELPER_DONE:-0} )); then
 		eval \`/usr/libexec/path_helper -s\`
-		_sys_probe 1 path_helper_fork
+		_perf_push 3 path_helper \"forked\"
 	else
-		_sys_probe 1 path_helper_fork \"cached\"
+		_perf_push 3 path_helper \"cached\"
 	fi
 fi"
 
@@ -99,7 +99,7 @@ fi"
 #   - locale(1) subprocess to detect UTF-8 and conditionally setopt COMBINING_CHARS
 #   - history options, terminfo key bindings, PS1, and /etc/zshrc_$TERM_PROGRAM
 #
-# We add _sys_probe calls around each section and guard the locale fork with
+# We add _perf_push calls around each section and guard the locale fork with
 # _LOCALE_DONE so .zshenv can skip it unconditionally on modern macOS.
 # ---------------------------------------------------------------------------
 ZSHRC_CONTENT="${SENTINEL}
@@ -108,9 +108,10 @@ ZSHRC_CONTENT="${SENTINEL}
 # Setup user specific overrides for this in ~/.zshrc. See zshbuiltins(1)
 # and zshoptions(1) for more details.
 
-(( \${+functions[_sys_probe]} )) || function _sys_probe() { : }
+(( \${+functions[_perf_push]} )) || function _perf_push() { : }
 
-_sys_probe 0 '[→/etc/zshrc]'
+_perf_push 2 '[gap .zprofile→zshrc]'
+_perf_push 2 /etc/zshrc
 
 if (( ! \${_LOCALE_DONE:-0} )); then
     if [[ ! -x /usr/bin/locale ]] || [[ \"\$(locale LC_CTYPE)\" == \"UTF-8\" ]]; then
@@ -118,9 +119,9 @@ if (( ! \${_LOCALE_DONE:-0} )); then
     fi
 fi
 if (( \${_LOCALE_DONE:-0} )); then
-    _sys_probe 1 combining/locale \"bypassed\"
+    _perf_push 3 combining/locale \"bypassed\"
 else
-    _sys_probe 1 combining/locale
+    _perf_push 3 combining/locale
 fi
 
 disable log
@@ -129,7 +130,7 @@ HISTFILE=\${ZDOTDIR:-\$HOME}/.zsh_history
 HISTSIZE=2000
 SAVEHIST=1000
 setopt BEEP
-_sys_probe 1 history/opts
+_perf_push 3 history/opts
 
 if [[ -r \${ZDOTDIR:-\$HOME}/.zkbd/\${TERM}-\${VENDOR} ]] ; then
     source \${ZDOTDIR:-\$HOME}/.zkbd/\${TERM}-\${VENDOR}
@@ -167,19 +168,19 @@ else
     [[ -n \"\$terminfo[kcud1]\" ]] && key[Down]=\$terminfo[kcud1]
     [[ -n \"\$terminfo[kcuf1]\" ]] && key[Right]=\$terminfo[kcuf1]
 fi
-_sys_probe 1 terminfo
+_perf_push 3 terminfo
 
 [[ -n \${key[Delete]} ]] && bindkey \"\${key[Delete]}\" delete-char
 [[ -n \${key[Home]} ]] && bindkey \"\${key[Home]}\" beginning-of-line
 [[ -n \${key[End]} ]] && bindkey \"\${key[End]}\" end-of-line
 [[ -n \${key[Up]} ]] && bindkey \"\${key[Up]}\" up-line-or-search
 [[ -n \${key[Down]} ]] && bindkey \"\${key[Down]}\" down-line-or-search
-_sys_probe 1 bindkey
+_perf_push 3 bindkey
 
 PS1=\"%n@%m %1~ %# \"
 
 [ -r \"/etc/zshrc_\$TERM_PROGRAM\" ] && . \"/etc/zshrc_\$TERM_PROGRAM\"
-_sys_probe 1 zshrc_\${TERM_PROGRAM:-unset}"
+_perf_push 3 zshrc_\${TERM_PROGRAM:-unset}"
 
 patch_file /etc/zprofile "$ZPROFILE_CONTENT"
 patch_file /etc/zshrc    "$ZSHRC_CONTENT"

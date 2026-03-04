@@ -1,20 +1,24 @@
 # shellcheck shell=bash
 
 ###############################################################################
-# Profiling support ###########################################################
-zmodload zsh/datetime
-[[ -z "$START_TIME" ]] && START_TIME=$EPOCHREALTIME
-export DOTDOTFILES="$HOME/.dotfiles"
-###############################################################################
-# Include OS specific and common zshrc configs ################################
-source $DOTDOTFILES/zshrc/incl.zsh
-local _t_zshrc=$EPOCHREALTIME
+# Begin: do not edit below this line                                          #
+#                                                                             #
+# Profiling support                                                           #
+zmodload zsh/datetime                                                         #
+[[ -z "$START_TIME" ]] && START_TIME=$EPOCHREALTIME                           #
+#                                                                             #
+export DOTDOTFILES="$HOME/.dotfiles"                                          #
+#                                                                             #
+# Include OS specific and common zshrc configs                                #
+source $DOTDOTFILES/zshrc/incl.zsh                                            #
+local _t_zshrc=$EPOCHREALTIME                                                 #
+#                                                                             #
+# End: do not edit above this line                                            #
 ###############################################################################
 
 ###############################################################################
 # Theme #######################################################################
 ###############################################################################
-
 # enables color in ls
 export CLICOLOR=1
 
@@ -123,7 +127,12 @@ prefer nvim _edit_maybe_sudoedit nvim
 # Do not edit below this line #################################################
 ###############################################################################
 local _zl_ms=$(( (EPOCHREALTIME - _t_zshrc) * 1000 ))
-_PROFILE_TIMES[zshrc-local]=$_zl_ms
-_SOURCE_ORDER+=("0:zshrc-local:${_zl_ms}")
+_PROFILE_TIMES[.zshrc]=$_zl_ms
+_PERF_TREE+=("2:.zshrc:${_zl_ms}")
 _PROFILE_TIMES[_time_to_prompt]=$(( (EPOCHREALTIME - START_TIME) * 1000 ))
+
+# Patch the .zshrc structural header with its actual total
+local _zshrc_total=$(( _PROFILE_TIMES[_time_to_prompt] - _PROFILE_TIMES[_pre_zshrc] ))
+_PERF_TREE[$_ZSHRC_TREE_IDX]="1:.zshrc:${_zshrc_total}"
+
 do_profile

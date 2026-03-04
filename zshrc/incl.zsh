@@ -8,13 +8,18 @@ export NVM_LAZY_LOAD=true
 # shellcheck shell=bash
 source "$DOTDOTFILES/zshrc/core/perf.zsh"
 
+# Structural header: all _source/_async calls below become depth-2 children.
+# ms is 0 here; .zshrc epilogue patches it with the actual total.
+typeset -gi _ZSHRC_TREE_IDX=$(( ${#_PERF_TREE} + 1 ))
+_PERF_TREE+=("1:.zshrc:0")
+
 # plugins.zsh uses plain source (zinit turbo mode stores scope references
 # that break when sourced inside a function). Timing is done inline instead.
 local _t0=$EPOCHREALTIME
 source "$DOTDOTFILES/zshrc/core/plugins.zsh"
 local _pms=$(( (EPOCHREALTIME - _t0) * 1000 ))
 _PROFILE_TIMES[plugins]=$_pms
-_SOURCE_ORDER+=("${_SOURCE_DEPTH}:plugins:${_pms}")
+_PERF_TREE+=("$(( _SOURCE_DEPTH + 2 )):plugins:${_pms}")
 
 _source "$DOTDOTFILES/zshrc/core/utils.zsh"
 _source "$DOTDOTFILES/zshrc/commands/prefer.zsh"
