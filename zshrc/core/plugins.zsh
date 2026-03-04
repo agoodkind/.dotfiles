@@ -7,11 +7,13 @@ fpath=("$DOTDOTFILES/zshrc/completions" $fpath)
 typeset -gA ZINIT
 ZINIT[OPTIMIZE_OUT_DISK_ACCESSES]=1
 
+typeset -ga _PERF_TREE_DEFERRED=()
+
 function _ready_mark() {
     local mark_depth=$1 mark_label=$2 mark_tag=${3:-}
     local mark_now=$EPOCHREALTIME
     local mark_ms=$(( (mark_now - _ready_lap) * 1000 ))
-    _PERF_TREE+=("${mark_depth}:${mark_label}:${mark_ms}${mark_tag:+:${mark_tag}}")
+    _PERF_TREE_DEFERRED+=("${mark_depth}:${mark_label}:${mark_ms}${mark_tag:+:${mark_tag}}")
     _ready_lap=$mark_now
 }
 
@@ -22,23 +24,22 @@ function _load_tier1() {
     _ZINIT_LOADED=1
     typeset -g _ready_lap=$EPOCHREALTIME
 
-    _PERF_TREE+=("1:deferred:0")
-    _ready_mark 2 "tier 1" "zle-line-init"
+    _ready_mark 1 "tier 1" "zle-line-init"
 
     source "$DOTDOTFILES/lib/zinit/zinit.zsh"
     ZINIT[AUTO_UPDATE_DAYS]=365
     autoload -Uz _zinit
     (( ${+_comps} )) && _comps[zinit]=_zinit
-    _ready_mark 3 zinit_core
+    _ready_mark 2 zinit_core
 
     ZINIT[COMPINIT_OPTS]=-C
     zicompinit
     zicdreplay
-    _ready_mark 3 compinit
+    _ready_mark 2 compinit
 
     zinit light zsh-users/zsh-autosuggestions
     _zsh_autosuggest_start
-    _ready_mark 3 autosuggestions
+    _ready_mark 2 autosuggestions
 
     _PROFILE_TIMES[_time_to_ready_t1]=$(( (EPOCHREALTIME - START_TIME) * 1000 ))
     sched +0 _load_tier2
@@ -47,15 +48,15 @@ function _load_tier1() {
 # Tier 2: runs at next event loop pass after tier 1. Syntax highlighting,
 # fzf-tab, iterm2 integration — things you won't need in the first ~100ms.
 function _load_tier2() {
-    _ready_mark 2 "tier 2" "sched +0"
+    _ready_mark 1 "tier 2" "sched +0"
 
     zinit light zdharma-continuum/fast-syntax-highlighting
-    _ready_mark 3 syntax-hl
+    _ready_mark 2 syntax-hl
 
     zinit light Aloxaf/fzf-tab
     zinit light Freed-Wu/fzf-tab-source
     source /opt/homebrew/opt/fzf/shell/key-bindings.zsh 2>/dev/null
-    _ready_mark 3 fzf-tab
+    _ready_mark 2 fzf-tab
 
     # shellcheck disable=SC2016
     zstyle ":fzf-tab:complete:cd:*" fzf-preview "eza -1 --color=always \$realpath"
@@ -77,29 +78,29 @@ function _load_tier2() {
         source "$_iterm_si"
         ITERM2_PRECMD_PS1="$PS1"
     fi
-    _ready_mark 3 iterm2_si
+    _ready_mark 2 iterm2_si
 
     sched +0 _load_tier3
 }
 
 # Tier 3: extra completions and cleanup. Runs after tier 2.
 function _load_tier3() {
-    _ready_mark 2 "tier 3" "sched +0"
+    _ready_mark 1 "tier 3" "sched +0"
 
     zinit light zsh-users/zsh-completions
-    _ready_mark 3 completions
+    _ready_mark 2 completions
 
     local _zc_dir="${ZINIT[COMPLETIONS_DIR]:-$HOME/.local/share/zinit/completions}"
     for _zc_link in "$_zc_dir"/*(N@); do
         [[ -e "$_zc_link" ]] || rm -f "$_zc_link"
     done
     unset _zc_dir _zc_link
-    _ready_mark 3 cleanup
+    _ready_mark 2 cleanup
 
     _PROFILE_TIMES[_time_to_ready]=$(( (EPOCHREALTIME - START_TIME) * 1000 ))
 
     _write_startup_log
-    _ready_mark 3 startup_log
+    _ready_mark 2 startup_log
 }
 
 # Fires once after prompt is drawn, before first keystroke is accepted.
