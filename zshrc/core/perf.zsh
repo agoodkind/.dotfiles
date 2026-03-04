@@ -89,8 +89,22 @@ function zsh_perf() {
     local has_zprof=$(( ${#_ZPROF_OUTPUT} > 0 ))
     (( has_zprof )) && _perf_print_zprof_section "$_ZPROF_OUTPUT"
 
-    printf "\nfirst-precmd:  %.0f ms  (prompt visible)\n" "$precmd"
-    printf "time-to-ready: %.0f ms  (shell interactive)\n" "$ready"
+    if (( ${#_PERF_TREE_DEFERRED} )); then
+        printf "\ndeferred:\n"
+        tree_print _PERF_TREE_DEFERRED ""
+    fi
+
+    local precmd_gap=$(( precmd - prompt ))
+    local ready_settled=$(( ${+_PROFILE_TIMES[_time_to_ready]} ))
+    local deferred_time=$(( ready - precmd ))
+    printf "\ntimeline:\n"
+    printf "  prompt visible:      %6.0f ms  (end of .zshrc)\n" "$prompt"
+    printf "  first precmd:        %6.0f ms  (+%.0f ms zsh hook overhead)\n" "$precmd" "$precmd_gap"
+    if (( ready_settled )); then
+        printf "  shell interactive:   %6.0f ms  (+%.0f ms deferred tiers)\n" "$ready" "$deferred_time"
+    else
+        printf "  shell interactive:   %6.0f ms  (+%.0f ms so far — deferred tiers still loading)\n" "$ready" "$deferred_time"
+    fi
 }
 
 # zprof summary line format (9 fields after word-split):
@@ -165,22 +179,29 @@ function __write_startup_log_impl() {
             '$obj + {($key): $val}')
     done
 
-    # Build tree JSON array from _PERF_TREE
-    local tree_json="[]"
-    local pt_entry pt_rest pt_depth pt_label pt_ms pt_tag
-    for pt_entry in "${_PERF_TREE[@]}"; do
-        pt_depth=${pt_entry%%:*}; pt_rest=${pt_entry#*:}
-        pt_label=${pt_rest%%:*}; pt_rest=${pt_rest#*:}
-        pt_ms=${pt_rest%%:*}; pt_tag=${pt_rest#*:}
-        [[ "$pt_tag" == "$pt_ms" ]] && pt_tag=""
-        tree_json=$(jq -n \
-            --argjson arr "$tree_json" \
-            --argjson depth "$pt_depth" \
-            --arg     label "$pt_label" \
-            --argjson ms "$pt_ms" \
-            --arg     tag "$pt_tag" \
-            '$arr + [{depth: $depth, label: $label, ms: $ms} + (if $tag != "" then {tag: $tag} else {} end)]')
-    done
+    # Serialize a depth:label:ms[:tag] array to JSON
+    _perf_tree_to_json() {
+        local -a entries=("${@}")
+        local json="[]"
+        local entry rest depth label ms tag
+        for entry in "${entries[@]}"; do
+            depth=${entry%%:*}; rest=${entry#*:}
+            label=${rest%%:*}; rest=${rest#*:}
+            ms=${rest%%:*}; tag=${rest#*:}
+            [[ "$tag" == "$ms" ]] && tag=""
+            json=$(jq -n \
+                --argjson arr "$json" \
+                --argjson depth "$depth" \
+                --arg     label "$label" \
+                --argjson ms "$ms" \
+                --arg     tag "$tag" \
+                '$arr + [{depth: $depth, label: $label, ms: $ms} + (if $tag != "" then {tag: $tag} else {} end)]')
+        done
+        echo "$json"
+    }
+
+    local tree_json=$(_perf_tree_to_json "${_PERF_TREE[@]}")
+    local deferred_json=$(_perf_tree_to_json "${_PERF_TREE_DEFERRED[@]}")
 
     # Read syssnap if available
     local snap_file="$log_dir/.syssnap_$$"
@@ -209,6 +230,7 @@ function __write_startup_log_impl() {
         --argjson first_precmd        "${_PROFILE_TIMES[_first_precmd]:-0}" \
         --argjson time_ready          "$ready_ms" \
         --argjson tree                "$tree_json" \
+        --argjson deferred            "$deferred_json" \
         --argjson sections            "$sections_json" \
         --argjson syssnap             "$syssnap_json" \
         --argjson zprof               "$zprof_json" \
@@ -230,6 +252,7 @@ function __write_startup_log_impl() {
                 time_ready:     $time_ready
             },
             tree:             $tree,
+            deferred:         $deferred,
             sections:         $sections,
             syssnap:          $syssnap,
             zprof:            $zprof
