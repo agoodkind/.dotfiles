@@ -258,12 +258,9 @@ function __write_startup_log_impl() {
             zprof:            $zprof
         }' > "$log"
 
-    ln -sf "$log" "$log_dir/latest.json"
-
     # Prune oldest beyond 500, in background
     (
         local -a all=("$log_dir"/*.json(N.om))
-        all=("${(@)all:#*latest.json}")
         local count=${#all}
         if (( count > 500 )); then
             rm -f "${all[-$(( count - 500 )),-1]}"
@@ -275,16 +272,11 @@ function zsh_perf_log() {
     local log_dir=~/.cache/zsh_startup
     local tty_id=$(_perf_tty_id)
     local -a matches=("$log_dir"/*_${tty_id}.json(N.om))
-    local log
-    if (( ${#matches} > 0 )); then
-        log="${matches[1]}"
-    elif [[ -f "$log_dir/latest.json" ]]; then
-        log="$log_dir/latest.json"
-    else
-        echo "No startup log found"
+    if (( ${#matches} == 0 )); then
+        echo "No startup log found for tty ${tty_id}"
         return 1
     fi
-    jq '.' "$log"
+    jq '.' "${matches[1]}"
 }
 
 function zsh_perf_history() {
