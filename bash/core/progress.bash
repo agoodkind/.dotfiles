@@ -162,7 +162,7 @@ function _progress_render_output_lines() {
     [[ ! -f "$out_file" ]] && return 0
     local line
     while IFS= read -r line; do
-        line="${line//$'\r'/}"
+        [[ "$line" == *$'\r'* ]] && line="${line##*$'\r'}"
         [[ ${#line} -gt $max_width ]] && line="${line:0:$max_width}"
         printf '%s    %s%s%s\n' "$ERASE_LINE" "$TEXT_DIM" "$line" "$TEXT_RESET" >/dev/tty
         ((_PROGRESS_OUTPUT_COUNT++)) || true
@@ -271,6 +271,7 @@ function _progress_display_loop() {
             prev_lines=0
             prev_rows="$_PROGRESS_TERM_ROWS"
             prev_cols="$_PROGRESS_TERM_COLS"
+            prev_snapshot=""
         fi
 
         if [[ -f "${state_dir}/.grid" ]]; then

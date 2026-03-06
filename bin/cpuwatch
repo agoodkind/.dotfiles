@@ -1,0 +1,793 @@
+#!/usr/bin/env -S uvx --with dearpygui --with psutil python3
+"""
+Live CPU and disk I/O monitor for background system processes.
+Renders in its own GPU-accelerated window via dearpygui/OpenGL.
+
+Usage:
+    cpuwatch                  # run indefinitely, 60s window
+    cpuwatch --window 120     # wider window
+    cpuwatch --config ~/my.conf
+
+Processes are loaded from ~/.config/cpuwatch/processes.conf (one per line):
+    name:regex
+    name:regex:r,g,b
+"""
+import argparse
+import bisect
+import os
+import re
+import subprocess
+import time
+from dataclasses import dataclass, field
+from threading import Event, Lock, Thread
+from typing import NamedTuple
+
+import psutil
+import dearpygui.dearpygui as dpg
+
+# ---------------------------------------------------------------------------
+# Tunables
+# ---------------------------------------------------------------------------
+
+FONT_SIZE: int = 15
+
+SAMPLE_INTERVAL_SECONDS: float = 1.0
+RENDER_HZ: int = 60
+DISPLAY_DELAY: float = 1.0
+BEZIER_PTS_PER_SEGMENT: int = 60
+
+SCROLL_SPEED_SECONDS: float = 5.0
+EMA_YAXIS_ALPHA: float = 0.04
+
+LINE_WEIGHT: float = 2.0
+Y_AXIS_BOTTOM_MARGIN: float = 0.05
+TEXT_INDENT: int = 4
+
+SELF_PID: str = str(os.getpid())
+
+DEFAULT_CONFIG_PATH: str = os.path.expanduser("~/.config/cpuwatch/processes.conf")
+
+
+# ---------------------------------------------------------------------------
+# Process / series configuration — add rows here to track more processes
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class CpuProcessConfig:
+    """One watched CPU process. pattern=None means 'everything else'."""
+    name:    str
+    color:   tuple[int, int, int, int]
+    pattern: re.Pattern[str] | None = None
+
+
+# Color palette for auto-assigned colors when the config file omits them.
+AUTO_COLORS: list[tuple[int, int, int, int]] = [
+    (220,  80,  80, 255),
+    (220, 200,  60, 255),
+    ( 80, 200, 220, 255),
+    (200, 100, 220, 255),
+    (255, 160,  60, 255),
+    (100, 255, 180, 255),
+]
+
+OTHER_CONFIG: CpuProcessConfig = CpuProcessConfig("other", (100, 220, 100, 255), pattern=None)
+
+
+def load_process_configs(config_path: str) -> list[CpuProcessConfig]:
+    """Load watched processes from a config file.
+
+    Format (one per line, # comments and blank lines ignored):
+        name:regex
+        name:regex:r,g,b
+
+    If the file doesn't exist, only the "other" series is shown.
+    """
+    configs: list[CpuProcessConfig] = [OTHER_CONFIG]
+
+    if not os.path.isfile(config_path):
+        return configs
+    color_idx: int = 0
+
+    with open(config_path) as fh:
+        for raw_line in fh:
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = line.split(":")
+            if len(parts) < 2:
+                continue
+            name    = parts[0].strip()
+            pattern = parts[1].strip()
+            if len(parts) >= 3:
+                rgb = tuple(int(c.strip()) for c in parts[2].split(","))
+                color = (rgb[0], rgb[1], rgb[2], 255)
+            else:
+                color = AUTO_COLORS[color_idx % len(AUTO_COLORS)]
+                color_idx += 1
+            configs.append(CpuProcessConfig(name, color, re.compile(pattern)))
+
+    return configs
+
+@dataclass(frozen=True)
+class DiskSeriesConfig:
+    name:  str
+    color: tuple[int, int, int, int]
+
+DISK_SERIES_CONFIGS: list[DiskSeriesConfig] = [
+    DiskSeriesConfig("read",  (100, 180, 255, 255)),
+    DiskSeriesConfig("write", (255, 140,  80, 255)),
+]
+
+
+# ---------------------------------------------------------------------------
+# Per-series runtime state (one instance per plotted line)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class SeriesState:
+    """Runtime state for one plotted line."""
+    name:           str
+    color:          tuple[int, int, int, int]
+    unit:           str   = "%"
+    target_value:   float = 0.0
+    render_value:   float = 0.0
+    session_sum:    float = 0.0
+    session_count:  int   = 0
+    dpg_series_tag: int | str = ""
+
+    def update_session_stats(self, value: float) -> None:
+        self.session_sum   += value
+        self.session_count += 1
+
+    def step_toward_target(self, alpha: float) -> None:
+        """Linear interpolation toward the latest ps sample."""
+        self.render_value += alpha * (self.target_value - self.render_value)
+
+    @property
+    def session_average(self) -> float:
+        return self.session_sum / self.session_count if self.session_count > 0 else 0.0
+
+
+@dataclass
+class CurveCache:
+    """Strictly append-only display buffer with GNOME Bezier smoothing.
+
+    Anchors (lerped 1Hz values) accumulate. When two consecutive anchors
+    exist, the GNOME midpoint Bezier between them is computed and appended
+    permanently to the display cache. The render loop reads with a
+    DISPLAY_DELAY offset so all displayed points are finalized.
+    """
+    series_names:       list[str]
+    _display_ts:        list[float]            = field(default_factory=list)
+    _display_vals:      dict[str, list[float]] = field(default_factory=dict)
+    _prev_anchor_ts:    float                  = field(default=-1.0)
+    _prev_anchor_vals:  dict[str, float]       = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        for name in self.series_names:
+            self._display_vals.setdefault(name, [])
+
+    def commit_anchor(self, timestamp: float, values: dict[str, float]) -> None:
+        """Called once per second with the lerped value at that boundary.
+        Computes a permanent Bezier segment from the previous anchor."""
+        if self._prev_anchor_ts < 0:
+            self._prev_anchor_ts = timestamp
+            self._prev_anchor_vals = dict(values)
+            self._display_ts.append(timestamp)
+            for name in self.series_names:
+                self._display_vals[name].append(values.get(name, 0.0))
+            return
+
+        t_prev = self._prev_anchor_ts
+        t_curr = timestamp
+        t_mid  = (t_prev + t_curr) * 0.5
+
+        for step in range(1, BEZIER_PTS_PER_SEGMENT + 1):
+            t = step / BEZIER_PTS_PER_SEGMENT
+            omt = 1.0 - t
+            self._display_ts.append(
+                omt**3 * t_prev + 3*omt**2*t*t_mid + 3*omt*t**2*t_mid + t**3*t_curr
+            )
+            for name in self.series_names:
+                v_prev = self._prev_anchor_vals.get(name, 0.0)
+                v_curr = values.get(name, 0.0)
+                self._display_vals[name].append(
+                    omt**3*v_prev + 3*omt**2*t*v_prev + 3*omt*t**2*v_curr + t**3*v_curr
+                )
+
+        self._prev_anchor_ts = timestamp
+        self._prev_anchor_vals = dict(values)
+
+    def get_visible(
+        self, x_min: float, x_max: float,
+    ) -> tuple[list[float], dict[str, list[float]]]:
+        lo = bisect.bisect_left(self._display_ts, x_min)
+        hi = bisect.bisect_right(self._display_ts, x_max)
+        return self._display_ts[lo:hi], {
+            name: self._display_vals[name][lo:hi] for name in self.series_names
+        }
+
+    def oldest_timestamp(self) -> float:
+        return self._display_ts[0] if self._display_ts else 0.0
+
+
+def make_cpu_series(configs: list[CpuProcessConfig]) -> list[SeriesState]:
+    return [SeriesState(name=cfg.name, color=cfg.color, unit="%") for cfg in configs]
+
+
+def make_disk_series() -> list[SeriesState]:
+    return [SeriesState(name=cfg.name, color=cfg.color, unit="MB/s") for cfg in DISK_SERIES_CONFIGS]
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Live GPU CPU + disk monitor")
+    parser.add_argument(
+        "--window", type=int, default=60,
+        help="Visible sliding window width in seconds (default: 60)",
+    )
+    parser.add_argument(
+        "--config", type=str, default=DEFAULT_CONFIG_PATH,
+        help=f"Path to process config file (default: {DEFAULT_CONFIG_PATH})",
+    )
+    parser.add_argument(
+        "--font", type=str, default=None,
+        help="Path to a TTF font file; omit to use the Dear PyGui default font",
+    )
+    return parser.parse_args()
+
+
+# ---------------------------------------------------------------------------
+# CPU sampling
+# ---------------------------------------------------------------------------
+
+def get_logical_cpu_count() -> int:
+    try:
+        result = subprocess.run(
+            ["sysctl", "-n", "hw.ncpu"], capture_output=True, text=True,
+        )
+        return int(result.stdout.strip())
+    except (ValueError, FileNotFoundError):
+        return os.cpu_count() or 8
+
+
+class CpuSnapshot(NamedTuple):
+    elapsed_seconds: float
+    per_process_cpu: dict[str, float]
+    other_cpu:       float
+
+
+def sample_cpu_processes(
+    logical_cpu_count: int,
+    process_configs: list[CpuProcessConfig],
+) -> CpuSnapshot:
+    scale = 1.0 / logical_cpu_count
+    ps_output = subprocess.run(
+        ["ps", "-eo", "pid,%cpu,command"], capture_output=True, text=True,
+    )
+    watched_patterns = {
+        cfg.name: cfg.pattern
+        for cfg in process_configs
+        if cfg.pattern is not None
+    }
+    raw_watched: dict[str, float] = {name: 0.0 for name in watched_patterns}
+    total_raw: float = 0.0
+
+    for raw_line in ps_output.stdout.splitlines()[1:]:
+        line = raw_line.strip()
+        if not line:
+            continue
+        columns = line.split(None, 2)
+        if len(columns) < 3:
+            continue
+        pid, raw_cpu_str, command = columns[0], columns[1], columns[2]
+        if pid == SELF_PID:
+            continue
+        try:
+            cpu_percent = float(raw_cpu_str)
+        except ValueError:
+            continue
+        total_raw += cpu_percent
+        for process_name, pattern in watched_patterns.items():
+            if pattern.search(command):
+                raw_watched[process_name] += cpu_percent
+
+    normalised_watched = {name: raw * scale for name, raw in raw_watched.items()}
+    normalised_other = (total_raw - sum(raw_watched.values())) * scale
+    return CpuSnapshot(
+        elapsed_seconds=time.monotonic(),
+        per_process_cpu=normalised_watched,
+        other_cpu=normalised_other,
+    )
+
+
+class CpuSampler:
+    def __init__(self, logical_cpu_count: int, process_configs: list[CpuProcessConfig]) -> None:
+        self._logical_cpu_count: int = logical_cpu_count
+        self._process_configs: list[CpuProcessConfig] = process_configs
+        self._stop_event: Event = Event()
+        self._lock: Lock = Lock()
+        self._pending: list[CpuSnapshot] = []
+        self._thread: Thread = Thread(target=self._loop, daemon=True)
+
+    def start(self, start_time: float) -> None:
+        self._start_time = start_time
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+
+    def drain(self) -> list[CpuSnapshot]:
+        with self._lock:
+            snapshots, self._pending = list(self._pending), []
+        return snapshots
+
+    def _loop(self) -> None:
+        while not self._stop_event.is_set():
+            snapshot = sample_cpu_processes(self._logical_cpu_count, self._process_configs)
+            elapsed = snapshot.elapsed_seconds - self._start_time
+            with self._lock:
+                self._pending.append(snapshot._replace(elapsed_seconds=elapsed))
+            self._stop_event.wait(SAMPLE_INTERVAL_SECONDS)
+
+
+# ---------------------------------------------------------------------------
+# Disk sampling
+# ---------------------------------------------------------------------------
+
+class DiskSnapshot(NamedTuple):
+    elapsed_seconds:  float
+    read_mb_per_sec:  float
+    write_mb_per_sec: float
+
+
+class DiskSampler:
+    def __init__(self) -> None:
+        self._stop_event: Event = Event()
+        self._lock: Lock = Lock()
+        self._pending: list[DiskSnapshot] = []
+        self._thread: Thread = Thread(target=self._loop, daemon=True)
+
+    def start(self, start_time: float) -> None:
+        self._start_time = start_time
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+
+    def drain(self) -> list[DiskSnapshot]:
+        with self._lock:
+            snapshots, self._pending = list(self._pending), []
+        return snapshots
+
+    def _loop(self) -> None:
+        prev_counters = psutil.disk_io_counters()
+        prev_time = time.monotonic()
+
+        while not self._stop_event.is_set():
+            self._stop_event.wait(SAMPLE_INTERVAL_SECONDS)
+            now = time.monotonic()
+            counters = psutil.disk_io_counters()
+            if counters is None or prev_counters is None:
+                continue
+            delta_seconds = now - prev_time
+            if delta_seconds <= 0:
+                continue
+            read_mb_per_sec  = (counters.read_bytes  - prev_counters.read_bytes)  / (1e6 * delta_seconds)
+            write_mb_per_sec = (counters.write_bytes - prev_counters.write_bytes) / (1e6 * delta_seconds)
+            elapsed = now - self._start_time
+            with self._lock:
+                self._pending.append(DiskSnapshot(elapsed, read_mb_per_sec, write_mb_per_sec))
+            prev_counters = counters
+            prev_time = now
+
+
+def ema_step(current: float, target: float, alpha: float) -> float:
+    return current + alpha * (target - current)
+
+
+def snap_y_ceiling(peak_value: float) -> float:
+    with_headroom = max(peak_value * 1.1, 5.0)
+    for ceiling in (10.0, 20.0, 30.0, 40.0, 50.0):
+        if with_headroom <= ceiling:
+            return ceiling
+    return float(((int(with_headroom) // 10) + 1) * 10)
+
+
+# ---------------------------------------------------------------------------
+# GUI
+# ---------------------------------------------------------------------------
+
+@dataclass
+class PlotHandles:
+    plot_tag:       str
+    xaxis_tag:      int | str
+    yaxis_tag:      int | str
+    legend_tags:    list[int | str]
+    crosshair_tag:  int | str
+    annotation_tag: int | str
+    dot_tags:       list[int | str] = field(default_factory=list)
+
+
+def build_line_series_theme(color: tuple[int, int, int, int]) -> int | str:
+    with dpg.theme() as theme_id:
+        with dpg.theme_component(dpg.mvLineSeries):
+            dpg.add_theme_color(dpg.mvPlotCol_Line, list(color), category=dpg.mvThemeCat_Plots)
+            dpg.add_theme_style(dpg.mvPlotStyleVar_LineWeight, LINE_WEIGHT, category=dpg.mvThemeCat_Plots)
+    return theme_id
+
+
+def build_scatter_theme(color: tuple[int, int, int, int], size: float = 5.0) -> int | str:
+    with dpg.theme() as theme_id:
+        with dpg.theme_component(dpg.mvScatterSeries):
+            dpg.add_theme_color(dpg.mvPlotCol_MarkerFill, list(color), category=dpg.mvThemeCat_Plots)
+            dpg.add_theme_color(dpg.mvPlotCol_MarkerOutline, list(color), category=dpg.mvThemeCat_Plots)
+            dpg.add_theme_style(dpg.mvPlotStyleVar_MarkerSize, size, category=dpg.mvThemeCat_Plots)
+    return theme_id
+
+
+def build_window_theme() -> int | str:
+    with dpg.theme() as theme_id:
+        with dpg.theme_component(dpg.mvAll):
+            dpg.add_theme_style(dpg.mvStyleVar_WindowPadding, 0, 0)
+            dpg.add_theme_style(dpg.mvStyleVar_ItemSpacing, 0, 0)
+            dpg.add_theme_style(dpg.mvStyleVar_ScrollbarSize, 0)
+    return theme_id
+
+
+def add_plot_with_series(
+    plot_tag:    str,
+    series:      list[SeriesState],
+    plot_height: int,
+) -> PlotHandles:
+    legend_tags: list[int | str] = []
+    with dpg.group(horizontal=True):
+        dpg.add_text("", indent=TEXT_INDENT)  # spacer
+        for state in series:
+            tag = dpg.add_text("", color=list(state.color))
+            legend_tags.append(tag)
+
+    dot_tags: list[int | str] = []
+
+    with dpg.plot(tag=plot_tag, height=plot_height, width=-1,
+                  no_title=True, no_mouse_pos=True, no_box_select=True,
+                  no_menus=True):
+        xaxis_tag: int | str = dpg.add_plot_axis(
+            dpg.mvXAxis,
+            no_gridlines=True, no_tick_labels=True, no_tick_marks=True,
+        )
+        with dpg.plot_axis(dpg.mvYAxis) as yaxis_id:
+            yaxis_tag: int | str = yaxis_id
+            for series_state in series:
+                series_id = dpg.add_line_series([], [])
+                series_state.dpg_series_tag = series_id
+                dpg.bind_item_theme(series_id, build_line_series_theme(series_state.color))
+
+            for state in series:
+                dot_id = dpg.add_scatter_series([], [])
+                dpg.bind_item_theme(dot_id, build_scatter_theme(state.color))
+                dot_tags.append(dot_id)
+
+        crosshair_tag = dpg.add_drag_line(
+            color=[255, 255, 255, 80], thickness=1, vertical=True,
+            default_value=0.0, show=False,
+        )
+        annotation_tag = dpg.add_plot_annotation(
+            label="", default_value=(0.0, 0.0),
+            color=[40, 40, 40, 220], show=False,
+        )
+
+    return PlotHandles(
+        plot_tag=plot_tag, xaxis_tag=xaxis_tag, yaxis_tag=yaxis_tag,
+        legend_tags=legend_tags, crosshair_tag=crosshair_tag,
+        annotation_tag=annotation_tag, dot_tags=dot_tags,
+    )
+
+
+def build_gui(
+    cpu_series: list[SeriesState],
+    disk_series: list[SeriesState],
+    font_path: str | None = None,
+) -> tuple[PlotHandles, PlotHandles, int | str]:
+    dpg.create_context()
+    dpg.create_viewport(title="cpuwatch", width=1400, height=900, resizable=True)
+    dpg.setup_dearpygui()
+
+    if font_path is not None:
+        with dpg.font_registry():
+            loaded_font = dpg.add_font(font_path, FONT_SIZE)
+        dpg.bind_font(loaded_font)
+
+    window_theme = build_window_theme()
+
+    with dpg.window(tag="win", no_title_bar=True, no_move=True,
+                    no_resize=True, no_scrollbar=True, no_scroll_with_mouse=True):
+        dpg.bind_item_theme("win", window_theme)
+        # Child window actually respects no_scrollbar/no_scroll_with_mouse;
+        # the primary window ignores them in some DPG versions.
+        with dpg.child_window(tag="content", border=False,
+                              no_scrollbar=True, no_scroll_with_mouse=True):
+            cpu_handles  = add_plot_with_series("plot_cpu",  cpu_series,  200)
+            disk_handles = add_plot_with_series("plot_disk", disk_series, 200)
+            footer_tag: int | str = dpg.add_text("", color=[120, 120, 120, 255], indent=TEXT_INDENT)
+
+    dpg.set_primary_window("win", True)
+    dpg.show_viewport()
+    return cpu_handles, disk_handles, footer_tag
+
+
+# ---------------------------------------------------------------------------
+# Per-frame update
+# ---------------------------------------------------------------------------
+
+def update_legend(handles: PlotHandles, series: list[SeriesState]) -> None:
+    for tag, state in zip(handles.legend_tags, series):
+        dpg.set_value(tag, f"  {state.name}: {state.render_value:.1f}{state.unit} (avg {state.session_average:.1f})")
+
+
+def find_value_at_time(
+    timestamps: list[float],
+    values: dict[str, list[float]],
+    target_time: float,
+    series_names: list[str],
+) -> dict[str, float]:
+    """Linear interpolation to find each series' value at a specific timestamp."""
+    result: dict[str, float] = {}
+    if not timestamps:
+        return result
+    idx = bisect.bisect_right(timestamps, target_time)
+    for name in series_names:
+        vals = values.get(name, [])
+        if not vals:
+            result[name] = 0.0
+        elif idx <= 0:
+            result[name] = vals[0]
+        elif idx >= len(vals):
+            result[name] = vals[-1]
+        else:
+            t0, t1 = timestamps[idx - 1], timestamps[idx]
+            v0, v1 = vals[idx - 1], vals[idx]
+            frac = (target_time - t0) / (t1 - t0) if t1 != t0 else 0.0
+            result[name] = v0 + frac * (v1 - v0)
+    return result
+
+
+def update_crosshair(
+    handles: PlotHandles,
+    series:  list[SeriesState],
+    cache:   CurveCache,
+    plot_tag: str,
+    x_min: float,
+    x_max: float,
+) -> None:
+    """Show a vertical crosshair + annotation with all series values when
+    the mouse is over the plot."""
+    plot_rect = dpg.get_item_rect_min(plot_tag)
+    plot_size = dpg.get_item_rect_size(plot_tag)
+    mouse_pos = dpg.get_mouse_pos(local=False)
+
+    in_plot = (
+        plot_rect[0] <= mouse_pos[0] <= plot_rect[0] + plot_size[0]
+        and plot_rect[1] <= mouse_pos[1] <= plot_rect[1] + plot_size[1]
+    )
+
+    if not in_plot:
+        dpg.configure_item(handles.crosshair_tag, show=False)
+        dpg.configure_item(handles.annotation_tag, show=False)
+        for dot_tag in handles.dot_tags:
+            dpg.set_value(dot_tag, [[], []])
+        return
+
+    frac = (mouse_pos[0] - plot_rect[0]) / max(plot_size[0], 1.0)
+    mouse_x = x_min + frac * (x_max - x_min)
+
+    visible_ts, visible_vals = cache.get_visible(x_min, x_max)
+    names = [s.name for s in series]
+    values_at_cursor = find_value_at_time(visible_ts, visible_vals, mouse_x, names)
+
+    lines: list[str] = []
+    y_peak = 0.0
+    for i, state in enumerate(series):
+        val = values_at_cursor.get(state.name, 0.0)
+        lines.append(f"● {state.name}: {val:.1f}{state.unit}")
+        y_peak = max(y_peak, val)
+        if i < len(handles.dot_tags):
+            dpg.set_value(handles.dot_tags[i], [[mouse_x], [val]])
+
+    # Position annotation above the highest line value so it doesn't cover data
+    y_axis_limits = dpg.get_axis_limits(handles.yaxis_tag)
+    y_range = y_axis_limits[1] - y_axis_limits[0] if y_axis_limits else 1.0
+    annotation_y = y_peak + y_range * 0.05
+
+    dpg.set_value(handles.crosshair_tag, mouse_x)
+    dpg.configure_item(handles.crosshair_tag, show=True)
+    dpg.configure_item(
+        handles.annotation_tag,
+        label="\n".join(lines),
+        default_value=(mouse_x, annotation_y),
+        show=True,
+    )
+
+
+def update_plot_frame(
+    handles:            PlotHandles,
+    series:             list[SeriesState],
+    cache:              CurveCache,
+    elapsed:            float,
+    window_seconds:     int,
+    pan_offset_seconds: float,
+    smooth_y_ceiling:   float,
+) -> float:
+    """Render one frame from pre-computed cached curve points.
+    Returns the visible peak for y-ceiling computation."""
+    x_max = elapsed - pan_offset_seconds
+    x_min = x_max - window_seconds
+
+    visible_ts, visible_vals = cache.get_visible(x_min, x_max)
+    visible_peak: float = 0.0
+
+    for state in series:
+        vals = visible_vals.get(state.name, [])
+        dpg.set_value(state.dpg_series_tag, [visible_ts, vals])
+        if vals:
+            visible_peak = max(visible_peak, max(vals))
+
+    y_bottom = -smooth_y_ceiling * Y_AXIS_BOTTOM_MARGIN
+    dpg.set_axis_limits(handles.xaxis_tag, x_min, x_max)
+    dpg.set_axis_limits(handles.yaxis_tag, y_bottom, smooth_y_ceiling)
+    update_legend(handles, series)
+    update_crosshair(handles, series, cache, handles.plot_tag, x_min, x_max)
+    return visible_peak
+
+
+def resize_plots_to_viewport(
+    cpu_handles:  PlotHandles,
+    disk_handles: PlotHandles,
+) -> None:
+    viewport_width  = dpg.get_viewport_client_width()
+    viewport_height = dpg.get_viewport_client_height()
+    dpg.set_item_width("win", viewport_width)
+    dpg.set_item_height("win", viewport_height)
+    dpg.set_item_width("content", viewport_width)
+    dpg.set_item_height("content", viewport_height)
+
+    text_row_height = FONT_SIZE + 6
+    # 3 text rows + child_window frame overhead (~4px)
+    reserved = text_row_height * 3 + 4
+    available_for_plots = viewport_height - reserved
+    plot1_height = max(available_for_plots // 2, 40)
+    plot2_height = max(available_for_plots - plot1_height, 40)
+
+    dpg.set_item_height(cpu_handles.plot_tag,  plot1_height)
+    dpg.set_item_width(cpu_handles.plot_tag,   viewport_width)
+    dpg.set_item_height(disk_handles.plot_tag, plot2_height)
+    dpg.set_item_width(disk_handles.plot_tag,  viewport_width)
+
+    dpg.set_y_scroll("win", 0.0)
+    dpg.set_y_scroll("content", 0.0)
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    args              = parse_args()
+    logical_cpu_count = get_logical_cpu_count()
+    cpu_process_configs = load_process_configs(args.config)
+
+    cpu_series:  list[SeriesState] = make_cpu_series(cpu_process_configs)
+    disk_series: list[SeriesState] = make_disk_series()
+
+    cpu_cache  = CurveCache(series_names=[s.name for s in cpu_series])
+    disk_cache = CurveCache(series_names=[s.name for s in disk_series])
+
+    last_buffer_append_time: float = 0.0
+    cpu_smooth_y_ceiling:  float = 10.0
+    disk_smooth_y_ceiling: float = 1.0
+    pan: list[float] = [0.0]
+
+    cpu_handles, disk_handles, footer_tag = build_gui(cpu_series, disk_series, font_path=args.font)
+
+    start_time   = time.monotonic()
+    cpu_sampler  = CpuSampler(logical_cpu_count, cpu_process_configs)
+    disk_sampler = DiskSampler()
+    cpu_sampler.start(start_time)
+    disk_sampler.start(start_time)
+
+    cpu_series_by_name:  dict[str, SeriesState] = {s.name: s for s in cpu_series}
+    disk_series_by_name: dict[str, SeriesState] = {s.name: s for s in disk_series}
+
+    def adjust_pan(delta_seconds: float) -> None:
+        display_now = time.monotonic() - start_time - DISPLAY_DELAY
+        oldest      = cpu_cache.oldest_timestamp()
+        max_pan     = max(0.0, display_now - oldest - args.window) if oldest > 0.0 else 0.0
+        pan[0]      = max(0.0, min(pan[0] + delta_seconds, max_pan))
+
+    def on_key_press(_sender: int, key_code: int) -> None:
+        if key_code == dpg.mvKey_Left:
+            adjust_pan(SCROLL_SPEED_SECONDS)
+        elif key_code == dpg.mvKey_Right:
+            adjust_pan(-SCROLL_SPEED_SECONDS)
+
+    def on_mouse_wheel(_sender: int, delta: float) -> None:
+        # Horizontal scroll (trackpad swipe or shift+scroll) pans through history.
+        # Positive delta = scroll right = toward live, negative = into history.
+        adjust_pan(-delta * SCROLL_SPEED_SECONDS)
+
+    with dpg.handler_registry():
+        dpg.add_key_press_handler(callback=on_key_press)
+        dpg.add_mouse_wheel_handler(callback=on_mouse_wheel)
+
+    lerp_alpha: float = 0.3
+    last_anchor_time: float = 0.0
+
+    while dpg.is_dearpygui_running():
+        for snapshot in cpu_sampler.drain():
+            cpu_series_by_name["other"].target_value = snapshot.other_cpu
+            for state in cpu_series:
+                if state.name in snapshot.per_process_cpu:
+                    state.target_value = snapshot.per_process_cpu[state.name]
+
+        for snapshot in disk_sampler.drain():
+            disk_series_by_name["read"].target_value  = snapshot.read_mb_per_sec
+            disk_series_by_name["write"].target_value = snapshot.write_mb_per_sec
+
+        elapsed = time.monotonic() - start_time
+
+        # Lerp at RENDER_HZ so the legend shows smooth live values
+        if elapsed - last_buffer_append_time >= 1.0 / RENDER_HZ:
+            for state in cpu_series + disk_series:
+                state.step_toward_target(lerp_alpha)
+            last_buffer_append_time = elapsed
+
+        # Every second: commit a Bezier anchor from the lerped value.
+        # The Bezier between prev_anchor → this anchor is computed and
+        # appended permanently to the display cache.
+        if elapsed - last_anchor_time >= SAMPLE_INTERVAL_SECONDS:
+            cpu_cache.commit_anchor(elapsed, {s.name: s.render_value for s in cpu_series})
+            disk_cache.commit_anchor(elapsed, {s.name: s.render_value for s in disk_series})
+            for state in cpu_series + disk_series:
+                state.update_session_stats(state.render_value)
+            last_anchor_time = elapsed
+
+        pan_offset = pan[0]
+
+        # Display is delayed by DISPLAY_DELAY so all visible points are finalized
+        display_elapsed = elapsed - DISPLAY_DELAY
+
+        cpu_visible_peak = update_plot_frame(
+            cpu_handles, cpu_series, cpu_cache,
+            display_elapsed, args.window, pan_offset, cpu_smooth_y_ceiling,
+        )
+        disk_visible_peak = update_plot_frame(
+            disk_handles, disk_series, disk_cache,
+            display_elapsed, args.window, pan_offset, disk_smooth_y_ceiling,
+        )
+
+        cpu_smooth_y_ceiling = max(
+            ema_step(cpu_smooth_y_ceiling, snap_y_ceiling(cpu_visible_peak), EMA_YAXIS_ALPHA), 1.0,
+        )
+        disk_smooth_y_ceiling = max(
+            ema_step(disk_smooth_y_ceiling, snap_y_ceiling(disk_visible_peak), EMA_YAXIS_ALPHA), 0.1,
+        )
+
+        if pan_offset == 0.0:
+            footer_text = f"{elapsed:.0f}s elapsed  |  ← → to pan  |  Ctrl-C to stop"
+        else:
+            footer_text = f"{elapsed:.0f}s elapsed  |  ◀ -{pan_offset:.0f}s  |  → to return to live"
+        dpg.set_value(footer_tag, footer_text)
+
+        resize_plots_to_viewport(cpu_handles, disk_handles)
+        dpg.render_dearpygui_frame()
+
+    cpu_sampler.stop()
+    disk_sampler.stop()
+    dpg.destroy_context()
+
+
+if __name__ == "__main__":
+    main()
