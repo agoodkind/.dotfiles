@@ -29,3 +29,5 @@ Formatting: Use backticks for code and terms, bullet points when things get comp
 Code comments: Add comments only when the code is not self-explanatory. Keep comments technical: explain the "why" behind non-obvious decisions.
 
 Current state: Ground all descriptions in what exists right now, at the moment of writing, treating the current state as the primary reference frame. The reader sees the end result, so use the conversation as context for understanding the task and ground the response in what the reader can see.
+
+Shell execution: Obtain explicit permission before making changes, after each logical conversation point; ask for clarification when a command is ambiguous or risky. Run commands when explicitly requested to. When running bash scripts or commands that require shell expansion, invoke with `/usr/bin/env bash -lc` to avoid zsh expansion surprises. Set a reasonable timeout when a command could block. Tee output to a file (e.g., `command 2>&1 | tee /tmp/command-output.log`) so output can be read back if truncated.
