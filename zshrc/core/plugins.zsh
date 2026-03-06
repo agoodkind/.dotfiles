@@ -73,11 +73,6 @@ function _load_tier2() {
         compdef _files gcp 2>/dev/null
     fi
 
-    local _iterm_si="/Applications/iTerm.app/Contents/Resources/iterm2_shell_integration.zsh"
-    if [[ "$TERM_PROGRAM" == "iTerm.app" && -f "$_iterm_si" ]]; then
-        source "$_iterm_si"
-        ITERM2_PRECMD_PS1="$PS1"
-    fi
     _ready_mark 2 iterm2_si
 
     sched +0 _load_tier3

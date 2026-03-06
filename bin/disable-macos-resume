@@ -9,9 +9,12 @@ defaults write com.apple.systempreferences NSQuitAlwaysKeepsWindows -bool false
 defaults write -g NSQuitAlwaysKeepsWindows -bool false
 
 echo "Clearing saved application states..."
-rm -rf ~/Library/Saved\ Application\ State/*
-
-echo "Making Saved Application State directory unwritable..."
+rm -rf ~/Library/Saved\ Application\ State
+mkdir ~/Library/Saved\ Application\ State
 chmod 000 ~/Library/Saved\ Application\ State
 
-echo "Done. Restart your Mac for changes to take effect."
+echo "Clearing WindowArrangements (Mission Control resume)..."
+rm -f ~/Library/Preferences/com.apple.spaces.plist
+rm -f ~/Library/Preferences/com.apple.dock.plist.lockfile
+
+echo "Done. Log out and back in (or restart) for all changes to take effect."
