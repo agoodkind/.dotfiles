@@ -32,30 +32,29 @@ _source "$DOTDOTFILES/zshrc/integrations/zoxide.zsh"
 _source "$DOTDOTFILES/zshrc/integrations/motd.zsh"
 [[ ! -f "$DOTDOTFILES/.zshrc.local" ]] || _source "$DOTDOTFILES/.zshrc.local"
 
-# Check for update status from background updater
+# Show transient "running now" state from background updater
 if [[ -f ~/.cache/dotfiles_update.lock ]]; then
-    local update_type
-    update_type=$(<~/.cache/dotfiles_update.lock)
-    if [[ "$update_type" == "weekly" ]]; then
+    local _update_type
+    _update_type=$(<~/.cache/dotfiles_update.lock)
+    if [[ "$_update_type" == "weekly" ]]; then
         print -P "%F{blue}↻ weekly update running in background%f"
-    elif [[ "$update_type" == "sync" ]]; then
+    elif [[ "$_update_type" == "sync" ]]; then
         print -P "%F{blue}↻ dotfiles sync running in background%f"
     fi
-elif [[ -f ~/.cache/dotfiles_local_changes ]]; then
-    local msg
-    msg=$(<~/.cache/dotfiles_local_changes)
-    print -P "%F{yellow}⚠️  ${msg}%f"
-    rm -f ~/.cache/dotfiles_local_changes
-elif [[ -f ~/.cache/dotfiles_update_error ]]; then
-    local err_msg
-    err_msg=$(<~/.cache/dotfiles_update_error)
-    print -P "%F{red}⚠️  ${err_msg}%f"
-    rm -f ~/.cache/dotfiles_update_error
-elif [[ -f ~/.cache/dotfiles_weekly_update_success ]]; then
-    print -P "%F{green}✓ Weekly full update completed (zinit, nvim, repair)%f"
-    rm -f ~/.cache/dotfiles_weekly_update_success
-elif [[ -f ~/.cache/dotfiles_update_success ]]; then
-    print -P "%F{green}✓ Dotfiles updated in background%f"
-    rm -f ~/.cache/dotfiles_update_success
+fi
+
+# Display all queued notifications from background processes, one per line
+local _notify_file="$HOME/.cache/dotfiles/notifications"
+if [[ -f "$_notify_file" ]]; then
+    local _level _msg
+    while IFS='|' read -r _level _msg; do
+        case "$_level" in
+            success) print -P "%F{green}✓ ${_msg}%f" ;;
+            info)    print -P "%F{blue}↻ ${_msg}%f" ;;
+            warn)    print -P "%F{yellow}⚠  ${_msg}%f" ;;
+            error)   print -P "%F{red}✗ ${_msg}%f" ;;
+        esac
+    done < "$_notify_file"
+    rm -f "$_notify_file"
 fi
 

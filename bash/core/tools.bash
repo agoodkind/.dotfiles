@@ -316,15 +316,21 @@ _remote_status() {
 }
 
 _has_local_changes() {
-    [[ -n "$(git -C "$DOTDOTFILES" status --porcelain --untracked-files=no 2>/dev/null)" ]]
+    [[ -n "$(git -C "$DOTDOTFILES" status --porcelain \
+        --untracked-files=no \
+        --ignore-submodules 2>/dev/null)" ]]
 }
 
 _has_conflicting_changes() {
     local upstream local_changed
-    upstream=$(git -C "$DOTDOTFILES" diff --name-only HEAD origin/main 2>/dev/null)
-    local_changed=$(git -C "$DOTDOTFILES" diff --name-only 2>/dev/null)
+    upstream=$(git -C "$DOTDOTFILES" diff --name-only \
+        --ignore-submodules HEAD origin/main 2>/dev/null)
+    local_changed=$(git -C "$DOTDOTFILES" diff --name-only \
+        --ignore-submodules 2>/dev/null)
     [[ -z "$upstream" || -z "$local_changed" ]] && return 1
-    comm -12 <(echo "$upstream" | sort) <(echo "$local_changed" | sort) | grep -q .
+    comm -12 \
+        <(echo "$upstream" | sort) \
+        <(echo "$local_changed" | sort) | grep -q .
 }
 
 _handle_git_lock() {
@@ -336,6 +342,126 @@ _handle_git_lock() {
     lock="$DOTDOTFILES/.git/objects/info/commit-graphs/commit-graph-chain.lock"
     if [[ -f "$lock" ]]; then
         rm -f "$lock" 2>/dev/null || true
+    fi
+}
+
+###############################################################################
+# Submodule Sync
+###############################################################################
+
+_sub_tracking_branch() {
+    local d="$1" sub="$2" sub_path="$3"
+    local branch
+    branch=$(git config -f "$d/.gitmodules" \
+        "submodule.${sub}.branch" 2>/dev/null || true)
+    if [[ -z "$branch" ]]; then
+        if git -C "$sub_path" rev-parse --verify \
+            origin/main >/dev/null 2>&1; then
+            branch="main"
+        elif git -C "$sub_path" rev-parse --verify \
+            origin/master >/dev/null 2>&1; then
+            branch="master"
+        else
+            branch="main"
+        fi
+    fi
+    printf '%s' "$branch"
+}
+
+DOTFILES_NOTIFY_FILE="$HOME/.cache/dotfiles/notifications"
+
+# Write a structured notification for display at next login.
+# Levels: success (green), info (blue), warn (yellow), error (red).
+# warn and error are also echoed to stderr for interactive visibility.
+dotfiles_notify() {
+    local level="$1" msg="$2"
+    mkdir -p "${DOTFILES_NOTIFY_FILE%/*}"
+    printf '%s|%s\n' "$level" "$msg" >> "$DOTFILES_NOTIFY_FILE"
+    [[ "$level" == "warn" || "$level" == "error" ]] \
+        && echo "$level: $msg" >&2
+}
+
+_sync_one_submodule() {
+    local d="$1" sub="$2"
+    local sub_path="$d/$sub"
+    [[ -d "$sub_path/.git" || -f "$sub_path/.git" ]] \
+        || return 0
+
+    local branch
+    branch=$(_sub_tracking_branch "$d" "$sub" "$sub_path")
+
+    git -C "$sub_path" fetch --quiet \
+        2>/dev/null || return 0
+
+    local stashed=false
+    if [[ "$sub" == "lib/scripts" ]] && \
+       [[ -n "$(git -C "$sub_path" \
+           status --porcelain 2>/dev/null)" ]]; then
+        stashed=true
+        git -C "$sub_path" stash --include-untracked \
+            --quiet 2>/dev/null || {
+            dotfiles_notify warn "stash failed in $sub"
+            return 0
+        }
+    fi
+
+    git -C "$sub_path" checkout "$branch" --quiet \
+        2>/dev/null || true
+
+    if ! git -C "$sub_path" pull --rebase --quiet \
+        2>/dev/null; then
+        git -C "$sub_path" rebase --abort \
+            2>/dev/null || true
+        dotfiles_notify warn \
+            "pull --rebase failed in $sub, local state preserved"
+    fi
+
+    if [[ "$stashed" == true ]]; then
+        if ! git -C "$sub_path" stash pop --quiet \
+            2>/dev/null; then
+            git -C "$sub_path" checkout -- . \
+                2>/dev/null || true
+            dotfiles_notify warn \
+                "stash pop conflict in $sub, recover with: cd $sub && git stash pop"
+        fi
+    fi
+}
+
+# Pull all submodules to their latest upstream commit.
+# lib/scripts: stash local work (including untracked), rebase,
+# pop. Others: just pull. Auto-commits pointer updates in the
+# parent only when the index is otherwise clean.
+_sync_submodules() {
+    local d="$DOTDOTFILES"
+    git -C "$d" submodule update --init --quiet \
+        2>/dev/null || true
+
+    local sub
+    for sub in lib/zinit lib/scripts lib/zsh-defer; do
+        _sync_one_submodule "$d" "$sub"
+    done
+
+    # Only auto-commit pointer updates when the parent index
+    # has no other staged changes — avoids hijacking unrelated
+    # work (especially from the background updater).
+    if [[ -n "$(git -C "$d" diff --cached --name-only \
+        --ignore-submodules 2>/dev/null)" ]]; then
+        return 0
+    fi
+
+    local pointer_dirty=false
+    for sub in lib/zinit lib/scripts lib/zsh-defer; do
+        if ! git -C "$d" diff --quiet \
+            -- "$sub" 2>/dev/null; then
+            git -C "$d" add -- "$sub"
+            pointer_dirty=true
+        fi
+    done
+    if [[ "$pointer_dirty" == true ]]; then
+        git -C "$d" commit --quiet \
+            -m "Update submodule pointers" \
+            -- lib/zinit lib/scripts lib/zsh-defer \
+            2>/dev/null || true
     fi
 }
 
@@ -362,8 +488,7 @@ dotfiles_update_repo() {
     remote_status=$(_remote_status)
     case "$remote_status" in
         up-to-date)
-            git -C "$d" submodule update --init --recursive --quiet
-            git -C "$d/lib/scripts" checkout main --quiet 2>/dev/null || true
+            _sync_submodules
             return 0
             ;;
         diverged)
@@ -417,7 +542,6 @@ dotfiles_update_repo() {
         echo "pulled:${pre_pull_head}:${post_pull_head}"
     fi
 
-    git -C "$d" submodule update --init --recursive --quiet
-    git -C "$d/lib/scripts" checkout main --quiet 2>/dev/null || true
+    _sync_submodules
     return 0
 }

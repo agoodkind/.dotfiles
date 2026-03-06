@@ -89,7 +89,7 @@ do_sync_only() {
     out=$(USE_DEFAULTS=true PROGRESS_NO_TTY=1 "$DOTDOTFILES/sync.sh" --non-interactive --quick --skip-git 2>&1)
     echo "$out" >> "$LOG_FILE"
     log "sync.sh exited"
-    touch "$HOME/.cache/dotfiles_update_success"
+    dotfiles_notify success "Dotfiles updated in background"
 }
 
 do_weekly_update() {
@@ -115,7 +115,7 @@ do_weekly_update() {
 
     epoch_now > "$WEEKLY_TIMESTAMP"
     log "weekly update completed"
-    touch "$HOME/.cache/dotfiles_weekly_update_success"
+    dotfiles_notify success "Weekly full update completed (zinit, nvim, repair)"
 }
 
 main() {
@@ -129,7 +129,7 @@ main() {
     if ! update_output=$(dotfiles_update_repo 2>&1); then
         log "fetch failed: $update_output"
         if [[ "$update_output" == *"conflict"* ]]; then
-            echo "$update_output" > "$HOME/.cache/dotfiles_local_changes"
+            dotfiles_notify warn "$update_output"
         fi
         return 1
     fi
