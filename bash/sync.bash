@@ -371,6 +371,7 @@ sync_cursor_config() {
 
     local cursor_dir="$HOME/.cursor"
     local src_commands="$DOTDOTFILES/.cursor/commands"
+    local src_skills="$DOTDOTFILES/.cursor/skills"
 
     # Sync commands
     if [[ -d "$src_commands" ]]; then
@@ -381,6 +382,18 @@ sync_cursor_config() {
             cmd_name=$(basename "$cmd")
             ln -sf "$cmd" "$cursor_dir/commands/$cmd_name"
             progress_log "  Linked command: $cmd_name"
+        done
+    fi
+
+    # Sync skills (each skill is a directory)
+    if [[ -d "$src_skills" ]]; then
+        mkdir -p "$cursor_dir/skills"
+        for skill in "$src_skills"/*/; do
+            [[ -d "$skill" ]] || continue
+            local skill_name
+            skill_name=$(basename "$skill")
+            ln -sf "$skill" "$cursor_dir/skills/$skill_name"
+            progress_log "  Linked skill: $skill_name"
         done
     fi
 

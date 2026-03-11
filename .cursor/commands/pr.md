@@ -71,6 +71,7 @@ Flow: Context/motivation → What it adds → Implementation approach
 
 - Reference specific methods, classes, or values that changed
 - Code references add precision. Use them when naming things matters.
+- **Describe behavior, not code**: When referencing a change, name the symbol with a backtick and describe what it does in plain language. The reviewer can read the diff; the description provides context, not a transcription.
 
 ## Uploading Images and Videos
 
@@ -128,17 +129,14 @@ Output:
 | ![Old UI](https://github.com/user-attachments/assets/abc123) | ![New UI](https://github.com/user-attachments/assets/def456) |
 ```
 
-## Prohibited Patterns
+## Style
 
-- Bullet lists or itemized formats
-- Laundry lists of methods, classes, or files changed
-- Separate "benefits" sections
-- Teaching how systems work
-- Explaining obvious things
-- "This PR fixes..." as an opener
-- Filler phrases like "improves the user experience"
-- Purpose clauses explaining why ("to improve...", "for better...")
-- Emdashes (—) or emdash-like constructs (--); restructure sentences to use periods, commas, colons, or parentheses instead
+- Describe what the change accomplishes conceptually; the reviewer can see what changed in the diff
+- Assume the reviewer understands the system; surface the intent and context the diff cannot convey
+- Open with the observable problem (bug fix) or the capability being added (feature)
+- Use concrete, specific language; let the facts carry the meaning
+- Separate clauses with periods, commas, colons, or parentheses
+- Name symbols with backticks and describe their behavior in plain language
 
 ## Branch Naming Convention
 
@@ -182,47 +180,24 @@ Examples:
 
 ### Bug Fix PR
 
-✅ Good Title: "Reset list state on pull-to-refresh"
+Title: "Reset list state on pull-to-refresh"
 
-✅ Good Description:
+Description:
 "Ticket: <https://ag.atlassian.net/browse/AG-1234>
 
 The silver list was showing duplicate entries after pull-to-refresh. The issue was that `fetchSilverElectrons` was appending results instead of replacing them when `offset` was zero. This PR resets the list state before fetching when triggered by refresh."
 
 ### Feature/Iteration PR
 
-✅ Good Title: "Implement account logos in spending insights resolvers"
+Title: "Implement account logos in spending insights resolvers"
 
-✅ Good Description:
+Description:
 "Ticket: <https://ag.atlassian.net/browse/ST-10627>
 Depends on: #24675
 
 Spending insights screens need to display bank logos for accounts that have transactions in the selected period. This PR implements the resolver logic across three spending insights endpoints.
 
 Each resolver identifies which accounts have transaction data, maps those to their institution, and returns up to 4 logos. Chime accounts are prioritized when present, followed by external accounts. The Hub resolver shows logos for all accounts in the selected scope, while the breakdown and history detail views filter to only accounts with actual transactions in the result set."
-
-❌ Bad Feature PR (laundry list):
-"This PR adds eight helper methods to `utils.rb` including `institution_name_to_icon`, `extract_external_account_uuids_with_data`, `extract_unique_institutions`, and `build_account_logos`. It also updates `hub_resolver.rb`, `main_category_breakdown_resolver.rb`, and `spending_history_details_resolver.rb`."
-
-(Wrong: lists methods and files instead of explaining what happens)
-
-❌ Bad Feature PR (framed as bug fix):
-"The types were added in #24675 but returned empty arrays without resolver implementation. This PR fixes the empty arrays by implementing the actual resolver logic."
-
-(Wrong: frames placeholder code as a bug rather than describing the feature being built)
-
-### Common Bad Patterns
-
-❌ Bad Title:
-
-- "fix: Fix silver bug"
-- "[AG-1234] Add amount validation to silver processor"
-- "Update logic" (too vague)
-
-❌ Bad Description:
-"This PR fixes a bug in the silver fetching logic. Previously the code was appending results incorrectly. Now it properly resets state. This improves the user experience by preventing confusion from duplicate items."
-
-(Missing ticket link, filler phrases)
 
 ## Output Format
 
