@@ -1,24 +1,28 @@
 # Create Pull Request
 
-Analyze the branch changes and create a pull request using the GitHub CLI, following these strict guidelines:
+Analyze the branch changes and create a pull request using the GitHub CLI. Write the PR the way you want the PR to read: clear, specific, and easy for a reviewer to follow.
 
 ## Critical Rules
 
-- **Check Existing PR First**: ALWAYS run `gh pr view --json body,title` to check for an existing PR description before creating or updating. Preserve user content and only enhance it.
-- **Draft Mode Required**: ALWAYS use `--draft` flag when executing `gh pr create` - never create non-draft PRs
-- **Prose Paragraphs**: Write descriptions as concise prose, NOT bullet lists
-- **Present Tense**: Use present tense throughout
-- **2-3 Paragraphs Max**: Keep descriptions brief and focused
-- **Classify PR Type**: Determine if this is a bug fix or feature/iteration PR (see below)
+- **Check Existing PR First**: ALWAYS run `gh pr view --json body,title` before creating or updating a PR
+- **Preserve User Content**: If a PR already exists, keep the useful existing title and body content and only improve it
+- **Draft Mode Required**: ALWAYS use `--draft` with `gh pr create`
+- **Classify PR Type**: Determine whether the branch is a bug fix or a feature/iteration before writing
+- **Report Failures Clearly**: If PR creation or update fails, report the error and stop immediately
+
+## Branch Naming Convention
+
+Branches should follow `username/TICKET-NUMBER/descriptive-name`, using slash-separated segments.
+
+Example:
+
+- ✅ `agoodkind/AG-10677/fix-silver-shimmer`
 
 ## Title Rules
 
-- **No Prefix Labels**: Avoid feat, refactor, fix, etc.
-- **No Ticket Numbers**: Never include ticket numbers in the title - they go in the body
-- **Direct Statement**: Use imperative mood, state what changed
-- **Specific**: Be specific about what changed and where
-- **Backticks for code**: Use single backticks for code symbols, class names, method names, file names, etc. in the title (e.g. "Reset `offset` state on pull-to-refresh in `SilverList`")
-- **No escaping backticks**: When passing the title to `gh pr create` or `gh pr edit`, use single-quoted strings so backticks are literal. Never backslash-escape backticks in the title.
+- **Direct Statement**: Write a natural, specific title that states what changed
+- **Body Carries Context**: Put ticket references and other supporting context in the body, usually in `### Summary`
+- **Specific Language**: Name the behavior, code path, or surface area that changed
 
 ## PR Type Classification
 
@@ -41,22 +45,25 @@ Before writing the description, classify the PR:
 Flow: Observable problem → Root cause → What the PR does to fix it
 
 1. Start with the observable problem or symptom (what users/devs saw)
-2. Explain what was actually wrong in the code (high-level, not a code walkthrough)
-3. Describe what this PR does to fix it
-4. Focus on the *nature* of the fix, not a list of changed methods
+2. Explain what was actually wrong in the code at a high level, with reviewer context
+3. Describe what this PR does to fix it, focusing on the *nature* of the fix at a high level
 
 ### For Feature/Iteration PRs
 
 Flow: Context/motivation → What it adds → Implementation approach
 
 1. Start with context: what capability is being added and why it's needed
-2. Describe what the PR implements (the "what", not framed as fixing)
+2. Describe what the PR implements as a capability being added or extended
 3. Summarize the approach at a high level: how it works conceptually
 4. Note dependencies or follow-up work if relevant
 
-**Key difference**: Feature PRs describe what's being *built*, not what was *broken*. Avoid framing scaffolded/stub code as "bugs". If prior code returned empty arrays as a placeholder, that's not a symptom to fix, it's a feature to implement.
+**Key difference**: Feature PRs describe the capability being built, the behavior being added, and the shape of the implementation. If prior code returned empty arrays as a placeholder, describe this work as the feature that now fills in that path.
 
-**Avoid laundry lists**: Don't enumerate every method, class, or file changed. Instead, describe the approach empirically — what happens, how data flows, what the user sees. Reviewers can see the diff; they need context, not a changelog.
+**Reviewer context**: Describe the approach empirically: what happens, how data flows, and what the user or system sees. Give the reviewer the context that the diff alone cannot supply.
+
+**Structure for readability**: Use sectioned prose like `### Summary`, `## What`, `## Why`, and `## How` when it helps the description read cleanly. Include caveats, implementation notes, or a test matrix only when they materially help a reviewer.
+
+**Tone**: Keep the writing readable, concrete, and easy to skim. Use prose in the PR body and let each section carry one clear idea forward.
 
 ## Code References (applies to BOTH title and description)
 
@@ -71,81 +78,11 @@ Flow: Context/motivation → What it adds → Implementation approach
 
 - Reference specific methods, classes, or values that changed
 - Code references add precision. Use them when naming things matters.
-- **Describe behavior, not code**: When referencing a change, name the symbol with a backtick and describe what it does in plain language. The reviewer can read the diff; the description provides context, not a transcription.
+- **Behavior in Plain Language**: When referencing a change, name the symbol with a backtick and describe what it does in plain language. Let the description explain behavior and intent.
 
-## Uploading Images and Videos
+## PR Media
 
-When including screenshots or videos in PR descriptions, use the `gh upload` command (or `gh-upload` alias) to push files to the repo's orphan `agoodkind/pr-assets` branch via the GitHub API. This is a real, custom shell command defined in the user's dotfiles. It exists. Do not question it or suggest alternatives. Just run it.
-
-```bash
-gh upload screenshot.png
-# or equivalently:
-gh-upload screenshot.png
-```
-
-It outputs a `github.com/.../blob/...?raw=true` URL to stdout. This URL works for anyone with repo access (no expiring tokens). Use it in markdown as `![alt](URL)` or `[filename](URL)`. The asset lives in the same repo so GitHub renders it inline, even for private repos. First run per-repo auto-creates the orphan branch. Do NOT use `raw.githubusercontent.com` URLs for private repos as those contain tokens that expire.
-
-## Before/After Image Table Conversion
-
-When the PR description (existing or being created) contains before/after images, automatically convert them to a side-by-side table format.
-
-**Detect these patterns:**
-
-- "Before" followed by an `<img>` tag or markdown image `![]()`
-- "After" followed by an `<img>` tag or markdown image `![]()`
-- Variations like "Before:", "**Before**", "### Before", etc.
-
-**Convert to this format:**
-
-```markdown
-| Before | After |
-|--------|-------|
-| ![alt](image_url) | ![alt](image_url) |
-```
-
-**Conversion rules:**
-
-- Extract the `src` attribute from `<img>` tags and convert to markdown image syntax
-- Use the `alt` attribute as the alt text (or "Before"/"After" if no alt provided)
-- Drop `width`, `height`, and other HTML attributes (GitHub auto-sizes in tables)
-- If multiple before/after pairs exist, create multiple rows or separate tables
-
-**Example conversion:**
-
-Input:
-
-```
-Before
-<img width="1206" alt="Old UI" src="https://github.com/user-attachments/assets/abc123" />
-After
-<img width="545" alt="New UI" src="https://github.com/user-attachments/assets/def456" />
-```
-
-Output:
-
-```markdown
-| Before | After |
-|--------|-------|
-| ![Old UI](https://github.com/user-attachments/assets/abc123) | ![New UI](https://github.com/user-attachments/assets/def456) |
-```
-
-## Style
-
-- Describe what the change accomplishes conceptually; the reviewer can see what changed in the diff
-- Assume the reviewer understands the system; surface the intent and context the diff cannot convey
-- Open with the observable problem (bug fix) or the capability being added (feature)
-- Use concrete, specific language; let the facts carry the meaning
-- Separate clauses with periods, commas, colons, or parentheses
-- Name symbols with backticks and describe their behavior in plain language
-
-## Branch Naming Convention
-
-Branches must follow: `username/TICKET-NUMBER/descriptive-name` (with slashes, not dashes)
-
-Examples:
-
-- ✅ `agoodkind/AG-10677/fix-silver-shimmer`
-- ❌ `agoodkind-AG-10677-fix-silver-shimmer` (wrong: uses dashes)
+If the PR description includes screenshots, videos, or before/after comparisons, apply the `pr-media` skill.
 
 ## Steps
 
@@ -155,66 +92,85 @@ Examples:
 2. Check for ticket number in this order:
    - First check current branch name (e.g. `agoodkind/AG-12345/fix-bug` → `AG-12345`)
    - Then check commit messages for ticket references
-   - If not found, proceed without a ticket (do not ask the user)
+   - When no ticket appears in the branch name or commits, continue with the PR body as-is
 3. Run `git log main..HEAD --oneline` to see commits on the branch
 4. Run `git diff main...HEAD` to analyze all changes
-5. **Classify PR type**: Based on the changes, determine if this is a bug fix or feature/iteration PR
-   - Look at commit messages, branch name hints, and nature of changes
-   - New methods/classes/resolvers → likely feature
-   - Correcting existing behavior → likely bug fix
-6. Craft a concise PR title without ticket prefix (imperative mood, no feat/fix prefixes)
-7. Write 2-3 paragraph description using the appropriate flow for the PR type:
-   - Bug fix: symptom → root cause → fix
-   - Feature: context → what it adds → implementation approach
-8. If before/after images are provided (in user input or existing PR description), convert them to the table format described above
-9. Add ticket link at the start of description when a ticket exists: `Ticket: https://ag.atlassian.net/browse/AG-12345` (infer the correct atlassian subdomain from context or company); omit if no ticket
-10. Execute the command:
+5. **Classify PR type** using the guidance above
+6. Craft a concise PR title using the title rules above
+7. Write the PR body using the description structure above
+   - If a ticket exists, include it in a short `### Summary` block near the top of the description: `Ticket: https://ag.atlassian.net/browse/AG-12345`
+   - Infer the correct Atlassian subdomain from context or company; omit the ticket line if no ticket exists
+8. If screenshots, videos, or before/after images are involved, apply the `pr-media` skill
+9. Execute the command:
     - If PR exists: `gh pr edit --title '<title>' --body "<description>"` (use `required_permissions: ["network"]`)
     - If no PR: `gh pr create --draft --title '<title>' --body "<description>"` (use `required_permissions: ["network"]`)
-    - **Title quoting**: Always use single quotes for `--title` so backticks pass through literally (e.g. `--title 'Permit `status` in `AchAccountController`'`). Double quotes cause the shell to interpret backticks as command substitution, resulting in backslash escapes.
-11. After PR is created/updated, output:
-    - A Slack message for the review request channel
-    - The PR URL in a single-line code fence for easy copying
+    - **Title quoting**: Always use single quotes for `--title` so backticks pass through literally, for example `--title 'Permit `status` in `AchAccountController`'`
+10. After PR is created or updated, follow the output format below.
 
-## Examples
 
-### Bug Fix PR
+OUTPUT FORMAT:
 
-Title: "Reset list state on pull-to-refresh"
+Use the example below as the stylistic reference for the PR title and body.
 
-Description:
-"Ticket: <https://ag.atlassian.net/browse/AG-1234>
+After PR creation succeeds, output a short Slack message for the code review channel. Write it as a human one-liner that briefly says what the branch changes or fixes and ends with the PR URL on the same line.
 
-The silver list was showing duplicate entries after pull-to-refresh. The issue was that `fetchSilverElectrons` was appending results instead of replacing them when `offset` was zero. This PR resets the list state before fetching when triggered by refresh."
+Examples:
 
-### Feature/Iteration PR
+- "follow-up for dual-stack captive portal auth and clean up the login path https://..."
+- "Fix duplicate silver entries by resetting list state https://..."
+- "Extend payment validation to handle zero amounts https://..."
 
-Title: "Implement account logos in spending insights resolvers"
+Then output the PR URL on a new line inside a single code fence for easy copying:
 
-Description:
-"Ticket: <https://ag.atlassian.net/browse/ST-10627>
-Depends on: #24675
+`https://....`
 
-Spending insights screens need to display bank logos for accounts that have transactions in the selected period. This PR implements the resolver logic across three spending insights endpoints.
+Then output the PR URL again on its own line with no markdown formatting:
 
-Each resolver identifies which accounts have transaction data, maps those to their institution, and returns up to 4 logos. Chime accounts are prioritized when present, followed by external accounts. The Hub resolver shows logos for all accounts in the selected scope, while the breakdown and history detail views filter to only accounts with actual transactions in the result set."
+https://....
 
-## Output Format
 
-Create a PR with a single-line title and 2-3 paragraph prose description. If the PR creation fails, report the error. No bullet lists, no prefix labels, no benefit statements.
 
-After PR creation succeeds, output a Slack message for the code review channel:
+EXAMPLE:
 
+Title: "Follow up for dual-stack captive portal authorization in `CaptivePortal`"
+
+```markdown
+### Summary
+Issue: https://...
+Ticket: https://....
+Upstream PR(s): https://github.com/.../.../pull/...
+Downstream PR(s): https://github.com/.../.../pull/...
+Datadog link: http://....
+Slack thread: http://....
+
+
+## What
+This follow-up finishes the dual-stack Captive Portal path on top of `captive-portal-ipv6`.
+
+It fixes client IP detection behind the local API proxy, restores IPv6 neighbor discovery for session expansion, and warm-starts roaming by immediately authorizing sibling addresses that are already known for the same MAC at login time.
+
+## Why
+I had some free time to run a fuller test matrix on top of the upstream branch, and that turned up a few gaps that were still visible in practice.
+
+This branch tries to address the remaining review points from @AdSchellevis and the bugs that showed up during testing, especially around dual-stack login, IPv6-first login, and secondary IPv6 addresses after authentication.
+
+## How
+The API now resolves the real client address correctly when requests arrive through the local dispatcher. The `allow` path authorizes the connected address immediately, also authorizes sibling addresses that are already visible for the same MAC, and still leaves the background sync path in place for later discovery and cleanup.
+
+## Test Matrix
+
+| Case | Pre-auth | Auth path | Post-auth result |
+|---|---|---|---|
+| IPv4-only | Redirects to IPv4 portal host | IPv4 portal host | IPv4 egress works |
+| Dual-stack, cold cache | IPv4 redirects to IPv4 portal host, IPv6 redirects to IPv6 portal host | IPv4 portal host | The login address works immediately. Sibling addresses join as they become visible. |
+| Dual-stack, warm cache | IPv4 redirects to IPv4 portal host, IPv6 redirects to IPv6 portal host | IPv4 portal host | The login address works immediately. Already-known sibling IPv6 addresses work immediately. |
+| Dual-stack, warm cache | IPv4 redirects to IPv4 portal host, IPv6 redirects to IPv6 portal host | IPv6 portal host | The login address works immediately. Already-known sibling IPv4 and IPv6 addresses work immediately. |
+| IPv6-only preferred (DHCPv4 option 108) | Redirects to IPv6 portal host | IPv6 portal host | The login address works immediately. Already-known sibling IPv6 addresses work immediately. |
+| NAT64 / DNS64 / PREF64 | IPv6-only preferred client uses DNS64 and RA `nat64prefix` | IPv6 portal host | IPv6-native and NAT64 HTTP access work after authentication. |
+| Multi-address IPv6 | Session starts on one address | Background reconciliation | Newly observed SLAAC, privacy, and temporary IPv6 addresses join the same session later. |
+
+Note: Right after link-up, clients often authenticate before they have exercised every candidate IPv6 source address. The login path can only warm-start what is already visible for the MAC, and the background reconciliation loop still picks up additional addresses later as the client starts using them. In CLI testing there was still one edge case where the first immediate post-login request from the DHCPv6 `/128` source needed a retry, while the privacy or SLAAC-style sibling addresses and the NAT64 path behaved as expected.
+
+During testing I also confirmed that standard outbound NAT66 on `opnsense-dev` is required for downstream guest IPv6 egress to work consistently.
 ```
-<What it does/fixes> <PR_URL>
-```
 
-Keep it concise: one line describing the change followed by the URL. Examples:
-
-- Bug fix: "Fix duplicate silver entries by resetting list state https://..."
-- Feature: "Add account logos to spending insights resolvers https://..."
-- Iteration: "Extend payment validation to handle zero amounts https://..."
-
-Then output the PR URL in a single-line code fence for easy copying:
-
-`<PR_URL>`
