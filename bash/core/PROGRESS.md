@@ -19,9 +19,12 @@ BuildKit-style progress display: state files plus a background display loop that
 - **progress_vertex_error \<id\> [label]**
   Overwrite vertex file with `error|...`.
 
+- **progress_vertex_warning \<id\> [label]**
+  Overwrite vertex file with `warning|...`.
+
 
 - **progress_vertex_detail \<id\> \<detail\>**
-  Attach a short annotation to a vertex. Can be called at any point while the vertex is `started`, or before calling complete/error. The detail survives through status transitions and renders as a dimmed suffix after the label: `[-] Checking build  (no cached build found)` while running, `[+] Checking build  (no cached build found)` when complete.
+  Attach a short annotation to a vertex. Can be called at any point while the vertex is `started`, or before calling complete/error/warning. The detail survives through status transitions and renders as a dimmed suffix after the label: `[-] Checking build  (no cached build found)` while running, `[+] Checking build  (no cached build found)` when complete.
 
 - **progress_vertex_exec \<label\> \<command\> [args...]**
   Start a vertex, run command, stream stdout/stderr to `N.out` (TTY mode) or inline (non-TTY), then complete or error the vertex based on exit code. In TTY mode, the display loop picks up `N.out` and renders a scrolling output window below the active vertex.
@@ -40,12 +43,12 @@ BuildKit-style progress display: state files plus a background display loop that
 
 ## Scrolling output window
 
-When a vertex is `started` and has a `.out` file, the display loop renders the last N lines of output below the vertex status line. Lines are dimmed, indented, and truncated to terminal width. The window height adapts to terminal size: `output_max = terminal_rows - vertex_count - 2`, clamped between 3 and 15 lines. On completion, the output window collapses (final render omits output lines). Terminal dimensions are re-read each loop iteration via `stty size`, so resizing the terminal adjusts the layout live.
+When a vertex is `started`, `warning`, or `error` and has a `.out` file, the display loop renders the last N lines of output below the vertex status line. Lines are dimmed, indented, and truncated to terminal width. The window height adapts to terminal size: `output_max = terminal_rows - vertex_count - 2`, clamped between 3 and 15 lines. On completion, the output window collapses (final render omits output lines), while warning/error retain output in the final render. Terminal dimensions are re-read each loop iteration via `stty size`, so resizing the terminal adjusts the layout live.
 
 ## State protocol
 
 - **State dir**: created by `progress_begin`, removed by `progress_end` or EXIT trap.
-- **`N.vertex`**: one file per vertex. Content: `status|label|timestamp|detail`. The `detail` field is optional (empty string when unset). Status values: `started`, `completed`, `error`.
+- **`N.vertex`**: one file per vertex. Content: `status|label|timestamp|detail`. The `detail` field is optional (empty string when unset). Status values: `started`, `completed`, `warning`, `error`.
 - **`N.out`**: command output from `progress_vertex_exec`. Written by the exec function, read by the display loop for the scrolling output window.
 - **`.counter`**: integer file tracking the next vertex ID. Incremented by `progress_vertex_start`. File-based (not a shell variable) so it persists across `$(...)` subshells.
 - **`.done`**: created when the session ends. Display loop exits when it sees this file.
@@ -59,6 +62,7 @@ When a vertex is `started` and has a `.out` file, the display loop renders the l
 - `PROGRESS_NO_TTY=1` (used by the background updater)
 - `GITHUB_ACTIONS=true` or `CI=true`
 - `/dev/tty` is not a character device
+- `/dev/tty` exists but is not writable (no controlling TTY)
 
 When not a TTY, `progress_begin` still creates the state dir and sets the log file, but skips the display loop and EXIT trap. `progress_vertex_exec` falls back to linear inline output with log-only streaming.
 

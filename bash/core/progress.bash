@@ -44,8 +44,12 @@ function _progress_is_tty() {
     [[ "${PROGRESS_NO_TTY:-}" == "1" ]] && return 1
     [[ "${GITHUB_ACTIONS:-}" == "true" ]] && return 1
     [[ "${CI:-}" == "true" ]] && return 1
-    [[ -c /dev/tty ]] && return 0
-    return 1
+    [[ -c /dev/tty ]] || return 1
+    # Some headless contexts expose /dev/tty as a char device but do not
+    # provide a writable controlling terminal. Probe writability to avoid
+    # launching the display loop when /dev/tty writes would fail.
+    : >/dev/tty 2>/dev/null || return 1
+    return 0
 }
 
 function _progress_state_dir_create() {
@@ -118,6 +122,23 @@ function progress_vertex_error() {
     fi
 }
 
+function progress_vertex_warning() {
+    local n="$1"
+    local label="${2:-}"
+    local detail=""
+    if [[ -f "${_PROGRESS_STATE_DIR}/${n}.vertex" ]]; then
+        local _c; _c=$(<"${_PROGRESS_STATE_DIR}/${n}.vertex")
+        local _r="${_c#*|}"
+        [[ -z "$label" ]] && label="${_r%%|*}"
+        local _r2="${_r#*|}"; local _r3="${_r2#*|}"
+        detail="${_r3%%|*}"
+    fi
+    _progress_vertex_write "$n" "warning" "$label" "" "$detail"
+    if [[ -n "${_PROGRESS_LOG_FILE:-}" ]]; then
+        echo "$(date +%Y-%m-%dT%H:%M:%S) [vertex $n] warning: $label" >> "$_PROGRESS_LOG_FILE"
+    fi
+}
+
 
 function progress_vertex_detail() {
     local n="$1"
@@ -146,6 +167,7 @@ function _progress_render_vertex_line() {
     case "$status" in
         started)   printf '[-] %s%s\n' "$label" "$suffix" ;;
         completed) printf '%s[+] %s%s%s\n' "$COLOR_GREEN" "$label" "$TEXT_RESET" "$suffix" ;;
+        warning)   printf '%s[!] %s%s%s\n' "$COLOR_YELLOW" "$label" "$TEXT_RESET" "$suffix" ;;
         error)     printf '%s[x] %s%s%s\n' "$COLOR_RED" "$label" "$TEXT_RESET" "$suffix" ;;
         *)         printf '[-] %s%s\n' "$label" "$suffix" ;;
     esac
@@ -263,7 +285,9 @@ function _progress_display_loop() {
         _progress_term_size
         if [[ "$_PROGRESS_TERM_ROWS" != "$prev_rows" || "$_PROGRESS_TERM_COLS" != "$prev_cols" ]]; then
             local j=0
-            local clear_count=$(( prev_lines > 0 ? prev_lines + 2 : 0 ))
+            # Only clear the previously rendered progress block. Clearing extra
+            # lines on every resize step erases unrelated terminal history.
+            local clear_count=$(( prev_lines > 0 ? prev_lines : 0 ))
             for (( j=0; j<clear_count; j++ )); do
                 printf '\r%s%s' "$ERASE_LINE" "$CURSOR_UP" >/dev/tty
             done
@@ -340,7 +364,7 @@ function _progress_display_loop() {
                 printf '%s\n' "${rendered[$j]}" >/dev/tty
                 ((total_rendered++)) || true
                 local vid=$(( j + 1 ))
-                if [[ "${vertex_statuses[$j]}" == "started" || "${vertex_statuses[$j]}" == "error" ]] && [[ -f "${state_dir}/${vid}.out" ]]; then
+                if [[ "${vertex_statuses[$j]}" == "started" || "${vertex_statuses[$j]}" == "warning" || "${vertex_statuses[$j]}" == "error" ]] && [[ -f "${state_dir}/${vid}.out" ]]; then
                     _progress_render_output_lines "${state_dir}/${vid}.out" "$output_max"
                     ((total_rendered += _PROGRESS_OUTPUT_COUNT)) || true
                 fi
@@ -376,7 +400,7 @@ function _progress_display_loop() {
         for ((j=0; j<num; j++)); do
             printf '%s\n' "${rendered[$j]}" >/dev/tty
             local vid=$(( j + 1 ))
-            if [[ "${vertex_statuses[$j]}" == "error" && -f "${state_dir}/${vid}.out" ]]; then
+            if [[ ( "${vertex_statuses[$j]}" == "warning" || "${vertex_statuses[$j]}" == "error" ) && -f "${state_dir}/${vid}.out" ]]; then
                 _progress_render_output_lines "${state_dir}/${vid}.out" 8
             fi
         done

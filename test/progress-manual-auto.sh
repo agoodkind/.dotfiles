@@ -511,6 +511,30 @@ check "No stacking, and Step 1/2/3 appeared in dimmed output window?"
 fi
 
 # ──────────────────────────────────────────────────────────
+header "23. Warning status keeps output visible"
+# ──────────────────────────────────────────────────────────
+if should_run; then
+(
+    set -euo pipefail
+    source "${HOME}/.dotfiles/bash/core/progress.bash"
+    progress_begin "/tmp/progress-manual-23.log"
+    vid=$(progress_vertex_start "Checking native changes")
+    progress_vertex_detail "$vid" "native files changed"
+    if [[ -n "${_PROGRESS_STATE_DIR:-}" ]]; then
+        printf '%s\n' \
+            "       78df4fc7..1b7095f0" \
+            "       ios/Podfile.lock: react-native-document-picker" \
+            > "${_PROGRESS_STATE_DIR}/${vid}.out"
+    fi
+    sleep 0.4
+    progress_vertex_warning "$vid"
+    sleep 0.8
+    progress_end
+)
+check "Saw [!] Checking native changes (yellow) and the changed-file lines remained visible below it?"
+fi
+
+# ──────────────────────────────────────────────────────────
 # Summary
 # ──────────────────────────────────────────────────────────
 printf "\n\033[1;36m━━━ Results ━━━\033[0m\n"
