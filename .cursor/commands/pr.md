@@ -59,26 +59,23 @@ Flow: Context/motivation → What it adds → Implementation approach
 
 **Key difference**: Feature PRs describe the capability being built, the behavior being added, and the shape of the implementation. If prior code returned empty arrays as a placeholder, describe this work as the feature that now fills in that path.
 
-**Reviewer context**: Describe the approach empirically: what happens, how data flows, and what the user or system sees. Give the reviewer the context that the diff alone cannot supply.
+**Reviewer context**: Describe what happens, how data flows, and what the user or system sees. Give the reviewer the context that the diff alone cannot supply.
 
-**Structure for readability**: Use sectioned prose like `### Summary`, `## What`, `## Why`, and `## How` when it helps the description read cleanly. Include caveats, implementation notes, or a test matrix only when they materially help a reviewer.
+**Section roles**: Give each section one clear job. Use `## What` for the behavior or capability change, `## Why` for the reviewer context or motivation, and `## How` for the implementation path, ownership boundary, and any important systems that stay unchanged.
+
+**Section length**: In most PRs, `## What`, `## Why`, and `## How` each fit in one short paragraph. Add a second short paragraph only when the reviewer needs more context.
+
+**How section**: Lead with the path you chose. Name the owning system first, explain how the flow works at the system level, and call out important systems or paths that remain unchanged when that boundary matters.
+
+**Optional sections**: Add sections like `## Backward compatibility` or `## Testing` when they carry distinct reviewer context of their own.
 
 **Tone**: Keep the writing readable, concrete, and easy to skim. Use prose in the PR body and let each section carry one clear idea forward.
 
 ## Code References (applies to BOTH title and description)
 
-- Use single backticks for all code symbols, function names, variable names, class names, file names, reserved keywords, CLI flags, etc. This applies in both the PR title and the description body.
-- Use fenced code blocks for multi-line snippets (description only):
-
-  ```ruby
-  def example
-    # relevant code
-  end
-  ```
-
-- Reference specific methods, classes, or values that changed
-- Code references add precision. Use them when naming things matters.
-- **Behavior in Plain Language**: When referencing a change, name the symbol with a backtick and describe what it does in plain language. Let the description explain behavior and intent.
+- Use single backticks for the small set of symbols, classes, files, endpoints, or flow IDs that materially help a reviewer orient.
+- Let prose carry the explanation around those anchors.
+- Use fenced code blocks only when a short snippet materially clarifies the behavior or interface being described.
 
 ## PR Media
 
@@ -110,7 +107,7 @@ If the PR description includes screenshots, videos, or before/after comparisons,
 
 OUTPUT FORMAT:
 
-Use the example below as the stylistic reference for the PR title and body.
+Use the example below as the stylistic reference for the PR title and body, and as the default level of detail for an ordinary PR.
 
 After PR creation succeeds, output a short Slack message for the code review channel. Write it as a human one-liner that briefly says what the branch changes or fixes and ends with the PR URL on the same line.
 
@@ -132,45 +129,30 @@ https://....
 
 EXAMPLE:
 
-Title: "Follow up for dual-stack captive portal authorization in `CaptivePortal`"
+Title: "Use ScreenFlow for external account linking consent"
 
 ```markdown
 ### Summary
-Issue: https://...
 Ticket: https://....
-Upstream PR(s): https://github.com/.../.../pull/...
-Downstream PR(s): https://github.com/.../.../pull/...
-Datadog link: http://....
 Slack thread: http://....
 
 
 ## What
-This follow-up finishes the dual-stack Captive Portal path on top of `captive-portal-ipv6`.
+This adds a ScreenFlow-based consent path for external account linking in `server-api`.
 
-It fixes client IP detection behind the local API proxy, restores IPv6 neighbor discovery for session expansion, and warm-starts roaming by immediately authorizing sibling addresses that are already known for the same MAC at login time.
+Supported clients receive the `external_account_linking` deeplink and complete consent through the server-owned flow.
 
 ## Why
-I had some free time to run a fuller test matrix on top of the upstream branch, and that turned up a few gaps that were still visible in practice.
+We want this consent path to live in the ScreenFlow stack so the server owns the transition, consent write, and completion behavior in one place.
 
-This branch tries to address the remaining review points from @AdSchellevis and the bugs that showed up during testing, especially around dual-stack login, IPv6-first login, and secondary IPv6 addresses after authentication.
+Legacy clients still need the existing path, so this work has to coexist cleanly with the current resolver behavior.
 
 ## How
-The API now resolves the real client address correctly when requests arrive through the local dispatcher. The `allow` path authorizes the connected address immediately, also authorizes sibling addresses that are already visible for the same MAC, and still leaves the background sync path in place for later discovery and cleanup.
+This uses ScreenFlow in `server-api`, and it ships without any `project-otter` change.
 
-## Test Matrix
+Supported clients get the `external_account_linking` deeplink, the server records consent during the agree transition, and the flow advances to the completion screen after the RPC succeeds.
 
-| Case | Pre-auth | Auth path | Post-auth result |
-|---|---|---|---|
-| IPv4-only | Redirects to IPv4 portal host | IPv4 portal host | IPv4 egress works |
-| Dual-stack, cold cache | IPv4 redirects to IPv4 portal host, IPv6 redirects to IPv6 portal host | IPv4 portal host | The login address works immediately. Sibling addresses join as they become visible. |
-| Dual-stack, warm cache | IPv4 redirects to IPv4 portal host, IPv6 redirects to IPv6 portal host | IPv4 portal host | The login address works immediately. Already-known sibling IPv6 addresses work immediately. |
-| Dual-stack, warm cache | IPv4 redirects to IPv4 portal host, IPv6 redirects to IPv6 portal host | IPv6 portal host | The login address works immediately. Already-known sibling IPv4 and IPv6 addresses work immediately. |
-| IPv6-only preferred (DHCPv4 option 108) | Redirects to IPv6 portal host | IPv6 portal host | The login address works immediately. Already-known sibling IPv6 addresses work immediately. |
-| NAT64 / DNS64 / PREF64 | IPv6-only preferred client uses DNS64 and RA `nat64prefix` | IPv6 portal host | IPv6-native and NAT64 HTTP access work after authentication. |
-| Multi-address IPv6 | Session starts on one address | Background reconciliation | Newly observed SLAAC, privacy, and temporary IPv6 addresses join the same session later. |
-
-Note: Right after link-up, clients often authenticate before they have exercised every candidate IPv6 source address. The login path can only warm-start what is already visible for the MAC, and the background reconciliation loop still picks up additional addresses later as the client starts using them. In CLI testing there was still one edge case where the first immediate post-login request from the DHCPv6 `/128` source needed a retry, while the privacy or SLAAC-style sibling addresses and the NAT64 path behaved as expected.
-
-During testing I also confirmed that standard outbound NAT66 on `opnsense-dev` is required for downstream guest IPv6 egress to work consistently.
+## Backward compatibility
+Clients below the version gate stay on the existing consent path, so the current `ExternalAccountConsent` resolver, `ConsentExternalAccountDataUse` mutation, and `ExternalAccountsAdded` resolver continue to work as they do today.
 ```
 
