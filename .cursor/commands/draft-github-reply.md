@@ -1,13 +1,13 @@
 # Draft GitHub Reply
 
-Use the current conversation context to draft a reply for GitHub (PR comment, issue comment, review). Output ONLY the reply, copy-pasteable.
+Use the current conversation context to draft a reply for GitHub (PR comment, issue comment, review). Output ONLY the reply in a single outer four-backtick fence so it stays copy-pasteable.
 
 ## Critical Rules
 
 - **GitHub Flavored Markdown**: Use GFM syntax (headings, tables, task lists, syntax-highlighted code blocks, etc.)
 - **Zero preamble/postamble**: The ENTIRE assistant message must be the reply itself. No "Here's your reply:", no "Let me draft that", no summary after. Nothing before, nothing after.
 - **Copy-pasteable**: The reply should be directly pasteable into GitHub with correct rendering.
-- **No nested fences**: If the reply contains fenced code blocks, do NOT wrap the entire reply in an outer code fence. The inner triple backticks close the outer fence, breaking the output.
+- **Protect copy-paste output from chat rendering**: Cursor renders chat as markdown and can mangle GitHub content before the user copies it. Wrap the entire reply in a single outer four-backtick fence so the content remains literal, even when the reply itself contains triple-backtick code blocks.
 - **Inline code for symbols**: Use single backticks for code symbols, function names, variable names, file names, class names, reserved keywords, CLI flags, etc. (e.g. `updateTransactionDetails`, `isFromMerchantContext`, `--verbose`).
 
 ## GitHub Flavored Markdown Features (use freely)
@@ -16,8 +16,8 @@ Use the current conversation context to draft a reply for GitHub (PR comment, is
 - Bold: `**bold**`
 - Italic: `*italic*`
 - Strikethrough: `~~struck~~`
-- Inline code: `` `code` ``
-- Code blocks with syntax highlighting: ` ```ruby ... ``` `
+- Inline code: use single backticks around items like `code`
+- Code blocks with syntax highlighting: use fenced code blocks and include a language like `ruby`
 - Links: `[text](url)`
 - Images: `![alt](url)`
 - Tables: `| col | col |`
@@ -42,12 +42,13 @@ Use the current conversation context to draft a reply for GitHub (PR comment, is
 
 1. Read the current conversation context to understand what's being replied to.
 2. Draft a reply using GitHub Flavored Markdown.
-3. Check if the reply contains fenced code blocks (triple backticks).
+3. Wrap the entire reply in a single outer four-backtick fence, with no language tag.
 4. Output ONLY the reply. No other text in the message.
 
 ## Output Format
 
-- **Reply has NO code blocks**: Wrap the entire reply in a single fenced code block.
-- **Reply HAS code blocks**: Output the reply as plain text (no outer fence). Nesting fenced code blocks inside a fenced code block breaks rendering. The inner triple backticks close the outer fence prematurely, cutting off the rest of the reply.
+Always wrap the entire reply in a single outer four-backtick fenced block, with no language tag.
 
-The assistant message must contain the reply and absolutely nothing else.
+Do this whether or not the reply itself contains triple-backtick code blocks. The outer four-backtick fence avoids nesting conflicts and preserves the exact text for copy-paste into GitHub.
+
+The assistant message must contain the reply and absolutely nothing else outside the outer four-backtick fence.

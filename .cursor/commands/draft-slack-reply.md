@@ -1,26 +1,25 @@
 # Draft Slack Reply
 
-Use the current conversation context to draft a reply for Slack. Output ONLY the reply text directly in chat (no wrapper).
+Use the current conversation context to draft a reply for Slack. Output ONLY the reply text in a single outer four-backtick fence so it stays copy-pasteable in chat.
 
 ## Critical Rules
 
 - **Slack mrkdwn, NOT Markdown**: Slack uses its own `mrkdwn` format. It is NOT standard or GitHub-flavored markdown.
-- **Output ONLY the reply**: No preamble, no explanation, no "here's your reply", no code fences. Just output the raw Slack message text directly. The user will copy it from the chat.
+- **Protect copy-paste output from chat rendering**: Cursor renders chat as markdown and can mangle Slack content that contains `*bold*`, pipes, brackets, tables, or code fences. Wrap the entire reply in a single outer four-backtick fence so the content stays literal and copy-pasteable.
+- **Output ONLY the reply content**: No preamble, no explanation, and no wrapper text outside the outer four-backtick fence. The user will copy the Slack message from inside the fence.
 
 ## Slack mrkdwn Syntax (use these, not standard markdown)
 
-| Element        | Slack mrkdwn          | Standard Markdown (DO NOT USE) |
-|----------------|-----------------------|-------------------------------|
-| Bold           | `*bold*`              | `**bold**`                    |
-| Italic         | `_italic_`            | `*italic*`                    |
-| Strikethrough  | `~struck~`            | `~~struck~~`                  |
-| Inline code    | `` `code` ``          | `` `code` ``                  |
-| Code block     | ` ``` `               | ` ```lang `                   |
-| Link           | plain URL only (see below) | `[text](url)`            |
-| Bulleted list  | `• item` or `- item`  | `- item`                      |
-| Blockquote     | `> quote`             | `> quote`                     |
-| User mention   | `<@U12345>`           | N/A                           |
-| Emoji          | `:emoji_name:`        | N/A                           |
+- Bold: Slack `*bold*`, not Markdown `**bold**`
+- Italic: Slack `_italic_`, not Markdown `*italic*`
+- Strikethrough: Slack `~struck~`, not Markdown `~~struck~~`
+- Inline code: use single backticks around items like `code`
+- Code block: use triple backticks with no language tag
+- Link: plain URL only (see below), not `[text](url)`
+- Bulleted list: `• item` or `- item`
+- Blockquote: `> quote`
+- User mention: `<@U12345>`
+- Emoji: `:emoji_name:`
 
 ## Links
 
@@ -41,17 +40,18 @@ The `<url|text>` hyperlink syntax only works for messages sent programmatically 
 
 ## Inline Code (Backticks)
 
-Use backticks for:
-- Function/method names: `` `handleSubmit` ``, `` `fetchUser()` ``
-- Variable/constant names: `` `userId` ``, `` `MAX_RETRIES` ``
-- Class/module names: `` `UserService` ``, `` `ApplicationController` ``
-- File paths: `` `src/utils/api.ts` ``
-- CLI commands: `` `git rebase` ``, `` `bundle exec rspec` ``
-- Config keys, env vars: `` `RAILS_ENV` ``, `` `database.yml` ``
-- HTTP methods/status codes: `` `POST` ``, `` `404` ``
-- Boolean/keyword values: `` `true` ``, `` `nil` ``, `` `undefined` ``
-- Error names/types: `` `TypeError` ``, `` `ActiveRecord::RecordNotFound` ``
-- Gem/package names: `` `sidekiq` ``, `` `lodash` ``
+Use inline code for technical references such as:
+
+- Function/method names like `handleSubmit` and `fetchUser()`
+- Variable/constant names like `userId` and `MAX_RETRIES`
+- Class/module names like `UserService` and `ApplicationController`
+- File paths like `src/utils/api.ts`
+- CLI commands like `git rebase` and `bundle exec rspec`
+- Config keys and env vars like `RAILS_ENV` and `database.yml`
+- HTTP methods and status codes like `POST` and `404`
+- Boolean and keyword values like `true`, `nil`, and `undefined`
+- Error names and types like `TypeError` and `ActiveRecord::RecordNotFound`
+- Gem and package names like `sidekiq` and `lodash`
 
 ## Writing Style
 
@@ -68,8 +68,10 @@ Use backticks for:
 
 1. Read the current conversation context to understand what's being replied to.
 2. Draft a reply using Slack mrkdwn formatting.
-3. Output the reply directly as your entire response. No code fences, no preamble, no explanation.
+3. Output the reply as your entire response inside a single outer four-backtick fence, with no language tag and no text outside the fence.
 
 ## Output Format
 
-The raw Slack message text, output directly. Your entire response IS the Slack message. Do not wrap it in anything.
+Wrap the entire Slack reply in a single outer four-backtick fenced block, with no language tag.
+
+Why: a four-backtick outer fence does not conflict with inner triple-backtick code blocks that may appear in the Slack message, and it prevents Cursor chat from rendering Slack mrkdwn as standard markdown.

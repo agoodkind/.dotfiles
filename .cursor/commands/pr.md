@@ -1,14 +1,17 @@
-# Create Pull Request
+# Create Or Revise Pull Request
 
-Analyze the branch changes and create a pull request using the GitHub CLI. Write the PR the way you want the PR to read: clear, specific, and easy for a reviewer to follow.
+Analyze the branch changes and the current conversation context, then create, revise, or reword a pull request using the GitHub CLI. Write the PR the way you want the PR to read: clear, specific, and easy for a reviewer to follow.
 
 ## Critical Rules
 
 - **Check Existing PR First**: ALWAYS run `gh pr view --json body,title` before creating or updating a PR
 - **Preserve User Content**: If a PR already exists, keep the useful existing title and body content and only improve it
+- **Use Context To Choose The Action**: Determine from the user's request whether they want a new PR, a reworded existing PR, a title-only edit, a body-only edit, or a full rewrite
 - **Draft Mode Required**: ALWAYS use `--draft` with `gh pr create`
 - **Classify PR Type**: Determine whether the branch is a bug fix or a feature/iteration before writing
+- **Confirm Before Writing To GitHub**: Before running `gh pr create` or `gh pr edit`, show the proposed title/body in chat and ask for explicit confirmation
 - **Report Failures Clearly**: If PR creation or update fails, report the error and stop immediately
+- **Protect copy-paste output from chat rendering**: When output is meant to be copied into another system, wrap it in a single outer four-backtick fence so Cursor does not mangle tables, pipes, brackets, ASCII diagrams, IPv6 literals, or inner triple-backtick code blocks
 
 ## Branch Naming Convention
 
@@ -29,11 +32,13 @@ Example:
 Before writing the description, classify the PR:
 
 **Bug Fix PR**: Something was broken and this fixes it:
+
 - Users/devs experienced unexpected behavior
 - Error states, crashes, incorrect data
 - Regressions from previous changes
 
 **Feature/Iteration PR**: Adding or extending functionality:
+
 - New capabilities that didn't exist before
 - Implementing spec'd behavior (even if prior code was scaffolded)
 - Enhancements to existing features
@@ -46,7 +51,7 @@ Flow: Observable problem → Root cause → What the PR does to fix it
 
 1. Start with the observable problem or symptom (what users/devs saw)
 2. Explain what was actually wrong in the code at a high level, with reviewer context
-3. Describe what this PR does to fix it, focusing on the *nature* of the fix at a high level
+3. Describe what this PR does to fix it, focusing on the _nature_ of the fix at a high level
 
 ### For Feature/Iteration PRs
 
@@ -84,32 +89,47 @@ If the PR description includes screenshots, videos, or before/after comparisons,
 ## Steps
 
 1. **Check for existing PR**: Run `gh pr view --json body,title` to see if a PR already exists for this branch
-   - If a PR exists, read its current title and description. Preserve user content when updating.
-   - If no PR exists, proceed with creating a new one
-2. Check for ticket number in this order:
-   - First check current branch name (e.g. `agoodkind/AG-12345/fix-bug` → `AG-12345`)
-   - Then check commit messages for ticket references
-   - When no ticket appears in the branch name or commits, continue with the PR body as-is
-3. Run `git log main..HEAD --oneline` to see commits on the branch
-4. Run `git diff main...HEAD` to analyze all changes
-5. **Classify PR type** using the guidance above
-6. Craft a concise PR title using the title rules above
-7. Write the PR body using the description structure above
-   - If a ticket exists, include it in a short `### Summary` block near the top of the description: `Ticket: https://ag.atlassian.net/browse/AG-12345`
-   - Infer the correct Atlassian subdomain from context or company; omit the ticket line if no ticket exists
-8. If screenshots, videos, or before/after images are involved, apply the `pr-media` skill
-9. Execute the command:
-    - If PR exists: `gh pr edit --title '<title>' --body "<description>"` (use `required_permissions: ["network"]`)
-    - If no PR: `gh pr create --draft --title '<title>' --body "<description>"` (use `required_permissions: ["network"]`)
-    - **Title quoting**: Always use single quotes for `--title` so backticks pass through literally, for example `--title 'Permit `status` in `AchAccountController`'`
-10. After PR is created or updated, follow the output format below.
+    - If a PR exists, read its current title and description. Preserve user content when updating.
+    - If no PR exists, proceed with creating a new one
+2. **Choose the action from context**:
+    - If the user asked to create a PR, prepare a new PR
+    - If the user asked to reword, revise, tighten, expand, or otherwise improve the PR, update the existing PR instead of creating a new one
+    - If the user only mentioned the title or only mentioned the body, limit the edit to that scope unless the surrounding context clearly calls for more
+    - If the requested action is ambiguous, ask a clarifying question before drafting
+3. Check for ticket number in this order:
+    - First check current branch name (e.g. `agoodkind/AG-12345/fix-bug` → `AG-12345`)
+    - Then check commit messages for ticket references
+    - When no ticket appears in the branch name or commits, continue with the PR body as-is
+4. Run `git log main..HEAD --oneline` to see commits on the branch
+5. Run `git diff main...HEAD` to analyze all changes
+6. **Classify PR type** using the guidance above
+7. Craft a concise PR title using the title rules above
+8. Write the PR body using the description structure above
+    - If a ticket exists, include it in a short `### Summary` block near the top of the description: `Ticket: https://ag.atlassian.net/browse/AG-12345`
+    - Infer the correct Atlassian subdomain from context or company; omit the ticket line if no ticket exists
+9. If screenshots, videos, or before/after images are involved, apply the `pr-media` skill
+10. **Show the proposed change and confirm**:
+    - Present the proposed title and body in chat inside outer four-backtick fences
+    - State whether you plan to create a new PR or edit the existing PR
+    - Ask for explicit confirmation before making the GitHub change
+11. Execute the command only after confirmation:
+    - If creating a new PR: `gh pr create --draft --title '<title>' --body "<description>"` (use `required_permissions: ["network"]`)
+    - If editing title and body: `gh pr edit --title '<title>' --body "<description>"` (use `required_permissions: ["network"]`)
+    - If editing title only: `gh pr edit --title '<title>'`
+    - If editing body only: `gh pr edit --body "<description>"`
+    - **Title quoting**: Always use single quotes for `--title` so backticks pass through literally, for example:
 
+        ```sh
+        gh pr create --draft --title 'Permit `status` in `AchAccountController`' --body "<description>"
+        ```
+
+12. After the PR is created or updated, follow the output format below.
 
 OUTPUT FORMAT:
 
 Use the example below as the stylistic reference for the PR title and body, and as the default level of detail for an ordinary PR.
 
-After PR creation succeeds, output a short Slack message for the code review channel. Write it as a human one-liner that briefly says what the branch changes or fixes and ends with the PR URL on the same line.
+After the PR change succeeds, output a short Slack message for the code review channel inside a single outer four-backtick fence. Write it as a human one-liner that briefly says what the branch changes, fixes, or rewords and ends with the PR URL on the same line.
 
 Examples:
 
@@ -117,42 +137,47 @@ Examples:
 - "Fix duplicate silver entries by resetting list state https://..."
 - "Extend payment validation to handle zero amounts https://..."
 
-Then output the PR URL on a new line inside a single code fence for easy copying:
+Then output the PR URL on a new line inside its own outer four-backtick fence for easy copying:
 
-`https://....`
+```text
+https://....
+```
 
 Then output the PR URL again on its own line with no markdown formatting:
 
 https://....
 
-
+If you show any PR body text in chat for review or confirmation, wrap that text in a single outer four-backtick fence as well.
 
 EXAMPLE:
 
-Title: "Use ScreenFlow for external account linking consent"
+Title: "Attach source fields to sample report tasks"
 
 ```markdown
 ### Summary
+
 Ticket: https://....
 Slack thread: http://....
 
-
 ## What
-This adds a ScreenFlow-based consent path for external account linking in `server-api`.
 
-Supported clients receive the `external_account_linking` deeplink and complete consent through the server-owned flow.
+This attaches source metadata to sample report tasks in `example-app`.
+
+Each task now carries the initiating actor, request source, and a stable label so downstream systems can trace who started it and where it came from.
 
 ## Why
-We want this consent path to live in the ScreenFlow stack so the server owns the transition, consent write, and completion behavior in one place.
 
-Legacy clients still need the existing path, so this work has to coexist cleanly with the current resolver behavior.
+Support needs enough context to trace scheduled sample tasks without digging through application logs or guessing which caller kicked off the work.
+
+The existing task flow stays in place, so this change only adds metadata around the work rather than changing how the underlying report is produced.
 
 ## How
-This uses ScreenFlow in `server-api`, and it ships without any `project-otter` change.
 
-Supported clients get the `external_account_linking` deeplink, the server records consent during the agree transition, and the flow advances to the completion screen after the RPC succeeds.
+This writes the metadata in `example-app` when the sample task is enqueued, and it keeps the worker contract unchanged for existing consumers.
+
+The worker reads the extra fields if they are present, includes them in structured logs, and ignores them when older callers do not send them.
 
 ## Backward compatibility
-Clients below the version gate stay on the existing consent path, so the current `ExternalAccountConsent` resolver, `ConsentExternalAccountDataUse` mutation, and `ExternalAccountsAdded` resolver continue to work as they do today.
-```
 
+Older callers can keep sending the current payload, and existing workers continue processing sample tasks without any version gate or protocol change.
+```
