@@ -1,0 +1,79 @@
+# Deny patterns for pre-commit hook.
+# One ripgrep regex per line. Blank lines and lines starting with # are ignored.
+# These patterns are matched against the staged diff (git diff --cached).
+# Use: git commit --no-verify to bypass for confirmed false positives.
+
+# ─── Ruby / Rails ─────────────────────────────────────────────────────────────
+
+# Core Rails classes
+ActiveRecord
+ApplicationRecord
+ApplicationController
+Rails\.application
+Rails\.env
+
+# ActiveRecord associations and validations
+has_many\s
+belongs_to\s
+has_one\s
+has_and_belongs_to_many\s
+validates\s
+before_action\s
+after_action\s
+before_save\s
+after_commit\s
+
+# Rails file/require patterns
+require\s+['"]rails
+gem\s+['"]
+bundle exec
+
+# Rails template/render patterns
+render\s+:?partial
+\.html\.erb
+\.json\.jbuilder
+
+# Rails environment files
+production\.rb
+staging\.rb
+database\.yml
+
+# ─── Go ───────────────────────────────────────────────────────────────────────
+
+# Package and import declarations
+^package\s+\w+
+^import\s+\(
+
+# Function declarations (method receivers and main)
+^func\s+\(
+^func\s+main\(\)
+^func\s+\w+\(
+
+# Common Go stdlib calls that appear in generated code
+fmt\.Println
+fmt\.Printf
+fmt\.Fprintf
+log\.Fatal
+log\.Fatalf
+http\.ListenAndServe
+http\.HandleFunc
+json\.Marshal
+json\.Unmarshal
+
+# Go type declarations
+^type\s+\w+\s+struct\s*\{
+^type\s+\w+\s+interface\s*\{
+
+# ─── General proprietary indicators ──────────────────────────────────────────
+
+# Internal/corporate domain patterns
+\.internal$
+\.corp$
+corp\.
+\.internal\.
+
+# LLM-generated proprietary service references that have appeared in this repo
+console.*debug.*rails
+transaction.service
+bank.account
+server.api

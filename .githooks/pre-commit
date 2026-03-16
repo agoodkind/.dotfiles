@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+#
+# Pre-commit hook: blocks proprietary content from being committed to this
+# public dotfiles repo.
+#
+# Three sequential checks:
+#   1. File extension gate  - hard-blocks .rb, .go, Gemfile, go.mod, etc.
+#   2. Pattern scan         - deny-patterns (committed) + deny-patterns.local (gitignored)
+#   3. Gitleaks             - secret/credential detection
+#
+# Bypass all checks (for confirmed false positives):
+#   git commit --no-verify
+
+set -euo pipefail
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DENY_PATTERNS="$HOOK_DIR/deny-patterns"
+DENY_PATTERNS_LOCAL="$HOOK_DIR/deny-patterns.local"
+
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+blocked=false
+
+# ─── 1. File extension gate ───────────────────────────────────────────────────
+
+BANNED_EXTENSIONS=(
+    "\.rb$"
+    "\.go$"
+    "\.gemspec$"
+    "^Gemfile$"
+    "^Gemfile\.lock$"
+    "^Rakefile$"
+    "^go\.mod$"
+    "^go\.sum$"
+)
+
+staged_files=$(git diff --cached --name-only --diff-filter=ACM)
+
+banned_files=()
+while IFS= read -r file; do
+    [[ -z "$file" ]] && continue
+    basename=$(basename "$file")
+    for pattern in "${BANNED_EXTENSIONS[@]}"; do
+        if echo "$basename" | grep -qE "$pattern" || echo "$file" | grep -qE "$pattern"; then
+            banned_files+=("$file")
+            break
+        fi
+    done
+done <<< "$staged_files"
+
+if [[ ${#banned_files[@]} -gt 0 ]]; then
+    echo ""
+    echo -e "${RED}${BOLD}╔══════════════════════════════════════════════════════════════╗${RESET}"
+    echo -e "${RED}${BOLD}║  BLOCKED: Ruby/Go files detected in staged changes           ║${RESET}"
+    echo -e "${RED}${BOLD}╚══════════════════════════════════════════════════════════════╝${RESET}"
+    echo ""
+    echo -e "${BOLD}These file types should not exist in this dotfiles repo:${RESET}"
+    for f in "${banned_files[@]}"; do
+        echo -e "  ${RED}✗  $f${RESET}"
+    done
+    echo ""
+    echo -e "${YELLOW}If this was intentional, bypass with:${RESET}"
+    echo -e "  ${BOLD}git commit --no-verify${RESET}"
+    echo ""
+    exit 1
+fi
+
+# ─── 2. Pattern scan ──────────────────────────────────────────────────────────
+
+if ! command -v rg &>/dev/null; then
+    echo -e "${YELLOW}WARNING: ripgrep (rg) not found, skipping pattern scan${RESET}"
+else
+    pattern_files=()
+    [[ -f "$DENY_PATTERNS" ]] && pattern_files+=("$DENY_PATTERNS")
+    [[ -f "$DENY_PATTERNS_LOCAL" ]] && pattern_files+=("$DENY_PATTERNS_LOCAL")
+
+    if [[ ${#pattern_files[@]} -gt 0 ]]; then
+        # Exclude deny-patterns files so we don't match the pattern list itself
+        staged_diff=$(git diff --cached -- . ':(exclude).githooks/deny-patterns' ':(exclude).githooks/deny-patterns.local.example')
+
+        pattern_blocked=false
+        while IFS= read -r pattern; do
+            # Skip blank lines and comments
+            [[ -z "$pattern" || "$pattern" =~ ^[[:space:]]*# ]] && continue
+
+            if echo "$staged_diff" | rg -q "$pattern" 2>/dev/null; then
+                if ! $pattern_blocked; then
+                    echo ""
+                    echo -e "${RED}${BOLD}╔══════════════════════════════════════════════════════════════╗${RESET}"
+                    echo -e "${RED}${BOLD}║  BLOCKED: Proprietary content pattern detected               ║${RESET}"
+                    echo -e "${RED}${BOLD}╚══════════════════════════════════════════════════════════════╝${RESET}"
+                    echo ""
+                    pattern_blocked=true
+                    blocked=true
+                fi
+                echo -e "  ${RED}✗  Pattern matched:${RESET} ${BOLD}$pattern${RESET}"
+                echo "$staged_diff" | rg --color=never -n "$pattern" 2>/dev/null | head -5 | while IFS= read -r line; do
+                    echo "     $line"
+                done
+            fi
+        done < <(cat "${pattern_files[@]}")
+
+        if $pattern_blocked; then
+            echo ""
+            echo -e "${YELLOW}If this was intentional, bypass with:${RESET}"
+            echo -e "  ${BOLD}git commit --no-verify${RESET}"
+            echo ""
+        fi
+    fi
+fi
+
+# ─── 3. Gitleaks ─────────────────────────────────────────────────────────────
+
+if command -v gitleaks &>/dev/null; then
+    gitleaks_args=(protect --staged --no-banner)
+    [[ -f "$HOOK_DIR/../.gitleaks.toml" ]] && gitleaks_args+=(--config "$HOOK_DIR/../.gitleaks.toml")
+
+    if ! gitleaks "${gitleaks_args[@]}" 2>&1; then
+        echo ""
+        echo -e "${YELLOW}If this was intentional, bypass with:${RESET}"
+        echo -e "  ${BOLD}git commit --no-verify${RESET}"
+        echo ""
+        blocked=true
+    fi
+else
+    echo -e "${YELLOW}WARNING: gitleaks not found, skipping secret scan${RESET}"
+    echo -e "  Install with: brew install gitleaks"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+$blocked && exit 1
+exit 0

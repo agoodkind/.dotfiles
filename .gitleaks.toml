@@ -1,0 +1,38 @@
+title = "dotfiles gitleaks config"
+
+[extend]
+# Extend the default gitleaks ruleset shipped with the binary.
+useDefault = true
+
+# ─── Allowlists ───────────────────────────────────────────────────────────────
+
+[allowlist]
+  description = "Files that intentionally contain patterns that look like secrets"
+  paths = [
+    # The deny-patterns files contain regex literals that would trip secret scanners.
+    '''.githooks/deny-patterns''',
+    '''.githooks/deny-patterns.local.example''',
+    # gitleaks config itself may reference pattern strings.
+    '''.gitleaks.toml''',
+  ]
+  # Known-safe example values in documentation / example files.
+  regexes = [
+    # Placeholder values used in example configs.
+    '''YOUR_.*_HERE''',
+    '''your-.*-key''',
+    '''example\.com''',
+  ]
+
+# ─── Custom rules ─────────────────────────────────────────────────────────────
+
+[[rules]]
+  id = "dotfiles-ssh-private-key-inline"
+  description = "Inline SSH private key content"
+  regex = '''-----BEGIN (RSA|EC|DSA|OPENSSH) PRIVATE KEY-----'''
+  tags = ["key", "ssh"]
+
+[[rules]]
+  id = "dotfiles-generic-api-token"
+  description = "Generic API token assignment"
+  regex = '''(?i)(api[_-]?token|api[_-]?key|access[_-]?token)\s*[=:]\s*['"]?[A-Za-z0-9_\-]{20,}['"]?'''
+  tags = ["token", "api"]

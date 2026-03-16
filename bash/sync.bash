@@ -434,7 +434,7 @@ sync_git_hooks() {
     for hook in "$src_hooks"/*; do
         [[ -f "$hook" ]] || continue
         hook_name=$(basename "$hook")
-        ln -sf "../../.githooks/$hook_name" "$hooks_dir/$hook_name"
+        ln -sfn "../../.githooks/$hook_name" "$hooks_dir/$hook_name"
         progress_log "  Linked hook: $hook_name"
         linked=$((linked + 1))
     done
