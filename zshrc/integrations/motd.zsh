@@ -108,22 +108,38 @@ function _logininfo() {
 
 # ==============================================================================
 # STARTUP EXECUTION
+#
+# Guard: no TTY → skip entirely (non-interactive SSH, cron, pipes)
+#
+# Trigger rules (first match wins):
+#   1. Force file present    → always run, consume the flag
+#   2. Interactive SSH (PTY) → always run, skip cache update
+#   3. Local shell           → run only when cache is missing or stale
 # ==============================================================================
 
-if [[ -f "$MOTD_FORCE_FILE" ]]; then
-  rm -f "$MOTD_FORCE_FILE"
+function _motd_should_run() {
+  [[ -t 1 ]] || return 1
+
+  if [[ -f "$MOTD_FORCE_FILE" ]]; then
+    rm -f "$MOTD_FORCE_FILE"
+    return 0
+  fi
+
+  if [[ -n "$SSH_TTY" ]] && [[ ! -f "$MOTD_DISABLE_SSH" ]]; then
+    return 0
+  fi
+
+  if [[ ! -f "$MOTD_CACHE_FILE" ]]; then
+    mkdir -p "$HOME/.cache"
+    return 0
+  fi
+
+  _motd_cache_expired
+}
+
+if _motd_should_run; then
   _motd_run_scripts
-  touch "$MOTD_CACHE_FILE"
-elif [[ -n "$SSH_CONNECTION$SSH_CLIENT" ]] && [[ ! -f "$MOTD_DISABLE_SSH" ]]; then
-  _motd_run_scripts
-  touch "$MOTD_CACHE_FILE"
-elif [[ ! -f "$MOTD_CACHE_FILE" ]]; then
-  mkdir -p "$HOME/.cache"
-  _motd_run_scripts
-  touch "$MOTD_CACHE_FILE"
-elif _motd_cache_expired; then
-  _motd_run_scripts
-  touch "$MOTD_CACHE_FILE"
+  [[ -z "$SSH_TTY" ]] && touch "$MOTD_CACHE_FILE"
 fi
 
 _logininfo
