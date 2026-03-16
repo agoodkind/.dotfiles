@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
+export DEBIAN_FRONTEND=noninteractive
 
 # Source utilities
 source "${DOTDOTFILES}/bash/core/colors.bash"
@@ -154,7 +155,6 @@ install_packages() {
     # Install apt packages
     if [ ${#packages_to_install_via_apt[@]} -gt 0 ]; then
         debug_echo "Installing ${#packages_to_install_via_apt[@]} apt packages: ${packages_to_install_via_apt[*]}"
-        color_echo YELLOW "Installing ${#packages_to_install_via_apt[@]} apt packages..."
         sudo apt-get install -y -qq "${packages_to_install_via_apt[@]}"
         debug_echo "apt-get install completed with exit code: $?"
     else
@@ -413,12 +413,8 @@ else
 repository..."
 fi
 
-color_echo YELLOW "Updating package lists..."
 sudo apt-get update -y -qq
 
-# Debug: Show what we're about to process
-color_echo YELLOW "Total packages to process: ${#ALL_APT_PACKAGES[@]}"
-color_echo CYAN "Packages to process: ${ALL_APT_PACKAGES[*]}"
 install_packages "${ALL_APT_PACKAGES[@]}"
 
 kill_nano() {

@@ -16,7 +16,7 @@ fi
 
 mkdir -p ~/.cache
 touch "$LOCK_FILE"
-trap "rm -f '$LOCK_FILE'" EXIT
+trap 'rm -f "$LOCK_FILE"' EXIT
 
 LOG_FILE="$HOME/.cache/dotfiles_update.log"
 WEEKLY_TIMESTAMP="$HOME/.cache/dotfiles_weekly_update"
@@ -52,7 +52,7 @@ do_apt_upgrade() {
     is_ubuntu || return 0
     isinstalled apt-get || return 0
 
-    if ! sudo -n true >> "$LOG_FILE" 2>&1; then
+    if ! ( sudo -n true ) >> "$LOG_FILE" 2>&1; then
         log "Skipping apt upgrade (sudo requires a password)"
         return 0
     fi
@@ -85,9 +85,7 @@ needs_weekly_update() {
 
 do_sync_only() {
     log "Running sync.sh --quick --skip-git"
-    local out
-    out=$(USE_DEFAULTS=true PROGRESS_NO_TTY=1 "$DOTDOTFILES/sync.sh" --non-interactive --quick --skip-git 2>&1)
-    echo "$out" >> "$LOG_FILE"
+    USE_DEFAULTS=true "$DOTDOTFILES/sync.sh" --quick --skip-git >> "$LOG_FILE" 2>&1
     log "sync.sh exited"
     dotfiles_notify success "Dotfiles updated in background"
 }
@@ -95,9 +93,7 @@ do_sync_only() {
 do_weekly_update() {
     log "Weekly full update started"
 
-    local sync_output
-    sync_output=$(USE_DEFAULTS=true PROGRESS_NO_TTY=1 "$DOTDOTFILES/sync.sh" --non-interactive --repair --skip-git 2>&1)
-    echo "$sync_output" >> "$LOG_FILE"
+    USE_DEFAULTS=true "$DOTDOTFILES/sync.sh" --repair --skip-git >> "$LOG_FILE" 2>&1
     log "sync.sh --repair exited"
 
     log "Updating zinit"
@@ -150,9 +146,7 @@ main() {
     log "no new changes"
     log "checking if weekly update is due"
 
-    local weekly_needed=false
     if needs_weekly_update; then
-        weekly_needed=true
         local last_epoch last_date
         last_epoch=$(<"$WEEKLY_TIMESTAMP")
         last_date=$(epoch_to_date "$last_epoch")

@@ -16,9 +16,7 @@ export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 source "${DOTDOTFILES}/bash/core/colors.bash"
 source "${DOTDOTFILES}/bash/core/defaults.bash"
 source "${DOTDOTFILES}/bash/core/packages.bash"
-source "${DOTDOTFILES}/bash/core/progress.bash"
 source "${DOTDOTFILES}/bash/core/tools.bash"
-
 
 ###############################################################################
 # Sync-specific helpers
@@ -31,7 +29,6 @@ source "${DOTDOTFILES}/bash/core/tools.bash"
 
 parse_flags() {
     repair_mode=false
-    non_interactive=false
     quick_mode=false
     skip_git=false
     skip_network=false
@@ -39,14 +36,13 @@ parse_flags() {
     for arg in "$@"; do
         case $arg in
             --repair)           repair_mode=true ;;
-            --non-interactive)  non_interactive=true ;;
             --quick)            quick_mode=true ;;
             --skip-git)         skip_git=true ;;
             --skip-network)     skip_network=true; skip_git=true ;;
         esac
     done
 
-    export repair_mode non_interactive quick_mode skip_git skip_network
+    export repair_mode quick_mode skip_git skip_network
 }
 
 ###############################################################################
@@ -54,8 +50,7 @@ parse_flags() {
 ###############################################################################
 
 link_dotfiles() {
-    local vid
-    vid=$(progress_vertex_start "Linking dotfiles")
+    section "Linking dotfiles"
 
     local BACKUPS_PATH="$DOTDOTFILES/backups/$timestamp"
     local files
@@ -63,8 +58,6 @@ link_dotfiles() {
     local linked_count=0
     local skipped_count=0
     local backed_up_count=0
-
-    progress_log "Linking dotfiles to home directory..."
 
     for source_file in $files; do
         local relative_path
@@ -89,29 +82,16 @@ link_dotfiles() {
             local backup_file="$BACKUPS_PATH/$relative_path.bak"
             mkdir -p "$(dirname "$backup_file")"
             if cp -Hr "$home_file" "$backup_file" 2>/dev/null; then
-                progress_log "  Backed up: $relative_path"
                 backed_up_count=$((backed_up_count + 1))
             fi
         fi
 
         mkdir -p "$(dirname "$home_file")"
         ln -sf "$source_file" "$home_file"
-        progress_log "  Linked: $relative_path"
         linked_count=$((linked_count + 1))
     done
 
     # Summary
-    if [[ $skipped_count -gt 0 ]]; then
-        progress_log "  $skipped_count file(s) already correctly linked"
-    fi
-    if [[ $linked_count -gt 0 ]]; then
-        progress_log "  $linked_count file(s) linked"
-    fi
-    if [[ $backed_up_count -gt 0 ]]; then
-        progress_log "  $backed_up_count file(s) backed up to: $BACKUPS_PATH"
-    fi
-
-    progress_vertex_complete "$vid" "Linking dotfiles (Linked $linked_count, skipped $skipped_count, backed up $backed_up_count)"
 }
 
 ###############################################################################
@@ -119,11 +99,9 @@ link_dotfiles() {
 ###############################################################################
 
 sync_ssh_config() {
-    local vid
-    vid=$(progress_vertex_start "Syncing SSH config")
+    section "Syncing SSH config"
 
     if is_work_laptop; then
-        progress_vertex_complete "$vid" "Syncing SSH config" "work laptop"
         return 0
     fi
 
@@ -135,9 +113,7 @@ sync_ssh_config() {
 
     if [[ -f "$src" ]]; then
         ln -sf "$src" "$dst" && chmod 600 "$src"
-        progress_log "  SSH config synced"
     fi
-    progress_vertex_complete "$vid" "Syncing SSH config"
 }
 
 ###############################################################################
@@ -145,16 +121,13 @@ sync_ssh_config() {
 ###############################################################################
 
 update_authorized_keys() {
-    local vid
-    vid=$(progress_vertex_start "Updating authorized keys")
+    section "Updating authorized keys"
 
     if is_work_laptop; then
-        progress_vertex_complete "$vid" "Updating authorized keys" "work laptop"
         return 0
     fi
 
     if [[ "$skip_network" == true ]]; then
-        progress_vertex_complete "$vid" "Updating authorized keys" "skipped (--skip-network)"
         return 0
     fi
 
@@ -174,8 +147,6 @@ update_authorized_keys() {
     done < "$HOME/.ssh/authorized_keys.tmp"
 
     rm -f "$HOME/.ssh/authorized_keys.tmp"
-    progress_log "  Authorized keys updated (added $added_count keys)"
-    progress_vertex_complete "$vid" "Updating authorized keys"
 }
 
 ###############################################################################
@@ -249,33 +220,24 @@ sync_scripts_to_local() {
 
     # Check if launchd daemon is already installed
     if [[ -f "$DAEMON_PLIST" ]] && [[ -d "$SCRIPTS_DIR/.git" ]]; then
-        progress_log "  scripts-updater launchd daemon already installed"
         if ! sudo git config --system --get-all safe.directory 2>/dev/null | \
             grep -Fxq "$SCRIPTS_DIR"; then
-            progress_log "  Fixing git safe.directory for scripts-updater..."
             sudo git config --system --add safe.directory "$SCRIPTS_DIR" \
                 2>/dev/null || true
         fi
         # Trigger an update
-        progress_vertex_exec "Triggering update" sudo launchctl start "${DAEMON_NAME}"
+        section "Triggering update"
+        sudo launchctl start "${DAEMON_NAME}"
         return 0
     fi
 
-    # Check if /usr/local/opt/scripts exists but is not a git repo
-    if [[ -d "$SCRIPTS_DIR" ]] && [[ ! -d "$SCRIPTS_DIR/.git" ]]; then
-        progress_log "  Migrating to git-based launchd updater..."
-    else
-        progress_log "  Installing scripts-updater launchd daemon..."
-    fi
-
     # Run the macOS installer script
-    progress_vertex_exec "Installing launchd updater" "$DOTDOTFILES/lib/scripts/install-updater" --platform macos
+    section "Installing launchd updater"
+    "$DOTDOTFILES/lib/scripts/install-updater" --platform macos
 }
 
 # Simple symlink method for work laptops (no sudo required)
 sync_scripts_to_local_symlinks() {
-    progress_log "Syncing scripts to ~/.local/bin/scripts (work laptop mode)..."
-
     mkdir -p "$HOME/.local/bin/scripts"
     local scripts
     # Find executable files (excluding hidden files and specific non-script files)
@@ -316,7 +278,6 @@ sync_scripts_to_opt() {
     fi
 
     if is_work_laptop; then
-        progress_log "Skipping /opt/scripts on work laptop"
         return 0
     fi
 
@@ -333,32 +294,23 @@ sync_scripts_to_opt() {
         return 0
     fi
 
-    # Check if /opt/scripts exists but is not a git repo (old copy-based install)
-    if [[ -d "/opt/scripts" ]] && [[ ! -d "/opt/scripts/.git" ]]; then
-        progress_log "  Migrating /opt/scripts to git-based systemd updater..."
-    else
-        progress_log "  Installing scripts-updater systemd timer..."
-    fi
-
     # Run the installer script
-    progress_vertex_exec "Installing systemd timer" sudo "$DOTDOTFILES/lib/scripts/install-updater" --platform linux
+    section "Installing systemd timer"
+    sudo "$DOTDOTFILES/lib/scripts/install-updater" --platform linux
 }
 
 sync_all_scripts() {
-    local vid
-    vid=$(progress_vertex_start "Syncing scripts")
+    section "Syncing scripts"
 
     if [[ "$skip_network" == true ]]; then
         if is_work_laptop; then
             sync_scripts_to_local_symlinks
         fi
-        progress_vertex_complete "$vid" "Syncing scripts" "local only (--skip-network)"
         return 0
     fi
 
     sync_scripts_to_local
     sync_scripts_to_opt
-    progress_vertex_complete "$vid" "Syncing scripts"
 }
 
 ###############################################################################
@@ -366,8 +318,7 @@ sync_all_scripts() {
 ###############################################################################
 
 sync_cursor_config() {
-    local vid
-    vid=$(progress_vertex_start "Syncing Cursor configuration")
+    section "Syncing Cursor configuration"
 
     local cursor_dir="$HOME/.cursor"
     local src_commands="$DOTDOTFILES/.cursor/commands"
@@ -381,7 +332,6 @@ sync_cursor_config() {
             local cmd_name
             cmd_name=$(basename "$cmd")
             ln -sf "$cmd" "$cursor_dir/commands/$cmd_name"
-            progress_log "  Linked command: $cmd_name"
         done
     fi
 
@@ -393,11 +343,8 @@ sync_cursor_config() {
             local skill_name
             skill_name=$(basename "$skill")
             ln -sf "$skill" "$cursor_dir/skills/$skill_name"
-            progress_log "  Linked skill: $skill_name"
         done
     fi
-
-    progress_vertex_complete "$vid" "Syncing Cursor configuration"
 }
 
 sync_cursor_user_rules() {
@@ -414,15 +361,14 @@ sync_cursor_user_rules() {
         return 0
     fi
 
-    progress_vertex_exec "Syncing Cursor User Rules" "$sync_script"
+    section "Syncing Cursor User Rules"
+    "$sync_script"
 }
 
 sync_git_hooks() {
-    local vid
-    vid=$(progress_vertex_start "Syncing git hooks")
+    section "Syncing git hooks"
 
     if [[ ! -d "$DOTDOTFILES/.githooks" ]]; then
-        progress_vertex_complete "$vid" "Syncing git hooks" "no directory"
         return 0
     fi
 
@@ -435,26 +381,20 @@ sync_git_hooks() {
         [[ -f "$hook" ]] || continue
         hook_name=$(basename "$hook")
         ln -sfn "../../.githooks/$hook_name" "$hooks_dir/$hook_name"
-        progress_log "  Linked hook: $hook_name"
         linked=$((linked + 1))
     done
-
-    progress_vertex_complete "$vid" "Syncing git hooks ($linked linked)"
 }
 
 sync_global_git_hooks() {
-    local vid
-    vid=$(progress_vertex_start "Configuring global git hooks")
+    section "Configuring global git hooks"
     local hooks_dir="$DOTDOTFILES/git-global-hooks"
     if [[ -d "$hooks_dir" ]]; then
         git config --global core.hooksPath "$hooks_dir"
     fi
-    progress_vertex_complete "$vid" "Configuring global git hooks"
 }
 
 check_git_hooks_path() {
-    local vid
-    vid=$(progress_vertex_start "Checking git hooks path")
+    section "Checking git hooks path"
 
     # This repo does not auto-run git config changes.
     # If you want git to use .githooks directly, set core.hooksPath manually:
@@ -463,12 +403,8 @@ check_git_hooks_path() {
     configured=$(git -C "$DOTDOTFILES" config --local --get core.hooksPath 2>/dev/null || true)
 
     if [[ -z "$configured" ]] || [[ "$configured" == ".githooks" ]]; then
-        progress_vertex_complete "$vid" "Checking git hooks path"
         return 0
     fi
-
-    progress_log "  core.hooksPath is set to: $configured (expected .githooks)"
-    progress_vertex_complete "$vid" "Checking git hooks path (warning: $configured)"
 }
 
 ###############################################################################
@@ -476,16 +412,13 @@ check_git_hooks_path() {
 ###############################################################################
 
 cleanup_homebrew_repair() {
-    local vid
-    vid=$(progress_vertex_start "Repair: cleaning up Homebrew")
+    section "Repair: cleaning up Homebrew"
 
     if [[ "$repair_mode" != "true" ]]; then
-        progress_vertex_complete "$vid" "Repair: cleaning up Homebrew" "skipped"
         return 0
     fi
 
     if ! is_macos || ! command -v brew >/dev/null 2>&1; then
-        progress_vertex_complete "$vid" "Repair: cleaning up Homebrew" "n/a"
         return 0
     fi
 
@@ -493,20 +426,16 @@ cleanup_homebrew_repair() {
     local incomplete_files
     incomplete_files=$(find "$cache_dir" -name "*.incomplete" 2>/dev/null | wc -l | tr -d " ")
     if [[ "$incomplete_files" -gt 0 ]]; then
-        progress_log "  Removing $incomplete_files incomplete download(s)..."
         rm -rf "$cache_dir"/*.incomplete 2>/dev/null || true
     fi
 
     brew cleanup --prune=all 2>/dev/null || true
-    progress_vertex_complete "$vid" "Repair: cleaning up Homebrew"
 }
 
 cleanup_neovim_repair() {
-    local vid
-    vid=$(progress_vertex_start "Repair: cleaning up Neovim")
+    section "Repair: cleaning up Neovim"
 
     if [[ "$repair_mode" != "true" ]]; then
-        progress_vertex_complete "$vid" "Repair: cleaning up Neovim" "skipped"
         return 0
     fi
 
@@ -519,7 +448,6 @@ cleanup_neovim_repair() {
         for dir in "$lazy_dir"/*/; do
             [[ -d "$dir" ]] || continue
             if [[ ! -d "$dir/.git" ]] || [[ -z "$(ls -A "$dir" 2>/dev/null)" ]]; then
-                progress_log "  Removing incomplete plugin: $(basename "$dir")"
                 rm -rf "$dir"
             fi
         done
@@ -538,7 +466,6 @@ cleanup_neovim_repair() {
         swap_count=$(find "$nvim_swap" -name "*.swp" -type f 2>/dev/null | wc -l | tr -d " ")
         if [[ "$swap_count" -gt 0 ]]; then
             find "$nvim_swap" -name "*.swp" -type f -delete 2>/dev/null
-            progress_log "  Removed $swap_count swap file(s)"
         fi
     fi
 
@@ -547,25 +474,18 @@ cleanup_neovim_repair() {
         swap_count=$(find "$nvim_swap_legacy" -name "*.swp" -type f 2>/dev/null | wc -l | tr -d " ")
         if [[ "$swap_count" -gt 0 ]]; then
             find "$nvim_swap_legacy" -name "*.swp" -type f -delete 2>/dev/null
-            progress_log "  Removed $swap_count swap file(s) from legacy location"
         fi
     fi
-
-    progress_vertex_complete "$vid" "Repair: cleaning up Neovim"
 }
 
 update_neovim_plugins() {
-    local vid
-    vid=$(progress_vertex_start "Updating Neovim plugins")
+    section "Updating Neovim plugins"
 
     if [[ "$skip_network" == true ]]; then
-        progress_vertex_complete "$vid" "Updating Neovim plugins" "skipped (--skip-network)"
         return 0
     fi
 
     if ! command -v nvim >/dev/null 2>&1; then
-        progress_log "  Skipping Neovim plugins (nvim not installed)"
-        progress_vertex_complete "$vid" "Updating Neovim plugins" "nvim not installed"
         return 0
     fi
 
@@ -582,8 +502,7 @@ update_neovim_plugins() {
         find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*-tmp" -type d -exec rm -rf {} + 2>/dev/null
     fi
 
-    progress_log "Running lazy.sync()..."
-    progress_vertex_exec "lazy.sync()" nvim --headless -c "lua require('lazy').sync()" -c "qa"
+    nvim --headless -c "lua require('lazy').sync()" -c "qa"
 
     # Install treesitter parsers if tree-sitter CLI is available
     if command -v tree-sitter >/dev/null 2>&1; then
@@ -591,14 +510,13 @@ update_neovim_plugins() {
         ts_version=$(tree-sitter --version 2>/dev/null | awk '{print $2}')
         # Require tree-sitter 0.21+ for build command
         if [[ "$(printf '%s\n' "0.21.0" "$ts_version" | sort -V | head -1)" == "0.21.0" ]]; then
-            progress_log "Installing treesitter parsers..."
             local parsers="bash,lua,vim,vimdoc,python,javascript,typescript,json,yaml"
-            progress_vertex_exec "treesitter parsers" nvim --headless "+lua require('nvim-treesitter').install({'${parsers//,/\',\'}'})" "+sleep 10" "+qa"
+            section "treesitter parsers"
+            nvim --headless "+lua require('nvim-treesitter').install({'${parsers//,/\',\'}'})" "+sleep 10" "+qa"
         else
             color_echo YELLOW "  tree-sitter CLI too old ($ts_version), skipping parser install"
         fi
     fi
-    progress_vertex_complete "$vid" "Updating Neovim plugins"
 }
 
 ###############################################################################
@@ -606,68 +524,49 @@ update_neovim_plugins() {
 ###############################################################################
 
 update_zinit_plugins() {
-    local vid
-    vid=$(progress_vertex_start "Updating and compiling zinit plugins")
+    section "Updating and compiling zinit plugins"
 
     if [[ "$skip_network" == true ]]; then
-        progress_vertex_complete "$vid" "Updating zinit plugins" "skipped (--skip-network)"
         return 0
     fi
 
     if ! command -v zsh &>/dev/null; then
-        progress_vertex_error "$vid" "Updating zinit plugins" "zsh not found"
         return 1
     fi
 
-    local out
-    out=$(zsh -c '
+    zsh -c '
         source "${DOTDOTFILES:-$HOME/.dotfiles}/lib/zinit/zinit.zsh"
         zinit update --all --quiet 2>&1
         zinit compile --all 2>&1
-    ' 2>&1) || {
-        progress_vertex_error "$vid" "Updating zinit plugins"
-        progress_log "$out"
+    ' 2>&1 || {
         return 1
     }
-
-    progress_vertex_complete "$vid" "Updating and compiling zinit plugins"
 }
 
 ###############################################################################
 
 cleanup_zinit_completions() {
-    local vid
-    vid=$(progress_vertex_start "Cleaning zinit completions")
+    section "Cleaning zinit completions"
 
     local completions_dir="$HOME/.local/share/zinit/completions"
 
     if [[ ! -d "$completions_dir" ]]; then
-        progress_vertex_complete "$vid" "Cleaning zinit completions" "no dir"
         return 0
     fi
 
     local removed=0
     while IFS= read -r -d '' link; do
         rm -f "$link"
-        progress_log "  Removed stale completion symlink: $(basename "$link")"
         removed=$((removed + 1))
     done < <(find "$completions_dir" -maxdepth 1 -type l ! -exec test -e {} \; -print0 2>/dev/null)
-
-    if [[ $removed -gt 0 ]]; then
-        progress_vertex_complete "$vid" "Cleaning zinit completions (removed $removed)"
-    else
-        progress_vertex_complete "$vid" "Cleaning zinit completions" "no stale links"
-    fi
 }
 
 rebuild_zcompdump() {
-    local vid
-    vid=$(progress_vertex_start "Rebuilding zcompdump")
+    section "Rebuilding zcompdump"
 
     rm -f ~/.zcompdump* 2>/dev/null
 
     if ! command -v zsh &>/dev/null; then
-        progress_vertex_error "$vid" "Rebuilding zcompdump" "zsh not found"
         return 1
     fi
 
@@ -677,32 +576,16 @@ rebuild_zcompdump() {
         compinit -d ~/.zcompdump
         zcompile ~/.zcompdump
     ' 2>/dev/null || true
-
-    if [[ -f "$HOME/.zcompdump" ]]; then
-        progress_vertex_complete "$vid" "Rebuilding zcompdump"
-    else
-        progress_vertex_complete "$vid" "Rebuilding zcompdump" "failed"
-    fi
 }
 
 rebuild_prefer_cache() {
-    local vid
-    vid=$(progress_vertex_start "Rebuilding prefer cache")
+    section "Rebuilding prefer cache"
 
-    if bash "$DOTDOTFILES/bash/background/prefer-cache-rebuild.bash" --force; then
-        if [[ -f "$HOME/.cache/zsh_prefer_aliases.zsh" ]]; then
-            progress_vertex_complete "$vid" "Rebuilding prefer cache"
-        else
-            progress_vertex_error "$vid" "Rebuilding prefer cache" "failed to generate"
-        fi
-    else
-        progress_vertex_error "$vid" "Rebuilding prefer cache" "script failed"
-    fi
+    bash "$DOTDOTFILES/bash/background/prefer-cache-rebuild.bash" --force
 }
 
 compile_zsh_files() {
-    local vid
-    vid=$(progress_vertex_start "Compiling zsh files")
+    section "Compiling zsh files"
 
     local compiled=0
     local f
@@ -725,23 +608,12 @@ compile_zsh_files() {
             -print0 2>/dev/null
     )
 
-    if [[ $compiled -gt 0 ]]; then
-        progress_vertex_complete "$vid" "Compiling zsh files ($compiled compiled)"
-    else
-        progress_vertex_complete "$vid" "Compiling zsh files" "all current"
-    fi
 }
 
 create_hushlogin() {
-    local vid
-    vid=$(progress_vertex_start "Creating hushlogin")
+    section "Creating hushlogin"
     if [[ ! -f "$HOME/.hushlogin" ]]; then
-        progress_log "  Suppressing default last login message..."
         touch "$HOME/.hushlogin"
-        progress_vertex_complete "$vid" "Creating hushlogin"
-    else
-        progress_log "  Skipping hushlogin (already exists)"
-        progress_vertex_complete "$vid" "Creating hushlogin" "already exists"
     fi
 }
 
@@ -757,7 +629,8 @@ run_os_install() {
         os_type="macOS"
         install_script="$DOTDOTFILES/bash/setup/platform/mac.bash"
         if command -v brew >/dev/null 2>&1; then
-            progress_vertex_exec "Cleaning up Homebrew" brew cleanup
+            section "Cleaning up Homebrew"
+            brew cleanup
         fi
     elif is_ubuntu; then
         os_type="Debian/Ubuntu/Proxmox"
@@ -767,9 +640,11 @@ run_os_install() {
     fi
 
     if [[ "${USE_DEFAULTS:-false}" == "true" ]]; then
-        progress_vertex_exec "Running $os_type setup" "$install_script" --use-defaults "$@"
+        section "Running $os_type setup"
+        "$install_script" --use-defaults "$@"
     else
-        progress_vertex_exec "Running $os_type setup" "$install_script" "$@"
+        section "Running $os_type setup"
+        "$install_script" "$@"
     fi
 }
 
@@ -782,15 +657,13 @@ update_git_repo_sync() {
         return 0
     fi
 
-    local vid
-    vid=$(progress_vertex_start "Updating git repo")
+    section "Updating git repo"
     local update_msg
     if update_msg=$(dotfiles_update_repo 2>&1); then
-        progress_log "  git update succeeded"
-        progress_vertex_complete "$vid" "Updating git repo"
+        :
     else
-        progress_log "  git update: $update_msg"
-        progress_vertex_error "$vid" "Updating git repo failed"
+        echo "$update_msg" >&2
+        return 1
     fi
 }
 
@@ -799,8 +672,6 @@ update_git_repo_sync() {
 ###############################################################################
 
 main() {
-    progress_begin "${HOME}/.cache/dotfiles/sync-${timestamp}.log"
-
     # Phase 1: Git
     update_git_repo_sync
 
@@ -825,8 +696,8 @@ main() {
     # Phase 6: OS-specific setup and tools
     update_zinit_plugins
     run_os_install "$@"
-    progress_vertex_exec "Installing custom tools" \
-        "$DOTDOTFILES/bash/setup/platform/tools.bash" "$@"
+    section "Installing custom tools"
+    "$DOTDOTFILES/bash/setup/platform/tools.bash" "$@"
 
     # Phase 7: Neovim
     update_neovim_plugins
@@ -841,8 +712,7 @@ main() {
     rebuild_prefer_cache
     create_hushlogin
 
-    progress_end
-    echo -e "${COLOR_GREEN}Dotfiles synced${TEXT_RESET}"
+    echo -e "${GREEN}Dotfiles synced${NC}"
 }
 
 parse_flags "$@"

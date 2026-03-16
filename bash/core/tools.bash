@@ -73,6 +73,14 @@ relative_path_from() {
     fi
 }
 
+# Print a section header (separator line + title). Used by sync.bash for task output.
+# Usage: section "Task name"
+section() {
+    printf '\n'
+    printf '%.0s━' {1..40}
+    printf '\n%s\n' "$1"
+}
+
 ###############################################################################
 # Portable Date Helpers
 ###############################################################################
