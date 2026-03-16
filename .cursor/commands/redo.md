@@ -1,15 +1,16 @@
 # Redo
 
-The last output broke a rule. Regenerate it correctly.
+When the user types "redo", the last response likely contained a false claim, an overconfident assertion, or a statement presented as fact without sufficient basis.
 
 ## Steps
 
-1. Identify which rule(s) the last output violated. The user may specify the rule (e.g. `/redo voice-tone`, `/redo audience-grounding`). If no rule is named, infer from context which rule(s) were broken.
-2. Re-read the relevant rule file(s) from `.cursor/rules/`.
-3. Regenerate the last artifact (PR description, commit message, doc, Slack message, code comment, or whatever the last output was) with the rule applied correctly.
+1. Identify the specific claim or statement that was overconfident, incorrect, or insufficiently qualified.
+2. Restate it using epistemic language ("this suggests," "likely," "may," "one possibility is," "it appears").
+3. If the claim had no verifiable source, explicitly state that no verifiable source is available rather than restating the claim with false confidence.
+4. If the entire response was overconfident in tone, regenerate it in full with epistemic language applied at every sentence.
 
 ## Critical Rules
 
-- Do not apologize, explain what went wrong, or describe what you're doing differently. Just produce the corrected output.
-- Do not ask clarifying questions. If the violated rule is ambiguous, apply the most reasonable interpretation and output the result.
-- The corrected output replaces the previous one entirely. Do not produce a diff or partial fix.
+- Produce the corrected output only. No apology, no explanation, no description of what changed.
+- Every claim in the corrected output must reflect its actual basis. Nothing is stated as fact without qualification.
+- If no verifiable source exists for a claim, say so explicitly rather than omitting the caveat.
