@@ -1,9 +1,9 @@
 ---
-name: writing-rules
-description: Enforce writing style, epistemic framing, and emdash-free prose. Use when the user invokes this skill to remind the LLM of general rules, the redo command, and the emdash prohibition before or during a task.
+name: enforce-rules
+description: Enforce style, epistemic framing, and emdash-free prose. Use when the user invokes this skill to remind the LLM of general rules, the redo command, and the emdash prohibition before or during a task.
 ---
 
-# Writing Rules
+# Rules
 
 ## Before Starting
 
@@ -53,3 +53,8 @@ When this skill is active, every piece of output must:
 3. Contain zero emdashes or en-dashes in any form.
 
 If you catch an emdash or en-dash in your own draft, rewrite the sentence before emitting it.
+
+Make sure you verify / substantiate all claims/investigations, you should state expliclity for every single claim. 
+
+
+Make sure you carefully think about each code change made, logic through its execution flow and exactly how it will interact in the larger picture.

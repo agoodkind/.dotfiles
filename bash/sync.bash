@@ -18,6 +18,8 @@ source "${DOTDOTFILES}/bash/core/defaults.bash"
 source "${DOTDOTFILES}/bash/core/packages.bash"
 source "${DOTDOTFILES}/bash/core/tools.bash"
 
+dotfiles_log_init "sync"
+
 ###############################################################################
 # Sync-specific helpers
 ###############################################################################
@@ -658,13 +660,7 @@ update_git_repo_sync() {
     fi
 
     section "Updating git repo"
-    local update_msg
-    if update_msg=$(dotfiles_update_repo 2>&1); then
-        :
-    else
-        echo "$update_msg" >&2
-        return 1
-    fi
+    dotfiles_update_repo
 }
 
 ###############################################################################

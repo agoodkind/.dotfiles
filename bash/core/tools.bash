@@ -376,15 +376,56 @@ _sub_tracking_branch() {
     printf '%s' "$branch"
 }
 
+###############################################################################
+# Logging
+###############################################################################
+
+# Set up per-worker logging. Creates ~/.cache/dotfiles/<name>.log and
+# exports DOTFILES_LOG so dotfiles_notify and nested calls inherit it.
+dotfiles_log_init() {
+    local name="$1"
+    export DOTFILES_LOG="$HOME/.cache/dotfiles/${name}.log"
+    mkdir -p "${DOTFILES_LOG%/*}"
+    dotfiles_log "--- $(date '+%Y-%m-%d %H:%M:%S') $name ---"
+}
+
+# Timestamped log entry. Always writes to $DOTFILES_LOG when set.
+# Also prints to terminal when stdout is a tty.
+dotfiles_log() {
+    local line="[$(date '+%Y-%m-%d %H:%M:%S')] $*"
+    [[ -n "${DOTFILES_LOG:-}" ]] && printf '%s\n' "$line" >> "$DOTFILES_LOG"
+    [[ -t 1 ]] && printf '%s\n' "$line"
+}
+
+# Run a command with output routed through the logging system.
+# Background: output goes to log only. Interactive: tee to both.
+dotfiles_run() {
+    if [[ -n "${DOTFILES_LOG:-}" && -t 1 ]]; then
+        "$@" 2>&1 | tee -a "$DOTFILES_LOG"
+    elif [[ -n "${DOTFILES_LOG:-}" ]]; then
+        "$@" >> "$DOTFILES_LOG" 2>&1
+    else
+        "$@"
+    fi
+}
+
+###############################################################################
+# Notifications
+###############################################################################
+
 DOTFILES_NOTIFY_FILE="$HOME/.cache/dotfiles/notifications"
 
-# Write a structured notification for display at next login.
-# Levels: success (green), info (blue), warn (yellow), error (red).
-# warn and error are also echoed to stderr for interactive visibility.
+# Queue a notification for display at next interactive login.
+#   dotfiles_notify <level> <message> [logfile]
+# Levels: success, info, warn, error
+# Log file falls back to $DOTFILES_LOG when the third argument is
+# omitted. Format on disk: level|logfile|message (logfile is the
+# second field so message, which may contain |, is always the
+# remainder parsed by read).
 dotfiles_notify() {
-    local level="$1" msg="$2"
+    local level="$1" msg="$2" logfile="${3:-${DOTFILES_LOG:-}}"
     mkdir -p "${DOTFILES_NOTIFY_FILE%/*}"
-    printf '%s|%s\n' "$level" "$msg" >> "$DOTFILES_NOTIFY_FILE"
+    printf '%s|%s|%s\n' "$level" "$logfile" "$msg" >> "$DOTFILES_NOTIFY_FILE"
     [[ "$level" == "warn" || "$level" == "error" ]] \
         && echo "$level: $msg" >&2
 }
@@ -398,37 +439,31 @@ _sync_one_submodule() {
     local branch
     branch=$(_sub_tracking_branch "$d" "$sub" "$sub_path")
 
-    git -C "$sub_path" fetch --quiet \
-        2>/dev/null || return 0
+    dotfiles_log "syncing $sub (branch: $branch)"
+    dotfiles_run git -C "$sub_path" fetch || return 0
 
     local stashed=false
     if [[ "$sub" == "lib/scripts" ]] && \
        [[ -n "$(git -C "$sub_path" \
            status --porcelain 2>/dev/null)" ]]; then
         stashed=true
-        git -C "$sub_path" stash --include-untracked \
-            --quiet 2>/dev/null || {
+        dotfiles_run git -C "$sub_path" stash --include-untracked || {
             dotfiles_notify warn "stash failed in $sub"
             return 0
         }
     fi
 
-    git -C "$sub_path" checkout "$branch" --quiet \
-        2>/dev/null || true
+    dotfiles_run git -C "$sub_path" checkout "$branch" || true
 
-    if ! git -C "$sub_path" pull --rebase --quiet \
-        2>/dev/null; then
-        git -C "$sub_path" rebase --abort \
-            2>/dev/null || true
+    if ! dotfiles_run git -C "$sub_path" pull --rebase origin "$branch"; then
+        dotfiles_run git -C "$sub_path" rebase --abort || true
         dotfiles_notify warn \
             "pull --rebase failed in $sub, local state preserved"
     fi
 
     if [[ "$stashed" == true ]]; then
-        if ! git -C "$sub_path" stash pop --quiet \
-            2>/dev/null; then
-            git -C "$sub_path" checkout -- . \
-                2>/dev/null || true
+        if ! dotfiles_run git -C "$sub_path" stash pop; then
+            dotfiles_run git -C "$sub_path" checkout -- . || true
             dotfiles_notify warn \
                 "stash pop conflict in $sub, recover with: cd $sub && git stash pop"
         fi
@@ -441,8 +476,7 @@ _sync_one_submodule() {
 # parent only when the index is otherwise clean.
 _sync_submodules() {
     local d="$DOTDOTFILES"
-    git -C "$d" submodule update --init --quiet \
-        2>/dev/null || true
+    dotfiles_run git -C "$d" submodule update --init || true
 
     local sub
     for sub in lib/zinit lib/scripts lib/zsh-defer; do
@@ -450,8 +484,7 @@ _sync_submodules() {
     done
 
     # Only auto-commit pointer updates when the parent index
-    # has no other staged changes — avoids hijacking unrelated
-    # work (especially from the background updater).
+    # has no other staged changes; avoids hijacking unrelated work.
     if [[ -n "$(git -C "$d" diff --cached --name-only \
         --ignore-submodules 2>/dev/null)" ]]; then
         return 0
@@ -459,17 +492,16 @@ _sync_submodules() {
 
     local pointer_dirty=false
     for sub in lib/zinit lib/scripts lib/zsh-defer; do
-        if ! git -C "$d" diff --quiet \
-            -- "$sub" 2>/dev/null; then
+        if ! git -C "$d" diff --quiet -- "$sub" 2>/dev/null; then
             git -C "$d" add -- "$sub"
             pointer_dirty=true
         fi
     done
     if [[ "$pointer_dirty" == true ]]; then
-        git -C "$d" commit --quiet \
+        dotfiles_log "committing submodule pointer updates"
+        dotfiles_run git -C "$d" commit \
             -m "Update submodule pointers" \
-            -- lib/zinit lib/scripts lib/zsh-defer \
-            2>/dev/null || true
+            -- lib/zinit lib/scripts lib/zsh-defer || true
     fi
 }
 
@@ -482,18 +514,22 @@ dotfiles_update_repo() {
     local reason remote_status has_changes pre_pull_head
 
     reason=$(_check_git_health 2>&1) || {
+        dotfiles_log "skip: $reason"
         echo "skip: $reason" >&2
         return 1
     }
 
     _handle_git_lock
 
-    _dotfiles_git fetch --quiet || {
+    dotfiles_log "fetching origin"
+    dotfiles_run _dotfiles_git fetch || {
+        dotfiles_log "fetch failed"
         echo "fetch failed" >&2
         return 1
     }
 
     remote_status=$(_remote_status)
+    dotfiles_log "remote status: $remote_status"
     case "$remote_status" in
         up-to-date)
             _sync_submodules
@@ -518,27 +554,28 @@ dotfiles_update_repo() {
             echo "upstream changes conflict with local work (overlapping files)" >&2
             return 1
         fi
-        git -C "$d" stash --quiet || {
+        dotfiles_run git -C "$d" stash || {
             echo "stash failed" >&2
             return 1
         }
     fi
 
     pre_pull_head=$(git -C "$d" rev-parse HEAD)
+    dotfiles_log "pulling (pre: ${pre_pull_head:0:8})"
 
-    if ! _dotfiles_git pull --ff --quiet; then
-        git -C "$d" reset --hard "$pre_pull_head" --quiet 2>/dev/null
+    if ! dotfiles_run _dotfiles_git pull --ff; then
+        dotfiles_run git -C "$d" reset --hard "$pre_pull_head"
         if [[ "$has_changes" == true ]]; then
-            git -C "$d" stash pop --quiet 2>/dev/null || true
+            dotfiles_run git -C "$d" stash pop || true
         fi
         echo "pull failed, rolled back" >&2
         return 1
     fi
 
     if [[ "$has_changes" == true ]]; then
-        if ! git -C "$d" stash pop --quiet 2>/dev/null; then
-            git -C "$d" reset --hard "$pre_pull_head" --quiet 2>/dev/null
-            git -C "$d" stash pop --quiet 2>/dev/null || true
+        if ! dotfiles_run git -C "$d" stash pop; then
+            dotfiles_run git -C "$d" reset --hard "$pre_pull_head"
+            dotfiles_run git -C "$d" stash pop || true
             echo "stash pop failed after pull, rolled back to pre-update state" >&2
             return 1
         fi
@@ -547,8 +584,14 @@ dotfiles_update_repo() {
     local post_pull_head
     post_pull_head=$(git -C "$d" rev-parse HEAD)
     if [[ "$pre_pull_head" != "$post_pull_head" ]]; then
+        dotfiles_log "updated ${pre_pull_head:0:8} -> ${post_pull_head:0:8}"
         echo "pulled:${pre_pull_head}:${post_pull_head}"
     fi
+
+    # tools.bash is already sourced once at shell startup so this function
+    # exists, but the pull above may have delivered a newer version on disk.
+    # Re-source so _sync_submodules (and everything else) runs the updated code.
+    source "$DOTDOTFILES/bash/core/tools.bash"
 
     _sync_submodules
     return 0
