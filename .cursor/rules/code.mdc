@@ -4,17 +4,66 @@ globs: *.js,*.jsx,*.ts,*.tsx,*.py,*.rb,*.sh,*.zsh,*.bash,*.go
 alwaysApply: false
 ---
 
-JavaScript/TypeScript: Use function definitions for top-level functions, not arrow functions. Example: function handleClick(event) { ... }
+JavaScript/TypeScript: Use function definitions for top-level functions, not arrow functions. Example: function handleClick(event: FullyQualifiedType) { ... }
+when writing Javascript make sure all JSDoc includes types exhaustively
 
-Python readability: Write code that is easy to read for someone unfamiliar with it. Break complex expressions into intermediate variables with descriptive names. Structure code to tell a story.
+## Python: Version and build
 
-Python types: Every function, method, parameter, return type, and variable assignment that holds a collection must be fully and deeply typed. Banned tokens in type annotations: `Any`, `object`, bare `dict`, bare `list`, bare `tuple`, bare `set`, bare `Callable`. If you find yourself reaching for `Any` or `object`, use a concrete union (`str | int | None`), a TypedDict, or a Protocol instead. Use `dict[str, float]`, `list[CsvRow]`, `tuple[str, int]`, `Callable[[ParamTypes], ReturnType]`, etc. Use `from __future__ import annotations` at the top of every module. Prefer TypedDicts over bare dicts for structured data. When accepting values from untyped external sources (e.g. JSON, stdlib csv), cast or narrow them at the boundary and use concrete types from that point forward.
+- Python 3.14 is the standard version for all repositories.
+- All `pyproject.toml` files must set `requires-python = ">=3.14"`, `mypy python_version = "3.14"`, `basedpyright pythonVersion = "3.14"`, and `ruff target-version = "py314"`.
+- Build system: `hatchling` (via `[build-system] requires = ["hatchling"]`).
+- Dependency management: `uv` with `[dependency-groups] dev` for dev dependencies (not `[project.optional-dependencies]`).
+- Every MCP server repo must have a one-touch `install.sh` script and an up-to-date `README.md` with prerequisites, setup, and development instructions.
 
-Python DRY: Extract repeated patterns into functions, classes, or utilities. Prefer composition over duplication.
+## Python: Type annotations
 
-Python constants: Use named constants for literal values. Extract magic numbers, strings, and values into constants or configuration files. Use descriptive variable names.
+- Every function, method, parameter, and return type must be fully and deeply typed.
+- Always parameterize generics: `dict[str, float]`, `list[CsvRow]`, `Callable[[str], bool]`.
+- Use concrete unions (`str | int | None`) or the specific expected type for all annotations. `Any` and `object` are both banned as type annotations; use `JsonValue`, a concrete union, or a Pydantic model instead.
+- Use Pydantic `BaseModel` or Protocol when a concrete union is not sufficient.
+- Narrow types at boundaries with `isinstance` checks, `TypeGuard` functions, or Pydantic `model_validate` / `model_validate_json`, and use concrete types from that point forward.
+
+## Python: Data modeling
+
+- Use Pydantic `BaseModel` for all structured data. Pydantic provides runtime validation, attribute-style access, and serialization.
+- Use `Field(alias="camelCase")` and `model_config = ConfigDict(populate_by_name=True)` when field names must match an external API's camelCase wire format.
+- Use snake_case for the Python field name and access it with attribute syntax (`model.field_name`).
+- Use `model_dump(by_alias=True)` when serializing back to the external API.
+
+## Python: Required practices
+
+- `from __future__ import annotations` at the top of every module.
+- Line length: 90 characters. Let `ruff format` handle wrapping; do not manually wrap lines.
+- Run `ruff format` before committing. The formatter owns all whitespace and line-wrapping decisions.
+- Use explicit `if`/`else` blocks with assignment instead of ternary expressions.
+- Use explicit loops instead of nested or multi-clause comprehensions.
+- Simple, single-clause comprehensions (one `for`, at most one `if`) are allowed when the result fits naturally within the line length and is more readable than the equivalent loop. If a comprehension needs to wrap across multiple lines, convert it to an explicit loop.
+- Every variable name must be understandable without reading the surrounding code. Write the full word or a clear noun phrase: `attempt_count`, `session_duration`, `error_message`, `parsed_config`. Single-letter names are fine for numeric loop indices (`i`/`j`/`k`).
+- Extract literal values into named constants. Keep paths, URLs, and configuration values in constants or configuration files.
+- When a linter rule fires, fix the code or restructure it so the rule no longer applies.
+
+## Python: General style
+
+- Write code that is easy to read for someone unfamiliar with it. Break complex expressions into intermediate variables with descriptive names. Structure code to tell a story.
+- Extract repeated patterns into functions, classes, or utilities. Prefer composition over duplication.
+
+## Python: Toolchain enforcement
+
+These tools enforce the rules above at the repo level. Run `make check` before committing.
+
+- `mypy` (strict mode, `disallow_any_explicit`, `disallow_any_generics`, `disallow_subclassing_any`): enforces fully typed code with parameterized generics.
+- `basedpyright` (strict mode): a pyright fork with stricter defaults, Pylance features for all editors, and pip-installable without Node.js. Enforces complete type coverage and catches unknown types. Replaces `pyright`; do not use `pyright` directly.
+- `ruff check`: enforces import order, naming, line length, and code patterns. Enabled rule sets: `F`, `E`, `W`, `I`, `N`, `UP`, `ANN`, `B`, `A`, `C4`, `RET`, `SIM`, `TC`, `PYI`, `PT`, `RUF`.
+- `ruff format`: owns all whitespace, indentation, and line-wrapping decisions.
+- Ignored ruff rules: `TC001` (move app import into TYPE_CHECKING), `TC003` (move stdlib import into TYPE_CHECKING), `RET504` (unnecessary assignment before return), `SIM108` (ternary suggestions suppressed since ternaries are replaced with explicit if/else), `N815` (camelCase variable in class scope, needed for Pydantic `Field(alias=...)` models that match external API contracts).
+- `ban-object` (`scripts/ban_object.py`): a custom lint check that rejects the bare word `object` in type annotations. Strips comments and string literals before matching so that references in docstrings and string values are ignored. Catches `: object`, `-> object`, `dict[str, object]`, and `str | object`.
+- `Makefile` targets: `make check` runs `mypy`, `basedpyright`, `ruff check`, and `ban-object`. `make fmt` runs `ruff format` and `ruff check --fix`.
+
+## Ruby
 
 Ruby guard clauses: Use one guard clause per condition. Example: return unless x, return unless y, return if z.
+
+## Shell
 
 Shell scripts: Use a shebang (#!/usr/bin/env bash or #!/usr/bin/env zsh). Use snake_case for functions and local variables, UPPER_CASE for globals and constants. Indent with 4 spaces and prefer [[ ... ]] for tests. Scope variables with local inside functions, use source instead of dot, and add shellcheck directives when they help.
 
