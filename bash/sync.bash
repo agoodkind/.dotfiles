@@ -20,6 +20,14 @@ source "${DOTDOTFILES}/bash/core/tools.bash"
 
 dotfiles_log_init "sync"
 
+_on_error() {
+    local exit_code=$? cmd="$BASH_COMMAND" line="$1"
+    local src="${BASH_SOURCE[1]:-sync.bash}"
+    dotfiles_log "FATAL: $src:$line exited $exit_code: $cmd"
+    dotfiles_notify "error" "sync.sh failed at $src:$line (exit $exit_code): $cmd"
+}
+trap '_on_error $LINENO' ERR
+
 ###############################################################################
 # Sync-specific helpers
 ###############################################################################
@@ -344,7 +352,7 @@ sync_cursor_config() {
             [[ -d "$skill" ]] || continue
             local skill_name
             skill_name=$(basename "$skill")
-            ln -sf "$skill" "$cursor_dir/skills/$skill_name"
+            ln -sfn "$skill" "$cursor_dir/skills/$skill_name"
         done
     fi
 }
@@ -566,7 +574,7 @@ cleanup_zinit_completions() {
 rebuild_zcompdump() {
     section "Rebuilding zcompdump"
 
-    rm -f ~/.zcompdump* 2>/dev/null
+    rm -rf ~/.zcompdump* 2>/dev/null || true
 
     if ! command -v zsh &>/dev/null; then
         return 1

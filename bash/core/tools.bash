@@ -395,6 +395,7 @@ dotfiles_log() {
     local line="[$(date '+%Y-%m-%d %H:%M:%S')] $*"
     [[ -n "${DOTFILES_LOG:-}" ]] && printf '%s\n' "$line" >> "$DOTFILES_LOG"
     [[ -t 1 ]] && printf '%s\n' "$line"
+    return 0
 }
 
 # Run a command with output routed through the logging system.
@@ -428,6 +429,7 @@ dotfiles_notify() {
     printf '%s|%s|%s\n' "$level" "$logfile" "$msg" >> "$DOTFILES_NOTIFY_FILE"
     [[ "$level" == "warn" || "$level" == "error" ]] \
         && echo "$level: $msg" >&2
+    return 0
 }
 
 _sync_one_submodule() {
