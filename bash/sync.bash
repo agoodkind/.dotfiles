@@ -333,6 +333,7 @@ sync_cursor_config() {
     local cursor_dir="$HOME/.cursor"
     local src_commands="$DOTDOTFILES/.cursor/commands"
     local src_skills="$DOTDOTFILES/.cursor/skills"
+    local src_rules="$DOTDOTFILES/.cursor/rules"
 
     # Sync commands
     if [[ -d "$src_commands" ]]; then
@@ -353,6 +354,17 @@ sync_cursor_config() {
             local skill_name
             skill_name=$(basename "$skill")
             ln -sfn "$skill" "$cursor_dir/skills/$skill_name"
+        done
+    fi
+
+    # Sync rules
+    if [[ -d "$src_rules" ]]; then
+        mkdir -p "$cursor_dir/rules"
+        for rule in "$src_rules"/*.mdc; do
+            [[ -f "$rule" ]] || continue
+            local rule_name
+            rule_name=$(basename "$rule")
+            ln -sf "$rule" "$cursor_dir/rules/$rule_name"
         done
     fi
 }
