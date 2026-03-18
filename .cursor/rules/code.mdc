@@ -8,7 +8,7 @@ JavaScript/TypeScript: Use function definitions for top-level functions, not arr
 
 Python readability: Write code that is easy to read for someone unfamiliar with it. Break complex expressions into intermediate variables with descriptive names. Structure code to tell a story.
 
-Python types: Add type annotations to all function signatures, method parameters, and return types. Use the typing module for complex types like Optional, Union, and Callable.
+Python types: Every function, method, parameter, return type, and variable assignment that holds a collection must be fully and deeply typed. No bare `dict`, `list`, `tuple`, `set`, or `object` without type parameters. Use `dict[str, float]`, `list[CsvRow]`, `tuple[str, int]`, etc. No `Any` anywhere; if the type is genuinely unknown, define a TypedDict or Protocol to describe its shape. Use `from __future__ import annotations` at the top of every module. Prefer TypedDicts over bare dicts for structured data, and use `Callable[[ParamTypes], ReturnType]` instead of unparameterized `Callable`.
 
 Python DRY: Extract repeated patterns into functions, classes, or utilities. Prefer composition over duplication.
 
