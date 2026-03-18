@@ -59,6 +59,10 @@ These tools enforce the rules above at the repo level. Run `make check` before c
 - `ban-object` (`scripts/ban_object.py`): a custom lint check that rejects the bare word `object` in type annotations. Strips comments and string literals before matching so that references in docstrings and string values are ignored. Catches `: object`, `-> object`, `dict[str, object]`, and `str | object`.
 - `Makefile` targets: `make check` runs `mypy`, `basedpyright`, `ruff check`, and `ban-object`. `make fmt` runs `ruff format` and `ruff check --fix`.
 
+## Git
+
+Git worktrees: Always use `origin/main` (not `main`) for diffs, merge-base, log ranges, and branch comparisons. In worktrees, the local `main` ref is checked out elsewhere and cannot be fast-forwarded, so it goes stale after every fetch.
+
 ## Ruby
 
 Ruby guard clauses: Use one guard clause per condition. Example: return unless x, return unless y, return if z.
