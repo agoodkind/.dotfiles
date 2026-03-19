@@ -11,7 +11,7 @@ Read these two files in full before producing any output:
 
 1. **General rules**: [general.mdc](../../rules/general.mdc)
 2. **Redo command**: [redo.md](../../commands/redo.md)
-3. **Code rules**: [code.mdc](../../cursor/rules/code.mdc)
+3. **Code rules**: [code.mdc](../../rules/code.mdc)
 
 Follow every rule in both files for the duration of this task.
 

@@ -17,23 +17,29 @@ resolve_allowed_identity() {
 
     [[ -f "$rules_file" ]] || return
 
+    local local_rules_file="${rules_file}.local"
     local match_email="" match_name=""
-    while IFS= read -r line; do
-        line="${line%%#*}"
-        [[ -z "${line// /}" ]] && continue
-        local prefix email name
-        read -r prefix email name <<< "$line"
-        prefix="${prefix/#\~/$HOME}"
-        if [[ "$prefix" == "*" ]]; then
-            if [[ -z "$match_email" ]]; then
+
+    local f
+    for f in "$rules_file" "$local_rules_file"; do
+        [[ -f "$f" ]] || continue
+        while IFS= read -r line; do
+            line="${line%%#*}"
+            [[ -z "${line// /}" ]] && continue
+            local prefix email name
+            read -r prefix email name <<< "$line"
+            prefix="${prefix/#\~/$HOME}"
+            if [[ "$prefix" == "*" ]]; then
+                if [[ -z "$match_email" ]]; then
+                    match_email="$email"
+                    match_name="$name"
+                fi
+            elif [[ "$repo_path" == "$prefix"* ]]; then
                 match_email="$email"
                 match_name="$name"
             fi
-        elif [[ "$repo_path" == "$prefix"* ]]; then
-            match_email="$email"
-            match_name="$name"
-        fi
-    done < "$rules_file"
+        done < "$f"
+    done
 
     echo "$match_email"
     echo "$match_name"

@@ -13,3 +13,6 @@ lib/motd/*.local
 
 # Machine-local deny patterns - intentionally not committed (may contain work-specific terms)
 .githooks/deny-patterns.local
+
+# Machine-local email identity overrides (may contain work-specific paths)
+git-global-hooks/email-rules.local
