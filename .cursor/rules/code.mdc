@@ -67,6 +67,10 @@ Git worktrees: Always use `origin/main` (not `main`) for diffs, merge-base, log 
 
 Ruby guard clauses: Use one guard clause per condition. Example: return unless x, return unless y, return if z.
 
+## Cross-language scripts
+
+When a piece of code calls out to a different language (AppleScript via `osascript`, SQL, shell via `subprocess`, etc.), write the script in its own file with the appropriate extension (`.applescript`, `.sql`, `.sh`). Load the file at runtime and substitute dynamic values using the host language's templating primitives (e.g. `string.Template` in Python). This keeps each language in its own file where editors, linters, and syntax highlighting work correctly.
+
 ## Shell
 
 Shell scripts: Use a shebang (#!/usr/bin/env bash or #!/usr/bin/env zsh). Use snake_case for functions and local variables, UPPER_CASE for globals and constants. Indent with 4 spaces and prefer [[ ... ]] for tests. Scope variables with local inside functions, use source instead of dot, and add shellcheck directives when they help.
