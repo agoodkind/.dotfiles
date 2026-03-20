@@ -81,17 +81,19 @@ When in doubt, ask before including a suspicious file.
 
 ## Steps
 
-1. Run `git status` to check for staged and unstaged changes
-2. Review the changed files - skip any that shouldn't be committed (logs, artifacts, etc.)
-3. If files are staged, run `git diff --staged` to analyze them
-4. If nothing is staged but unstaged changes exist, stage appropriate files with `git add` (skip files that shouldn't be committed)
-5. Craft a single, concise subject line that states what changed
-6. Be specific about what changed and where (file names, functions, etc.)
-7. Use imperative mood
-8. Do NOT include explanations, justifications, or benefit statements
-9. Avoid all prohibited patterns listed above
-10. Execute `git commit -m "<message>"` with the generated message (use `required_permissions: ["all"]`)
-11. If there are remaining relevant changes, repeat for the next logical commit
+1. Run `git fetch origin main` to ensure the remote ref is up to date
+2. Run `git status` to check for staged and unstaged changes
+3. Run `git diff $(git merge-base HEAD origin/main) HEAD` to see everything that diverges from main (including already-committed but unpushed work) — use this as the ground truth for what is in scope
+4. Review the changed files — skip any that shouldn't be committed (logs, artifacts, etc.)
+5. If files are staged, run `git diff --staged` to confirm what will be included in the next commit
+6. If nothing is staged but unstaged changes exist, stage appropriate files with `git add` (skip files that shouldn't be committed)
+7. Craft a single, concise subject line that states what changed
+8. Be specific about what changed and where (file names, functions, etc.)
+9. Use imperative mood
+10. Do NOT include explanations, justifications, or benefit statements
+11. Avoid all prohibited patterns listed above
+12. Execute `git commit -m "<message>"` with the generated message (use `required_permissions: ["all"]`)
+13. If there are remaining relevant changes, repeat for the next logical commit
 
 ## Examples
 
