@@ -174,6 +174,18 @@ directly to the terminal (no capture with `2>&1`).
 | `./sync.sh --repair --skip-git` | Deep repair (clean up stale state, reinstall) |
 | `zsh_perf` | Print startup performance tree |
 
+## Git Operations on This Repository
+
+**Do not use `git push` to push changes in this repository.** The dotfiles repo
+uses a bare-repo / worktree setup where the working tree is `~/.dotfiles` but
+the git directory is stored elsewhere. The `config` shell alias wraps the
+correct `git --git-dir` invocation.
+
+Use `config push` instead of `git push` for any push operation on `.dotfiles`.
+All other git read operations (`git status`, `git diff`, `git log`, etc.) work
+normally when run from inside `~/.dotfiles`; only push (and any operation that
+writes to the remote) requires `config`.
+
 ## Rules for Changes
 
 1. **Performance**: Keep `.zshrc` load under 20ms. Profile with `zsh_perf`
