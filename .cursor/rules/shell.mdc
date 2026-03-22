@@ -15,3 +15,6 @@ Shell execution: Obtain explicit permission before making changes, after each lo
 Cross-system compatibility: Use `$EPOCHSECONDS` for Unix timestamps and zsh builtins or `printf` for date and file metadata formatting. This machine has both BSD and GNU variants of `stat` and `date` installed alongside each other (`gstat`, `gdate`), so prefer builtins that sidestep that ambiguity entirely.
 
 SSH remote commands: When passing a command to `ssh host <command>`, quote the entire remote command string in single quotes (e.g. `ssh host 'somecommand --flag=value[index]'`) so that the local zsh shell passes the argument verbatim without glob expansion.
+For anything more complex than a single command, write the logic to a temp file via `mktemp`, `scp` it to the host, execute it there, and clean up afterward.
+
+Complex commands: For anything more complex than a single command locally, write the logic to a temp file via `mktemp`, execute it, and clean up afterward.
