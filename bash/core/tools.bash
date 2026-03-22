@@ -245,9 +245,9 @@ install_from_github() {
     esac
 
     local bin_path
-    bin_path=$(find "$extract_dir" -name "$bin_name" -type f -executable | head -n 1)
+    bin_path=$(find "$extract_dir" -name "$bin_name" -type f | head -n 1)
 
-    if [[ -x "$bin_path" ]]; then
+    if [[ -n "$bin_path" ]]; then
         cp "$bin_path" "$HOME/.local/bin/$bin_name"
         chmod +x "$HOME/.local/bin/$bin_name"
         color_echo GREEN "  ✅  $bin_name $tag installed to ~/.local/bin"
