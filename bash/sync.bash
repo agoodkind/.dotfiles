@@ -726,10 +726,10 @@ run_os_install() {
 
     if [[ "${USE_DEFAULTS:-false}" == "true" ]]; then
         section "Running $os_type setup"
-        "$install_script" --use-defaults "$@"
+        "$BASH" "$install_script" --use-defaults "$@"
     else
         section "Running $os_type setup"
-        "$install_script" "$@"
+        "$BASH" "$install_script" "$@"
     fi
 }
 
