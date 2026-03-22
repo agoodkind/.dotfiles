@@ -1,4 +1,15 @@
 #!/usr/bin/env bash
+# Re-exec with a bash 4+ binary when running under macOS's system bash 3.2,
+# which lacks associative arrays. Tries Homebrew locations before giving up.
+if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
+    for _bash in /opt/homebrew/bin/bash /usr/local/bin/bash; do
+        if [[ -x "$_bash" ]]; then
+            exec "$_bash" "$0" "$@"
+        fi
+    done
+    echo "ERROR: bash 4+ is required but could not be found" >&2
+    exit 1
+fi
 set -e
 set -o pipefail
 

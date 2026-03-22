@@ -41,6 +41,8 @@ if [[ -f "$_path_cache" && "$_path_cache" -nt /etc/paths.d ]]; then
 fi
 unset _path_cache
 
+export PATH="$HOME/.local/bin:$HOME/.local/bin/scripts:$PATH"
+
 [[ -f "$HOME/.cargo/env" ]] && . "$HOME/.cargo/env"
 
 # .zshenv self-time: everything between START_TIME and now
