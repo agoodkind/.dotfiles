@@ -201,23 +201,15 @@ writes to the remote) requires `config`.
    Always pass the log file path (or rely on `$DOTFILES_LOG` fallback).
 6. **Submodules**: These track upstream branches. Do not pin to specific SHAs.
    `_sync_one_submodule` handles fetch/checkout/rebase.
-7. **Bash version on macOS**: macOS ships bash 3.2 (frozen at GPL v2). Any
-   bash 4+ feature (`declare -A`, `mapfile`, etc.) will silently break when a
-   script is invoked via a non-login SSH session where PATH lacks
-   `/usr/local/bin`. Two rules apply to all bash scripts in this repo:
-   - **Entry points** (scripts invoked directly from outside): add the
-     re-exec guard immediately after the shebang:
+7. **Bash version on macOS**: macOS ships bash 3.2 and non-login SSH sessions
+   lack `/usr/local/bin` in PATH, breaking any bash 4+ feature. The fix is:
+   - For entry point scripts: source `bash/core/init.bash` as the first line.
+     It normalizes PATH on macOS (propagates to all child processes via export),
+     then re-execs into bash 4+ if needed. No per-script guards or `"$BASH"`
+     propagation required in downstream scripts.
+   - Entry points: `sync.bash`, `updater.bash`, `dispatch.bash`.
+   - New entry point pattern:
      ```bash
-     if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
-         for _bash in /opt/homebrew/bin/bash /usr/local/bin/bash; do
-             [[ -x "$_bash" ]] && exec "$_bash" "$0" "$@"
-         done
-         echo "ERROR: bash 4+ required" >&2; exit 1
-     fi
+     DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
+     source "$DOTDOTFILES/bash/core/init.bash"
      ```
-   - **Subprocess invocations**: use `"$BASH" "$script"` instead of bare
-     `"$script"` or `bash "$script"`. Bash sets `$BASH` to the absolute path
-     of the running interpreter, so after a re-exec it points to bash 5 and
-     propagates correctly through the entire call tree without needing a guard
-     in every single script. Current entry points:
-     `sync.bash`, `updater.bash`, `dispatch.bash`.

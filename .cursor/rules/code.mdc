@@ -4,92 +4,16 @@ globs: *.js,*.jsx,*.ts,*.tsx,*.py,*.rb,*.sh,*.zsh,*.bash,*.go
 alwaysApply: false
 ---
 
-JavaScript/TypeScript: Use function definitions for top-level functions, not arrow functions. Example: function handleClick(event: FullyQualifiedType) { ... }
-when writing Javascript make sure all JSDoc includes types exhaustively
+JavaScript/TypeScript: Use function definitions for top-level functions, not arrow functions (e.g. `function handleClick(event: FullyQualifiedType) { ... }`). All JSDoc must include types exhaustively.
 
-## Python: Version and build
+Python: Use Python 3.14 for all repos; set `requires-python = ">=3.14"`, `mypy python_version = "3.14"`, `basedpyright pythonVersion = "3.14"`, and `ruff target-version = "py314"` in `pyproject.toml`. Build with `hatchling` and manage dependencies with `uv` using `[dependency-groups] dev` (not `[project.optional-dependencies]`). Every MCP server repo needs a one-touch `install.sh` and an up-to-date `README.md` with prerequisites, setup, and development instructions. Every function, method, parameter, and return type must be fully typed with parameterized generics (`dict[str, float]`, `list[CsvRow]`, `Callable[[str], bool]`); `Any` and `object` are banned as type annotations, so use `JsonValue`, a concrete union, or a Pydantic model instead, and narrow types at boundaries with `isinstance`, `TypeGuard`, or Pydantic `model_validate`. Use Pydantic `BaseModel` for all structured data; use `Field(alias="camelCase")` with `model_config = ConfigDict(populate_by_name=True)` when field names must match an external API's camelCase wire format, use snake_case for Python field names with attribute-style access, and use `model_dump(by_alias=True)` when serializing back. Start every module with `from __future__ import annotations`; set line length to 90 and let `ruff format` handle wrapping; use explicit `if`/`else` blocks instead of ternaries; use explicit loops instead of nested or multi-clause comprehensions (single-clause comprehensions are fine when they fit naturally on one line); write full-word variable names like `attempt_count` and `error_message` (single-letter names are fine for numeric loop indices `i`/`j`/`k`); extract literal values into named constants; and when a linter rule fires, fix the code or restructure it so the rule no longer applies. Write readable code by breaking complex expressions into intermediate variables with descriptive names and extracting repeated patterns into functions or utilities. Run `make check` before committing: `mypy` (strict, `disallow_any_explicit`, `disallow_any_generics`, `disallow_subclassing_any`) enforces full typing; `basedpyright` (strict) replaces `pyright` and adds stricter defaults; `ruff check` enforces import order, naming, and patterns with rule sets `F`, `E`, `W`, `I`, `N`, `UP`, `ANN`, `B`, `A`, `C4`, `RET`, `SIM`, `TC`, `PYI`, `PT`, `RUF` (ignored: `TC001`, `TC003`, `RET504`, `SIM108`, `N815`); `ruff format` owns all whitespace; `ban-object` (`scripts/ban_object.py`) rejects bare `object` in type annotations; and `make fmt` runs `ruff format` and `ruff check --fix`.
 
-- Python 3.14 is the standard version for all repositories.
-- All `pyproject.toml` files must set `requires-python = ">=3.14"`, `mypy python_version = "3.14"`, `basedpyright pythonVersion = "3.14"`, and `ruff target-version = "py314"`.
-- Build system: `hatchling` (via `[build-system] requires = ["hatchling"]`).
-- Dependency management: `uv` with `[dependency-groups] dev` for dev dependencies (not `[project.optional-dependencies]`).
-- Every MCP server repo must have a one-touch `install.sh` script and an up-to-date `README.md` with prerequisites, setup, and development instructions.
+Git: Always use `origin/main` (not `main`) for diffs, merge-base, log ranges, and branch comparisons in worktrees, since the local `main` ref is checked out elsewhere and goes stale after every fetch.
 
-## Python: Type annotations
+Ruby: Use one guard clause per condition (e.g. `return unless x`, `return unless y`, `return if z`).
 
-- Every function, method, parameter, and return type must be fully and deeply typed.
-- Always parameterize generics: `dict[str, float]`, `list[CsvRow]`, `Callable[[str], bool]`.
-- Use concrete unions (`str | int | None`) or the specific expected type for all annotations. `Any` and `object` are both banned as type annotations; use `JsonValue`, a concrete union, or a Pydantic model instead.
-- Use Pydantic `BaseModel` or Protocol when a concrete union is not sufficient.
-- Narrow types at boundaries with `isinstance` checks, `TypeGuard` functions, or Pydantic `model_validate` / `model_validate_json`, and use concrete types from that point forward.
+Cross-language scripts: When code calls out to a different language (AppleScript via `osascript`, SQL, shell via `subprocess`, etc.), write the script in its own file with the appropriate extension (`.applescript`, `.sql`, `.sh`), then load the file at runtime and substitute dynamic values using the host language's templating primitives (e.g. `string.Template` in Python). This keeps each language in its own file where editors, linters, and syntax highlighting work correctly.
 
-## Python: Data modeling
+Shell: Use a shebang (`#!/usr/bin/env bash` or `#!/usr/bin/env zsh`), snake_case for functions and local variables, UPPER_CASE for globals and constants, 4-space indentation, and `[[...]]` for tests; scope variables with `local` inside functions, use `source` instead of `.`, and add shellcheck directives when they help. For conditionals, use a full `if / then / fi` block; use a single-line `|| return 1` or `|| exit 1` for guard clauses on missing prerequisites; and use `|| true` for intentionally best-effort calls. Scripts that spawn background processes must trap INT/TERM, track PIDs in an array, have the trap handler kill them, check an interrupt flag each iteration in long-running loops, exit with 130 after handling INT, and clean up temp files and dirs in the trap handler.
 
-- Use Pydantic `BaseModel` for all structured data. Pydantic provides runtime validation, attribute-style access, and serialization.
-- Use `Field(alias="camelCase")` and `model_config = ConfigDict(populate_by_name=True)` when field names must match an external API's camelCase wire format.
-- Use snake_case for the Python field name and access it with attribute syntax (`model.field_name`).
-- Use `model_dump(by_alias=True)` when serializing back to the external API.
-
-## Python: Required practices
-
-- `from __future__ import annotations` at the top of every module.
-- Line length: 90 characters. Let `ruff format` handle wrapping; do not manually wrap lines.
-- Run `ruff format` before committing. The formatter owns all whitespace and line-wrapping decisions.
-- Use explicit `if`/`else` blocks with assignment instead of ternary expressions.
-- Use explicit loops instead of nested or multi-clause comprehensions.
-- Simple, single-clause comprehensions (one `for`, at most one `if`) are allowed when the result fits naturally within the line length and is more readable than the equivalent loop. If a comprehension needs to wrap across multiple lines, convert it to an explicit loop.
-- Every variable name must be understandable without reading the surrounding code. Write the full word or a clear noun phrase: `attempt_count`, `session_duration`, `error_message`, `parsed_config`. Single-letter names are fine for numeric loop indices (`i`/`j`/`k`).
-- Extract literal values into named constants. Keep paths, URLs, and configuration values in constants or configuration files.
-- When a linter rule fires, fix the code or restructure it so the rule no longer applies.
-
-## Python: General style
-
-- Write code that is easy to read for someone unfamiliar with it. Break complex expressions into intermediate variables with descriptive names. Structure code to tell a story.
-- Extract repeated patterns into functions, classes, or utilities. Prefer composition over duplication.
-
-## Python: Toolchain enforcement
-
-These tools enforce the rules above at the repo level. Run `make check` before committing.
-
-- `mypy` (strict mode, `disallow_any_explicit`, `disallow_any_generics`, `disallow_subclassing_any`): enforces fully typed code with parameterized generics.
-- `basedpyright` (strict mode): a pyright fork with stricter defaults, Pylance features for all editors, and pip-installable without Node.js. Enforces complete type coverage and catches unknown types. Replaces `pyright`; do not use `pyright` directly.
-- `ruff check`: enforces import order, naming, line length, and code patterns. Enabled rule sets: `F`, `E`, `W`, `I`, `N`, `UP`, `ANN`, `B`, `A`, `C4`, `RET`, `SIM`, `TC`, `PYI`, `PT`, `RUF`.
-- `ruff format`: owns all whitespace, indentation, and line-wrapping decisions.
-- Ignored ruff rules: `TC001` (move app import into TYPE_CHECKING), `TC003` (move stdlib import into TYPE_CHECKING), `RET504` (unnecessary assignment before return), `SIM108` (ternary suggestions suppressed since ternaries are replaced with explicit if/else), `N815` (camelCase variable in class scope, needed for Pydantic `Field(alias=...)` models that match external API contracts).
-- `ban-object` (`scripts/ban_object.py`): a custom lint check that rejects the bare word `object` in type annotations. Strips comments and string literals before matching so that references in docstrings and string values are ignored. Catches `: object`, `-> object`, `dict[str, object]`, and `str | object`.
-- `Makefile` targets: `make check` runs `mypy`, `basedpyright`, `ruff check`, and `ban-object`. `make fmt` runs `ruff format` and `ruff check --fix`.
-
-## Git
-
-Git worktrees: Always use `origin/main` (not `main`) for diffs, merge-base, log ranges, and branch comparisons. In worktrees, the local `main` ref is checked out elsewhere and cannot be fast-forwarded, so it goes stale after every fetch.
-
-## Ruby
-
-Ruby guard clauses: Use one guard clause per condition. Example: return unless x, return unless y, return if z.
-
-## Cross-language scripts
-
-When a piece of code calls out to a different language (AppleScript via `osascript`, SQL, shell via `subprocess`, etc.), write the script in its own file with the appropriate extension (`.applescript`, `.sql`, `.sh`). Load the file at runtime and substitute dynamic values using the host language's templating primitives (e.g. `string.Template` in Python). This keeps each language in its own file where editors, linters, and syntax highlighting work correctly.
-
-## Shell
-
-Shell scripts: Use a shebang (#!/usr/bin/env bash or #!/usr/bin/env zsh). Use snake_case for functions and local variables, UPPER_CASE for globals and constants. Indent with 4 spaces and prefer [[...]] for tests. Scope variables with local inside functions, use source instead of dot, and add shellcheck directives when they help.
-
-Shell conditionals: When writing a conditional, use a full `if / then / fi` block. When a function must exit early on a missing prerequisite, use a single-line `|| return 1` or `|| exit 1` guard clause. When a call is intentionally best-effort, use `|| true`. Example:
-
-```bash
-# conditional block
-if [[ -f "$path" ]]; then
-    do_thing
-fi
-
-# guard clause
-command -v jq >/dev/null || return 1
-
-# best-effort call
-cleanup_temp_files || true
-```
-
-Shell processes: Scripts that spawn background processes must trap INT/TERM and kill those processes. Track PIDs in an array and have the trap handler iterate and kill them. Long-running loops must check an interrupt flag each iteration. Exit with 130 after handling INT. Clean up temp files and dirs in the trap handler. Pair wait calls with a trap that sets an interrupt flag or kills workers to properly handle SIGINT.
-
-Code comments: Add comments only when the code is not self-explanatory. Keep comments technical: explain the "why" behind non-obvious decisions.
+Code comments: Add comments only when the code is not self-explanatory. Keep comments technical and explain the "why" behind non-obvious decisions.

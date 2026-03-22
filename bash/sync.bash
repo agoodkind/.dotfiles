@@ -1,15 +1,7 @@
 #!/usr/bin/env bash
-# Re-exec with a bash 4+ binary when running under macOS's system bash 3.2,
-# which lacks associative arrays. Tries Homebrew locations before giving up.
-if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
-    for _bash in /opt/homebrew/bin/bash /usr/local/bin/bash; do
-        if [[ -x "$_bash" ]]; then
-            exec "$_bash" "$0" "$@"
-        fi
-    done
-    echo "ERROR: bash 4+ is required but could not be found" >&2
-    exit 1
-fi
+export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
+# shellcheck source=bash/core/init.bash
+source "$DOTDOTFILES/bash/core/init.bash"
 set -e
 set -o pipefail
 
@@ -18,7 +10,6 @@ set -o pipefail
 ###############################################################################
 
 timestamp=$(date +"%Y%m%d_%H%M%S")
-export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
 # Source local config if it exists (machine-specific settings)
 [[ -f "$HOME/.overrides.local" ]] && source "$HOME/.overrides.local"

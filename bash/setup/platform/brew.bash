@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
+# shellcheck source=bash/core/init.bash
+source "$DOTDOTFILES/bash/core/init.bash"
 
 # Source utilities (for mac_only guard)
 source "${DOTDOTFILES}/bash/core/tools.bash"
@@ -27,20 +29,6 @@ else
 	color_echo GREEN "Homebrew already installed, skipping..."
 fi
 
-# Install modern bash first (required for packages.sh)
-BASH_VERSION_MAJOR="${BASH_VERSINFO[0]}"
-if [[ "$BASH_VERSION_MAJOR" -lt 4 ]]; then
-	color_echo YELLOW "Installing modern bash (current: $BASH_VERSION)..."
-	brew install bash
-	
-	# Re-exec this script with modern bash
-	MODERN_BASH="$(brew --prefix)/bin/bash"
-	if [[ -x "$MODERN_BASH" ]]; then
-		color_echo GREEN "Re-executing with modern bash..."
-		exec "$MODERN_BASH" "$0" "$@"
-	fi
-fi
-
 # Now we can source packages.sh (requires bash 4+)
 source "${DOTDOTFILES}/bash/core/packages.bash"
 
@@ -48,20 +36,20 @@ source "${DOTDOTFILES}/bash/core/packages.bash"
 cleanup_stale_brew_locks() {
 	local lock_dir
 	lock_dir="$(brew --prefix 2>/dev/null)/var/homebrew/locks" || return 0
-	
+
 	[[ -d "$lock_dir" ]] || return 0
-	
+
 	# Check if any lock files exist
 	local lock_files
 	lock_files=$(ls "$lock_dir"/*.lock 2>/dev/null) || return 0
-	
+
 	for lock_file in $lock_files; do
 		[[ -f "$lock_file" ]] || continue
-		
+
 		# Extract PID from lock file (format: pid on first line)
 		local pid
 		pid=$(head -1 "$lock_file" 2>/dev/null | grep -oE '[0-9]+' | head -1)
-		
+
 		if [[ -n "$pid" ]]; then
 			# Check if process is still running
 			if ! kill -0 "$pid" 2>/dev/null; then
@@ -93,10 +81,10 @@ app_exists() {
 	local cask="$1"
 	local app_name
 	app_name=$(get_cask_app_name "$cask")
-	
+
 	# Empty app_name means CLI-only or font (check via brew as fallback)
 	[[ -z "$app_name" ]] && return 1
-	
+
 	[[ -d "/Applications/${app_name}" ]] || [[ -d "$HOME/Applications/${app_name}" ]]
 }
 
