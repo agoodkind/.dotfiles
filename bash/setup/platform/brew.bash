@@ -178,13 +178,14 @@ ALL_BREW_PACKAGES=("${COMMON_PACKAGES[@]}" "${BREW_SPECIFIC[@]}")
 color_echo YELLOW "Checking formula packages..."
 
 for package in "${ALL_BREW_PACKAGES[@]}"; do
-	if ! check_formula_installed "$package"; then
-		PACKAGES_TO_INSTALL+=("$package")
+	brew_name=$(translate_package "$package" "brew")
+	if ! check_formula_installed "$brew_name"; then
+		PACKAGES_TO_INSTALL+=("$brew_name")
 		continue
 	fi
 
-	if is_formula_outdated "$package"; then
-		PACKAGES_TO_UPGRADE+=("$package")
+	if is_formula_outdated "$brew_name"; then
+		PACKAGES_TO_UPGRADE+=("$brew_name")
 	fi
 done
 
