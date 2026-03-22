@@ -352,8 +352,24 @@ sync_cursor_config() {
         for skill in "$src_skills"/*/; do
             [[ -d "$skill" ]] || continue
             local skill_name
-            skill_name=$(basename "$skill")
-            ln -sfn "$skill" "$cursor_dir/skills/$skill_name"
+            local skill_source skill_target current_link
+            skill_source=${skill%/}
+            skill_name=$(basename "$skill_source")
+            skill_target="$cursor_dir/skills/$skill_name"
+
+            if [[ "$skill_source" == "$skill_target" ]]; then
+                continue
+            fi
+
+            if [[ -L "$skill_target" ]]; then
+                current_link=$(readlink "$skill_target" 2>/dev/null || echo "")
+                if [[ "$current_link" == "$skill_source" ]]; then
+                    continue
+                fi
+                rm -f "$skill_target"
+            fi
+
+            ln -sfn "$skill_source" "$skill_target"
         done
     fi
 
