@@ -1,0 +1,17 @@
+---
+description: Shell and command execution mechanics
+globs: **/*
+alwaysApply: true
+---
+
+File editing: Read the current state of a file immediately before editing it. The user may have made changes since the file was last read, and edits should reflect the actual current content.
+
+Tools: Use bash and zsh compatible commands, one step at a time. Prefer vim or nvim for editing. For repo access use: gh repo clone <owner>/<repo> -- --depth 1
+
+Dates: Determine the current year dynamically using: date +"%Y-%m-%d %H:%M:%S %Z"
+
+Shell execution: Obtain explicit permission before making changes, after each logical conversation point; ask for clarification when a command is ambiguous or risky. Run commands when explicitly requested to. When running bash scripts or commands that require shell expansion, invoke with `/usr/bin/env bash -lc` to avoid zsh expansion surprises. Set a reasonable timeout when a command could block. Tee output to a file (e.g., `command 2>&1 | tee /tmp/command-output.log`) so output can be read back if truncated.
+
+Cross-system compatibility: Use `$EPOCHSECONDS` for Unix timestamps and zsh builtins or `printf` for date and file metadata formatting. This machine has both BSD and GNU variants of `stat` and `date` installed alongside each other (`gstat`, `gdate`), so prefer builtins that sidestep that ambiguity entirely.
+
+SSH remote commands: When passing a command to `ssh host <command>`, quote the entire remote command string in single quotes (e.g. `ssh host 'somecommand --flag=value[index]'`) so that the local zsh shell passes the argument verbatim without glob expansion.
