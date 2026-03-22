@@ -114,7 +114,12 @@ run_tool() {
 
     if tool_upgrade_to_latest; then
         tool_check_status
-        color_echo GREEN "  ✅  ${TOOL_ID} now at ${TOOL_CURRENT_VERSION}"
+        if [[ -n "$TOOL_TARGET_VERSION" ]] && semver_lt "$TOOL_CURRENT_VERSION" "$TOOL_TARGET_VERSION"; then
+            color_echo YELLOW "  ⚠️  ${TOOL_ID} installed but PATH resolves ${TOOL_CURRENT_VERSION} (expected ${TOOL_TARGET_VERSION}); an older copy may shadow it"
+            dotfiles_notify warn "${TOOL_ID}: installed ${TOOL_TARGET_VERSION} but PATH resolves ${TOOL_CURRENT_VERSION}"
+        else
+            color_echo GREEN "  ✅  ${TOOL_ID} now at ${TOOL_CURRENT_VERSION}"
+        fi
     else
         color_echo RED "  ❌  Failed: ${TOOL_ID}"
         dotfiles_notify warn "tool install/upgrade failed: ${TOOL_ID}"
