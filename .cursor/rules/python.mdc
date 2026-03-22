@@ -1,0 +1,19 @@
+---
+description: Python code style, typing, toolchain, and project conventions
+globs: *.py
+alwaysApply: false
+---
+
+Python version: Use the latest stable Python release for all repos. Set `requires-python`, `mypy python_version`, `basedpyright pythonVersion`, and `ruff target-version` to match in `pyproject.toml`.
+
+Build and dependencies: Build with `hatchling` and manage dependencies with `uv` using `[dependency-groups] dev` (not `[project.optional-dependencies]`). Every MCP server repo needs a one-touch `install.sh` and an up-to-date `README.md` with prerequisites, setup, and development instructions.
+
+Type annotations: Every function, method, parameter, and return type must be fully typed with parameterized generics (`dict[str, float]`, `list[CsvRow]`, `Callable[[str], bool]`). `Any` and `object` are banned as type annotations; use `JsonValue`, a concrete union, or a Pydantic model instead. Narrow types at boundaries with `isinstance`, `TypeGuard`, or Pydantic `model_validate`, and use concrete types from that point forward.
+
+Data modeling: Use Pydantic `BaseModel` for all structured data. Use `Field(alias="camelCase")` with `model_config = ConfigDict(populate_by_name=True)` when field names must match an external API's camelCase wire format, use snake_case for Python field names with attribute-style access, and use `model_dump(by_alias=True)` when serializing back.
+
+Required practices: Start every module with `from __future__ import annotations`. Set line length to 90 and let `ruff format` handle wrapping. Use explicit `if`/`else` blocks instead of ternaries. Use explicit loops instead of nested or multi-clause comprehensions; single-clause comprehensions are fine when they fit naturally on one line. Write full-word variable names like `attempt_count` and `error_message`; single-letter names are fine for numeric loop indices (`i`/`j`/`k`). Extract literal values into named constants. When a linter rule fires, fix the code or restructure it so the rule no longer applies.
+
+Style: Write readable code by breaking complex expressions into intermediate variables with descriptive names and extracting repeated patterns into functions or utilities.
+
+Toolchain: Run `make check` before committing. `mypy` (strict, `disallow_any_explicit`, `disallow_any_generics`, `disallow_subclassing_any`) enforces full typing. `basedpyright` (strict) replaces `pyright` and adds stricter defaults. `ruff check` enforces import order, naming, and patterns with rule sets `F`, `E`, `W`, `I`, `N`, `UP`, `ANN`, `B`, `A`, `C4`, `RET`, `SIM`, `TC`, `PYI`, `PT`, `RUF` (ignored: `TC001`, `TC003`, `RET504`, `SIM108`, `N815`). `ruff format` owns all whitespace. `ban-object` (`scripts/ban_object.py`) rejects bare `object` in type annotations. `make fmt` runs `ruff format` and `ruff check --fix`.
