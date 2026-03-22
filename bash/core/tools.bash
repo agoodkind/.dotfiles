@@ -159,11 +159,13 @@ get_github_release_data() {
 }
 
 # Download and install a binary from a GitHub release asset
-# Usage: install_from_github "owner/repo" "asset_pattern" "bin_name"
+# Usage: install_from_github "owner/repo" "os_tag" "arch_tag" "extension" "bin_name"
 install_from_github() {
     local repo="$1"
-    local pattern="$2"
-    local bin_name="$3"
+    local os_tag="$2"
+    local arch_tag="$3"
+    local extension="$4"
+    local bin_name="$5"
 
     local release_data
     release_data=$(get_github_release_data "$repo")
@@ -177,11 +179,23 @@ install_from_github() {
     tag=$(echo "$release_data" | jq -r .tag_name)
 
     local filename
-    filename=$(echo "$release_data" |
-        jq -r ".assets[].name | select($pattern)" | head -n 1)
+    filename=$(
+        echo "$release_data" \
+            | jq -r \
+                --arg os "$os_tag" \
+                --arg arch "$arch_tag" \
+                --arg ext "$extension" \
+                '.assets[].name
+                    | select(
+                        contains($os)
+                        and ($arch == "" or contains($arch))
+                        and endswith($ext)
+                    )' \
+            | head -n 1
+    )
 
     if [[ -z "$filename" || "$filename" == "null" ]]; then
-        color_echo RED "  ❌  No matching asset found for pattern: $pattern"
+        color_echo RED "  ❌  No matching asset found (os=$os_tag arch=$arch_tag ext=$extension)"
         return 1
     fi
 
@@ -193,9 +207,15 @@ install_from_github() {
     color_echo YELLOW "  📥  Downloading $filename ($tag)..."
     curl -L "$url" -o "$tmp_file"
 
-    mkdir -p "$HOME/.cargo/bin"
+    mkdir -p "$HOME/.local/bin"
 
     case "$filename" in
+        *.deb)
+            sudo dpkg -i "$tmp_file"
+            rm -f "$tmp_file"
+            color_echo GREEN "  ✅  $bin_name $tag installed via dpkg"
+            return 0
+            ;;
         *.tar.gz|*.tgz)
             mkdir -p "$extract_dir"
             tar -xzf "$tmp_file" -C "$extract_dir"
@@ -209,30 +229,28 @@ install_from_github() {
             unzip -o "$tmp_file" -d "$extract_dir"
             ;;
         *.gz)
-            gunzip -c "$tmp_file" > "$HOME/.cargo/bin/$bin_name"
-            chmod +x "$HOME/.cargo/bin/$bin_name"
+            gunzip -c "$tmp_file" > "$HOME/.local/bin/$bin_name"
+            chmod +x "$HOME/.local/bin/$bin_name"
             rm -f "$tmp_file"
-            color_echo GREEN "  ✅  $bin_name $tag installed to ~/.cargo/bin"
+            color_echo GREEN "  ✅  $bin_name $tag installed to ~/.local/bin"
             return 0
             ;;
         *)
-            cp "$tmp_file" "$HOME/.cargo/bin/$bin_name"
-            chmod +x "$HOME/.cargo/bin/$bin_name"
+            cp "$tmp_file" "$HOME/.local/bin/$bin_name"
+            chmod +x "$HOME/.local/bin/$bin_name"
             rm -f "$tmp_file"
-            color_echo GREEN "  ✅  $bin_name $tag installed to ~/.cargo/bin"
+            color_echo GREEN "  ✅  $bin_name $tag installed to ~/.local/bin"
             return 0
             ;;
     esac
 
-    # Find the binary in the extract directory - use -executable instead of -perm +111
     local bin_path
-    bin_path=$(find "$extract_dir" -name "$bin_name" \
-        -type f -executable | head -n 1)
+    bin_path=$(find "$extract_dir" -name "$bin_name" -type f -executable | head -n 1)
 
     if [[ -x "$bin_path" ]]; then
-        cp "$bin_path" "$HOME/.cargo/bin/$bin_name"
-        chmod +x "$HOME/.cargo/bin/$bin_name"
-        color_echo GREEN "  ✅  $bin_name $tag installed to ~/.cargo/bin"
+        cp "$bin_path" "$HOME/.local/bin/$bin_name"
+        chmod +x "$HOME/.local/bin/$bin_name"
+        color_echo GREEN "  ✅  $bin_name $tag installed to ~/.local/bin"
     else
         color_echo RED "  ❌  Failed to find executable '$bin_name' in extracted files"
         rm -rf "$tmp_file" "$extract_dir"
@@ -282,7 +300,9 @@ _dotfiles_git() {
         pull)
             _dotfiles_git fetch
             mode="merge"
-            [[ "$(git -C "$DOTDOTFILES" config --get pull.rebase 2>/dev/null)" == "true" ]] && mode="rebase"
+            if [[ "$(git -C "$DOTDOTFILES" config --get pull.rebase 2>/dev/null)" == "true" ]]; then
+                mode="rebase"
+            fi
             git -C "$DOTDOTFILES" "$mode" origin/main "$@"
             ;;
         *) git -C "$DOTDOTFILES" "$subcmd" "$@" ;;

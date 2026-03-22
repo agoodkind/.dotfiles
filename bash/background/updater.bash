@@ -66,16 +66,24 @@ needs_weekly_update() {
 
 do_sync_only() {
     dotfiles_log "running sync.sh --quick --skip-git"
-    dotfiles_run "$DOTDOTFILES/sync.sh" --quick --skip-git --use-defaults
-    dotfiles_log "sync.sh exited"
-    dotfiles_notify success "Dotfiles updated in background"
+    if dotfiles_run "$DOTDOTFILES/sync.sh" --quick --skip-git --use-defaults; then
+        dotfiles_log "sync.sh exited successfully"
+        dotfiles_notify success "Dotfiles updated in background"
+    else
+        dotfiles_log "sync.sh exited with non-zero status"
+        dotfiles_notify warn "Dotfiles sync completed with non-critical issues"
+    fi
 }
 
 do_weekly_update() {
     dotfiles_log "weekly full update started"
 
-    dotfiles_run "$DOTDOTFILES/sync.sh" --repair --skip-git --use-defaults
-    dotfiles_log "sync.sh --repair exited"
+    if dotfiles_run "$DOTDOTFILES/sync.sh" --repair --skip-git --use-defaults; then
+        dotfiles_log "sync.sh --repair exited successfully"
+    else
+        dotfiles_log "sync.sh --repair exited with non-zero status"
+        dotfiles_notify warn "Weekly sync completed with non-critical issues"
+    fi
 
     dotfiles_log "updating zinit"
     if [[ -f "$DOTDOTFILES/lib/zinit/zinit.zsh" ]]; then

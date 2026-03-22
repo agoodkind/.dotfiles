@@ -1,24 +1,13 @@
-#!/usr/bin/env bash
-set -e
-set -o pipefail
+# Declaration file — sourced by tools.bash, not executed standalone.
+TOOL_ID="fastfetch"
+TOOL_BIN="fastfetch"
+TOOL_REPO="fastfetch-cli/fastfetch"
 
-export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
-source "${DOTDOTFILES}/bash/core/tools.bash"
+tool_check_status() {
+    tool_check_status_default "$(github_latest_release_version "$TOOL_REPO" || true)"
+}
 
-linux_only "fastfetch (deb) is Linux-only, skipping..."
-
-color_echo CYAN "  📦  Installing fastfetch from GitHub release..."
-FASTFETCH_URL="https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest"
-FASTFETCH_DEB_URL=$(curl -s "$FASTFETCH_URL" \
-    | grep "browser_download_url.*linux-amd64.deb" \
-    | cut -d : -f 2,3 \
-    | tr -d \" \
-    | tr -d ' ')
-if [[ -n "$FASTFETCH_DEB_URL" ]]; then
-    curl -fsSL "$FASTFETCH_DEB_URL" -o /tmp/fastfetch-linux-amd64.deb
-    sudo dpkg -i /tmp/fastfetch-linux-amd64.deb
-    rm -f /tmp/fastfetch-linux-amd64.deb
-else
-    color_echo RED "  ❌  Failed to get fastfetch download URL"
-    exit 1
-fi
+tool_upgrade_to_latest() {
+    linux_only "fastfetch (deb) is Linux-only, skipping..."
+    install_from_github "$TOOL_REPO" "linux" "amd64" ".deb" "$TOOL_BIN"
+}

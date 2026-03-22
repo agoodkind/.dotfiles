@@ -1,11 +1,12 @@
-#!/usr/bin/env bash
-set -e
-set -o pipefail
+# Declaration file — sourced by tools.bash, not executed standalone.
+TOOL_ID="zoxide"
+TOOL_BIN="zoxide"
+TOOL_REPO="ajeetdsouza/zoxide"
 
-export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
-source "${DOTDOTFILES}/bash/core/colors.bash"
+tool_check_status() {
+    tool_check_status_default "$(github_latest_release_version "$TOOL_REPO" || true)"
+}
 
-color_echo CYAN "  📦  Installing zoxide via official installer..."
-curl -sSfL \
-    https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh \
-    | sh
+tool_upgrade_to_latest() {
+    curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
+}

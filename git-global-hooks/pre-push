@@ -7,27 +7,31 @@ if [[ -n "$identity" ]]; then
     allowed_email=$(echo "$identity" | head -1)
     allowed_name=$(echo "$identity" | tail -1)
 
-    # Detect default remote branch to exclude from author check.
-    # After a rebase onto a newer base, the push range includes
-    # upstream commits by other authors that are already on main.
-    exclude_ref=""
-    for ref in origin/main origin/master; do
+    # Exclude default branches (push remote and upstream) from author check.
+    # When pushing a branch based on upstream/master to a fork, only commits
+    # not in any of these are checked, so upstream history by other authors
+    # is ignored.
+    exclude_refs=()
+    for ref in origin/main origin/master upstream/main upstream/master; do
         if git rev-parse --verify "$ref" &>/dev/null; then
-            exclude_ref="$ref"
-            break
+            exclude_refs+=( "$ref" )
         fi
     done
+    exclude_not=""
+    if [[ ${#exclude_refs[@]} -gt 0 ]]; then
+        exclude_not=$(printf ' ^%s' "${exclude_refs[@]}")
+    fi
 
     while read -r local_ref local_oid remote_ref remote_oid; do
         [[ "$local_oid" =~ ^0+$ ]] && continue
 
         if [[ "$remote_oid" =~ ^0+$ ]]; then
-            range="$local_oid"
+            range="$local_oid$exclude_not"
         else
             range="$remote_oid..$local_oid"
         fi
 
-        bad=$(git log "$range" ${exclude_ref:+"^$exclude_ref"} \
+        bad=$(git log "$range" \
             --format="%H %an <%ae>" 2>/dev/null \
             | grep -v "$allowed_name <$allowed_email>" \
             || true)

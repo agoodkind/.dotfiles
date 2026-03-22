@@ -1,9 +1,12 @@
-#!/usr/bin/env bash
-set -e
-set -o pipefail
+# Declaration file — sourced by tools.bash, not executed standalone.
+TOOL_ID="starship"
+TOOL_BIN="starship"
+TOOL_REPO="starship/starship"
 
-export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
-source "${DOTDOTFILES}/bash/core/colors.bash"
+tool_check_status() {
+    tool_check_status_default "$(github_latest_release_version "$TOOL_REPO" || true)"
+}
 
-color_echo CYAN "  📦  Installing starship via official installer..."
-curl -sS https://starship.rs/install.sh | sh -s -- --yes
+tool_upgrade_to_latest() {
+    curl -sS https://starship.rs/install.sh | sh -s -- --yes
+}

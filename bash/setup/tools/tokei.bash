@@ -1,29 +1,29 @@
-#!/usr/bin/env bash
-set -e
-set -o pipefail
+# Declaration file — sourced by tools.bash, not executed standalone.
+TOOL_ID="tokei"
+TOOL_BIN="tokei"
+TOOL_REPO="XAMPPRocky/tokei"
 
-export DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
-source "${DOTDOTFILES}/bash/core/colors.bash"
-source "${DOTDOTFILES}/bash/core/tools.bash"
+tool_check_status() {
+    tool_check_status_default "$(github_latest_release_version "$TOOL_REPO" || true)"
+}
 
-get_system_info
-
-# Tokei often only provides x86_64 for Darwin which works on arm64
-case "$OS_NAME" in
-    macos) 
-        pattern="contains(\"apple-darwin\") and contains(\"x86_64\")" 
-        ;;
-    linux)
-        case "$ARCH" in
-            x86_64) 
-                pattern="contains(\"unknown-linux-gnu\") and contains(\"x86_64\")" 
-                ;;
-            arm64|aarch64) 
-                pattern="contains(\"unknown-linux-gnu\") and contains(\"aarch64\")" 
-                ;;
-        esac
-        ;;
-esac
-
-color_echo CYAN "  📦  Installing tokei..."
-install_from_github "XAMPPRocky/tokei" "$pattern" "tokei"
+tool_upgrade_to_latest() {
+    get_system_info
+    local os_tag arch_tag
+    case "$OS_NAME" in
+        macos)
+            os_tag="apple-darwin"
+            arch_tag="x86_64"
+            ;;
+        linux)
+            os_tag="unknown-linux-gnu"
+            case "$ARCH" in
+                x86_64)        arch_tag="x86_64"  ;;
+                arm64|aarch64) arch_tag="aarch64" ;;
+                *) return 1 ;;
+            esac
+            ;;
+        *) return 1 ;;
+    esac
+    install_from_github "$TOOL_REPO" "$os_tag" "$arch_tag" ".tar.gz" "$TOOL_BIN"
+}

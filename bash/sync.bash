@@ -28,6 +28,42 @@ _on_error() {
 }
 trap '_on_error $LINENO' ERR
 
+FAILED_STEPS=()
+
+run_step_mode() {
+    local mode="$1"
+    local fn="$2"
+
+    if "$fn"; then
+        return 0
+    fi
+
+    if [[ "$mode" == "critical" ]]; then
+        dotfiles_log "FATAL: critical step failed: ${fn}"
+        return 1
+    fi
+
+    dotfiles_log "WARN: step failed (continuing): ${fn}"
+    dotfiles_notify "warn" "sync step failed (continued): ${fn}"
+    FAILED_STEPS+=("$fn")
+    return 0
+}
+
+run_step() {
+    local fn="$1"
+    run_step_mode "best_effort" "$fn"
+}
+
+run_step_critical() {
+    local fn="$1"
+    run_step_mode "critical" "$fn"
+}
+
+install_custom_tools() {
+    section "Installing custom tools"
+    "$DOTDOTFILES/bash/setup/platform/tool-manager.bash"
+}
+
 ###############################################################################
 # Sync-specific helpers
 ###############################################################################
@@ -704,45 +740,33 @@ update_git_repo_sync() {
 ###############################################################################
 
 main() {
-    # Phase 1: Git
-    update_git_repo_sync
+    run_step_critical update_git_repo_sync
 
-    # Phase 2: Cleanup stale symlinks
-    cleanup_zinit_completions
+    run_step cleanup_zinit_completions
+    run_step link_dotfiles
+    run_step sync_ssh_config
+    run_step update_authorized_keys
+    run_step sync_all_scripts
+    run_step sync_cursor_config
+    run_step sync_cursor_user_rules
+    run_step check_git_hooks_path
+    run_step sync_git_hooks
+    run_step sync_global_git_hooks
+    run_step update_zinit_plugins
+    run_step run_os_install
+    run_step install_custom_tools
+    run_step update_neovim_plugins
+    run_step cleanup_homebrew_repair
+    run_step cleanup_neovim_repair
+    run_step compile_zsh_files
+    run_step rebuild_zcompdump
+    run_step rebuild_prefer_cache
+    run_step create_hushlogin
 
-    # Phase 3: Core dotfile linking
-    link_dotfiles
-    sync_ssh_config
-    update_authorized_keys
-
-    # Phase 4: Scripts and Cursor config
-    sync_all_scripts
-    sync_cursor_config
-    sync_cursor_user_rules
-
-    # Phase 5: Git hooks
-    check_git_hooks_path
-    sync_git_hooks
-    sync_global_git_hooks
-
-    # Phase 6: OS-specific setup and tools
-    update_zinit_plugins
-    run_os_install "$@"
-    section "Installing custom tools"
-    "$DOTDOTFILES/bash/setup/platform/tools.bash" "$@"
-
-    # Phase 7: Neovim
-    update_neovim_plugins
-
-    # Phase 8: Repair cleanups
-    cleanup_homebrew_repair
-    cleanup_neovim_repair
-
-    # Phase 9: Compile and warm caches (order matters: compile first, then caches)
-    compile_zsh_files
-    rebuild_zcompdump
-    rebuild_prefer_cache
-    create_hushlogin
+    if [[ ${#FAILED_STEPS[@]} -gt 0 ]]; then
+        dotfiles_log "Completed with non-critical failures: ${FAILED_STEPS[*]}"
+        dotfiles_notify "warn" "sync completed with non-critical failures: ${FAILED_STEPS[*]}"
+    fi
 
     echo -e "${GREEN}Dotfiles synced${NC}"
 }

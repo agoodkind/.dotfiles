@@ -55,7 +55,9 @@ function _load_tier2() {
 
     zinit light Aloxaf/fzf-tab
     zinit light Freed-Wu/fzf-tab-source
-    source /opt/homebrew/opt/fzf/shell/key-bindings.zsh 2>/dev/null
+    if (( $+commands[fzf] )); then
+        source <(fzf --zsh)
+    fi
     _ready_mark 2 fzf-tab
 
     # shellcheck disable=SC2016

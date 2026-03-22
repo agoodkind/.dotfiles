@@ -73,6 +73,21 @@ When a piece of code calls out to a different language (AppleScript via `osascri
 
 ## Shell
 
-Shell scripts: Use a shebang (#!/usr/bin/env bash or #!/usr/bin/env zsh). Use snake_case for functions and local variables, UPPER_CASE for globals and constants. Indent with 4 spaces and prefer [[ ... ]] for tests. Scope variables with local inside functions, use source instead of dot, and add shellcheck directives when they help.
+Shell scripts: Use a shebang (#!/usr/bin/env bash or #!/usr/bin/env zsh). Use snake_case for functions and local variables, UPPER_CASE for globals and constants. Indent with 4 spaces and prefer [[...]] for tests. Scope variables with local inside functions, use source instead of dot, and add shellcheck directives when they help.
+
+Shell conditionals: When writing a conditional, use a full `if / then / fi` block. When a function must exit early on a missing prerequisite, use a single-line `|| return 1` or `|| exit 1` guard clause. When a call is intentionally best-effort, use `|| true`. Example:
+
+```bash
+# conditional block
+if [[ -f "$path" ]]; then
+    do_thing
+fi
+
+# guard clause
+command -v jq >/dev/null || return 1
+
+# best-effort call
+cleanup_temp_files || true
+```
 
 Shell processes: Scripts that spawn background processes must trap INT/TERM and kill those processes. Track PIDs in an array and have the trap handler iterate and kill them. Long-running loops must check an interrupt flag each iteration. Exit with 130 after handling INT. Clean up temp files and dirs in the trap handler. Pair wait calls with a trap that sets an interrupt flag or kills workers to properly handle SIGINT.
