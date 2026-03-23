@@ -8,11 +8,5 @@ tool_check_status() {
 }
 
 tool_upgrade_to_latest() {
-    get_system_info
-    # atuin has no prebuilt x86_64-apple-darwin binary; fall back to cargo.
-    if [[ "$OS_NAME" == "macos" ]] && [[ "$ARCH" == "x86_64" ]]; then
-        cargo install atuin --locked
-        return
-    fi
-    curl --proto '=https' --tlsv1.2 -sSf https://setup.atuin.sh | sh -s -- --yes
+    cargo install atuin --locked
 }

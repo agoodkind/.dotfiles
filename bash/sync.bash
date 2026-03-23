@@ -85,7 +85,7 @@ run_step_critical() {
 
 install_custom_tools() {
     section "Installing custom tools"
-    "$DOTDOTFILES/bash/setup/platform/tool-manager.bash"
+    dotfiles_run "$DOTDOTFILES/bash/setup/platform/tool-manager.bash"
 }
 
 ###############################################################################
@@ -600,7 +600,7 @@ update_neovim_plugins() {
         find "$NVIM_DATA" -maxdepth 1 -name "tree-sitter-*-tmp" -type d -exec rm -rf {} + 2>/dev/null
     fi
 
-    nvim --headless -c "lua require('lazy').sync()" -c "qa"
+    dotfiles_run nvim --headless -c "lua require('lazy').sync()" -c "qa"
 
     # Install treesitter parsers if tree-sitter CLI is available
     if command -v tree-sitter >/dev/null 2>&1; then
@@ -610,7 +610,7 @@ update_neovim_plugins() {
         if [[ "$(printf '%s\n' "0.21.0" "$ts_version" | sort -V | head -1)" == "0.21.0" ]]; then
             local parsers="bash,lua,vim,vimdoc,python,javascript,typescript,json,yaml"
             section "treesitter parsers"
-            nvim --headless "+lua require('nvim-treesitter').install({'${parsers//,/\',\'}'})" "+sleep 10" "+qa"
+            dotfiles_run nvim --headless "+lua require('nvim-treesitter').install({'${parsers//,/\',\'}'})" "+sleep 10" "+qa"
         else
             color_echo YELLOW "  tree-sitter CLI too old ($ts_version), skipping parser install"
         fi
@@ -632,13 +632,18 @@ update_zinit_plugins() {
         return 1
     fi
 
-    zsh -c '
-        source "${DOTDOTFILES:-$HOME/.dotfiles}/lib/zinit/zinit.zsh"
-        zinit update --all --quiet 2>&1
-        zinit compile --all 2>&1
-    ' 2>&1 || {
-        return 1
-    }
+    local tmpout
+    tmpout=$(mktemp /tmp/dotfiles_zinit.XXXXXX)
+
+    zsh "$DOTDOTFILES/bash/setup/tools/zinit-update.zsh" > "$tmpout" 2>&1
+    local overall_exit=$?
+
+    while IFS= read -r line; do
+        dotfiles_log "$line"
+    done < "$tmpout"
+    rm -f "$tmpout"
+
+    [[ $overall_exit -eq 0 ]] || return 1
 }
 
 ###############################################################################
@@ -679,7 +684,7 @@ rebuild_zcompdump() {
 rebuild_prefer_cache() {
     section "Rebuilding prefer cache"
 
-    bash "$DOTDOTFILES/bash/background/prefer-cache-rebuild.bash" --force
+    dotfiles_run bash "$DOTDOTFILES/bash/background/prefer-cache-rebuild.bash" --force
 }
 
 compile_zsh_files() {
@@ -739,10 +744,10 @@ run_os_install() {
 
     if [[ "${USE_DEFAULTS:-false}" == "true" ]]; then
         section "Running $os_type setup"
-        "$BASH" "$install_script" --use-defaults "$@"
+        dotfiles_run "$BASH" "$install_script" --use-defaults "$@"
     else
         section "Running $os_type setup"
-        "$BASH" "$install_script" "$@"
+        dotfiles_run "$BASH" "$install_script" "$@"
     fi
 }
 
