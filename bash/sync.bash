@@ -433,20 +433,35 @@ sync_cursor_config() {
         done
     fi
 
-    # Sync rules
-    if [[ -d "$src_rules" ]]; then
+    # Sync rules from one directory into $cursor_dir/rules/
+    _sync_rules_from_dir() {
+        local dir="$1"
+        [[ -d "$dir" ]] || return 0
         mkdir -p "$cursor_dir/rules"
-        for rule in "$src_rules"/*.mdc; do
+        for rule in "$dir"/*.mdc; do
             [[ -f "$rule" ]] || continue
             local rule_name
             rule_name=$(basename "$rule")
             ln -sf "$rule" "$cursor_dir/rules/$rule_name"
         done
+    }
+
+    _sync_rules_from_dir "$src_rules"
+
+    # Merge extra rule dirs declared by the machine (CURSOR_EXTRA_RULE_DIRS in
+    # ~/.overrides.local, colon-separated). Later dirs win on filename conflicts,
+    # matching the behavior of lib/cursor/sync-cursor-rules.py.
+    if [[ -n "${CURSOR_EXTRA_RULE_DIRS:-}" ]]; then
+        local extra_dir
+        IFS=: read -ra _extra_rule_dirs <<< "$CURSOR_EXTRA_RULE_DIRS"
+        for extra_dir in "${_extra_rule_dirs[@]}"; do
+            _sync_rules_from_dir "$extra_dir"
+        done
     fi
 }
 
 sync_cursor_user_rules() {
-    local sync_script="$DOTDOTFILES/bin/sync-cursor-rules"
+    local sync_script="$DOTDOTFILES/lib/cursor/sync-cursor-rules.py"
     local cursor_db="$HOME/Library/Application Support/Cursor/User/globalStorage/state.vscdb"
 
     is_macos "sync_cursor_user_rules is macOS-only" || return 0
