@@ -72,6 +72,9 @@ setopt pushd_silent
 # Use prefer <alias> <target_command> #########################################
 ###############################################################################
 
+# cd: zoxide smart jump in TTY, plain builtin otherwise
+prefer_tty cd __zoxide_z
+
 # ls
 prefer ll eza -lah --icons --group-directories-first
 prefer la eza -a --icons --group-directories-first

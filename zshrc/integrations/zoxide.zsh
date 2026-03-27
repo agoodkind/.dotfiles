@@ -1,5 +1,8 @@
 # shellcheck shell=bash
 
+# We control the init order, so the doctor diagnostic is always a false alarm.
+_ZO_DOCTOR=0
+
 # =============================================================================
 #
 # Utility functions for zoxide.
@@ -99,11 +102,8 @@ function __zoxide_zi() {
     __zoxide_zi "$@"
 }
 
-# Override cd to use zoxide's smart directory jumping.
-# The original cd builtin is still available via \builtin cd if needed.
-(( ${+functions[cd]} )) || cd() {
-    __zoxide_z "$@"
-}
+# cd override is handled by prefer_tty in .zshrc so that non-TTY shells
+# (Claude Code, scripts) get the plain builtin cd.
 
 # Completions.
 if [[ -o zle ]]; then
