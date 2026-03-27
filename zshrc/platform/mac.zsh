@@ -88,6 +88,10 @@ function flush_dns() {
     sudo killall -HUP mDNSResponder
 }
 
+function set-hostname() {
+    change_hostname "$@"
+}
+
 function change_hostname() {
     if [[ -z "$1" ]]; then
         echo "Usage: change_hostname <new_name>"
