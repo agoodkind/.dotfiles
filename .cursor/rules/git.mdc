@@ -1,0 +1,23 @@
+# Git Commit Messages
+
+Commit message style applies to every commit, regardless of how it is triggered.
+
+## Format
+
+- Single subject line, imperative mood, no trailing period
+- Start directly with a verb and subject -- no label, colon, or scope prefix before the message
+- No multi-line format, no bullet lists, no body section
+
+## Content
+
+- State what changed and where; do not state why or what benefit it brings
+- Be specific: name the file, function, or system affected
+- The message describes the change; it does not describe the result or purpose of the change
+
+## Examples
+
+- `Remove unused import in auth middleware`
+- `Add amount validation to silver processor`
+- `Add retry mechanism for failed requests`
+- `Update syslog_message field in unbound Logstash filter`
+- `Add Gemfile.lock, VSCode extensions, and settings configuration`

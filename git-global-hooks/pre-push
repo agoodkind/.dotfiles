@@ -28,7 +28,7 @@ if [[ -n "$identity" ]]; then
         if [[ "$remote_oid" =~ ^0+$ ]]; then
             range="$local_oid$exclude_not"
         else
-            range="$remote_oid..$local_oid"
+            range="$remote_oid..$local_oid$exclude_not"
         fi
 
         bad=$(git log "$range" \

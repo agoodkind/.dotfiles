@@ -1,12 +1,11 @@
 # Draft Slack Reply
 
-Use the current conversation context to draft a reply for Slack. Output ONLY the reply text in a single outer four-backtick fence so it stays copy-pasteable in chat.
+Use the current conversation context to draft a reply for Slack. Output ONLY the reply text with nothing else around it so the user can copy and paste it directly.
 
 ## Critical Rules
 
 - **Slack mrkdwn, NOT Markdown**: Slack uses its own `mrkdwn` format. It is NOT standard or GitHub-flavored markdown.
-- **Protect copy-paste output from chat rendering**: Cursor renders chat as markdown and can mangle Slack content that contains `*bold*`, pipes, brackets, tables, or code fences. Wrap the entire reply in a single outer four-backtick fence so the content stays literal and copy-pasteable.
-- **Output ONLY the reply content**: No preamble, no explanation, and no wrapper text outside the outer four-backtick fence. The user will copy the Slack message from inside the fence.
+- **Output ONLY the reply content**: No preamble, no explanation, no wrapper text, no fences, and nothing else outside the reply itself. The user will copy the entire response as the Slack message.
 
 ## Slack mrkdwn Syntax (use these, not standard markdown)
 
@@ -15,19 +14,23 @@ Use the current conversation context to draft a reply for Slack. Output ONLY the
 - Strikethrough: Slack `~struck~`, not Markdown `~~struck~~`
 - Inline code: use single backticks around items like `code`
 - Code block: use triple backticks with no language tag
-- Link: plain URL only (see below), not `[text](url)`
+- Link: use markdown `[descriptive text](url)` — renders as clickable blue text in Cursor chat, pastes cleanly into Slack
 - Bulleted list: `• item` or `- item`
 - Blockquote: `> quote`
-- User mention: `<@U12345>`
+- User mention: use `@Name` verbatim (e.g. `@Alex Goodkind`)
 - Emoji: `:emoji_name:`
 
 ## Links
 
-The `<url|text>` hyperlink syntax only works for messages sent programmatically via the Slack API. For messages the user will copy-paste into Slack manually, it renders as literal text. For copy-paste messages:
+The output is rendered in Cursor chat as markdown before the user copies it. Use this to your advantage for links:
 
-- Use plain URLs only: Slack will auto-link them
-- Do NOT use `<url|text>` anchor text syntax
-- If you need to reference an external page inline, name it in prose and put the URL on its own line or at the end
+- Use standard markdown link syntax `[descriptive text](url)` so the link renders as clickable blue text in Cursor chat.
+- When the user pastes into Slack, Slack will receive the plain text label and the URL will be auto-linked by Slack.
+- Do NOT use plain bare URLs inline. Do NOT use `<url|text>` anchor syntax (that only works via the Slack API).
+- The descriptive text should name the specific thing being linked (e.g. `[her March 11 message](url)`, `[Rona's question](url)`, `[ref](url)`) so the reader understands what they are clicking before clicking.
+
+Example:
+`From the thread, it sounded like [these were two separate things](https://chime.slack.com/archives/...).`
 
 ## NOT supported in Slack mrkdwn (never use these)
 
@@ -68,10 +71,4 @@ Use inline code for technical references such as:
 
 1. Read the current conversation context to understand what's being replied to.
 2. Draft a reply using Slack mrkdwn formatting.
-3. Output the reply as your entire response inside a single outer four-backtick fence, with no language tag and no text outside the fence.
-
-## Output Format
-
-Wrap the entire Slack reply in a single outer four-backtick fenced block, with no language tag.
-
-Why: a four-backtick outer fence does not conflict with inner triple-backtick code blocks that may appear in the Slack message, and it prevents Cursor chat from rendering Slack mrkdwn as standard markdown.
+3. Output the reply as your entire response with nothing else around it. No fences, no preamble, no explanation.
