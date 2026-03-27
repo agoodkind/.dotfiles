@@ -650,6 +650,10 @@ update_zinit_plugins() {
     local tmpout
     tmpout=$(mktemp /tmp/dotfiles_zinit.XXXXXX)
 
+    # zinit update --all --quiet exits 1 (kills the zsh session) when it
+    # successfully pulls new commits. The wrapper isolates that in a child
+    # process and runs compile + verification afterward. The wrapper's exit
+    # code reflects compile + verify, not the unreliable update exit.
     zsh "$DOTDOTFILES/bash/setup/tools/zinit-update.zsh" > "$tmpout" 2>&1
     local overall_exit=$?
 
