@@ -27,7 +27,6 @@ _source "$DOTDOTFILES/zshrc/commands/aliases.zsh"
 _source "$DOTDOTFILES/zshrc/commands/git.zsh"
 _async bash "$DOTDOTFILES/bash/background/dispatch.bash"
 _source "$DOTDOTFILES/zshrc/integrations/zoxide.zsh"
-# _source "$DOTDOTFILES/zshrc/integrations/atuin.zsh" # TODO: figure out how to make it less jarring to use
 _source "$DOTDOTFILES/zshrc/integrations/motd.zsh"
 [[ ! -f "$DOTDOTFILES/.zshrc.local" ]] || _source "$DOTDOTFILES/.zshrc.local"
 

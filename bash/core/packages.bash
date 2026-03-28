@@ -8,7 +8,7 @@ export SNAP_PACKAGES=(
 )
 
 # Common packages across both package managers
-# Note: Some packages (atuin, procs, starship, tokei, xh, tree-sitter-cli)
+# Note: Some packages (procs, starship, tokei, xh, tree-sitter-cli)
 # are in CARGO_PACKAGES for Linux since they're not in apt
 export COMMON_PACKAGES=(
 	ack
