@@ -186,6 +186,41 @@ All other git read operations (`git status`, `git diff`, `git log`, etc.) work
 normally when run from inside `~/.dotfiles`; only push (and any operation that
 writes to the remote) requires `config`.
 
+## Smoke Testing zsh Startup
+
+To accurately test that zsh loads without errors on a remote host, allocate a real PTY,
+force interactive and login mode, and unset Cursor/VSCode env vars that affect MOTD and
+terminal detection logic:
+
+```bash
+ssh -t <host> 'env -u TERM_PROGRAM -u VSCODE_INJECTION -u VSCODE_SHELL_INTEGRATION \
+  zsh -i -l -c "echo ok" 2>&1'
+```
+
+- `-t`: forces PTY allocation so zsh behaves as it would in a real terminal session.
+- `-i`: interactive mode (loads `.zshrc`).
+- `-l`: login mode (also sources `.zprofile` and `.zshenv`).
+- `env -u ...`: strips Cursor/VSCode injected variables that alter MOTD and terminal
+  detection (e.g. `TERM_PROGRAM=vscode` suppresses MOTD on some paths).
+- Running just `zsh -c` without `-i` skips `.zshrc` entirely; running without `-t` means
+  no TTY, which can suppress prompts and alter plugin behavior.
+
+## Smoke Testing Shell Changes
+
+After modifying zsh startup files, test with a real interactive login shell. The
+correct invocation is `ssh -t <host> 'TERM_PROGRAM= zsh -i -l -c "echo ok"'`:
+
+- `-t` allocates a PTY (required; without it zsh may skip interactive paths).
+- `-i -l` makes zsh interactive and login, sourcing `.zshenv`, `.zprofile`, and
+  `.zshrc` in the same order a real terminal session would.
+- `TERM_PROGRAM=` unsets the VSCode/Cursor env var so IDE-specific branches
+  (MOTD suppression, editor detection) do not skew the result.
+
+This only works when run from a real terminal (iTerm2, Terminal.app). When run
+from Cursor's shell, stdin is not a TTY so `-t` has no effect and ssh falls back
+to no-PTY mode. In that case the test is still useful for catching errors but
+does not fully replicate a login session.
+
 ## Rules for Changes
 
 1. **Performance**: Keep `.zshrc` load under 20ms. Profile with `zsh_perf`
