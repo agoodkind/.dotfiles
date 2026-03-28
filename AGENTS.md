@@ -170,7 +170,7 @@ directly to the terminal (no capture with `2>&1`).
 | Command | Purpose |
 |---------|---------|
 | `./sync.sh` | Full manual sync (git + link + install + compile) |
-| `./sync.sh --quick --skip-git` | Re-link and recompile without git or installs |
+| `./sync.sh --quick --skip-git` | Re-link and recompile; skips package installs, zinit/nvim updates, and custom tools |
 | `./sync.sh --repair --skip-git` | Deep repair (clean up stale state, reinstall) |
 | `zsh_perf` | Print startup performance tree |
 

@@ -84,6 +84,9 @@ run_step_critical() {
 }
 
 install_custom_tools() {
+    if [[ "$quick_mode" == true ]]; then
+        return 0
+    fi
     section "Installing custom tools"
     dotfiles_run "$DOTDOTFILES/bash/setup/platform/tool-manager.bash"
 }
@@ -594,6 +597,10 @@ cleanup_neovim_repair() {
 update_neovim_plugins() {
     section "Updating Neovim plugins"
 
+    if [[ "$quick_mode" == true ]]; then
+        return 0
+    fi
+
     if [[ "$skip_network" == true ]]; then
         return 0
     fi
@@ -638,6 +645,10 @@ update_neovim_plugins() {
 
 update_zinit_plugins() {
     section "Updating and compiling zinit plugins"
+
+    if [[ "$quick_mode" == true ]]; then
+        return 0
+    fi
 
     if [[ "$skip_network" == true ]]; then
         return 0
@@ -744,6 +755,10 @@ create_hushlogin() {
 ###############################################################################
 
 run_os_install() {
+    if [[ "$quick_mode" == true ]]; then
+        return 0
+    fi
+
     local install_script=""
     local os_type=""
 
