@@ -53,6 +53,15 @@ Host ansible
   HostName ssh.home.goodkind.io
   User root@ansible
 
+Host proxy
+  HostName ssh.home.goodkind.io
+  User root@proxy
+
+Host proxy-direct
+  HostName 3d06:bad:b01::110
+  User root
+  Port 2222
+
 Host nas
   HostName nas.home.goodkind.io
   User agoodkind
@@ -97,4 +106,4 @@ Host nas-kvm
 
 Host mwan
   Hostname mwan.home.goodkind.io
-  User root
+  User root@mwan
