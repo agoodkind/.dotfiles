@@ -1,6 +1,6 @@
 # Remove Emdashes
 
-When the user types "remove emdashes", the last response likely contains emdashes (—), en-dashes (–), or sentences structured around dash-based parentheticals.
+When the user types "remove emdashes", the last few responses and code likely contains emdashes (—), en-dashes (–), or sentences structured around dash-based parentheticals.
 
 ## Why LLMs Produce These Patterns
 
@@ -8,7 +8,7 @@ LLMs reach for emdash constructions for a specific underlying reason: they want 
 
 ## What to Catch
 
-Flag and rewrite any sentence that:
+Flag and rewrite any text that:
 
 - Contains a literal emdash (`—`), en-dash (`–`), or any Unicode dash variant (‒, ―, ‑, or similar).
 - Uses two hyphens (`--`) as a stand-in for an emdash.
@@ -22,7 +22,7 @@ If you are unsure whether a sentence is structured like an emdash, rewrite it an
 
 1. Scan the last response for any of the patterns described above, including structural patterns even when no dash character is present.
 2. For each flagged sentence, ask: "Why did the writer insert this aside here instead of making it its own sentence?" Then restructure the sentence to answer that question directly.
-3. Acceptable rewrites: split into two sentences, use commas, use colons, use semicolons, use parentheses, or restructure the clause so the aside becomes its own sentence with an explicit subject and verb.
+3. Acceptable rewrites: restructure the clause so the aside becomes its own sentence with an explicit subject and verb.
 4. Reproduce the full corrected response with all flagged sentences rewritten.
 
 ## Critical Rules
@@ -33,3 +33,4 @@ If you are unsure whether a sentence is structured like an emdash, rewrite it an
 - Do not fix the punctuation and leave the structure intact. Fix the structure.
 - Preserve the meaning and tone of the original sentence.
 - Do not alter sentences that had no dashes and were not structured like emdash constructions.
+- If the user continues to invoke this command it means you missed some emdash/like occurences and need to retry with a more thorough sweep. It also means that you patching was not adequate: restructure the clause so the aside becomes its own sentence with an explicit subject and verb.

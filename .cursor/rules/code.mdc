@@ -8,6 +8,8 @@ JavaScript/TypeScript: Use function definitions for top-level functions, not arr
 
 Git: Always fetch before any diff, merge-base, log range, or branch comparison, then use the remote-tracking ref (e.g. `origin/main`, but could be `upstream/master` or another remote/branch) rather than the local branch name, since local refs are checked out elsewhere in worktrees and go stale.
 
+Subagents: Prefer fast Composer-based subagents for independent, bounded slices of work (search, exploration, isolated edits). Give each subagent a detailed, narrow prompt: concrete paths, the exact question or change, and the shape of the answer you need. Launch several in parallel when their scopes are separate so the main thread stays smaller and token cost stays lower.
+
 Ruby: Use one guard clause per condition (e.g. `return unless x`, `return unless y`, `return if z`).
 
 Cross-language scripts: When code calls out to a different language (AppleScript via `osascript`, SQL, shell via `subprocess`, etc.), write the script in its own file with the appropriate extension (`.applescript`, `.sql`, `.sh`), then load the file at runtime and substitute dynamic values using the host language's templating primitives. This keeps each language in its own file where editors, linters, and syntax highlighting work correctly.
