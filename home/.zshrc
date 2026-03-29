@@ -104,7 +104,7 @@ prefer npm pnpm
 prefer docker podman
 
 # ssh helper
-prefer sshrm command ssh-keygen -R 
+prefer sshrm ssh-keygen -R
 
 # Editor: nvim > vim > vi (with sudoedit wrappers)
 if isinstalled nvim; then
