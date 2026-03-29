@@ -22,27 +22,18 @@ source "${DOTDOTFILES}/bash/core/tools.bash"
 
 dotfiles_log_init "sync"
 
-# Prevent concurrent sync runs - mkdir is atomic on all filesystems.
-SYNC_LOCK_DIR="$HOME/.cache/dotfiles_sync.lock"
-SYNC_LOCK_PID_FILE="$SYNC_LOCK_DIR/pid"
+# flock on a regular file provides kernel-enforced mutual exclusion.
+# The lock is released automatically when this process exits for any reason,
+# including SIGKILL, so no stale-lock recovery logic is needed.
+SYNC_LOCK_FILE="$HOME/.cache/dotfiles_sync.flock"
 
-_sync_lock_stale() {
-    local lock_pid
-    lock_pid=$(cat "$SYNC_LOCK_PID_FILE" 2>/dev/null) || return 0
-    kill -0 "$lock_pid" 2>/dev/null && return 1
-    return 0
-}
-
-if _sync_lock_stale; then
-    rm -rf "$SYNC_LOCK_DIR"
-fi
-
-if ! mkdir "$SYNC_LOCK_DIR" 2>/dev/null; then
-    dotfiles_log "sync already running (pid $(cat "$SYNC_LOCK_PID_FILE" 2>/dev/null || echo unknown)), exiting"
+mkdir -p "$(dirname "$SYNC_LOCK_FILE")"
+exec 8>"$SYNC_LOCK_FILE"
+if ! flock -n 8; then
+    dotfiles_log "sync already running, exiting"
     exit 0
 fi
-echo "$$" > "$SYNC_LOCK_PID_FILE"
-trap 'rm -rf "$SYNC_LOCK_DIR"' EXIT
+trap 'true' EXIT
 
 _on_error() {
     local exit_code=$? cmd="$BASH_COMMAND" line="$1"
