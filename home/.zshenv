@@ -1,11 +1,11 @@
 zmodload zsh/datetime
 START_TIME=$EPOCHREALTIME
 
-# Cursor Agent compatibility mode:
+# AI agent compatibility mode (Cursor, Claude Code):
 # keep shell metacharacters literal unless explicitly handled by the command.
-# Only applies when running as a Cursor agent in a non-interactive shell; an
-# interactive shell (zsh -i) needs normal glob/history behavior for zshrc to work.
-if [[ -n "$CURSOR_AGENT" ]] && [[ ! -o interactive ]]; then
+# Only applies in a non-interactive shell; an interactive shell (zsh -i) needs
+# normal glob/history behavior for zshrc to work.
+if { [[ -n "$CURSOR_AGENT" ]] || [[ -n "$CLAUDECODE" ]]; } && [[ ! -o interactive ]]; then
     setopt NO_GLOB
     setopt NO_NOMATCH
     unsetopt BANG_HIST
