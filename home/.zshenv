@@ -3,7 +3,9 @@ START_TIME=$EPOCHREALTIME
 
 # Cursor Agent compatibility mode:
 # keep shell metacharacters literal unless explicitly handled by the command.
-if [[ -n "$CURSOR_AGENT" ]]; then
+# Only applies when running as a Cursor agent in a non-interactive shell; an
+# interactive shell (zsh -i) needs normal glob/history behavior for zshrc to work.
+if [[ -n "$CURSOR_AGENT" ]] && [[ ! -o interactive ]]; then
     setopt NO_GLOB
     setopt NO_NOMATCH
     unsetopt BANG_HIST
