@@ -1,6 +1,15 @@
 zmodload zsh/datetime
 START_TIME=$EPOCHREALTIME
 
+# Cursor Agent compatibility mode:
+# keep shell metacharacters literal unless explicitly handled by the command.
+if [[ -n "$CURSOR_AGENT" ]]; then
+    setopt NO_GLOB
+    setopt NO_NOMATCH
+    unsetopt BANG_HIST
+    unsetopt HISTSUBSTPATTERN
+fi
+
 # On-demand zprof: `zsh_profile` touches ~/.zsh_profile_next to arm.
 # .zshenv loads zprof here (earliest user file); perf.zsh has a fallback.
 typeset -gi _ZPROF_ARMED=0 _ZPROF_LOADED=0
@@ -43,7 +52,9 @@ unset _path_cache
 
 export PATH="$HOME/.local/bin:$HOME/.local/bin/scripts:$PATH"
 
-[[ -f "$HOME/.cargo/env" ]] && . "$HOME/.cargo/env"
+if [[ -f "$HOME/.cargo/env" ]]; then
+    source "$HOME/.cargo/env"
+fi
 
 # .zshenv self-time: everything between START_TIME and now
 typeset -gA _PROFILE_TIMES
