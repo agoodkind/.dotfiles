@@ -56,14 +56,15 @@ When in doubt, ask before including a suspicious file.
 
 ## Steps
 
-1. Run `git fetch origin main` to ensure the remote ref is up to date
-2. Run `git status` to check for staged and unstaged changes
-3. Run `git diff $(git merge-base HEAD origin/main) HEAD` to see everything that diverges from main -- use this as the ground truth for what is in scope
-4. Review the changed files -- skip any that shouldn't be committed
-5. If files are staged, run `git diff --staged` to confirm what will be included
-6. If nothing is staged but unstaged changes exist, stage appropriate files with `git add`
-7. Craft a single, concise subject line that states what changed
-8. Execute `git commit -m "<message>"` with the generated message (use `required_permissions: ["all"]`)
-9. If there are remaining relevant changes, repeat for the next logical commit
+1. Before doing anything else, run `git rev-parse --show-toplevel` and `git remote get-url origin` to confirm you are operating in the correct repository. In multi-repo workspaces, the shell's working directory may point to a different repo than the one being discussed.
+2. Run `git fetch origin main` to ensure the remote ref is up to date.
+3. Run `git status` to check for staged and unstaged changes.
+4. Run `git diff $(git merge-base HEAD origin/main) HEAD` to see everything that diverges from main. Use this as the ground truth for what is in scope.
+5. Review the changed files and skip any that should not be committed.
+6. If files are staged, run `git diff --staged` to confirm what will be included.
+7. If nothing is staged but unstaged changes exist, stage appropriate files with `git add`.
+8. Craft a single, concise subject line that states what changed.
+9. Execute `git commit -m "<message>"` with the generated message (use `required_permissions: ["all"]`).
+10. If there are remaining relevant changes, repeat for the next logical commit.
 
 If pre-commit hooks fail, fix the issues and retry.
