@@ -5,7 +5,8 @@ START_TIME=$EPOCHREALTIME
 # keep shell metacharacters literal unless explicitly handled by the command.
 # Only applies in a non-interactive shell; an interactive shell (zsh -i) needs
 # normal glob/history behavior for zshrc to work.
-if { [[ -n "$CURSOR_AGENT" ]] || [[ -n "$CLAUDECODE" ]]; } && [[ ! -o interactive ]]; then
+local is_agent=$(( ${+CURSOR_AGENT} || ${+CLAUDECODE} ))
+if (( is_agent )) && [[ ! -o interactive ]]; then
     setopt NO_GLOB
     setopt NO_NOMATCH
     unsetopt BANG_HIST
