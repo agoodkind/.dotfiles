@@ -63,40 +63,6 @@ run_with_defaults "$DOTDOTFILES/bash/setup/platform/git.bash"
 color_echo BLUE "Running sync script..."
 run_with_defaults "$DOTDOTFILES/sync.sh" "$@"
 
-# Set up passwordless sudo for current user (macOS and Ubuntu)
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    SUDOERS_FILE="/private/etc/sudoers.d/$(whoami)"
-else
-    SUDOERS_FILE="/etc/sudoers.d/$(whoami)"
-fi
-
-# ask user if they want to configure passwordless sudo (current user only)
-CURRENT_USER=$(whoami)
-color_echo YELLOW "This will configure passwordless sudo for user '$CURRENT_USER' only"
-read_with_default "Configure passwordless sudo for $CURRENT_USER? (y/n) " "n"
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    if [[ -f "$SUDOERS_FILE" ]]; then
-        color_echo GREEN "Sudo already passwordless for $CURRENT_USER"
-    else
-        color_echo YELLOW "Configuring passwordless sudo for $CURRENT_USER..."
-        # Validate username doesn't contain dangerous characters
-        if [[ "$CURRENT_USER" =~ [^a-zA-Z0-9_-] ]]; then
-            color_echo RED "Username contains invalid characters, skipping"
-        else
-            SUDOERS_LINE="$CURRENT_USER ALL=(ALL) NOPASSWD:ALL"
-            echo "$SUDOERS_LINE" | sudo tee "$SUDOERS_FILE" >/dev/null
-            sudo chmod 0440 "$SUDOERS_FILE"
-            # Verify the file is valid
-            if sudo visudo -c -f "$SUDOERS_FILE" >/dev/null 2>&1; then
-                color_echo GREEN "Passwordless sudo configured for $CURRENT_USER"
-            else
-                color_echo RED "Invalid sudoers file, removing..."
-                sudo rm -f "$SUDOERS_FILE"
-            fi
-        fi
-    fi
-fi
-
 color_echo BLUE "Checking login shell..."
 ZSH_PATH=$(command -v zsh)
 

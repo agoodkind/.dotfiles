@@ -167,33 +167,6 @@ remove_git_config() {
     fi
 }
 
-# Remove passwordless sudo (requires sudo)
-remove_passwordless_sudo() {
-    info "Checking for passwordless sudo config..."
-    
-    local sudoers_file
-    if is_macos; then
-        sudoers_file="/private/etc/sudoers.d/$(whoami)"
-    else
-        sudoers_file="/etc/sudoers.d/$(whoami)"
-    fi
-    
-    if [[ -f "$sudoers_file" ]]; then
-        warn "Found passwordless sudo config: $sudoers_file"
-        printf "Remove passwordless sudo? (y/n) "
-        read -r response
-        if [[ "$response" =~ ^[Yy]$ ]]; then
-            if sudo rm -f "$sudoers_file"; then
-                log "Removed passwordless sudo config"
-            else
-                error "Failed to remove passwordless sudo config"
-            fi
-        else
-            warn "Keeping passwordless sudo config"
-        fi
-    fi
-}
-
 # Remove cache files
 remove_cache_files() {
     info "Removing cache files..."
@@ -478,7 +451,6 @@ EOF
     remove_git_config
     remove_cache_files
     remove_hushlogin
-    remove_passwordless_sudo
     remove_systemd_updater
     remove_backups
     remove_packages
