@@ -10,6 +10,8 @@ lib/motd/*.local
 *.pyc
 **/__pycache__
 *.zwc
+mypy_cache/
+.idea/
 
 # Machine-local deny patterns - intentionally not committed (may contain work-specific terms)
 .githooks/deny-patterns.local
