@@ -17,27 +17,37 @@ MOTD_DISABLE_SSH="$HOME/.cache/motd_disable_ssh"
 LOGININFO_CACHE="$HOME/.cache/logininfo_session"
 
 function _motd_run_scripts() {
-  local motd_dir="$DOTDOTFILES/lib/motd"
-  [[ -d "$motd_dir" ]] || return 0
-  local script
-  for script in "$motd_dir"/*; do
-    [[ -f "$script" && -x "$script" ]] && "$script"
-  done
+    local motd_dir="$DOTDOTFILES/lib/motd"
+    if [[ ! -d "$motd_dir" ]]; then
+        return 0
+    fi
+    local script
+    for script in "$motd_dir"/*; do
+        if [[ -f "$script" && -x "$script" ]]; then
+            "$script"
+        fi
+    done
 }
 
 function motd() { _motd_run_scripts; }
 
 function _motd_cache_expired() {
-  (( $+builtins[zstat] )) || return 0
-  local -a last_shown
-  zstat -A last_shown +mtime "$MOTD_CACHE_FILE"
-  local now=$EPOCHSECONDS
-  local today=${(%):-"%D{%Y-%m-%d}"}
-  local cache_date
-  strftime -s cache_date "%Y-%m-%d" "$last_shown"
-  [[ "$cache_date" != "$today" ]] && return 0
-  (( (now - last_shown) / 3600 >= MOTD_INTERVAL_HOURS )) && return 0
-  return 1
+    if ! (( $+builtins[zstat] )); then
+        return 0
+    fi
+    local -a last_shown
+    zstat -A last_shown +mtime "$MOTD_CACHE_FILE"
+    local now=$EPOCHSECONDS
+    local today=${(%):-"%D{%Y-%m-%d}"}
+    local cache_date
+    strftime -s cache_date "%Y-%m-%d" "$last_shown"
+    if [[ "$cache_date" != "$today" ]]; then
+        return 0
+    fi
+    if (( (now - last_shown) / 3600 >= MOTD_INTERVAL_HOURS )); then
+        return 0
+    fi
+    return 1
 }
 
 # ==============================================================================
@@ -45,65 +55,99 @@ function _motd_cache_expired() {
 # ==============================================================================
 
 function _logininfo() {
-  local now=$EPOCHSECONDS this_year
-  strftime -s this_year "%Y" $now
+    local now=$EPOCHSECONDS this_year
+    strftime -s this_year "%Y" $now
 
-  local last_terminal="" last_remote="" last_epoch=0
-  [[ -f "$LOGININFO_CACHE" ]] && IFS='|' read -r last_terminal last_remote last_epoch < "$LOGININFO_CACHE"
-
-  if (( last_epoch > 0 && (now - last_epoch) < 5 )); then
-    print -P "%B%F{cyan}Last logged in from %f%b%B%F{green}${last_remote:-$last_terminal}%f%b %B%F{yellow}just now%f%b"
-    return 0
-  fi
-
-  local current_terminal current_remote
-  if [[ -n "$TTY" ]]; then
-    current_terminal="${TTY#/dev/}"
-    [[ -n "$SSH_CLIENT" ]] && current_remote="${SSH_CLIENT%% *}"
-    [[ -z "$current_remote" && -n "$SSH_CONNECTION" ]] && current_remote="${SSH_CONNECTION%% *}"
-  else
-    local current_line
-    current_line=$(who am i 2>/dev/null || who -m 2>/dev/null)
-    [[ -z "$current_line" ]] && return 0
-    local -a words=(${=current_line})
-    current_terminal=${words[2]}
-    [[ "$current_line" =~ '\(([^)]+)\)' ]] && current_remote=${match[1]}
-  fi
-
-  local current_src="${current_remote:-$current_terminal}"
-  local last_src="${last_remote:-$last_terminal}"
-
-  print -r "$current_terminal|$current_remote|$now" >"$LOGININFO_CACHE" &!
-
-  if (( last_epoch > 0 )); then
-    local diff=$((now - last_epoch)) REPLY
-    if (( diff < 60 )); then REPLY="just now"
-    elif (( diff < 120 )); then REPLY="1 minute ago"
-    elif (( diff < 3600 )); then REPLY="$((diff / 60)) minutes ago"
-    elif (( diff < 172800 )); then
-      local time_str; strftime -s time_str "%H:%M" $last_epoch
-      (( diff < 86400 )) && REPLY="at $time_str" || REPLY="at $time_str yesterday"
-    else
-      local day weekday month time login_year
-      strftime -s day "%d" $last_epoch; strftime -s weekday "%A" $last_epoch
-      strftime -s month "%b" $last_epoch; strftime -s time "%H:%M" $last_epoch
-      strftime -s login_year "%Y" $last_epoch
-      day=${day#0}
-      local suffix="th"
-      case $day in 1|21|31) suffix="st" ;; 2|22) suffix="nd" ;; 3|23) suffix="rd" ;; esac
-      [[ "$login_year" == "$this_year" ]] \
-        && REPLY="on $weekday $month ${day}${suffix} at $time" \
-        || REPLY="on $weekday $month ${day}${suffix}, $login_year at $time"
+    local last_terminal="" last_remote="" last_epoch=0
+    if [[ -f "$LOGININFO_CACHE" ]]; then
+        IFS='|' read -r last_terminal last_remote last_epoch < "$LOGININFO_CACHE"
     fi
 
-    if [[ "$current_src" == "$last_src" ]]; then
-      print -P "%B%F{cyan}Currently logged in from %f%b%B%F{green}${current_src}%f%b, %B%F{cyan}last logged in %f%b%B%F{yellow}${REPLY}%f%b"
+    local current_terminal current_remote
+    if [[ -n "$TTY" ]]; then
+        current_terminal="${TTY#/dev/}"
+        if [[ -n "$SSH_CLIENT" ]]; then
+            current_remote="${SSH_CLIENT%% *}"
+        fi
+        if [[ -z "$current_remote" && -n "$SSH_CONNECTION" ]]; then
+            current_remote="${SSH_CONNECTION%% *}"
+        fi
     else
-      print -P "%B%F{cyan}Currently logged in from %f%b%B%F{green}${current_src}%f%b, %B%F{cyan}last logged in from %f%b%B%F{green}${last_src}%f%b %B%F{yellow}${REPLY}%f%b"
+        # $TTY is unset: prefer tty(1) for this shell's stdin, fall back to who(1).
+        local ttry
+        ttry=$(command tty 2>/dev/null)
+        if [[ -n "$ttry" && "$ttry" != *"not a tty"* ]]; then
+            current_terminal="${ttry#/dev/}"
+            if [[ -n "$SSH_CLIENT" ]]; then
+                current_remote="${SSH_CLIENT%% *}"
+            fi
+            if [[ -z "$current_remote" && -n "$SSH_CONNECTION" ]]; then
+                current_remote="${SSH_CONNECTION%% *}"
+            fi
+        else
+            local current_line
+            current_line=$(who am i 2>/dev/null || who -m 2>/dev/null)
+            if [[ -z "$current_line" ]]; then
+                return 0
+            fi
+            local -a words=(${=current_line})
+            current_terminal=${words[2]}
+            if [[ "$current_line" =~ '\(([^)]+)\)' ]]; then
+                current_remote=${match[1]}
+            fi
+        fi
     fi
-  else
-    print -P "%B%F{cyan}Currently logged in from %f%b%B%F{green}${current_src}%f%b"
-  fi
+
+    local current_src="${current_remote:-$current_terminal}"
+    local last_src="${last_remote:-$last_terminal}"
+
+    print -r "$current_terminal|$current_remote|$now" >"$LOGININFO_CACHE" &!
+
+    if (( last_epoch > 0 )); then
+        local diff=$((now - last_epoch)) REPLY
+        if (( diff < 60 )); then
+            REPLY="just now"
+        elif (( diff < 120 )); then
+            REPLY="1 minute ago"
+        elif (( diff < 3600 )); then
+            REPLY="$((diff / 60)) minutes ago"
+        elif (( diff < 172800 )); then
+            local time_str
+            strftime -s time_str "%H:%M" $last_epoch
+            if (( diff < 86400 )); then
+                REPLY="at $time_str"
+            else
+                REPLY="at $time_str yesterday"
+            fi
+        else
+            local day weekday month time login_year
+            strftime -s day "%d" $last_epoch
+            strftime -s weekday "%A" $last_epoch
+            strftime -s month "%b" $last_epoch
+            strftime -s time "%H:%M" $last_epoch
+            strftime -s login_year "%Y" $last_epoch
+            day=${day#0}
+            local suffix="th"
+            case $day in
+                1|21|31) suffix="st" ;;
+                2|22)    suffix="nd" ;;
+                3|23)    suffix="rd" ;;
+            esac
+            if [[ "$login_year" == "$this_year" ]]; then
+                REPLY="on $weekday $month ${day}${suffix} at $time"
+            else
+                REPLY="on $weekday $month ${day}${suffix}, $login_year at $time"
+            fi
+        fi
+
+        if [[ "$current_src" == "$last_src" ]]; then
+            print -P "%B%F{cyan}Currently logged in from %f%b%B%F{green}${current_src}%f%b, %B%F{cyan}last logged in %f%b%B%F{yellow}${REPLY}%f%b"
+        else
+            print -P "%B%F{cyan}Currently logged in from %f%b%B%F{green}${current_src}%f%b, %B%F{cyan}last logged in from %f%b%B%F{green}${last_src}%f%b %B%F{yellow}${REPLY}%f%b"
+        fi
+    else
+        print -P "%B%F{cyan}Currently logged in from %f%b%B%F{green}${current_src}%f%b"
+    fi
 }
 
 # ==============================================================================
@@ -115,7 +159,10 @@ function _logininfo() {
 # ==============================================================================
 
 function _motd_is_ide_terminal() {
-  [[ -n "$VSCODE_PID" ]]
+    if [[ -n "$VSCODE_PID" ]]; then
+        return 0
+    fi
+    return 1
 }
 
 # ==============================================================================
@@ -131,29 +178,37 @@ function _motd_is_ide_terminal() {
 # ==============================================================================
 
 function _motd_should_run() {
-  [[ -t 1 ]] || return 1
-  _motd_is_ide_terminal && return 1
+    if [[ ! -t 1 ]]; then
+        return 1
+    fi
+    if _motd_is_ide_terminal; then
+        return 1
+    fi
 
-  if [[ -f "$MOTD_FORCE_FILE" ]]; then
-    rm -f "$MOTD_FORCE_FILE"
-    return 0
-  fi
+    if [[ -f "$MOTD_FORCE_FILE" ]]; then
+        rm -f "$MOTD_FORCE_FILE"
+        return 0
+    fi
 
-  if [[ -n "$SSH_TTY" ]] && [[ ! -f "$MOTD_DISABLE_SSH" ]]; then
-    return 0
-  fi
+    if [[ -n "$SSH_TTY" ]] && [[ ! -f "$MOTD_DISABLE_SSH" ]]; then
+        return 0
+    fi
 
-  if [[ ! -f "$MOTD_CACHE_FILE" ]]; then
-    mkdir -p "$HOME/.cache"
-    return 0
-  fi
+    if [[ ! -f "$MOTD_CACHE_FILE" ]]; then
+        mkdir -p "$HOME/.cache"
+        return 0
+    fi
 
-  _motd_cache_expired
+    _motd_cache_expired
 }
 
 if _motd_should_run; then
-  _motd_run_scripts
-  [[ -z "$SSH_TTY" ]] && touch "$MOTD_CACHE_FILE"
+    _motd_run_scripts
+    if [[ -z "$SSH_TTY" ]]; then
+        touch "$MOTD_CACHE_FILE"
+    fi
 fi
 
-_motd_is_ide_terminal || _logininfo
+if ! _motd_is_ide_terminal; then
+    _logininfo
+fi

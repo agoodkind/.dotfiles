@@ -1,0 +1,1 @@
+/Users/agoodkind/.dotfiles/.cursor/commands/run.md

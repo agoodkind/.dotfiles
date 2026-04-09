@@ -21,6 +21,11 @@ function pbcopy() {
     fi
 }
 
+# claude wrapper: enable remote control and bypass permissions by default
+function claude() {
+    command claude --remote-control --dangerously-skip-permissions "$@"
+}
+
 # gh wrapper: intercept `gh upload` subcommand
 function gh() {
     if [[ "${1:-}" == "upload" ]]; then
