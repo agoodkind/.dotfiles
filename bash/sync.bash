@@ -455,12 +455,16 @@ sync_cursor_config() {
 }
 
 sync_cursor_user_rules() {
-    local sync_script="$DOTDOTFILES/lib/cursor/sync-cursor-rules.py"
+    local sync_script="$DOTDOTFILES/lib/cursor"
     local cursor_db="$HOME/Library/Application Support/Cursor/User/globalStorage/state.vscdb"
 
     is_macos "sync_cursor_user_rules is macOS-only" || return 0
 
-    if [[ ! -x "$sync_script" ]]; then
+    if [[ ! -d "$sync_script" ]]; then
+        return 0
+    fi
+
+    if ! command -v go >/dev/null 2>&1; then
         return 0
     fi
 
@@ -469,7 +473,90 @@ sync_cursor_user_rules() {
     fi
 
     section "Syncing Cursor User Rules"
-    "$sync_script"
+    (cd "$sync_script" && GO111MODULE=on go run ./cmd/sync)
+}
+
+sync_claude_config() {
+    section "Syncing Claude configuration"
+
+    local claude_dir="$HOME/.claude"
+    # Commands and skills share source with Cursor (same format)
+    local src_commands="$DOTDOTFILES/.cursor/commands"
+    local src_skills="$DOTDOTFILES/.cursor/skills"
+    local src_rules="$DOTDOTFILES/.cursor/rules"
+    # Claude-specific additions (don't belong in Cursor)
+    local src_claude="$DOTDOTFILES/.claude"
+
+    mkdir -p "$claude_dir/commands" "$claude_dir/skills" "$claude_dir/rules"
+
+    # Sync commands (identical markdown format for both Cursor and Claude)
+    if [[ -d "$src_commands" ]]; then
+        for cmd in "$src_commands"/*.md; do
+            [[ -f "$cmd" ]] || continue
+            local cmd_name
+            cmd_name=$(basename "$cmd")
+            ln -sf "$cmd" "$claude_dir/commands/$cmd_name"
+        done
+    fi
+
+    # Sync skills (SKILL.md format is compatible with both)
+    _sync_skills_dir() {
+        local dir="$1"
+        [[ -d "$dir" ]] || return 0
+        for skill in "$dir"/*/; do
+            [[ -d "$skill" ]] || continue
+            local skill_source skill_name skill_target current_link
+            skill_source=${skill%/}
+            skill_name=$(basename "$skill_source")
+            skill_target="$claude_dir/skills/$skill_name"
+
+            if [[ -L "$skill_target" ]]; then
+                current_link=$(readlink "$skill_target" 2>/dev/null || echo "")
+                if [[ "$current_link" == "$skill_source" ]]; then
+                    continue
+                fi
+                rm -f "$skill_target"
+            fi
+
+            ln -sfn "$skill_source" "$skill_target"
+        done
+    }
+
+    _sync_skills_dir "$src_skills"
+
+    # Sync rules: symlink .mdc → .md (Claude ignores cursor-specific frontmatter)
+    if [[ -d "$src_rules" ]]; then
+        for rule in "$src_rules"/*.mdc; do
+            [[ -f "$rule" ]] || continue
+            local rule_base rule_name
+            rule_base=$(basename "$rule")
+            rule_name="${rule_base%.mdc}.md"
+            ln -sf "$rule" "$claude_dir/rules/$rule_name"
+        done
+    fi
+
+    # Sync Claude-only commands
+    if [[ -d "$src_claude/commands" ]]; then
+        for cmd in "$src_claude/commands"/*.md; do
+            [[ -f "$cmd" ]] || continue
+            local cmd_name
+            cmd_name=$(basename "$cmd")
+            ln -sf "$cmd" "$claude_dir/commands/$cmd_name"
+        done
+    fi
+
+    # Sync Claude-only skills
+    _sync_skills_dir "$src_claude/skills"
+
+    # Sync Claude-only rules
+    if [[ -d "$src_claude/rules" ]]; then
+        for rule in "$src_claude/rules"/*.md; do
+            [[ -f "$rule" ]] || continue
+            local rule_name
+            rule_name=$(basename "$rule")
+            ln -sf "$rule" "$claude_dir/rules/$rule_name"
+        done
+    fi
 }
 
 sync_git_hooks() {
@@ -803,6 +890,7 @@ main() {
     run_step sync_all_scripts
     run_step sync_cursor_config
     run_step sync_cursor_user_rules
+    run_step sync_claude_config
     run_step check_git_hooks_path
     run_step sync_git_hooks
     run_step sync_global_git_hooks

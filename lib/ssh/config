@@ -92,6 +92,13 @@ Host vault
   User root
   ForwardAgent yes
 
+Host tack
+  HostName 3d06:bad:b01::117
+  User root
+  ProxyJump vault
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+
 Host vault-jetkvm
   HostName vault-jetkvm.goodkind.io
   User root

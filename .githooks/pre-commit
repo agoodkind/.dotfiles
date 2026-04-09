@@ -4,7 +4,7 @@
 # public dotfiles repo.
 #
 # Three sequential checks:
-#   1. File extension gate  - hard-blocks .rb, .go, Gemfile, go.mod, etc.
+#   1. File extension gate  - hard-blocks .rb, Gemfile, etc.
 #   2. Pattern scan         - deny-patterns (committed) + deny-patterns.local (gitignored)
 #   3. Gitleaks             - secret/credential detection
 #
@@ -28,13 +28,10 @@ blocked=false
 
 BANNED_EXTENSIONS=(
     "\.rb$"
-    "\.go$"
     "\.gemspec$"
     "^Gemfile$"
     "^Gemfile\.lock$"
     "^Rakefile$"
-    "^go\.mod$"
-    "^go\.sum$"
 )
 
 staged_files=$(git diff --cached --name-only --diff-filter=ACM)
@@ -54,7 +51,7 @@ done <<< "$staged_files"
 if [[ ${#banned_files[@]} -gt 0 ]]; then
     echo ""
     echo -e "${RED}${BOLD}╔══════════════════════════════════════════════════════════════╗${RESET}"
-    echo -e "${RED}${BOLD}║  BLOCKED: Ruby/Go files detected in staged changes           ║${RESET}"
+    echo -e "${RED}${BOLD}║  BLOCKED: Ruby files detected in staged changes               ║${RESET}"
     echo -e "${RED}${BOLD}╚══════════════════════════════════════════════════════════════╝${RESET}"
     echo ""
     echo -e "${BOLD}These file types should not exist in this dotfiles repo:${RESET}"
