@@ -26,4 +26,24 @@ if [[ -n "$identity" ]]; then
     fi
 fi
 
+# Shell lint: check staged shell files for if/then/fi style violations
+if command -v ast-grep >/dev/null; then
+    _staged_shell=()
+    while IFS= read -r _f; do
+        case "$_f" in
+            lib/zinit/*|lib/zsh-defer/*) ;;
+            *.sh|*.bash|*.zsh) _staged_shell+=("$_f") ;;
+        esac
+    done < <(git diff --cached --name-only --diff-filter=ACMR)
+
+    if [[ ${#_staged_shell[@]} -gt 0 ]]; then
+        if ! ast-grep scan "${_staged_shell[@]}"; then
+            echo ""
+            echo "error: shell lint violations found — fix them before committing."
+            echo "hint:  run 'make lint' to see all violations."
+            exit 1
+        fi
+    fi
+fi
+
 chain_hook pre-commit "$@"

@@ -43,7 +43,9 @@ if [[ ! -f ~/.cache/os-type.cache ]]; then
         os_id=""
         os_like=""
         while IFS='=' read -r key value; do
-            [[ -n "$key" ]] || continue
+            if [[ -z "$key" ]]; then
+                continue
+            fi
             value="${value%\"}"
             value="${value#\"}"
             case "$key" in

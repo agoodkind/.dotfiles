@@ -1,0 +1,28 @@
+id: no-test-shorthand
+language: bash
+severity: error
+message: >
+  Use if/then/fi instead of [[ ]]/[[()] shorthand && or || chains.
+  Replace `[[ cond ]] && action` with `if [[ cond ]]; then action; fi`.
+  Replace `[[ cond ]] || action` with `if [[ ! cond ]]; then action; fi`.
+rule:
+  all:
+    - any:
+        - pattern: "[[ $A ]] && $B"
+        - pattern: "[[ $A ]] || $B"
+        - pattern: "(( $A )) && $B"
+        - pattern: "(( $A )) || $B"
+    # Exclude compound conditions that are direct conditions of flow control
+    # statements. stopBy: neighbor checks only the immediate parent, so
+    # violations inside the *body* of these statements are still caught.
+    - not:
+        any:
+          - inside:
+              kind: if_statement
+              stopBy: neighbor
+          - inside:
+              kind: elif_clause
+              stopBy: neighbor
+          - inside:
+              kind: while_statement
+              stopBy: neighbor

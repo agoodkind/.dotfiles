@@ -25,7 +25,9 @@ _PERF_TREE=("${_sys_header[@]}" "${_PERF_TREE[@]}")
 local _sc_accounted=0 _sc_entry _sc_rest _sc_ms
 for _sc_entry in "${_PERF_TREE[@]}"; do
     local _sc_depth=${_sc_entry%%:*}
-    (( _sc_depth >= 2 )) || continue
+    if ! (( _sc_depth >= 2 )); then
+        continue
+    fi
     _sc_rest=${_sc_entry#*:}; _sc_rest=${_sc_rest#*:}
     _sc_ms=${_sc_rest%%:*}
     _sc_accounted=$(( _sc_accounted + _sc_ms ))
@@ -143,7 +145,9 @@ function _perf_print_zprof_section() {
     local zi zp_f zp_name zp_total zp_self zp_calls zp_s zp_branch
     for zi in {1..$total_entries}; do
         zp_f=( ${=entries[$zi]} )
-        (( ${#zp_f} >= 9 )) || continue
+        if ! (( ${#zp_f} >= 9 )); then
+            continue
+        fi
 
         zp_name=${zp_f[9]}
         zp_total=${zp_f[3]}
