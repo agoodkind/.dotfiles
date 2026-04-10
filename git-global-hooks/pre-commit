@@ -40,7 +40,7 @@ if command -v ast-grep >/dev/null; then
         if ! ast-grep scan "${_staged_shell[@]}"; then
             echo ""
             echo "error: shell lint violations found — fix them before committing."
-            echo "hint:  run 'make lint' to see all violations."
+            echo "hint:  run 'make fix' to auto-fix, then re-stage and commit."
             exit 1
         fi
     fi
