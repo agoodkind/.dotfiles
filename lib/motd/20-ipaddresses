@@ -8,7 +8,7 @@ fi
 
 declare -A ipv4_arrays
 declare -A ipv6_arrays
-declare -A ip_to_subnet  # Maps "iface:ip" -> "network/prefix"
+declare -A ip_to_subnet # Maps "iface:ip" -> "network/prefix"
 
 # ==============================================================================
 # Output helpers
@@ -31,7 +31,7 @@ visible_len() {
 # ==============================================================================
 
 # Use cached OS_TYPE if available, fallback to uname
-[[ -z "$OS_TYPE" ]] && [[ -f ~/.cache/os-type.cache ]] && \
+[[ -z "$OS_TYPE" ]] && [[ -f ~/.cache/os-type.cache ]] &&
     OS_TYPE=$(cat ~/.cache/os-type.cache)
 [[ -z "$OS_TYPE" ]] && [[ "$(uname)" == "Darwin" ]] && OS_TYPE="mac"
 
@@ -41,7 +41,7 @@ dim=""
 reset=""
 iface_colors=()
 subnet_colors=()
-host_color=""        # global color for host bits (lower bits), same everywhere
+host_color="" # global color for host bits (lower bits), same everywhere
 declare -A subnet_color_cache
 
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
@@ -80,15 +80,15 @@ fi
 # Convert hex netmask (e.g., 0xffffff00) to dotted decimal (255.255.255.0)
 hex_netmask_to_dotted() {
     local hex=$1
-    hex=${hex#0x}  # Remove 0x prefix
-    
+    hex=${hex#0x} # Remove 0x prefix
+
     # Convert each pair of hex digits to decimal
     local o1 o2 o3 o4
     o1=$((16#${hex:0:2}))
     o2=$((16#${hex:2:2}))
     o3=$((16#${hex:4:2}))
     o4=$((16#${hex:6:2}))
-    
+
     echo "$o1.$o2.$o3.$o4"
 }
 
@@ -98,27 +98,27 @@ hex_netmask_to_dotted() {
 calculate_network() {
     local ip=$1
     local mask_or_prefix=$2
-    
+
     command -v sipcalc >/dev/null 2>&1 || return 1
-    
+
     local output result
-    
+
     if [[ "$ip" == *:* ]]; then
         # IPv6
         output=$(sipcalc "${ip}/${mask_or_prefix}" 2>/dev/null)
         # Get "Subnet prefix (masked)" line and extract just the network/prefix
-        result=$(echo "$output" | grep "^Subnet prefix (masked)" | \
+        result=$(echo "$output" | grep "^Subnet prefix (masked)" |
             awk '{print $NF}')
     else
         # IPv4
         output=$(sipcalc "$ip" "$mask_or_prefix" 2>/dev/null)
         local network prefix
         network=$(echo "$output" | grep "^Network address" | awk '{print $NF}')
-        prefix=$(echo "$output" | grep "^Network mask (bits)" | \
+        prefix=$(echo "$output" | grep "^Network mask (bits)" |
             awk '{print $NF}')
         [[ -n "$network" && -n "$prefix" ]] && result="${network}/${prefix}"
     fi
-    
+
     [[ -n "$result" ]] && echo "$result"
 }
 
@@ -128,62 +128,74 @@ calculate_network() {
 subnet_to_hsl_color() {
     local subnet=$1
     [[ -z "$subnet" ]] && return
-    
+
     # Detect if this is IPv4 or IPv6
     local is_ipv6=false
     [[ "$subnet" == *:* ]] && is_ipv6=true
-    
+
     # Hash the subnet to get a number
     local hash=0
     local i char_code
-    for ((i=0; i<${#subnet}; i++)); do
+    for ((i = 0; i < ${#subnet}; i++)); do
         printf -v char_code '%d' "'${subnet:i:1}"
         hash=$(((hash * 33 + char_code) & 0x7fffffff))
     done
-    
+
     # Split color spectrum for networks (hosts use grayscale):
     # IPv4 Networks: Hues 0-179 (180° - full warm spectrum)
     # IPv6 Networks: Hues 180-359 (180° - full cool spectrum)
     local hue
     if $is_ipv6; then
-        hue=$((180 + (hash % 180)))  # 180-359
+        hue=$((180 + (hash % 180))) # 180-359
     else
-        hue=$((hash % 180))          # 0-179
+        hue=$((hash % 180)) # 0-179
     fi
-    
+
     # Fixed saturation (85%) and lightness (65%) for vibrant, readable colors
     # on dark backgrounds. Convert HSL to RGB.
-    
+
     # HSL to RGB conversion
-    local h_norm=$((hue * 100 / 60))  # Normalize to 0-600 range for easier math
-    local s=85  # High saturation for vivid colors
-    local l=65  # Medium-high lightness for readability
-    
+    local h_norm=$((hue * 100 / 60)) # Normalize to 0-600 range for easier math
+    local s=85                       # High saturation for vivid colors
+    local l=65                       # Medium-high lightness for readability
+
     # Calculate chroma
-    local c=$(( (100 - ((l * 2 - 100) > 0 ? (l * 2 - 100) : -(l * 2 - 100))) * s / 100 ))
-    local x=$(( c * (100 - ((h_norm % 200 - 100) > 0 ? (h_norm % 200 - 100) : -(h_norm % 200 - 100))) / 100 ))
-    local m=$(( l - c / 2 ))
-    
+    local c=$(((100 - ((l * 2 - 100) > 0 ? (l * 2 - 100) : -(l * 2 - 100))) * s / 100))
+    local x=$((c * (100 - ((h_norm % 200 - 100) > 0 ? (h_norm % 200 - 100) : -(h_norm % 200 - 100))) / 100))
+    local m=$((l - c / 2))
+
     local r1 g1 b1
-    if (( h_norm < 100 )); then
-        r1=$c; g1=$x; b1=0
-    elif (( h_norm < 200 )); then
-        r1=$x; g1=$c; b1=0
-    elif (( h_norm < 300 )); then
-        r1=0; g1=$c; b1=$x
-    elif (( h_norm < 400 )); then
-        r1=0; g1=$x; b1=$c
-    elif (( h_norm < 500 )); then
-        r1=$x; g1=0; b1=$c
+    if ((h_norm < 100)); then
+        r1=$c
+        g1=$x
+        b1=0
+    elif ((h_norm < 200)); then
+        r1=$x
+        g1=$c
+        b1=0
+    elif ((h_norm < 300)); then
+        r1=0
+        g1=$c
+        b1=$x
+    elif ((h_norm < 400)); then
+        r1=0
+        g1=$x
+        b1=$c
+    elif ((h_norm < 500)); then
+        r1=$x
+        g1=0
+        b1=$c
     else
-        r1=$c; g1=0; b1=$x
+        r1=$c
+        g1=0
+        b1=$x
     fi
-    
+
     # Convert to 0-255 range
-    local r=$(( (r1 + m) * 255 / 100 ))
-    local g=$(( (g1 + m) * 255 / 100 ))
-    local b=$(( (b1 + m) * 255 / 100 ))
-    
+    local r=$(((r1 + m) * 255 / 100))
+    local g=$(((g1 + m) * 255 / 100))
+    local b=$(((b1 + m) * 255 / 100))
+
     # Return True Color ANSI code
     printf '\e[38;2;%d;%d;%dm' "$r" "$g" "$b"
 }
@@ -193,14 +205,14 @@ subnet_to_hsl_color() {
 # Args: $1=iface (optional), $2=ip (or $1=ip if only one arg)
 subnet_key_for_ip() {
     local iface="" ip=""
-    
+
     if [[ $# -eq 2 ]]; then
         iface=$1
         ip=$2
     else
         ip=$1
     fi
-    
+
     # Try to get stored subnet first (if we have interface)
     if [[ -n "$iface" ]]; then
         local stored_subnet="${ip_to_subnet["$iface:$ip"]:-}"
@@ -209,12 +221,12 @@ subnet_key_for_ip() {
             return
         fi
     fi
-    
+
     # Fallback: approximate subnet (old behavior)
     # IPv4: assume /24
     if [[ "$ip" == *.* ]]; then
         local o1 o2 o3
-        IFS='.' read -r o1 o2 o3 _ <<< "$ip"
+        IFS='.' read -r o1 o2 o3 _ <<<"$ip"
         [[ -z "$o1" || -z "$o2" || -z "$o3" ]] && return
         printf '%s\n' "${o1}.${o2}.${o3}.0/24"
         return
@@ -223,7 +235,7 @@ subnet_key_for_ip() {
     # IPv6: assume /64, use first 4 hextets
     local parts=()
     local part
-    IFS=':' read -ra parts <<< "$ip"
+    IFS=':' read -ra parts <<<"$ip"
     local count=0
     local key_parts=()
 
@@ -235,7 +247,10 @@ subnet_key_for_ip() {
     done
 
     if [[ ${#key_parts[@]} -gt 0 ]]; then
-        printf '%s\n' "$(IFS=':'; echo "${key_parts[*]}")"
+        printf '%s\n' "$(
+            IFS=':'
+            echo "${key_parts[*]}"
+        )"
     fi
 }
 
@@ -244,7 +259,7 @@ subnet_color_for_key() {
     local key=$1
 
     [[ -z "$key" ]] && return
-    
+
     # Return empty if colors are disabled
     if [[ ${#subnet_colors[@]} -eq 0 ]]; then
         return
@@ -270,28 +285,31 @@ declare -A host_color_cache
 host_color_for_bits() {
     local host_bits=$1
     local is_ipv6=${2:-false}
-    
-    [[ -z "$host_bits" ]] && { printf '%s' "$host_color"; return; }
-    
+
+    [[ -z "$host_bits" ]] && {
+        printf '%s' "$host_color"
+        return
+    }
+
     # Return empty if colors are disabled
     if [[ -z "$host_color" ]]; then
         return
     fi
-    
+
     # Cache key includes IP type
     local cache_key="${is_ipv6}:${host_bits}"
     if [[ -n "${host_color_cache[$cache_key]:-}" ]]; then
         printf '%s' "${host_color_cache[$cache_key]}"
         return
     fi
-    
+
     # Hash the host bits
     local hash=0 i char_code
-    for ((i=0; i<${#host_bits}; i++)); do
+    for ((i = 0; i < ${#host_bits}; i++)); do
         printf -v char_code '%d' "'${host_bits:i:1}"
         hash=$(((hash * 33 + char_code) & 0x7fffffff))
     done
-    
+
     # Use WIDE grayscale range for maximum visual distinction
     # Use specific discrete values spread across the range for better distribution
     # 16 distinct grayscale shades from medium-gray to white
@@ -300,7 +318,7 @@ host_color_for_bits() {
     )
     local idx=$((hash % ${#shades[@]}))
     local gray=${shades[$idx]}
-    
+
     # Return BOLD grayscale for visibility
     local color
     printf -v color '\e[1;38;2;%d;%d;%dm' "$gray" "$gray" "$gray"
@@ -325,22 +343,22 @@ fetch_internet_info() {
     # Helper: check if cache is fresh
     is_cache_fresh() {
         [[ -f "$cache_file" ]] || return 1
-        
+
         local mtime
         mtime=$(date -r "$cache_file" +%s 2>/dev/null)
         [[ "$mtime" =~ ^[0-9]+$ ]] || return 1
-        
+
         local now
         now=$(date +%s 2>/dev/null)
         [[ "$now" =~ ^[0-9]+$ ]] || return 1
-        
+
         local file_age=$((now - mtime))
-        (( file_age <= max_age_seconds ))
+        ((file_age <= max_age_seconds))
     }
 
     # Wait up to 2 seconds for cache to become fresh
     local waited=0
-    while ! is_cache_fresh && (( waited < max_wait_seconds * 10 )); do
+    while ! is_cache_fresh && ((waited < max_wait_seconds * 10)); do
         sleep 0.1
         waited=$((waited + 1))
     done
@@ -352,7 +370,7 @@ fetch_internet_info() {
         case "$k" in
             pub4) internet_pub4=("$v") ;;
             pub6) internet_pub6=("$v") ;;
-            isp)  internet_isp=("$v") ;;
+            isp) internet_isp=("$v") ;;
         esac
     done <"$cache_file"
 }
@@ -364,7 +382,10 @@ format_ip_colored() {
     local ip=$1
     local subnet_key subnet_color
 
-    [[ -z "$ip" || "$ip" == "N/A" ]] && { printf '%s' "N/A"; return; }
+    [[ -z "$ip" || "$ip" == "N/A" ]] && {
+        printf '%s' "N/A"
+        return
+    }
 
     subnet_key=$(subnet_key_for_ip "$ip")
     subnet_color=$(subnet_color_for_key "$subnet_key")
@@ -377,7 +398,7 @@ format_ip_colored() {
     if [[ "$ip" == *.* ]]; then
         # IPv4 address
         local o1 o2 o3 o4 net_part host_part
-        IFS='.' read -r o1 o2 o3 o4 <<< "$ip"
+        IFS='.' read -r o1 o2 o3 o4 <<<"$ip"
         if [[ -n "$o1" && -n "$o2" && -n "$o3" && -n "$o4" ]]; then
             net_part="${o1}.${o2}.${o3}."
             host_part="$o4"
@@ -385,7 +406,7 @@ format_ip_colored() {
                 # Get deterministic host color for IPv4
                 local host_clr
                 host_clr=$(host_color_for_bits "$host_part" "false")
-                
+
                 printf '%b' "${bold}${subnet_color}${net_part}${reset}"
                 printf '%b' "${host_clr}${host_part}${reset}"
             else
@@ -404,13 +425,13 @@ format_ip_colored() {
             local net_part="${BASH_REMATCH[1]}"
             local separator="${BASH_REMATCH[2]}"
             local host_part="${BASH_REMATCH[3]}"
-            
+
             # Only split if we have a host part
             if [[ -n "$host_part" && -n "$host_color" ]]; then
                 # Get deterministic host color for IPv6
                 local host_clr
                 host_clr=$(host_color_for_bits "$host_part" "true")
-                
+
                 printf '%b' "${subnet_color}${net_part}${separator}${reset}"
                 printf '%b' "${host_clr}${host_part}${reset}"
                 return
@@ -426,7 +447,7 @@ add_ip() {
     local iface=$1
     local ip=$2
     local type=$3
-    
+
     if [[ "$type" == "ipv4" ]]; then
         [[ -z "${ipv4_arrays[$iface]}" ]] && ipv4_arrays[$iface]=""
         [[ -n "${ipv4_arrays[$iface]}" ]] && ipv4_arrays[$iface]+=" "
@@ -444,71 +465,71 @@ add_ip() {
 
 if [[ "$OS_TYPE" == "mac" ]]; then
     command -v ifconfig >/dev/null 2>&1 || exit 0
-    
+
     current_iface=""
     while IFS= read -r line; do
         if [[ "$line" =~ ^([^:]+):[[:space:]]+flags= ]]; then
             current_iface="${BASH_REMATCH[1]}"
             continue
         fi
-        
+
         [[ -z "$current_iface" ]] && continue
-        
+
         if [[ "$line" =~ [[:space:]]+inet[[:space:]]+([0-9.]+)[[:space:]]+netmask[[:space:]]+(0x[0-9a-fA-F]+) ]]; then
             ip="${BASH_REMATCH[1]}"
             netmask_hex="${BASH_REMATCH[2]}"
             [[ "$ip" =~ ^127\. ]] && continue
-            
+
             # Convert hex netmask to dotted decimal and calculate network
             netmask=$(hex_netmask_to_dotted "$netmask_hex")
             subnet=$(calculate_network "$ip" "$netmask")
             [[ -n "$subnet" ]] && ip_to_subnet["$current_iface:$ip"]="$subnet"
-            
+
             add_ip "$current_iface" "$ip" "ipv4"
         elif [[ "$line" =~ [[:space:]]+inet6[[:space:]]+([0-9a-fA-F:]+)[[:space:]]+prefixlen[[:space:]]+([0-9]+) ]]; then
             ip6="${BASH_REMATCH[1]%%%*}"
             prefix="${BASH_REMATCH[2]}"
             [[ "$ip6" == "::1" ]] && continue
             [[ "$ip6" =~ ^fe80:: ]] && continue
-            
+
             # Calculate network address
             subnet=$(calculate_network "$ip6" "$prefix")
             [[ -n "$subnet" ]] && ip_to_subnet["$current_iface:$ip6"]="$subnet"
-            
+
             add_ip "$current_iface" "$ip6" "ipv6"
         fi
     done < <(ifconfig -a 2>/dev/null)
 else
     command -v ip >/dev/null 2>&1 || exit 0
-    
+
     current_iface=""
     while IFS= read -r line; do
         if [[ "$line" =~ ^[0-9]+:[[:space:]]+([^:]+): ]]; then
             current_iface="${BASH_REMATCH[1]}"
             continue
         fi
-        
+
         [[ -z "$current_iface" ]] && continue
-        
+
         if [[ "$line" =~ [[:space:]]+inet[[:space:]]+([0-9.]+)/([0-9]+) ]]; then
             ip="${BASH_REMATCH[1]}"
             prefix="${BASH_REMATCH[2]}"
             [[ "$ip" =~ ^127\. ]] && continue
-            
-            subnet=$(sipcalc "${ip}/${prefix}" 2>/dev/null | \
+
+            subnet=$(sipcalc "${ip}/${prefix}" 2>/dev/null |
                 grep "^Network address" | awk '{print $NF}')
             [[ -n "$subnet" ]] && ip_to_subnet["$current_iface:$ip"]="${subnet}/${prefix}"
-            
+
             add_ip "$current_iface" "$ip" "ipv4"
         elif [[ "$line" =~ [[:space:]]+inet6[[:space:]]+([0-9a-fA-F:]+)/([0-9]+) ]]; then
             ip6="${BASH_REMATCH[1]}"
             prefix="${BASH_REMATCH[2]}"
             [[ "$ip6" == "::1" ]] && continue
             [[ "$ip6" =~ ^fe80:: ]] && continue
-            
+
             subnet=$(calculate_network "$ip6" "$prefix")
             [[ -n "$subnet" ]] && ip_to_subnet["$current_iface:$ip6"]="$subnet"
-            
+
             add_ip "$current_iface" "$ip6" "ipv6"
         fi
     done < <(ip addr show 2>/dev/null)
@@ -531,8 +552,8 @@ for idx in "${!all_interfaces[@]}"; do
     v6_addrs=()
     v4_addrs=()
 
-    [[ -n "${ipv6_arrays[$iface]}" ]] && read -ra v6_addrs <<< "${ipv6_arrays[$iface]}"
-    [[ -n "${ipv4_arrays[$iface]}" ]] && read -ra v4_addrs <<< "${ipv4_arrays[$iface]}"
+    [[ -n "${ipv6_arrays[$iface]}" ]] && read -ra v6_addrs <<<"${ipv6_arrays[$iface]}"
+    [[ -n "${ipv4_arrays[$iface]}" ]] && read -ra v4_addrs <<<"${ipv4_arrays[$iface]}"
 
     all_addrs=("${v6_addrs[@]}" "${v4_addrs[@]}")
     [[ ${#all_addrs[@]} -eq 0 ]] && continue
@@ -551,10 +572,9 @@ for idx in "${!all_interfaces[@]}"; do
     dominant_count=0
     for key in "${!subnet_counts[@]}"; do
         count=${subnet_counts[$key]}
-        if (( count > dominant_count )) || \
-            { (( count == dominant_count )) && \
-            [[ -n "$key" && ( -z "$dominant_key" || "$key" < "$dominant_key" ) ]]; }
-        then
+        if ((count > dominant_count)) ||
+            { ((count == dominant_count)) &&
+                [[ -n "$key" && (-z "$dominant_key" || "$key" < "$dominant_key") ]]; }; then
             dominant_key="$key"
             dominant_count=$count
         fi
@@ -624,14 +644,14 @@ for idx in "${!all_interfaces[@]}"; do
             if [[ "${all_addrs[$i]}" == *.* ]]; then
                 # IPv4 address
                 o1="" o2="" o3="" o4=""
-                IFS='.' read -r o1 o2 o3 o4 <<< "${all_addrs[$i]}"
+                IFS='.' read -r o1 o2 o3 o4 <<<"${all_addrs[$i]}"
                 if [[ -n "$o1" && -n "$o2" && -n "$o3" && -n "$o4" ]]; then
                     net_part="${o1}.${o2}.${o3}."
                     host_part="$o4"
                     if [[ -n "$host_color" ]]; then
                         # Get deterministic host color for IPv4
                         host_clr=$(host_color_for_bits "$host_part" "false")
-                        
+
                         addr_label="${bold}${subnet_color}${net_part}${reset}"
                         addr_label+="${host_clr}${host_part}${reset}"
                     else
@@ -649,12 +669,12 @@ for idx in "${!all_interfaces[@]}"; do
                         net_part="${BASH_REMATCH[1]}"
                         separator="${BASH_REMATCH[2]}"
                         host_part="${BASH_REMATCH[3]}"
-                        
+
                         # Only split if we have host part and colors enabled
                         if [[ -n "$host_part" && -n "$host_color" ]]; then
                             # Get deterministic host color for IPv6
                             host_clr=$(host_color_for_bits "$host_part" "true")
-                            
+
                             addr_label="${subnet_color}${net_part}${separator}${reset}"
                             addr_label+="${host_clr}${host_part}${reset}"
                         else
@@ -751,7 +771,7 @@ fi
 max_left=0
 for line in "${left_lines[@]}"; do
     l=$(visible_len "$line")
-    (( l > max_left )) && max_left=$l
+    ((l > max_left)) && max_left=$l
 done
 
 pad_width=$((max_left + 4))
@@ -771,7 +791,7 @@ for ((i = 0; i < num_lines; i++)); do
 
     left_len=$(visible_len "$left")
     spaces=$((pad_width - left_len))
-    (( spaces < 1 )) && spaces=1
+    ((spaces < 1)) && spaces=1
 
     printf '%b' "$left"
     printf '%*s' "$spaces" ""

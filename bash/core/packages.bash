@@ -3,128 +3,128 @@
 
 # Packages that should always be installed via snap (on Linux)
 export SNAP_PACKAGES=(
-	neovim
-	fx
+    neovim
+    fx
 )
 
 # Common packages across both package managers
 # Note: Some packages (procs, starship, tokei, xh, tree-sitter-cli)
 # are in CARGO_PACKAGES for Linux since they're not in apt
 export COMMON_PACKAGES=(
-	ack
-	ansible
-	ansible-lint
-	aria2
-	bat
-	bash
-	btop
-	coreutils
-	curl
-	duf
-	eza
-	fail2ban
-	fastfetch
-	fd
-	ffmpeg
-	figlet
-	fping
-	fzf
-	gh
-	git
-	git-delta
-	git-lfs
-	gping
-	grc
-	grep
-	htop
-	hyperfine
-	imagemagick
-	ipv6calc
-	jq
-	less
+    ack
+    ansible
+    ansible-lint
+    aria2
+    bat
+    bash
+    btop
+    coreutils
+    curl
+    duf
+    eza
+    fail2ban
+    fastfetch
+    fd
+    ffmpeg
+    figlet
+    fping
+    fzf
+    gh
+    git
+    git-delta
+    git-lfs
+    gping
+    grc
+    grep
+    htop
+    hyperfine
+    imagemagick
+    ipv6calc
+    jq
+    less
     mosh
-	most
-	moreutils
-	msmtp
-	ncdu
-	openssh
-	pandoc
-	pigz
-	pv
-	python3
-	rename
-	rg
-	rsync
-	ruby
-	screen
-	sd
-	sipcalc
-	smartmontools
-	sshuttle
-	tealdeer
-	thefuck
-	tree
-	trippy
-	tshark
-	vim
-	watch
-	wget
-	zoxide
-	zsh
-	yq
+    most
+    moreutils
+    msmtp
+    ncdu
+    openssh
+    pandoc
+    pigz
+    pv
+    python3
+    rename
+    rg
+    rsync
+    ruby
+    screen
+    sd
+    sipcalc
+    smartmontools
+    sshuttle
+    tealdeer
+    thefuck
+    tree
+    trippy
+    tshark
+    vim
+    watch
+    wget
+    zoxide
+    zsh
+    yq
 )
 
 # APT-specific packages (different names or apt-only)
 export APT_SPECIFIC=(
-	ack-grep
-	et
-	golang-go
-	golang
-	gpg
-	ipcalc-ng
-	ipcalc
-	locales
-	msmtp-mta
-	net-tools
-	nodejs
-	openssh-client
-	openssh-server
-	parted
-	rbenv
-	rsyslog
-	sudo
-	speedtest-cli
-	ufw
-	wireguard
+    ack-grep
+    et
+    golang-go
+    golang
+    gpg
+    ipcalc-ng
+    ipcalc
+    locales
+    msmtp-mta
+    net-tools
+    nodejs
+    openssh-client
+    openssh-server
+    parted
+    rbenv
+    rsyslog
+    sudo
+    speedtest-cli
+    ufw
+    wireguard
 )
 
 # Brew-specific packages (different names or brew-only)
 # Includes packages that are cargo-only on Linux but available via brew
 export BREW_SPECIFIC=(
-	ast-grep
-	bandwhich
-	bottom
-	curlie
-	doggo
-	dust
-	MisterTea/et/et
-	fx
-	gitui
-	glow
-	lazygit
-	mdless
-	mitmproxy
-	navi
-	node
-	nvim
-	pnpm
-	procs
-	ripgrep-all
-	ssh-copy-id
-	tokei
-	tree-sitter
-	wireguard-go
-	wireguard-tools
+    ast-grep
+    bandwhich
+    bottom
+    curlie
+    doggo
+    dust
+    MisterTea/et/et
+    fx
+    gitui
+    glow
+    lazygit
+    mdless
+    mitmproxy
+    navi
+    node
+    nvim
+    pnpm
+    procs
+    ripgrep-all
+    ssh-copy-id
+    tokei
+    tree-sitter
+    wireguard-go
+    wireguard-tools
 )
 
 # Cargo packages (installed via cargo install)
@@ -140,85 +140,85 @@ declare -A CARGO_GIT_PACKAGES=(
 # Get git installation details for a cargo package
 # Returns: "url|features" or empty if not a git package
 function get_cargo_git_details() {
-	local package="$1"
-	if [[ -n "${CARGO_GIT_PACKAGES[$package]:-}" ]]; then
-		echo "${CARGO_GIT_PACKAGES[$package]}"
-		return 0
-	fi
-	return 1
+    local package="$1"
+    if [[ -n "${CARGO_GIT_PACKAGES[$package]:-}" ]]; then
+        echo "${CARGO_GIT_PACKAGES[$package]}"
+        return 0
+    fi
+    return 1
 }
 
 # Go packages (installed via go install)
 # Format: package-name=install-path
 declare -A GO_PACKAGES=(
-	[lazygit]="github.com/jesseduffield/lazygit@latest"
+    [lazygit]="github.com/jesseduffield/lazygit@latest"
 )
 
 # Brew casks - associative array mapping cask name to app name
 # Empty value means CLI-only or font (no .app to check)
 declare -A BREW_CASKS=(
-	[1password]="1Password"
-	[1password-cli]=""
-	[iterm2]="iTerm"
-	[keycastr]="KeyCastr"
-	[visual-studio-code]="Visual Studio Code"
-	[google-chrome]="Google Chrome"
-	[font-jetbrains-mono-nerd-font]=""
-	[font-jetbrains-mono]=""
-	[cyberduck]="Cyberduck"
-	[utm]="UTM"
-	[vlc]="VLC"
-	[stats]="Stats"
-	[xcodes-app]="Xcodes"
-	[pingplotter]="PingPlotter"
+    [1password]="1Password"
+    [1password - cli]=""
+    [iterm2]="iTerm"
+    [keycastr]="KeyCastr"
+    [visual - studio - code]="Visual Studio Code"
+    [google - chrome]="Google Chrome"
+    [font - jetbrains - mono - nerd - font]=""
+    [font - jetbrains - mono]=""
+    [cyberduck]="Cyberduck"
+    [utm]="UTM"
+    [vlc]="VLC"
+    [stats]="Stats"
+    [xcodes - app]="Xcodes"
+    [pingplotter]="PingPlotter"
 )
 
 # Get app name for a cask (returns empty if unknown or no .app)
 function get_cask_app_name() {
-	local cask="$1"
-	local app_name="${BREW_CASKS[$cask]:-}"
-	if [[ -n "$app_name" ]]; then
-		echo "${app_name}.app"
-		return 0
-	fi
-	return 1
+    local cask="$1"
+    local app_name="${BREW_CASKS[$cask]:-}"
+    if [[ -n "$app_name" ]]; then
+        echo "${app_name}.app"
+        return 0
+    fi
+    return 1
 }
 
 # Get mapped package name for a specific package manager
 # Usage: get_package_name "ack" "apt" -> "ack-grep"
 get_package_name() {
-	local pkg="$1"
-	local type="$2"
+    local pkg="$1"
+    local type="$2"
 
-	case "${pkg}:${type}" in
-		ack:apt) echo "ack-grep" ;;
-		fd:apt) echo "fd-find" ;;
-		rg:apt) echo "ripgrep" ;;
-		openssh:apt) echo "openssh-client openssh-server" ;;
-		neovim:snap) echo "nvim" ;;
-		tshark:brew) echo "wireshark" ;;
-		*) echo "$pkg" ;;
-	esac
+    case "${pkg}:${type}" in
+        ack:apt) echo "ack-grep" ;;
+        fd:apt) echo "fd-find" ;;
+        rg:apt) echo "ripgrep" ;;
+        openssh:apt) echo "openssh-client openssh-server" ;;
+        neovim:snap) echo "nvim" ;;
+        tshark:brew) echo "wireshark" ;;
+        *) echo "$pkg" ;;
+    esac
 }
 
 # APT PPAs to add before installing packages
 # Format: [package_name]="ppa:user/repo"
 # The PPA will only be added if the package is in the install list
 declare -A APT_PPAS=(
-	[et]="ppa:jgmath2000/et"
-	[fastfetch]="ppa:zhangsongcui3371/fastfetch"
-	[trippy]="ppa:fujiapple/trippy"
+    [et]="ppa:jgmath2000/et"
+    [fastfetch]="ppa:zhangsongcui3371/fastfetch"
+    [trippy]="ppa:fujiapple/trippy"
 )
 
 # Check if a package is in an array
 is_in_array() {
-	local search="$1"
-	shift
-	local item
-	for item in "$@"; do
-		if [[ "$item" == "$search" ]]; then
-			return 0
-		fi
-	done
-	return 1
+    local search="$1"
+    shift
+    local item
+    for item in "$@"; do
+        if [[ "$item" == "$search" ]]; then
+            return 0
+        fi
+    done
+    return 1
 }

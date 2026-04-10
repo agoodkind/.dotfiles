@@ -18,8 +18,8 @@ tool_upgrade_to_latest() {
         linux)
             os_tag="unknown-linux-gnu"
             case "$ARCH" in
-                x86_64)        arch_tag="x86_64"  ;;
-                arm64|aarch64) arch_tag="aarch64" ;;
+                x86_64) arch_tag="x86_64" ;;
+                arm64 | aarch64) arch_tag="aarch64" ;;
                 *) return 1 ;;
             esac
             ;;

@@ -68,11 +68,11 @@ function __zoxide_doctor() {
 # Jump to a directory using only keywords.
 function __zoxide_z() {
     __zoxide_doctor
-    if [[ "$#" -eq 0 ]]; then
+    if [[ "$" -eq 0 ]]; then
         __zoxide_cd ~
-    elif [[ "$#" -eq 1 ]] && { [[ -d "$1" || "$1" = '-' || "$1" =~ ^[-+][0-9]$ ]]; }; then
+    elif [[ "$" -eq 1 ]] && { [[ -d "$1" || "$1" = '-' || "$1" =~ ^[-+][0-9]$ ]]; }; then
         __zoxide_cd "$1"
-    elif [[ "$#" -eq 2 ]] && [[ "$1" = "--" ]]; then
+    elif [[ "$" -eq 2 ]] && [[ "$1" = "--" ]]; then
         __zoxide_cd "$2"
     else
         \builtin local result
@@ -97,16 +97,16 @@ function __zoxide_zi() {
 # Commands for zoxide. Disable these using --no-cmd.
 #
 
-if (( ${+functions[z]} == 0 )); then
+if ((${+functions[z]} == 0)); then
     function z() { __zoxide_z "$@"; }
 fi
 
 # zi conflicts with zinit, so use zxi instead
-if (( ${+functions[zxi]} == 0 )); then
+if ((${+functions[zxi]} == 0)); then
     function zxi() { __zoxide_zi "$@"; }
 fi
 
-if (( ${+functions[cdi]} == 0 )); then
+if ((${+functions[cdi]} == 0)); then
     function cdi() { __zoxide_zi "$@"; }
 fi
 
@@ -132,8 +132,8 @@ if [[ -o zle ]]; then
             # Show completions for Space-Tab.
             # shellcheck disable=SC2086
             if ! __zoxide_result="$(\command zoxide query --exclude "$(__zoxide_pwd || \builtin true)" --interactive -- ${words[2,-1]})"; then
-            __zoxide_result=''
-        fi
+                __zoxide_result=''
+            fi
 
             # Set a result to ensure completion doesn't re-run
             compadd -Q ""

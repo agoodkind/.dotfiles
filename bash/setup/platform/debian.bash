@@ -25,7 +25,7 @@ if [[ " $* " != *" --skip-install "* ]]; then
             TZ_CONFIGURED=true
         fi
     fi
-    
+
     # Only reconfigure timezone if not already configured
     if [[ "$TZ_CONFIGURED" == "false" ]]; then
         sudo dpkg-reconfigure tzdata
@@ -33,7 +33,7 @@ if [[ " $* " != *" --skip-install "* ]]; then
         CURRENT_TZ=$(timedatectl show -p Timezone --value 2>/dev/null || cat /etc/timezone 2>/dev/null | tr -d '\n' || echo "unknown")
         echo "Timezone already configured: $CURRENT_TZ (skipping reconfiguration)"
     fi
-    
+
     run_with_defaults "$DOTDOTFILES/bash/setup/platform/apt.bash"
     "$DOTDOTFILES/bash/setup/platform/rust.bash"
     "$DOTDOTFILES/bash/setup/platform/go.bash"
@@ -54,7 +54,6 @@ if [ -d /etc/update-motd.d/ ]; then
         fi
     done
 fi
-
 
 # Disable motd-news (Ubuntu-specific dynamic MOTD messages, skipped on Debian/Proxmox)
 if [ -f /etc/default/motd-news ]; then

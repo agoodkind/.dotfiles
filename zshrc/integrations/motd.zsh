@@ -32,7 +32,7 @@ function _motd_run_scripts() {
 function motd() { _motd_run_scripts; }
 
 function _motd_cache_expired() {
-    if ! (( $+builtins[zstat] )); then
+    if ! (($+builtins[zstat])); then
         return 0
     fi
     local -a last_shown
@@ -44,7 +44,7 @@ function _motd_cache_expired() {
     if [[ "$cache_date" != "$today" ]]; then
         return 0
     fi
-    if (( (now - last_shown) / 3600 >= MOTD_INTERVAL_HOURS )); then
+    if (((now - last_shown) / 3600 >= MOTD_INTERVAL_HOURS)); then
         return 0
     fi
     return 1
@@ -60,7 +60,7 @@ function _logininfo() {
 
     local last_terminal="" last_remote="" last_epoch=0
     if [[ -f "$LOGININFO_CACHE" ]]; then
-        IFS='|' read -r last_terminal last_remote last_epoch < "$LOGININFO_CACHE"
+        IFS='|' read -r last_terminal last_remote last_epoch <"$LOGININFO_CACHE"
     fi
 
     local current_terminal current_remote
@@ -101,20 +101,20 @@ function _logininfo() {
     local current_src="${current_remote:-$current_terminal}"
     local last_src="${last_remote:-$last_terminal}"
 
-    print -r "$current_terminal|$current_remote|$now" >"$LOGININFO_CACHE" &!
+    print -r "$current_terminal|$current_remote|$now" >"$LOGININFO_CACHE" &|
 
-    if (( last_epoch > 0 )); then
+    if ((last_epoch > 0)); then
         local diff=$((now - last_epoch)) REPLY
-        if (( diff < 60 )); then
+        if ((diff < 60)); then
             REPLY="just now"
-        elif (( diff < 120 )); then
+        elif ((diff < 120)); then
             REPLY="1 minute ago"
-        elif (( diff < 3600 )); then
+        elif ((diff < 3600)); then
             REPLY="$((diff / 60)) minutes ago"
-        elif (( diff < 172800 )); then
+        elif ((diff < 172800)); then
             local time_str
             strftime -s time_str "%H:%M" $last_epoch
-            if (( diff < 86400 )); then
+            if ((diff < 86400)); then
                 REPLY="at $time_str"
             else
                 REPLY="at $time_str yesterday"
@@ -129,9 +129,9 @@ function _logininfo() {
             day=${day#0}
             local suffix="th"
             case $day in
-                1|21|31) suffix="st" ;;
-                2|22)    suffix="nd" ;;
-                3|23)    suffix="rd" ;;
+                1 | 21 | 31) suffix="st" ;;
+                2 | 22) suffix="nd" ;;
+                3 | 23) suffix="rd" ;;
             esac
             if [[ "$login_year" == "$this_year" ]]; then
                 REPLY="on $weekday $month ${day}${suffix} at $time"

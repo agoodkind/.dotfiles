@@ -11,7 +11,7 @@ function man() {
         val=""
         if [[ -n "${aliases[$arg]}" ]]; then
             val="${aliases[$arg]}"
-        elif (( $+functions[$arg] )); then
+        elif (($+functions[$arg])); then
             local body="${functions[$arg]}"
             local inner="${body#*command }"
             inner="${inner%%[[:space:]]*}"
@@ -72,7 +72,7 @@ function _edit_maybe_sudoedit() {
     local editor_bin="$1"
     shift || true
 
-    if (( $# == 0 )); then
+    if (($# == 0)); then
         command "$editor_bin"
         return $?
     fi
@@ -111,14 +111,14 @@ function sudo() {
     sudo_opts=()
     rest=("$@")
 
-    while (( ${#rest[@]} > 0 )); do
+    while ((${#rest[@]} > 0)); do
         case "${rest[1]}" in
             --)
                 rest=("${rest[@]:1}")
                 break
                 ;;
-            -u|-g|-h|-p|-C|-T|-t|-U)
-                if (( ${#rest[@]} < 2 )); then
+            -u | -g | -h | -p | -C | -T | -t | -U)
+                if ((${#rest[@]} < 2)); then
                     command sudo "$@"
                     return $?
                 fi
@@ -132,7 +132,7 @@ function sudo() {
             -?*)
                 command sudo "$@"
                 return $?
-            ;;
+                ;;
             *)
                 break
                 ;;
@@ -142,9 +142,9 @@ function sudo() {
     cmd="${rest[1]:-}"
     editor_args=("${rest[@]:1}")
 
-    if [[ -n "$cmd" ]] && (( ${#editor_args[@]} > 0 )); then
+    if [[ -n "$cmd" ]] && ((${#editor_args[@]} > 0)); then
         case "$cmd" in
-            nano|vim|vi|nvim)
+            nano | vim | vi | nvim)
                 local a
                 for a in "${editor_args[@]}"; do
                     if [[ "$a" == -* || "$a" == +* ]]; then

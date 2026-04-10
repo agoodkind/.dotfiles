@@ -43,10 +43,10 @@ fi
         local url=$1
         local category=$2
         local data_file=$3
-        
+
         local key="${url}_${category}"
         local extractor="${url_extract[$key]:-cat}"
-        
+
         $extractor <"$data_file" 2>/dev/null || cat "$data_file"
     }
 
@@ -87,15 +87,15 @@ fi
             local t
             t=$(mktemp)
             tmps+=("$t")
-            
+
             # Build curl command
             local curl_cmd="curl"
             [[ -n "$global_opts" ]] && curl_cmd+=" $global_opts"
             curl_cmd+=" -sL --connect-timeout 3 --max-time 5"
-            [[ -n "${url_headers[$url]:-}" ]] && \
+            [[ -n "${url_headers[$url]:-}" ]] &&
                 curl_cmd+=" -H '${url_headers[$url]}'"
             curl_cmd+=" '$url'"
-            
+
             eval "$curl_cmd" >"$t" 2>/dev/null &
             pids+=($!)
         done
@@ -130,7 +130,7 @@ fi
                                 [[ -z "${pids[$j]}" ]] && continue
                                 wait "${pids[$j]}" 2>/dev/null || true
                                 local e_ms v
-                                e_ms=$(( $(date +%s%N 2>/dev/null || echo 0) / 1000000 - start_ms ))
+                                e_ms=$(($(date +%s%N 2>/dev/null || echo 0) / 1000000 - start_ms))
                                 v=$(tr -d '\r\n' <"${tmps[$j]}" 2>/dev/null || true)
                                 log_stat "$category" "${urls[$j]}" "$e_ms" false "$v"
                                 rm -f "${tmps[$j]}" 2>/dev/null
@@ -197,4 +197,3 @@ fi
 ) </dev/null >/dev/null 2>&1 &
 
 exit 0
-

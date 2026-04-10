@@ -14,7 +14,7 @@ if [[ -f "$HOME/.cache/dotfiles_debug_enabled" ]] || [[ "${DEBUG:-false}" == "tr
 fi
 for arg in "$@"; do
     case $arg in
-        --use-defaults|-d)
+        --use-defaults | -d)
             found_use_defaults=true
             break
             ;;

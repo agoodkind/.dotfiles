@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-if ! command -v fail2ban-client &> /dev/null; then
+if ! command -v fail2ban-client &>/dev/null; then
     # fail2ban is not installed
     exit 0
 fi

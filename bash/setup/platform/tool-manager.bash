@@ -33,29 +33,33 @@ semver_lt() {
     fi
 
     local a1 a2 a3 b1 b2 b3
-    IFS=. read -r a1 a2 a3 <<< "$a"
-    IFS=. read -r b1 b2 b3 <<< "$b"
-    a1="${a1:-0}"; a2="${a2:-0}"; a3="${a3:-0}"
-    b1="${b1:-0}"; b2="${b2:-0}"; b3="${b3:-0}"
+    IFS=. read -r a1 a2 a3 <<<"$a"
+    IFS=. read -r b1 b2 b3 <<<"$b"
+    a1="${a1:-0}"
+    a2="${a2:-0}"
+    a3="${a3:-0}"
+    b1="${b1:-0}"
+    b2="${b2:-0}"
+    b3="${b3:-0}"
 
-    if (( a1 < b1 )); then return 0; fi
-    if (( a1 > b1 )); then return 1; fi
-    if (( a2 < b2 )); then return 0; fi
-    if (( a2 > b2 )); then return 1; fi
-    if (( a3 < b3 )); then return 0; fi
+    if ((a1 < b1)); then return 0; fi
+    if ((a1 > b1)); then return 1; fi
+    if ((a2 < b2)); then return 0; fi
+    if ((a2 > b2)); then return 1; fi
+    if ((a3 < b3)); then return 0; fi
     return 1
 }
 
 github_latest_release_version() {
     local repo="$1"
-    curl -fsSL "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null \
-        | jq -r '.tag_name | ltrimstr("v")'
+    curl -fsSL "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null |
+        jq -r '.tag_name | ltrimstr("v")'
 }
 
 crates_latest_version() {
     local crate="$1"
-    curl -fsSL "https://crates.io/api/v1/crates/${crate}" 2>/dev/null \
-        | jq -r '.crate.max_version'
+    curl -fsSL "https://crates.io/api/v1/crates/${crate}" 2>/dev/null |
+        jq -r '.crate.max_version'
 }
 
 # Shared helper — call from each tool declaration file's tool_check_status.
@@ -73,8 +77,8 @@ tool_check_status_default() {
     if command -v "$TOOL_BIN" >/dev/null 2>&1; then
         TOOL_INSTALLED=true
         TOOL_CURRENT_VERSION="$(
-            "$TOOL_BIN" --version 2>/dev/null \
-                | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1
+            "$TOOL_BIN" --version 2>/dev/null |
+                grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1
         )"
     fi
     if [[ "$TOOL_INSTALLED" == false ]]; then

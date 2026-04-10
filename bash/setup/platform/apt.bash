@@ -18,15 +18,15 @@ linux_only "apt.sh is Linux-only, skipping..."
 # Map common package names to APT package names
 # Uses get_package_name() from packages.sh
 map_to_apt_name() {
-	local package="$1"
-	get_package_name "$package" "apt"
+    local package="$1"
+    get_package_name "$package" "apt"
 }
 
 # Map package names to their snap equivalents (if different)
 # Uses get_package_name() from packages.sh
 map_to_snap_name() {
-	local package="$1"
-	get_package_name "$package" "snap"
+    local package="$1"
+    get_package_name "$package" "snap"
 }
 
 is_installed_via_snap() {
@@ -43,18 +43,18 @@ requires_classic_confinement() {
     local package="$1"
     local info_output=$(snap info "$package" 2>/dev/null)
     if [ $? -ne 0 ]; then
-        return 1  # Can't determine, assume not classic
+        return 1 # Can't determine, assume not classic
     fi
     # Check top-level confinement field first
     local confinement=$(echo "$info_output" | grep "^confinement:" | awk '{print $2}')
     if [ "$confinement" = "classic" ]; then
-        return 0  # true - requires classic
+        return 0 # true - requires classic
     fi
     # Also check channels section for classic
     if echo "$info_output" | grep -qE "latest/[^:]+:\s+[0-9].*\s+classic"; then
-        return 0  # true - requires classic
+        return 0 # true - requires classic
     fi
-    return 1  # false - doesn't require classic
+    return 1 # false - doesn't require classic
 }
 
 # =============================================================================
@@ -89,22 +89,22 @@ done
 ALL_APT_PACKAGES=()
 
 for package in "${COMMON_PACKAGES[@]}"; do
-	# Skip packages that should be installed via snap
-	if is_in_array "$package" "${SNAP_PACKAGES[@]}"; then
-		continue
-	fi
+    # Skip packages that should be installed via snap
+    if is_in_array "$package" "${SNAP_PACKAGES[@]}"; then
+        continue
+    fi
 
-	mapped=$(map_to_apt_name "$package")
-	# Handle multi-word output (like openssh -> openssh-client openssh-server)
-	for pkg in $mapped; do
-		# Skip if already in APT_SPECIFIC (they'll be added separately)
-		if ! is_in_array "$pkg" "${APT_SPECIFIC[@]}"; then
-			# Skip if already in ALL_APT_PACKAGES
-			if ! is_in_array "$pkg" "${ALL_APT_PACKAGES[@]}"; then
-				ALL_APT_PACKAGES+=("$pkg")
-			fi
-		fi
-	done
+    mapped=$(map_to_apt_name "$package")
+    # Handle multi-word output (like openssh -> openssh-client openssh-server)
+    for pkg in $mapped; do
+        # Skip if already in APT_SPECIFIC (they'll be added separately)
+        if ! is_in_array "$pkg" "${APT_SPECIFIC[@]}"; then
+            # Skip if already in ALL_APT_PACKAGES
+            if ! is_in_array "$pkg" "${ALL_APT_PACKAGES[@]}"; then
+                ALL_APT_PACKAGES+=("$pkg")
+            fi
+        fi
+    done
 done
 
 # Add all APT_SPECIFIC packages
@@ -239,12 +239,12 @@ GITHUB_CLI_KEY="/usr/share/keyrings/githubcli-archive-keyring.gpg"
 if [ ! -f "$GITHUB_CLI_LIST" ] || [ ! -f "$GITHUB_CLI_KEY" ]; then
     color_echo BLUE "Setting up GitHub CLI repository..."
     curl -fsSL \
-        https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-        | sudo dd of="$GITHUB_CLI_KEY"
+        https://cli.github.com/packages/githubcli-archive-keyring.gpg |
+        sudo dd of="$GITHUB_CLI_KEY"
     ARCH=$(dpkg --print-architecture)
     echo "deb [arch=$ARCH signed-by=$GITHUB_CLI_KEY] \
-https://cli.github.com/packages stable main" \
-        | sudo tee "$GITHUB_CLI_LIST" >/dev/null
+https://cli.github.com/packages stable main" |
+        sudo tee "$GITHUB_CLI_LIST" >/dev/null
     color_echo GREEN "GitHub CLI repository configured"
 else
     color_echo GREEN \
@@ -255,12 +255,12 @@ fi
 DISTRO_ID=""
 DISTRO_CODENAME=""
 if [ -f /etc/os-release ]; then
-    DISTRO_ID=$(grep -E "^ID=" /etc/os-release 2>/dev/null \
-        | cut -d= -f2 | tr -d '"' | tr '[:upper:]' '[:lower:]' || echo "")
+    DISTRO_ID=$(grep -E "^ID=" /etc/os-release 2>/dev/null |
+        cut -d= -f2 | tr -d '"' | tr '[:upper:]' '[:lower:]' || echo "")
     DISTRO_CODENAME=$(grep -E "^VERSION_CODENAME=" /etc/os-release \
-        2>/dev/null | cut -d= -f2 | tr -d '"' || \
-        grep -E "^UBUNTU_CODENAME=" /etc/os-release 2>/dev/null \
-        | cut -d= -f2 | tr -d '"' || echo "")
+        2>/dev/null | cut -d= -f2 | tr -d '"' ||
+        grep -E "^UBUNTU_CODENAME=" /etc/os-release 2>/dev/null |
+        cut -d= -f2 | tr -d '"' || echo "")
 fi
 
 # Check if add-apt-repository is available
@@ -287,7 +287,7 @@ fi
 # Get release codename for backports repository
 # (use previously detected codename or detect)
 RELEASE_CODENAME="$DISTRO_CODENAME"
-if [ -z "$RELEASE_CODENAME" ] && \
+if [ -z "$RELEASE_CODENAME" ] &&
     command -v lsb_release &>/dev/null; then
     RELEASE_CODENAME=$(lsb_release -sc 2>/dev/null)
 fi
@@ -296,9 +296,9 @@ fi
 # (if not already done)
 if [ -z "$RELEASE_CODENAME" ] && [ -f /etc/os-release ]; then
     RELEASE_CODENAME=$(grep -E "^VERSION_CODENAME=" /etc/os-release \
-        2>/dev/null | cut -d= -f2 | tr -d '"' || \
-        grep -E "^UBUNTU_CODENAME=" /etc/os-release 2>/dev/null \
-        | cut -d= -f2 | tr -d '"')
+        2>/dev/null | cut -d= -f2 | tr -d '"' ||
+        grep -E "^UBUNTU_CODENAME=" /etc/os-release 2>/dev/null |
+        cut -d= -f2 | tr -d '"')
 fi
 
 # If still no codename found, try installing lsb-release
@@ -307,7 +307,7 @@ if [ -z "$RELEASE_CODENAME" ]; then
         "Release codename not found, attempting to install \
 lsb-release..."
     sudo apt-get update -qq
-    if sudo apt-get install -y -qq lsb-release 2>/dev/null && \
+    if sudo apt-get install -y -qq lsb-release 2>/dev/null &&
         command -v lsb_release &>/dev/null; then
         RELEASE_CODENAME=$(lsb_release -sc 2>/dev/null)
     fi
@@ -376,9 +376,8 @@ $DISTRO_ID, skipping backports..."
                     color_echo YELLOW \
                         "add-apt-repository failed, trying manual \
 method..."
-                    if echo "$BACKPORTS_REPO" | \
-                        sudo tee -a "$BACKPORTS_LIST" >/dev/null 2>&1; \
-                    then
+                    if echo "$BACKPORTS_REPO" |
+                        sudo tee -a "$BACKPORTS_LIST" >/dev/null 2>&1; then
                         color_echo GREEN \
                             "backports repository added manually"
                     else
@@ -391,9 +390,8 @@ repository, skipping..."
                 color_echo YELLOW \
                     "add-apt-repository not available, manually \
 adding backports repository..."
-                if echo "$BACKPORTS_REPO" | \
-                    sudo tee -a "$BACKPORTS_LIST" >/dev/null 2>&1; \
-                then
+                if echo "$BACKPORTS_REPO" |
+                    sudo tee -a "$BACKPORTS_LIST" >/dev/null 2>&1; then
                     color_echo GREEN \
                         "backports repository added manually"
                 else

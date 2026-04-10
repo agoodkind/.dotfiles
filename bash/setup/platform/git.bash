@@ -51,7 +51,7 @@ if [[ -z "$(git config --global gpg.ssh.defaultKeyCommand)" ]]; then
         git_ssh_key_full=$(cat "$HOME/.ssh/id_ed25519.pub")
         git config --global user.signingKey "key::$git_ssh_key_full"
     else
-    # if not, prompt for path to key
+        # if not, prompt for path to key
         if [[ "$USE_DEFAULTS" == "true" ]]; then
             color_echo YELLOW "Skipping SSH key setup (use defaults mode)"
         else

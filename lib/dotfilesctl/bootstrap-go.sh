@@ -42,29 +42,29 @@ check_command() {
 }
 
 dotfilesctl_binary_stale() {
-	if [ ! -x "$DOTFILESCTL_BINARY" ]; then
-		return 0
-	fi
+    if [ ! -x "$DOTFILESCTL_BINARY" ]; then
+        return 0
+    fi
 
-	if ! check_command rg; then
-		return 0
-	fi
+    if ! check_command rg; then
+        return 0
+    fi
 
-	local source_file
-	while IFS= read -r source_file; do
-		if [ "$source_file" -nt "$DOTFILESCTL_BINARY" ]; then
-			return 0
-		fi
-	done < <(
-		rg --files \
-			-g '*.go' \
-			-g '*.toml' \
-			-g '*.mod' \
-			-g '*.sum' \
-			"$DOTDOTFILES/lib/dotfilesctl"
-	)
+    local source_file
+    while IFS= read -r source_file; do
+        if [ "$source_file" -nt "$DOTFILESCTL_BINARY" ]; then
+            return 0
+        fi
+    done < <(
+        rg --files \
+            -g '*.go' \
+            -g '*.toml' \
+            -g '*.mod' \
+            -g '*.sum' \
+            "$DOTDOTFILES/lib/dotfilesctl"
+    )
 
-	return 1
+    return 1
 }
 
 emit_warning_if_legacy_bash() {
@@ -156,35 +156,35 @@ go_system_arch() {
     arch="$(uname -m)"
 
     case "$os" in
-    Darwin)
-        case "$arch" in
-        x86_64)
-            echo "darwin-amd64"
+        Darwin)
+            case "$arch" in
+                x86_64)
+                    echo "darwin-amd64"
+                    ;;
+                arm64)
+                    echo "darwin-arm64"
+                    ;;
+                *)
+                    echo "unsupported"
+                    ;;
+            esac
             ;;
-        arm64)
-            echo "darwin-arm64"
+        Linux)
+            case "$arch" in
+                x86_64)
+                    echo "linux-amd64"
+                    ;;
+                arm64 | aarch64)
+                    echo "linux-arm64"
+                    ;;
+                *)
+                    echo "unsupported"
+                    ;;
+            esac
             ;;
         *)
             echo "unsupported"
             ;;
-        esac
-        ;;
-    Linux)
-        case "$arch" in
-        x86_64)
-            echo "linux-amd64"
-            ;;
-        arm64|aarch64)
-            echo "linux-arm64"
-            ;;
-        *)
-            echo "unsupported"
-            ;;
-        esac
-        ;;
-    *)
-        echo "unsupported"
-        ;;
     esac
 }
 
@@ -250,18 +250,18 @@ bootstrap_go() {
 run_dotfiles_go_command() {
     local command="$1"
     shift
-	if ! bootstrap_go; then
-		return 1
-	fi
+    if ! bootstrap_go; then
+        return 1
+    fi
 
-	if run_dotfiles_binary "$command" "$@"; then
-		return 0
-	fi
+    if run_dotfiles_binary "$command" "$@"; then
+        return 0
+    fi
 
-	if [ "$GO_BINARY" = "go" ] && ! check_command "$GO_BINARY"; then
-		echo "go command not found on PATH" >&2
-		return 1
-	fi
+    if [ "$GO_BINARY" = "go" ] && ! check_command "$GO_BINARY"; then
+        echo "go command not found on PATH" >&2
+        return 1
+    fi
 
     builtin cd "$DOTDOTFILES/lib/dotfilesctl"
     GO111MODULE=on "$GO_BINARY" run ./cmd/dotfilesctl "$command" "$@"
@@ -272,7 +272,7 @@ run_dotfiles_binary() {
     shift
 
     while true; do
-		if [ -x "$DOTFILESCTL_BINARY" ] && ! dotfilesctl_binary_stale; then
+        if [ -x "$DOTFILESCTL_BINARY" ] && ! dotfilesctl_binary_stale; then
             "$DOTFILESCTL_BINARY" "$command" "$@"
             return $?
         fi
@@ -285,18 +285,18 @@ run_dotfiles_binary() {
 
 ensure_dotfilesctl_binary() {
     mkdir -p "$DOTFILESCTL_BINARY_DIR"
-	if [ -x "$DOTFILESCTL_BINARY" ] && ! dotfilesctl_binary_stale; then
-		return 0
-	fi
+    if [ -x "$DOTFILESCTL_BINARY" ] && ! dotfilesctl_binary_stale; then
+        return 0
+    fi
 
-	if [ "$GO_BINARY" = "go" ]; then
-		if ! check_command "$GO_BINARY"; then
-			echo "go command not found on PATH" >&2
-			return 1
-		fi
-	elif [ ! -x "$GO_BINARY" ]; then
-		echo "go command not executable: $GO_BINARY" >&2
-		return 1
+    if [ "$GO_BINARY" = "go" ]; then
+        if ! check_command "$GO_BINARY"; then
+            echo "go command not found on PATH" >&2
+            return 1
+        fi
+    elif [ ! -x "$GO_BINARY" ]; then
+        echo "go command not executable: $GO_BINARY" >&2
+        return 1
     fi
 
     if ! check_command flock; then
@@ -306,7 +306,7 @@ ensure_dotfilesctl_binary() {
 
     (
         flock 9
-		if [ -x "$DOTFILESCTL_BINARY" ] && ! dotfilesctl_binary_stale; then
+        if [ -x "$DOTFILESCTL_BINARY" ] && ! dotfilesctl_binary_stale; then
             exit 0
         fi
         GO111MODULE=on "$GO_BINARY" build -o "$DOTFILESCTL_BINARY" "$DOTDOTFILES/lib/dotfilesctl/cmd/dotfilesctl"

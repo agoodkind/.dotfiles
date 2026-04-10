@@ -47,12 +47,12 @@ for plugin_dir in "$plugins_dir"/*(N/); do
     fi
 done
 
-if (( verify_rc == 0 )); then
+if ((verify_rc == 0)); then
     printf "[zinit-verify: ok]\n"
 fi
 
 # compile is the only phase we control; update exit is unreliable
-if (( compile_rc == 0 && verify_rc == 0 )); then
+if ((compile_rc == 0 && verify_rc == 0)); then
     exit 0
 else
     exit 1

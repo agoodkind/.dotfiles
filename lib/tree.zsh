@@ -17,7 +17,7 @@ function tree_print() {
     local prefix=${2:-}
     local -a _tree_data=("${(@P)_tree_name}")
     local tree_total=${#_tree_data}
-    if (( tree_total == 0 )); then
+    if ((tree_total == 0)); then
         return 0
     fi
 
@@ -31,41 +31,44 @@ function tree_print() {
     local -a _tags=()
     local max_left=0
 
-    for (( tree_idx = 1; tree_idx <= tree_total; tree_idx++ )); do
+    for ((tree_idx = 1; tree_idx <= tree_total; tree_idx++)); do
         node_entry=${_tree_data[$tree_idx]}
-        node_depth=${node_entry%%:*}; node_entry=${node_entry#*:}
-        node_label=${node_entry%%:*}; node_entry=${node_entry#*:}
-        node_ms=${node_entry%%:*}; node_tag=${node_entry#*:}
+        node_depth=${node_entry%%:*}
+        node_entry=${node_entry#*:}
+        node_label=${node_entry%%:*}
+        node_entry=${node_entry#*:}
+        node_ms=${node_entry%%:*}
+        node_tag=${node_entry#*:}
         if [[ "$node_tag" == "$node_ms" ]]; then
             node_tag=""
         fi
 
         local is_last_sibling=1
-        for (( look_idx = tree_idx + 1; look_idx <= tree_total; look_idx++ )); do
+        for ((look_idx = tree_idx + 1; look_idx <= tree_total; look_idx++)); do
             look_depth=${_tree_data[$look_idx]%%:*}
-            if (( look_depth == node_depth )); then
+            if ((look_depth == node_depth)); then
                 is_last_sibling=0
                 break
             fi
-            if (( look_depth < node_depth )); then
+            if ((look_depth < node_depth)); then
                 break
             fi
         done
 
         local indent=""
-        for (( ancestor_depth = 0; ancestor_depth < node_depth; ancestor_depth++ )); do
+        for ((ancestor_depth = 0; ancestor_depth < node_depth; ancestor_depth++)); do
             local ancestor_has_more=0
-            for (( look_idx = tree_idx + 1; look_idx <= tree_total; look_idx++ )); do
+            for ((look_idx = tree_idx + 1; look_idx <= tree_total; look_idx++)); do
                 look_depth=${_tree_data[$look_idx]%%:*}
-                if (( look_depth == ancestor_depth )); then
+                if ((look_depth == ancestor_depth)); then
                     ancestor_has_more=1
                     break
                 fi
-                if (( look_depth < ancestor_depth )); then
+                if ((look_depth < ancestor_depth)); then
                     break
                 fi
             done
-            if (( ancestor_has_more )); then
+            if ((ancestor_has_more)); then
                 indent="${indent}│   "
             else
                 indent="${indent}    "
@@ -73,7 +76,7 @@ function tree_print() {
         done
 
         local branch="├──"
-        if (( is_last_sibling != 0 )); then
+        if ((is_last_sibling != 0)); then
             branch="└──"
         fi
 
@@ -88,14 +91,14 @@ function tree_print() {
         plain=${plain//└/ }
         plain=${plain//─/ }
         local vis_len=${#plain}
-        if (( vis_len > max_left )); then
+        if ((vis_len > max_left)); then
             max_left=$vis_len
         fi
     done
 
     # --- pass 2: print with aligned right column ---
-    local pad_target=$(( max_left + 2 ))
-    for (( tree_idx = 1; tree_idx <= tree_total; tree_idx++ )); do
+    local pad_target=$((max_left + 2))
+    for ((tree_idx = 1; tree_idx <= tree_total; tree_idx++)); do
         local left=${_left_parts[$tree_idx]}
         local ms_val=${_ms_vals[$tree_idx]}
         local tag=${_tags[$tree_idx]}
@@ -105,8 +108,8 @@ function tree_print() {
         plain=${plain//└/ }
         plain=${plain//─/ }
         local vis_len=${#plain}
-        local pad=$(( pad_target - vis_len ))
-        if (( pad < 1 )); then
+        local pad=$((pad_target - vis_len))
+        if ((pad < 1)); then
             pad=1
         fi
 

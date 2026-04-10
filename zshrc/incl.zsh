@@ -8,16 +8,16 @@ source "$DOTDOTFILES/zshrc/core/perf.zsh"
 
 # Structural header: all _source/_async calls below become depth-2 children.
 # ms is 0 here; .zshrc epilogue patches it with the actual total.
-typeset -gi _ZSHRC_TREE_IDX=$(( ${#_PERF_TREE} + 1 ))
+typeset -gi _ZSHRC_TREE_IDX=$((${#_PERF_TREE} + 1))
 _PERF_TREE+=("1:.zshrc:0")
 
 # plugins.zsh uses plain source (zinit turbo mode stores scope references
 # that break when sourced inside a function). Timing is done inline instead.
 local _t0=$EPOCHREALTIME
 source "$DOTDOTFILES/zshrc/core/plugins.zsh"
-local _pms=$(( (EPOCHREALTIME - _t0) * 1000 ))
+local _pms=$(((EPOCHREALTIME - _t0) * 1000))
 _PROFILE_TIMES[plugins]=$_pms
-_PERF_TREE+=("$(( _SOURCE_DEPTH + 2 )):plugins:${_pms}")
+_PERF_TREE+=("$((_SOURCE_DEPTH + 2)):plugins:${_pms}")
 
 _source "$DOTDOTFILES/zshrc/core/utils.zsh"
 _source "$DOTDOTFILES/zshrc/commands/prefer.zsh"
@@ -50,18 +50,19 @@ local _notify_file="$HOME/.cache/dotfiles/notifications"
 if [[ -f "$_notify_file" ]]; then
     local _level _logfile _msg _line
     while IFS= read -r _line; do
-        _level="${_line%%|*}"; _line="${_line#*|}"
-        _logfile="${_line%%|*}"; _msg="${_line#*|}"
+        _level="${_line%%|*}"
+        _line="${_line#*|}"
+        _logfile="${_line%%|*}"
+        _msg="${_line#*|}"
         case "$_level" in
             success) print -P "%F{green}✓ ${_msg}%f" ;;
-            info)    print -P "%F{blue}↻ ${_msg}%f" ;;
-            warn)    print -P "%F{yellow}⚠  ${_msg}%f" ;;
-            error)   print -P "%F{red}✗ ${_msg}%f" ;;
+            info) print -P "%F{blue}↻ ${_msg}%f" ;;
+            warn) print -P "%F{yellow}⚠  ${_msg}%f" ;;
+            error) print -P "%F{red}✗ ${_msg}%f" ;;
         esac
         if [[ -n "$_logfile" && -f "$_logfile" ]]; then
             print -P "  %F{242}log: ${_logfile}%f"
         fi
-    done < "$_notify_file"
+    done <"$_notify_file"
     rm -f "$_notify_file"
 fi
-

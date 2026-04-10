@@ -12,7 +12,7 @@ typeset -ga _PERF_TREE_DEFERRED=()
 function _ready_mark() {
     local mark_depth=$1 mark_label=$2 mark_tag=${3:-}
     local mark_now=$EPOCHREALTIME
-    local mark_ms=$(( (mark_now - _ready_lap) * 1000 ))
+    local mark_ms=$(((mark_now - _ready_lap) * 1000))
     _PERF_TREE_DEFERRED+=("${mark_depth}:${mark_label}:${mark_ms}${mark_tag:+:${mark_tag}}")
     _ready_lap=$mark_now
 }
@@ -20,7 +20,7 @@ function _ready_mark() {
 # Tier 1: runs on first keystroke (zle-line-init). Minimal set needed for
 # basic interactive use — zinit core, compinit, and autosuggestions.
 function _load_tier1() {
-    if (( _ZINIT_LOADED != 0 )); then
+    if ((_ZINIT_LOADED != 0)); then
         return 0
     fi
     _ZINIT_LOADED=1
@@ -31,7 +31,7 @@ function _load_tier1() {
     source "$DOTDOTFILES/lib/zinit/zinit.zsh"
     ZINIT[AUTO_UPDATE_DAYS]=365
     autoload -Uz _zinit
-    if (( ${+_comps} != 0 )); then
+    if ((${+_comps} != 0)); then
         _comps[zinit]=_zinit
     fi
     _ready_mark 2 zinit_core
@@ -45,7 +45,7 @@ function _load_tier1() {
     _zsh_autosuggest_start
     _ready_mark 2 autosuggestions
 
-    _PROFILE_TIMES[_time_to_ready_t1]=$(( (EPOCHREALTIME - START_TIME) * 1000 ))
+    _PROFILE_TIMES[_time_to_ready_t1]=$(((EPOCHREALTIME - START_TIME) * 1000))
     sched +0 _load_tier2
 }
 
@@ -59,7 +59,7 @@ function _load_tier2() {
 
     zinit light Aloxaf/fzf-tab
     zinit light Freed-Wu/fzf-tab-source
-    if (( $+commands[fzf] != 0 )); then
+    if (($+commands[fzf] != 0)); then
         source <(fzf --zsh)
     fi
     _ready_mark 2 fzf-tab
@@ -73,7 +73,7 @@ function _load_tier2() {
     zstyle ":completion:*" list-colors ${(s.:.)LS_COLORS}
     zstyle ":completion:*" menu no
 
-    if (( $+commands[gcp] != 0 )); then
+    if (($+commands[gcp] != 0)); then
         unalias gcp 2>/dev/null
         compdef -d gcp 2>/dev/null
         compdef _files gcp 2>/dev/null
@@ -100,7 +100,7 @@ function _load_tier3() {
     unset _zc_dir _zc_link
     _ready_mark 2 cleanup
 
-    _PROFILE_TIMES[_time_to_ready]=$(( (EPOCHREALTIME - START_TIME) * 1000 ))
+    _PROFILE_TIMES[_time_to_ready]=$(((EPOCHREALTIME - START_TIME) * 1000))
 
     _write_startup_log
     _ready_mark 2 startup_log

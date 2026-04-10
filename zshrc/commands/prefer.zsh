@@ -21,7 +21,7 @@ function _resolve_prefer_target() {
         return 0
     fi
 
-    if (( $+functions[$binary] != 0 )); then
+    if (($+functions[$binary] != 0)); then
         _PREFER_RESOLVED="$binary$qargs"
         return 0
     fi
@@ -52,7 +52,7 @@ function _prefer_check_cache() {
 
 function _prefer_init_cache() {
     mkdir -p "$(dirname "$PREFER_CACHE_FILE")"
-    : > "$PREFER_CACHE_FILE"
+    : >"$PREFER_CACHE_FILE"
 }
 
 if _prefer_check_cache; then
@@ -74,7 +74,7 @@ function _prefer_impl() {
     _resolve_prefer_target "$binary" "$@" || return
 
     alias "$name=$_PREFER_RESOLVED"
-    echo "alias ${(q)name}=${(q)_PREFER_RESOLVED}" >> "$PREFER_CACHE_FILE"
+    echo "alias ${(q)name}=${(q)_PREFER_RESOLVED}" >>"$PREFER_CACHE_FILE"
 }
 
 function _prefer_tty_impl() {
@@ -94,7 +94,7 @@ $name() {
 }"
 
     eval "$func_body"
-    echo "$func_body" >> "$PREFER_CACHE_FILE"
+    echo "$func_body" >>"$PREFER_CACHE_FILE"
 }
 
 # -----------------------------------------------------------------------------
@@ -111,7 +111,7 @@ function prefer() {
 
 function prefer_tty() {
     local name="$1"
-    if (( $+functions[$name] != 0 )); then
+    if (($+functions[$name] != 0)); then
         return 0
     fi
     _prefer_tty_impl "$@"

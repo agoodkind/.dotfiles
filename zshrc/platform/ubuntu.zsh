@@ -11,7 +11,7 @@ function _ubuntu_load_ssh_key() {
     if ! ssh-add -l 2>/dev/null | grep -q "id_ed25519"; then
         ssh-add ~/.ssh/id_ed25519
     fi
-} >> ~/.cache/ssh-add.log 2>&1
+} >>~/.cache/ssh-add.log 2>&1
 async_run _ubuntu_load_ssh_key
 
 ####################################
@@ -79,7 +79,7 @@ function change_hostname() {
     else
         # Fallback for non-systemd environments
         sudo hostname "$new_name"
-        echo "$new_name" | sudo tee /etc/hostname > /dev/null
+        echo "$new_name" | sudo tee /etc/hostname >/dev/null
     fi
 
     # Update /etc/hosts to preserve sudo resolution speed

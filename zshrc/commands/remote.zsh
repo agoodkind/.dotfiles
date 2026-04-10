@@ -20,8 +20,8 @@ function _sshpiper_two_hop_inner() {
 
     local expanded hostname user
     expanded=$(ssh -G "$dest" 2>/dev/null) || return 1
-    hostname=$(awk '/^hostname / {print $2}' <<< "$expanded")
-    user=$(awk '/^user / {print $2}' <<< "$expanded")
+    hostname=$(awk '/^hostname / {print $2}' <<<"$expanded")
+    user=$(awk '/^user / {print $2}' <<<"$expanded")
 
     if [[ "$hostname" != "ssh.home.goodkind.io" ]]; then
         return 1
@@ -38,14 +38,14 @@ function _sshpiper_run_two_hop() {
     local inner_flag="$2"
     shift 2
 
-    if (( $# == 0 )); then
+    if (($# == 0)); then
         command "$cmd"
         return
     fi
 
     local dest="${@: -1}"
     local -a args=()
-    if (( $# > 1 )); then
+    if (($# > 1)); then
         args=("${@:1:$#-1}")
     fi
 

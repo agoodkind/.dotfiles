@@ -200,8 +200,8 @@ install_from_github() {
 
     local filename
     filename=$(
-        echo "$release_data" \
-            | jq -r \
+        echo "$release_data" |
+            jq -r \
                 --arg os "$os_tag" \
                 --arg arch "$arch_tag" \
                 --arg ext "$extension" \
@@ -210,8 +210,8 @@ install_from_github() {
                         contains($os)
                         and ($arch == "" or contains($arch))
                         and endswith($ext)
-                    )' \
-            | head -n 1
+                    )' |
+            head -n 1
     )
 
     if [[ -z "$filename" || "$filename" == "null" ]]; then
@@ -236,7 +236,7 @@ install_from_github() {
             color_echo GREEN "  ✅  $bin_name $tag installed via dpkg"
             return 0
             ;;
-        *.tar.gz|*.tgz)
+        *.tar.gz | *.tgz)
             mkdir -p "$extract_dir"
             tar -xzf "$tmp_file" -C "$extract_dir"
             ;;
@@ -249,7 +249,7 @@ install_from_github() {
             unzip -o "$tmp_file" -d "$extract_dir"
             ;;
         *.gz)
-            gunzip -c "$tmp_file" > "$HOME/.local/bin/$bin_name"
+            gunzip -c "$tmp_file" >"$HOME/.local/bin/$bin_name"
             chmod +x "$HOME/.local/bin/$bin_name"
             rm -f "$tmp_file"
             color_echo GREEN "  ✅  $bin_name $tag installed to ~/.local/bin"
@@ -300,7 +300,7 @@ _dotfiles_remote_url() {
     local url
     url=$(git -C "$DOTDOTFILES" config remote.origin.url 2>/dev/null || true)
     if [[ -z "$url" && -f "$DOTDOTFILES/.git/wsm-url" ]]; then
-        read -r url < "$DOTDOTFILES/.git/wsm-url"
+        read -r url <"$DOTDOTFILES/.git/wsm-url"
     fi
     printf '%s' "$url"
 }
@@ -332,24 +332,34 @@ _dotfiles_git() {
 _check_git_health() {
     local d="$DOTDOTFILES"
     if ! git -C "$d" symbolic-ref -q HEAD >/dev/null 2>&1; then
-        echo "detached HEAD"; return 1
+        echo "detached HEAD"
+        return 1
     fi
     if git -C "$d" rev-parse MERGE_HEAD >/dev/null 2>&1; then
-        echo "merge in progress"; return 1
+        echo "merge in progress"
+        return 1
     fi
     if [[ -d "$d/.git/rebase-merge" || -d "$d/.git/rebase-apply" ]]; then
-        echo "rebase in progress"; return 1
+        echo "rebase in progress"
+        return 1
     fi
     if [[ -n "$(git -C "$d" ls-files -u 2>/dev/null)" ]]; then
-        echo "unmerged paths"; return 1
+        echo "unmerged paths"
+        return 1
     fi
     return 0
 }
 
 _remote_status() {
     local current latest
-    latest=$(git -C "$DOTDOTFILES" rev-parse origin/main 2>/dev/null) || { echo "unknown"; return; }
-    current=$(git -C "$DOTDOTFILES" rev-parse HEAD 2>/dev/null) || { echo "unknown"; return; }
+    latest=$(git -C "$DOTDOTFILES" rev-parse origin/main 2>/dev/null) || {
+        echo "unknown"
+        return
+    }
+    current=$(git -C "$DOTDOTFILES" rev-parse HEAD 2>/dev/null) || {
+        echo "unknown"
+        return
+    }
     if [[ "$current" == "$latest" ]]; then
         echo "up-to-date"
     elif git -C "$DOTDOTFILES" merge-base --is-ancestor "$current" "$latest" 2>/dev/null; then
@@ -441,7 +451,7 @@ dotfiles_log_init() {
 dotfiles_log() {
     local line="[$(date '+%Y-%m-%d %H:%M:%S')] $*"
     if [[ -n "${DOTFILES_LOG:-}" ]]; then
-        printf '%s\n' "$line" >> "$DOTFILES_LOG"
+        printf '%s\n' "$line" >>"$DOTFILES_LOG"
     fi
     if [[ -t 1 ]]; then
         printf '%s\n' "$line"
@@ -455,7 +465,7 @@ dotfiles_run() {
     if [[ -n "${DOTFILES_LOG:-}" && -t 1 ]]; then
         "$@" 2>&1 | tee -a "$DOTFILES_LOG"
     elif [[ -n "${DOTFILES_LOG:-}" ]]; then
-        "$@" >> "$DOTFILES_LOG" 2>&1
+        "$@" >>"$DOTFILES_LOG" 2>&1
     else
         "$@"
     fi
@@ -477,7 +487,7 @@ DOTFILES_NOTIFY_FILE="$HOME/.cache/dotfiles/notifications"
 dotfiles_notify() {
     local level="$1" msg="$2" logfile="${3:-${DOTFILES_LOG:-}}"
     mkdir -p "${DOTFILES_NOTIFY_FILE%/*}"
-    printf '%s|%s|%s\n' "$level" "$logfile" "$msg" >> "$DOTFILES_NOTIFY_FILE"
+    printf '%s|%s|%s\n' "$level" "$logfile" "$msg" >>"$DOTFILES_NOTIFY_FILE"
     if [[ "$level" == "warn" || "$level" == "error" ]]; then
         echo "$level: $msg" >&2
     fi

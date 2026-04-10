@@ -50,28 +50,29 @@ export PATH="${HOME}/.rbenv/shims:${PATH}"
 export RBENV_SHELL=zsh
 
 function rbenv() {
-  local command
-  command="${1:-}"
-  if [ "$#" -gt 0 ]; then
-    shift
-  fi
+    local command
+    command="${1:-}"
+    if [ "$" -gt 0 ]; then
+        shift
+    fi
 
-  case "$command" in
-  rehash|shell)
-    eval "$(rbenv "sh-$command" "$@")";;
-  *)
-    command rbenv "$command" "$@";;
-  esac
+    case "$command" in
+        rehash | shell)
+            eval "$(rbenv "sh-$command" "$@")"
+            ;;
+        *)
+            command rbenv "$command" "$@"
+            ;;
+    esac
 }
-
 
 #######
 # nvm (lazy-loaded, no completions)
 export NVM_DIR="$HOME/.nvm"
 function nvm() {
-  unset -f nvm
-  [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
-  nvm "$@"
+    unset -f nvm
+    [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
+    nvm "$@"
 }
 #######
 
@@ -79,8 +80,8 @@ function nvm() {
 # pnpm #
 export PNPM_HOME="$HOME/Library/pnpm"
 case ":$PATH:" in
-*":$PNPM_HOME:"*) ;;
-*) export PATH="$PNPM_HOME:$PATH" ;;
+    *":$PNPM_HOME:"*) ;;
+    *) export PATH="$PNPM_HOME:$PATH" ;;
 esac
 #######
 
@@ -104,7 +105,7 @@ function change_hostname() {
 
     local new_name="$1"
     local sanitized_name="$new_name"
-    
+
     # Capture old names
     local old_computer=$(sudo scutil --get ComputerName 2>/dev/null)
     local old_local=$(sudo scutil --get LocalHostName 2>/dev/null)
@@ -113,14 +114,14 @@ function change_hostname() {
     # Sanitize for LocalHostName/HostName if needed
     if [[ "$new_name" =~ [^a-zA-Z0-9\-] ]]; then
         # Remove apostrophes and other special chars, replace spaces with -
-        sanitized_name=$(echo "$new_name" | tr -d "'" | tr ' ' '-' | \
+        sanitized_name=$(echo "$new_name" | tr -d "'" | tr ' ' '-' |
             tr -cd 'a-zA-Z0-9-')
         echo "ℹ️  Sanitized hostname: '$sanitized_name'"
     fi
 
     # ComputerName accepts spaces and special chars
     sudo scutil --set ComputerName "$new_name"
-    
+
     # LocalHostName and HostName need sanitized input
     sudo scutil --set LocalHostName "$sanitized_name"
     sudo scutil --set HostName "$sanitized_name"
@@ -130,5 +131,5 @@ function change_hostname() {
 
     echo "✅ ComputerName: '$old_computer' -> '$new_name'"
     echo "✅ LocalHostName: '$old_local' -> '$sanitized_name'"
-    echo "✅ HostName: '$old_host' -> '$sanitized_name'" 
+    echo "✅ HostName: '$old_host' -> '$sanitized_name'"
 }

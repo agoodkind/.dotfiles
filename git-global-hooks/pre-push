@@ -14,7 +14,7 @@ if [[ -n "$identity" ]]; then
     exclude_refs=()
     for ref in origin/main origin/master upstream/main upstream/master; do
         if git rev-parse --verify "$ref" &>/dev/null; then
-            exclude_refs+=( "$ref" )
+            exclude_refs+=("$ref")
         fi
     done
     exclude_not=""
@@ -32,9 +32,9 @@ if [[ -n "$identity" ]]; then
         fi
 
         bad=$(git log "$range" \
-            --format="%H %an <%ae>" 2>/dev/null \
-            | grep -v "$allowed_name <$allowed_email>" \
-            || true)
+            --format="%H %an <%ae>" 2>/dev/null |
+            grep -v "$allowed_name <$allowed_email>" ||
+            true)
 
         if [[ -n "$bad" ]]; then
             echo "error: push blocked, bad author"

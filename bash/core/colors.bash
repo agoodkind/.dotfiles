@@ -17,4 +17,3 @@ color_echo() {
     shift
     printf "%b%s%b\n" "${!color}" "$*" "${NC}"
 }
-

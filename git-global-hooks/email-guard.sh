@@ -33,7 +33,7 @@ resolve_allowed_identity() {
                 continue
             fi
             local prefix email name
-            read -r prefix email name <<< "$line"
+            read -r prefix email name <<<"$line"
             prefix="${prefix/#\~/$HOME}"
             if [[ "$prefix" == "*" ]]; then
                 if [[ -z "$match_email" ]]; then
@@ -44,7 +44,7 @@ resolve_allowed_identity() {
                 match_email="$email"
                 match_name="$name"
             fi
-        done < "$f"
+        done <"$f"
     done
 
     echo "$match_email"

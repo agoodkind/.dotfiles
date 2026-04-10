@@ -10,7 +10,7 @@
 
 # Run command asynchronously (background job)
 function async_run() {
-    "$@" &!
+    "$@" &|
 }
 
 # Resolve the dotfiles remote URL.
@@ -38,7 +38,7 @@ if [[ ! -f ~/.cache/os-type.cache ]]; then
     echo "Detecting & caching OS type"
     mkdir -p ~/.cache
     if [[ $(uname) == "Darwin" ]]; then
-        echo "mac" > ~/.cache/os-type.cache
+        echo "mac" >~/.cache/os-type.cache
     elif [[ -f /etc/os-release ]]; then
         os_id=""
         os_like=""
@@ -52,27 +52,27 @@ if [[ ! -f ~/.cache/os-type.cache ]]; then
                 ID) os_id="$value" ;;
                 ID_LIKE) os_like="$value" ;;
             esac
-        done < /etc/os-release
+        done </etc/os-release
 
         case "$os_id" in
-            ubuntu) echo "ubuntu" > ~/.cache/os-type.cache ;;
-            debian) echo "debian" > ~/.cache/os-type.cache ;;
+            ubuntu) echo "ubuntu" >~/.cache/os-type.cache ;;
+            debian) echo "debian" >~/.cache/os-type.cache ;;
             *)
                 if [[ " $os_like " == *" debian "* ]]; then
-                    echo "debian" > ~/.cache/os-type.cache
+                    echo "debian" >~/.cache/os-type.cache
                 else
-                    echo "unknown" > ~/.cache/os-type.cache
+                    echo "unknown" >~/.cache/os-type.cache
                 fi
                 ;;
         esac
     elif command -v apt >/dev/null; then
-        echo "debian" > ~/.cache/os-type.cache
+        echo "debian" >~/.cache/os-type.cache
     else
-        echo "unknown" > ~/.cache/os-type.cache
+        echo "unknown" >~/.cache/os-type.cache
     fi
 fi
 
-read -r OS_TYPE < ~/.cache/os-type.cache
+read -r OS_TYPE <~/.cache/os-type.cache
 export OS_TYPE
 
 # OS detection helpers
@@ -102,7 +102,7 @@ case "$OS_TYPE" in
     mac)
         source "$DOTDOTFILES/zshrc/platform/mac.zsh"
         ;;
-    ubuntu|debian)
+    ubuntu | debian)
         source "$DOTDOTFILES/zshrc/platform/ubuntu.zsh"
         ;;
     *)
@@ -121,7 +121,7 @@ function has_internet() {
             return 0
         fi
     fi
-    
+
     return 1
 }
 
@@ -133,11 +133,11 @@ function isinstalled() {
 function dotfiles_changed_hash() {
     local head_hash=""
     if [[ -f "$DOTDOTFILES/.git/HEAD" ]]; then
-        read -r head_hash < "$DOTDOTFILES/.git/HEAD"
+        read -r head_hash <"$DOTDOTFILES/.git/HEAD"
         if [[ "$head_hash" == ref:* ]]; then
             local ref="${head_hash#ref: }"
             if [[ -f "$DOTDOTFILES/.git/$ref" ]]; then
-                read -r head_hash < "$DOTDOTFILES/.git/$ref"
+                read -r head_hash <"$DOTDOTFILES/.git/$ref"
             fi
         fi
     fi
@@ -152,7 +152,7 @@ function dotfiles_changed_hash() {
         "$DOTDOTFILES/home/.zshrc" \
         "$DOTDOTFILES/.zshrc.local"; do
         if zstat -A file_stat +mtime "$f" 2>/dev/null; then
-            if (( file_stat[1] > max_mtime )); then
+            if ((file_stat[1] > max_mtime)); then
                 max_mtime=$file_stat[1]
             fi
         fi
@@ -181,36 +181,36 @@ function backup_local_changes() {
     local has_changes=false
     local has_untracked=false
     local untracked_files
-    
+
     # Check for modified tracked files
     if ! git --git-dir="$DOTDOTFILES/.git" \
-             --work-tree="$DOTDOTFILES" \
-             diff --quiet HEAD 2>/dev/null; then
+        --work-tree="$DOTDOTFILES" \
+        diff --quiet HEAD 2>/dev/null; then
         has_changes=true
     fi
-    
+
     # Check for untracked files
     untracked_files=$(git --git-dir="$DOTDOTFILES/.git" \
-                           --work-tree="$DOTDOTFILES" \
-                           ls-files --others --exclude-standard 2>/dev/null)
+        --work-tree="$DOTDOTFILES" \
+        ls-files --others --exclude-standard 2>/dev/null)
     if [[ -n "$untracked_files" ]]; then
         has_untracked=true
     fi
-    
-    if [[ "$has_changes" == "true" ]] || \
-       [[ "$has_untracked" == "true" ]]; then
+
+    if [[ "$has_changes" == "true" ]] ||
+        [[ "$has_untracked" == "true" ]]; then
         echo "📦 Backing up local changes..."
-        
+
         # Create backup directory for untracked files
         local backup_dir="$DOTDOTFILES/backups/git/$timestamp"
         mkdir -p "$backup_dir"
-        
+
         # Backup untracked files
         if [[ "$has_untracked" == "true" ]]; then
             echo "$untracked_files" | while IFS= read -r file; do
                 if [[ -z "$file" ]]; then
-            continue
-        fi
+                    continue
+                fi
                 local target_dir="$backup_dir/$(dirname "$file")"
                 mkdir -p "$target_dir" 2>/dev/null || true
                 if [[ -f "$DOTDOTFILES/$file" ]]; then
@@ -219,18 +219,18 @@ function backup_local_changes() {
             done
             echo "  ✅ Backed up untracked files to $backup_dir/"
         fi
-        
+
         # Stash tracked changes if any
         if [[ "$has_changes" == "true" ]]; then
             if git --git-dir="$DOTDOTFILES/.git" \
-                   --work-tree="$DOTDOTFILES" \
-                   stash push -m "backup-before-update-$timestamp" \
-                   2>/dev/null; then
+                --work-tree="$DOTDOTFILES" \
+                stash push -m "backup-before-update-$timestamp" \
+                2>/dev/null; then
                 echo "  ✅ Stashed tracked changes: stash@{0}"
                 echo "  💡 To restore: git stash pop stash@{0}"
             fi
         fi
-        
+
         echo "📦 Backup complete. Changes saved to:"
         if [[ "$has_changes" == "true" ]]; then
             echo "   - Stashed changes: git stash list"
@@ -247,7 +247,7 @@ function repair() {
     echo "Repairing dotfiles..."
     # Backup local changes before discarding
     backup_local_changes
-    
+
     # Ensure we're on main branch
     config checkout main
     # Discard all local changes to tracked files
@@ -261,7 +261,7 @@ function repair() {
         config reset --hard origin/main
         config clean -fd
     }
-    (builtin cd "$DOTDOTFILES" && \
+    (builtin cd "$DOTDOTFILES" &&
         git submodule update --init --recursive --remote)
     "$DOTDOTFILES/sync.sh" --repair --skip-git "$@"
     reload
@@ -275,13 +275,13 @@ function sync() {
 # Dotfile management wrapper for git operations
 function config() {
     local subcommand="$1"
-    shift  # Remove subcommand from arguments
-    
+    shift # Remove subcommand from arguments
+
     case "$subcommand" in
         update)
             # Backup local changes before discarding
             backup_local_changes
-            
+
             # Fetch latest changes first
             config fetch
             # Discard all local changes to tracked files
@@ -301,7 +301,7 @@ function config() {
         sync)
             sync "$@"
             ;;
-        fetch|pull|push)
+        fetch | pull | push)
             if git --git-dir="$DOTDOTFILES/.git" \
                 remote | grep -q .; then
                 git --git-dir="$DOTDOTFILES/.git" \

@@ -12,12 +12,12 @@ tool_upgrade_to_latest() {
     local os_tag arch_tag
     case "$OS_NAME" in
         macos) os_tag="darwin" ;;
-        linux) os_tag="linux"  ;;
+        linux) os_tag="linux" ;;
         *) return 1 ;;
     esac
     case "$ARCH" in
-        x86_64)        arch_tag="amd64" ;;
-        arm64|aarch64) arch_tag="arm64" ;;
+        x86_64) arch_tag="amd64" ;;
+        arm64 | aarch64) arch_tag="arm64" ;;
         *) return 1 ;;
     esac
     install_from_github "$TOOL_REPO" "$os_tag" "$arch_tag" ".tar.gz" "$TOOL_BIN"

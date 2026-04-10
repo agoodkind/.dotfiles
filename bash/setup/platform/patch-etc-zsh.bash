@@ -51,7 +51,7 @@ patch_file() {
         log "backed up $target → $backup_file"
     fi
 
-    printf '%s\n' "$content" > "$target"
+    printf '%s\n' "$content" >"$target"
     log "patched $target"
 }
 
@@ -189,6 +189,6 @@ PS1=\"%n@%m %1~ %# \"
 _perf_push 3 zshrc_\${TERM_PROGRAM:-unset}"
 
 patch_file /etc/zprofile "$ZPROFILE_CONTENT"
-patch_file /etc/zshrc    "$ZSHRC_CONTENT"
+patch_file /etc/zshrc "$ZSHRC_CONTENT"
 
 log "done"
