@@ -3,7 +3,9 @@
 ########################
 # iterm customizations #
 # ITERM2_SQUELCH_MARK=1
-test -e "${HOME}/.iterm2_shell_integration.zsh" && _source "${HOME}/.iterm2_shell_integration.zsh"
+if [[ -e "${HOME}/.iterm2_shell_integration.zsh" ]]; then
+    _source "${HOME}/.iterm2_shell_integration.zsh"
+fi
 
 ########################
 
@@ -24,7 +26,9 @@ if [[ -n "$HOMEBREW_PREFIX" ]]; then
     export HOMEBREW_REPOSITORY="$HOMEBREW_PREFIX"
     fpath[1,0]="$HOMEBREW_PREFIX/share/zsh/site-functions"
     export PATH="$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:$PATH"
-    [[ -z "${MANPATH-}" ]] || export MANPATH=":${MANPATH#:}"
+    if [[ -n "${MANPATH-}" ]]; then
+        export MANPATH=":${MANPATH#:}"
+    fi
     export INFOPATH="$HOMEBREW_PREFIX/share/info:${INFOPATH:-}"
 fi
 ############
@@ -107,7 +111,7 @@ function change_hostname() {
     local old_host=$(sudo scutil --get HostName 2>/dev/null)
 
     # Sanitize for LocalHostName/HostName if needed
-    if [[ "$new_name" =~ [^a-zA-Z0-9-] ]]; then
+    if [[ "$new_name" =~ [^a-zA-Z0-9\-] ]]; then
         # Remove apostrophes and other special chars, replace spaces with -
         sanitized_name=$(echo "$new_name" | tr -d "'" | tr ' ' '-' | \
             tr -cd 'a-zA-Z0-9-')

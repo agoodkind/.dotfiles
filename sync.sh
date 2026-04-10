@@ -5,5 +5,5 @@ set -o pipefail
 
 DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
-. "$DOTDOTFILES/lib/dotfilesctl/bootstrap-go.sh"
+source "$DOTDOTFILES/lib/dotfilesctl/bootstrap-go.sh"
 bootstrap_and_run sync "$@"

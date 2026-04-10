@@ -37,14 +37,18 @@ cleanup_stale_brew_locks() {
 	local lock_dir
 	lock_dir="$(brew --prefix 2>/dev/null)/var/homebrew/locks" || return 0
 
-	[[ -d "$lock_dir" ]] || return 0
+	if [[ ! -d "$lock_dir" ]]; then
+        return 0
+    fi
 
 	# Check if any lock files exist
 	local lock_files
 	lock_files=$(ls "$lock_dir"/*.lock 2>/dev/null) || return 0
 
 	for lock_file in $lock_files; do
-		[[ -f "$lock_file" ]] || continue
+		if [[ ! -f "$lock_file" ]]; then
+            continue
+        fi
 
 		# Extract PID from lock file (format: pid on first line)
 		local pid
@@ -83,9 +87,14 @@ app_exists() {
 	app_name=$(get_cask_app_name "$cask")
 
 	# Empty app_name means CLI-only or font (check via brew as fallback)
-	[[ -z "$app_name" ]] && return 1
+	if [[ -z "$app_name" ]]; then
+        return 1
+    fi
 
-	[[ -d "/Applications/${app_name}" ]] || [[ -d "$HOME/Applications/${app_name}" ]]
+	if [[ -d "/Applications/${app_name}" || -d "$HOME/Applications/${app_name}" ]]; then
+        return 0
+    fi
+    return 1
 }
 
 # Cached Homebrew state - using regular arrays for bash 3.2 compatibility
@@ -112,25 +121,37 @@ fi
 # Check if formula is in installed list
 is_brew_installed() {
 	local pkg="$1"
-	[[ " $INSTALLED_FORMULAE_LIST " == *" $pkg "* ]]
+	if [[ " $INSTALLED_FORMULAE_LIST " == *" $pkg "* ]]; then
+        return 0
+    fi
+    return 1
 }
 
 # Check if cask is in installed list
 is_cask_installed() {
 	local cask="$1"
-	[[ " $INSTALLED_CASKS_LIST " == *" $cask "* ]]
+	if [[ " $INSTALLED_CASKS_LIST " == *" $cask "* ]]; then
+        return 0
+    fi
+    return 1
 }
 
 # Check if formula is outdated
 is_formula_outdated() {
 	local pkg="$1"
-	[[ " $OUTDATED_FORMULAE_LIST " == *" $pkg "* ]]
+	if [[ " $OUTDATED_FORMULAE_LIST " == *" $pkg "* ]]; then
+        return 0
+    fi
+    return 1
 }
 
 # Check if cask is outdated
 is_cask_outdated() {
 	local cask="$1"
-	[[ " $OUTDATED_CASKS_LIST " == *" $cask "* ]]
+	if [[ " $OUTDATED_CASKS_LIST " == *" $cask "* ]]; then
+        return 0
+    fi
+    return 1
 }
 
 # Check if formula is installed
@@ -138,7 +159,10 @@ is_cask_outdated() {
 # Fallback: check brew list (handles cases where formula != binary name)
 check_formula_installed() {
 	local pkg="$1"
-	cmd_exists "$pkg" || is_brew_installed "$pkg"
+	if cmd_exists "$pkg"; then
+        return 0
+    fi
+    is_brew_installed "$pkg"
 }
 
 # Check if cask is installed (fast or slow based on quick_mode)

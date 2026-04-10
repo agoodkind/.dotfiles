@@ -20,7 +20,9 @@ function _ready_mark() {
 # Tier 1: runs on first keystroke (zle-line-init). Minimal set needed for
 # basic interactive use — zinit core, compinit, and autosuggestions.
 function _load_tier1() {
-    (( _ZINIT_LOADED )) && return 0
+    if (( _ZINIT_LOADED != 0 )); then
+        return 0
+    fi
     _ZINIT_LOADED=1
     typeset -g _ready_lap=$EPOCHREALTIME
 
@@ -29,7 +31,9 @@ function _load_tier1() {
     source "$DOTDOTFILES/lib/zinit/zinit.zsh"
     ZINIT[AUTO_UPDATE_DAYS]=365
     autoload -Uz _zinit
-    (( ${+_comps} )) && _comps[zinit]=_zinit
+    if (( ${+_comps} != 0 )); then
+        _comps[zinit]=_zinit
+    fi
     _ready_mark 2 zinit_core
 
     ZINIT[COMPINIT_OPTS]=-C
@@ -55,7 +59,7 @@ function _load_tier2() {
 
     zinit light Aloxaf/fzf-tab
     zinit light Freed-Wu/fzf-tab-source
-    if (( $+commands[fzf] )); then
+    if (( $+commands[fzf] != 0 )); then
         source <(fzf --zsh)
     fi
     _ready_mark 2 fzf-tab
@@ -69,7 +73,7 @@ function _load_tier2() {
     zstyle ":completion:*" list-colors ${(s.:.)LS_COLORS}
     zstyle ":completion:*" menu no
 
-    if (( $+commands[gcp] )); then
+    if (( $+commands[gcp] != 0 )); then
         unalias gcp 2>/dev/null
         compdef -d gcp 2>/dev/null
         compdef _files gcp 2>/dev/null
@@ -89,7 +93,9 @@ function _load_tier3() {
 
     local _zc_dir="${ZINIT[COMPLETIONS_DIR]:-$HOME/.local/share/zinit/completions}"
     for _zc_link in "$_zc_dir"/*(N@); do
-        [[ -e "$_zc_link" ]] || rm -f "$_zc_link"
+        if [[ ! -e "$_zc_link" ]]; then
+            rm -f "$_zc_link"
+        fi
     done
     unset _zc_dir _zc_link
     _ready_mark 2 cleanup

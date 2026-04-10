@@ -10,16 +10,18 @@ function _resolve_prefer_target() {
     local qargs=""
     local arg
     for arg in "${args[@]}"; do
-        [[ -z "$arg" ]] && continue
+        if [[ -z "$arg" ]]; then
+            continue
+        fi
         qargs+=" ${(q)arg}"
     done
 
-    if [[ "$binary" == /* ]] && [[ -x "$binary" ]]; then
+    if [[ "$binary" == /* && -x "$binary" ]]; then
         _PREFER_RESOLVED="command $binary$qargs"
         return 0
     fi
 
-    if (( $+functions[$binary] )); then
+    if (( $+functions[$binary] != 0 )); then
         _PREFER_RESOLVED="$binary$qargs"
         return 0
     fi
@@ -42,7 +44,10 @@ PREFER_CACHE_FILE="$HOME/.cache/zsh_prefer_aliases.zsh"
 _PREFER_CACHE_VALID=false
 
 function _prefer_check_cache() {
-    [[ -f "$PREFER_CACHE_FILE" ]] && [[ -s "$PREFER_CACHE_FILE" ]]
+    if [[ -f "$PREFER_CACHE_FILE" && -s "$PREFER_CACHE_FILE" ]]; then
+        return 0
+    fi
+    return 1
 }
 
 function _prefer_init_cache() {
@@ -98,12 +103,16 @@ $name() {
 
 function prefer() {
     local name="$1"
-    [[ -n "${aliases[$name]}" ]] && return 0
+    if [[ -n "${aliases[$name]}" ]]; then
+        return 0
+    fi
     _prefer_impl "$@"
 }
 
 function prefer_tty() {
     local name="$1"
-    (( $+functions[$name] )) && return 0
+    if (( $+functions[$name] != 0 )); then
+        return 0
+    fi
     _prefer_tty_impl "$@"
 }

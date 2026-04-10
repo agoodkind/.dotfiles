@@ -42,15 +42,21 @@ function _needs_sudoedit_for_any_path() {
 
     local p parent
     for p in "$@"; do
-        [[ -n "$p" ]] || continue
+        if [[ -z "$p" ]]; then
+            continue
+        fi
 
         if [[ -e "$p" ]]; then
-            [[ -w "$p" ]] || return 0
+            if [[ ! -w "$p" ]]; then
+                return 0
+            fi
             continue
         fi
 
         parent="${p:h}"
-        [[ -n "$parent" ]] || parent="."
+        if [[ -z "$parent" ]]; then
+            parent="."
+        fi
         if [[ -d "$parent" ]] && [[ ! -w "$parent" ]]; then
             return 0
         fi

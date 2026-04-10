@@ -19,8 +19,14 @@ BACKUPS_PATH=""
 
 log() { echo "[patch-etc-zsh] $*"; }
 
-[[ "$(uname -s)" == "Darwin" ]] || { log "Not macOS — skipping"; exit 0; }
-[[ $EUID -eq 0 ]] || { log "Must run as root (use sudo)"; exit 1; }
+if [[ "$(uname -s)" != "Darwin" ]]; then
+    log "Not macOS — skipping"
+    exit 0
+fi
+if [[ $EUID -ne 0 ]]; then
+    log "Must run as root (use sudo)"
+    exit 1
+fi
 
 ensure_backup_dir() {
     if [[ -z "$BACKUPS_PATH" ]]; then

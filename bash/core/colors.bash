@@ -13,7 +13,8 @@ export NC='\033[0m' # No Color
 # Print colored output
 # Usage: color_echo COLOR "message"
 color_echo() {
-    color="$1"; shift
+    local color="$1"
+    shift
     printf "%b%s%b\n" "${!color}" "$*" "${NC}"
 }
 

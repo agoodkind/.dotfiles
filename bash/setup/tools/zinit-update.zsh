@@ -30,7 +30,9 @@ verify_rc=0
 
 for plugin_dir in "$plugins_dir"/*(N/); do
     local name="${plugin_dir:t}"
-    [[ $name = custom || $name = _local---zinit ]] && continue
+    if [[ $name = custom || $name = _local---zinit ]]; then
+        continue
+    fi
 
     if [[ ! -d "$plugin_dir/.git" ]]; then
         printf "[zinit-verify] %s: not a git repo\n" "$name"
@@ -50,4 +52,8 @@ if (( verify_rc == 0 )); then
 fi
 
 # compile is the only phase we control; update exit is unreliable
-(( compile_rc == 0 && verify_rc == 0 ))
+if (( compile_rc == 0 && verify_rc == 0 )); then
+    exit 0
+else
+    exit 1
+fi

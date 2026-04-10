@@ -9,7 +9,9 @@
 ###############################################################################
 
 # Run command asynchronously (background job)
-function async_run() { "$@" &! }
+function async_run() {
+    "$@" &!
+}
 
 # Resolve the dotfiles remote URL.
 # Returns origin URL from git config if present, otherwise
@@ -17,10 +19,14 @@ function async_run() { "$@" &! }
 function _dotfiles_remote() {
     local url
     url=$(git --git-dir="$DOTDOTFILES/.git" \
-        config remote.origin.url 2>/dev/null) \
-        && echo "$url" && return
-    [[ -f "$DOTDOTFILES/.git/wsm-url" ]] \
-        && cat "$DOTDOTFILES/.git/wsm-url"
+        config remote.origin.url 2>/dev/null)
+    if [[ -n "$url" ]]; then
+        echo "$url"
+        return
+    fi
+    if [[ -f "$DOTDOTFILES/.git/wsm-url" ]]; then
+        cat "$DOTDOTFILES/.git/wsm-url"
+    fi
 }
 
 ###############################################################################
@@ -69,15 +75,24 @@ export OS_TYPE
 
 # OS detection helpers
 function is_macos() {
-    [[ "$OS_TYPE" == "mac" ]]
+    if [[ "$OS_TYPE" == "mac" ]]; then
+        return 0
+    fi
+    return 1
 }
 
 function is_debian_based() {
-    [[ "$OS_TYPE" == "ubuntu" || "$OS_TYPE" == "debian" ]]
+    if [[ "$OS_TYPE" == "ubuntu" || "$OS_TYPE" == "debian" ]]; then
+        return 0
+    fi
+    return 1
 }
 
 function is_ubuntu() {
-    [[ "$OS_TYPE" == "ubuntu" ]]
+    if [[ "$OS_TYPE" == "ubuntu" ]]; then
+        return 0
+    fi
+    return 1
 }
 
 # Source OS-specific configuration
@@ -109,7 +124,9 @@ function has_internet() {
 }
 
 # Portable command existence check (lazy PATH lookup, avoids 10ms full hash build)
-function isinstalled() { command -v "$1" >/dev/null 2>&1; }
+function isinstalled() {
+    command -v "$1" >/dev/null 2>&1
+}
 
 function dotfiles_changed_hash() {
     local head_hash=""
@@ -117,8 +134,9 @@ function dotfiles_changed_hash() {
         read -r head_hash < "$DOTDOTFILES/.git/HEAD"
         if [[ "$head_hash" == ref:* ]]; then
             local ref="${head_hash#ref: }"
-            [[ -f "$DOTDOTFILES/.git/$ref" ]] && \
+            if [[ -f "$DOTDOTFILES/.git/$ref" ]]; then
                 read -r head_hash < "$DOTDOTFILES/.git/$ref"
+            fi
         fi
     fi
 
@@ -132,7 +150,9 @@ function dotfiles_changed_hash() {
         "$DOTDOTFILES/home/.zshrc" \
         "$DOTDOTFILES/.zshrc.local"; do
         if zstat -A file_stat +mtime "$f" 2>/dev/null; then
-            (( file_stat[1] > max_mtime )) && max_mtime=$file_stat[1]
+            if (( file_stat[1] > max_mtime )); then
+                max_mtime=$file_stat[1]
+            fi
         fi
     done
 
@@ -186,12 +206,13 @@ function backup_local_changes() {
         # Backup untracked files
         if [[ "$has_untracked" == "true" ]]; then
             echo "$untracked_files" | while IFS= read -r file; do
-                [[ -z "$file" ]] && continue
+                if [[ -z "$file" ]]; then
+            continue
+        fi
                 local target_dir="$backup_dir/$(dirname "$file")"
                 mkdir -p "$target_dir" 2>/dev/null || true
                 if [[ -f "$DOTDOTFILES/$file" ]]; then
-                    cp "$DOTDOTFILES/$file" "$backup_dir/$file" \
-                        2>/dev/null || true
+                    cp "$DOTDOTFILES/$file" "$backup_dir/$file" 2>/dev/null || true
                 fi
             done
             echo "  ✅ Backed up untracked files to $backup_dir/"
@@ -213,8 +234,9 @@ function backup_local_changes() {
             echo "   - Stashed changes: git stash list"
             echo "     (look for backup-before-update-$timestamp)"
         fi
-        [[ "$has_untracked" == "true" ]] && \
+        if [[ "$has_untracked" == "true" ]]; then
             echo "   - Untracked files: $backup_dir/"
+        fi
     fi
 }
 
@@ -303,10 +325,11 @@ function config() {
                             fetch "$_url" \
                             '+refs/heads/*:refs/remotes/origin/*'
                         local _pull_cmd=merge
-                        [[ "$(git --git-dir="$DOTDOTFILES/.git" \
+                        if [[ "$(git --git-dir="$DOTDOTFILES/.git" \
                             config --get pull.rebase \
-                            2>/dev/null)" == "true" ]] \
-                            && _pull_cmd=rebase
+                            2>/dev/null)" == "true" ]]; then
+                            _pull_cmd=rebase
+                        fi
                         git --git-dir="$DOTDOTFILES/.git" \
                             --work-tree="$DOTDOTFILES" \
                             "$_pull_cmd" origin/main "$@"

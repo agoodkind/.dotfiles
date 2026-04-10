@@ -15,17 +15,23 @@ resolve_allowed_identity() {
         fi
     fi
 
-    [[ -f "$rules_file" ]] || return
+    if [[ ! -f "$rules_file" ]]; then
+        return
+    fi
 
     local local_rules_file="${rules_file}.local"
     local match_email="" match_name=""
 
     local f
     for f in "$rules_file" "$local_rules_file"; do
-        [[ -f "$f" ]] || continue
+        if [[ ! -f "$f" ]]; then
+            continue
+        fi
         while IFS= read -r line; do
             line="${line%%#*}"
-            [[ -z "${line// /}" ]] && continue
+            if [[ -z "${line// /}" ]]; then
+                continue
+            fi
             local prefix email name
             read -r prefix email name <<< "$line"
             prefix="${prefix/#\~/$HOME}"

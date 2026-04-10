@@ -41,8 +41,12 @@ chpwd_functions+=(__zoxide_hook)
 
 # Report common issues.
 function __zoxide_doctor() {
-    [[ ${_ZO_DOCTOR:-1} -ne 0 ]] || return 0
-    [[ ${chpwd_functions[(Ie)__zoxide_hook]:-} -eq 0 ]] || return 0
+    if [[ ${_ZO_DOCTOR:-1} -eq 0 ]]; then
+        return 0
+    fi
+    if [[ ${chpwd_functions[(Ie)__zoxide_hook]:-} -ne 0 ]]; then
+        return 0
+    fi
 
     _ZO_DOCTOR=0
     \builtin printf '%s\n' \
@@ -66,14 +70,16 @@ function __zoxide_z() {
     __zoxide_doctor
     if [[ "$#" -eq 0 ]]; then
         __zoxide_cd ~
-    elif [[ "$#" -eq 1 ]] && { [[ -d "$1" ]] || [[ "$1" = '-' ]] || [[ "$1" =~ ^[-+][0-9]$ ]]; }; then
+    elif [[ "$#" -eq 1 ]] && { [[ -d "$1" || "$1" = '-' || "$1" =~ ^[-+][0-9]$ ]]; }; then
         __zoxide_cd "$1"
     elif [[ "$#" -eq 2 ]] && [[ "$1" = "--" ]]; then
         __zoxide_cd "$2"
     else
         \builtin local result
         # shellcheck disable=SC2312
-        result="$(\command zoxide query --exclude "$(__zoxide_pwd)" -- "$@")" && __zoxide_cd "${result}"
+        if result="$(\command zoxide query --exclude "$(__zoxide_pwd)" -- "$@")"; then
+            __zoxide_cd "${result}"
+        fi
     fi
 }
 
@@ -81,7 +87,9 @@ function __zoxide_z() {
 function __zoxide_zi() {
     __zoxide_doctor
     \builtin local result
-    result="$(\command zoxide query --interactive -- "$@")" && __zoxide_cd "${result}"
+    if result="$(\command zoxide query --interactive -- "$@")"; then
+        __zoxide_cd "${result}"
+    fi
 }
 
 # =============================================================================
@@ -89,18 +97,18 @@ function __zoxide_zi() {
 # Commands for zoxide. Disable these using --no-cmd.
 #
 
-(( ${+functions[z]} )) || z() {
-    __zoxide_z "$@"
-}
+if (( ${+functions[z]} == 0 )); then
+    function z() { __zoxide_z "$@"; }
+fi
 
 # zi conflicts with zinit, so use zxi instead
-(( ${+functions[zxi]} )) || zxi() {
-    __zoxide_zi "$@"
-}
+if (( ${+functions[zxi]} == 0 )); then
+    function zxi() { __zoxide_zi "$@"; }
+fi
 
-(( ${+functions[cdi]} )) || cdi() {
-    __zoxide_zi "$@"
-}
+if (( ${+functions[cdi]} == 0 )); then
+    function cdi() { __zoxide_zi "$@"; }
+fi
 
 # cd override is handled by prefer_tty in .zshrc so that non-TTY shells
 # (Claude Code, scripts) get the plain builtin cd.
@@ -112,7 +120,9 @@ if [[ -o zle ]]; then
     __zoxide_z_complete() {
         # Only show completions when the cursor is at the end of the line.
         # shellcheck disable=SC2154
-        [[ "${#words[@]}" -eq "${CURRENT}" ]] || return 0
+        if [[ "${#words[@]}" -ne "${CURRENT}" ]]; then
+            return 0
+        fi
 
         if [[ "${#words[@]}" -eq 2 ]]; then
             # Show completions for local directories.
@@ -121,7 +131,9 @@ if [[ -o zle ]]; then
         elif [[ "${words[-1]}" == '' ]]; then
             # Show completions for Space-Tab.
             # shellcheck disable=SC2086
-            __zoxide_result="$(\command zoxide query --exclude "$(__zoxide_pwd || \builtin true)" --interactive -- ${words[2,-1]})" || __zoxide_result=''
+            if ! __zoxide_result="$(\command zoxide query --exclude "$(__zoxide_pwd || \builtin true)" --interactive -- ${words[2,-1]})"; then
+            __zoxide_result=''
+        fi
 
             # Set a result to ensure completion doesn't re-run
             compadd -Q ""
@@ -150,7 +162,9 @@ if [[ -o zle ]]; then
     }
     \builtin zle -N __zoxide_z_complete_helper
 
-    [[ "${+functions[compdef]}" -ne 0 ]] && \compdef __zoxide_z_complete z cd
+    if [[ "${+functions[compdef]}" -ne 0 ]]; then
+        \compdef __zoxide_z_complete z cd
+    fi
 fi
 
 # =============================================================================

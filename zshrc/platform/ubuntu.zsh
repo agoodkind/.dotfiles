@@ -28,12 +28,15 @@ function flush_dns() {
     local did_any=false
 
     if command -v resolvectl >/dev/null 2>&1; then
-        sudo resolvectl flush-caches >/dev/null 2>&1 && did_any=true
+        if sudo resolvectl flush-caches >/dev/null 2>&1; then
+            did_any=true
+        fi
     fi
 
     if command -v systemd-resolve >/dev/null 2>&1; then
-        sudo systemd-resolve --flush-caches >/dev/null 2>&1 && \
+        if sudo systemd-resolve --flush-caches >/dev/null 2>&1; then
             did_any=true
+        fi
     fi
 
     if command -v systemctl >/dev/null 2>&1; then
@@ -41,14 +44,17 @@ function flush_dns() {
         for svc in systemd-resolved NetworkManager network-manager \
             nscd dnsmasq unbound bind9 named; do
             if systemctl cat "$svc" >/dev/null 2>&1; then
-                sudo systemctl restart "$svc" >/dev/null 2>&1 && \
+                if sudo systemctl restart "$svc" >/dev/null 2>&1; then
                     did_any=true
+                fi
             fi
         done
     elif command -v service >/dev/null 2>&1; then
         local svc
         for svc in network-manager nscd dnsmasq unbound bind9 named; do
-            sudo service "$svc" restart >/dev/null 2>&1 && did_any=true
+            if sudo service "$svc" restart >/dev/null 2>&1; then
+                did_any=true
+            fi
         done
     fi
 

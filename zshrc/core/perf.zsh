@@ -1,5 +1,5 @@
 # Fallback: if .zshenv armed zprof but failed to load it, load now.
-if (( _ZPROF_ARMED && ! _ZPROF_LOADED )); then
+if (( _ZPROF_ARMED != 0 && _ZPROF_LOADED == 0 )); then
     zmodload zsh/zprof 2>/dev/null && _ZPROF_LOADED=1
 fi
 
@@ -66,7 +66,7 @@ typeset -g _ZPROF_OUTPUT=""
 
 function _perf_first_precmd() {
     _PROFILE_TIMES[_first_precmd]=$(( (EPOCHREALTIME - START_TIME) * 1000 ))
-    if (( _ZPROF_LOADED )); then
+    if (( _ZPROF_LOADED != 0 )); then
         _ZPROF_OUTPUT=$(zprof 2>/dev/null)
     fi
     precmd_functions=(${precmd_functions:#_perf_first_precmd})
@@ -87,9 +87,11 @@ function zsh_perf() {
     tree_print _PERF_TREE ""
 
     local has_zprof=$(( ${#_ZPROF_OUTPUT} > 0 ))
-    (( has_zprof )) && _perf_print_zprof_section "$_ZPROF_OUTPUT"
+    if (( has_zprof != 0 )); then
+        _perf_print_zprof_section "$_ZPROF_OUTPUT"
+    fi
 
-    if (( ${#_PERF_TREE_DEFERRED} )); then
+    if (( ${#_PERF_TREE_DEFERRED} != 0 )); then
         printf "\ndeferred:\n"
         tree_print _PERF_TREE_DEFERRED ""
     fi
@@ -117,15 +119,23 @@ function _perf_print_zprof_section() {
     local zp_line sep_count=0
     while IFS= read -r zp_line; do
         if [[ "$zp_line" == --* ]]; then
-            (( ++sep_count >= 2 )) && break
+            if (( ++sep_count >= 2 )); then
+            break
+        fi
             continue
         fi
-        (( sep_count == 1 )) || continue
-        [[ "$zp_line" =~ ^[[:space:]]+[0-9]+\) ]] || continue
+        if (( sep_count != 1 )); then
+            continue
+        fi
+        if [[ ! "$zp_line" =~ ^[[:space:]]+[0-9]+\) ]]; then
+            continue
+        fi
         entries+=("$zp_line")
     done <<< "$zprof_out"
 
-    (( ${#entries} == 0 )) && return 0
+    if (( ${#entries} == 0 )); then
+        return 0
+    fi
 
     local total_entries=${#entries}
     printf "    └── [zprof: %d functions]\n" "$total_entries"
@@ -140,7 +150,9 @@ function _perf_print_zprof_section() {
         zp_self=${zp_f[6]}
         zp_calls=${zp_f[2]}
         zp_s="s"
-        (( zp_calls == 1 )) && zp_s=""
+        if (( zp_calls == 1 )); then
+            zp_s=""
+        fi
 
         if (( zi == total_entries )); then
             zp_branch="└──"
@@ -154,7 +166,9 @@ function _perf_print_zprof_section() {
 }
 
 function _write_startup_log() {
-    [[ -t 1 || "${ZSH_PERF:-}" == "1" ]] || return 0
+    if [[ ! -t 1 && "${ZSH_PERF:-}" != "1" ]]; then
+        return 0
+    fi
     ( __write_startup_log_impl >/dev/null 2>&1 ) &!
 }
 function __write_startup_log_impl() {
@@ -170,7 +184,9 @@ function __write_startup_log_impl() {
     local sections_json="{}"
     local k key
     for k in ${(ok)_PROFILE_TIMES}; do
-        [[ "$k" == _* ]] && continue
+        if [[ "$k" == _* ]]; then
+            continue
+        fi
         key=${k//:/_}
         sections_json=$(jq -n \
             --argjson obj "$sections_json" \
@@ -188,7 +204,9 @@ function __write_startup_log_impl() {
             depth=${entry%%:*}; rest=${entry#*:}
             label=${rest%%:*}; rest=${rest#*:}
             ms=${rest%%:*}; tag=${rest#*:}
-            [[ "$tag" == "$ms" ]] && tag=""
+            if [[ "$tag" == "$ms" ]]; then
+            tag=""
+        fi
             json=$(jq -n \
                 --argjson arr "$json" \
                 --argjson depth "$depth" \
@@ -302,7 +320,9 @@ function zsh_perf_history() {
     fi
 
     local total=${#logs}
-    (( total > limit )) && logs=("${logs[@]:0:$limit}")
+    if (( total > limit )); then
+        logs=("${logs[@]:0:$limit}")
+    fi
 
     if [[ "$json_out" == true ]]; then
         jq -s '.' "${logs[@]}"

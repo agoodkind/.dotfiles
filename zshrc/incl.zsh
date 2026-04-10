@@ -24,16 +24,19 @@ _source "$DOTDOTFILES/zshrc/commands/prefer.zsh"
 _source "$DOTDOTFILES/zshrc/commands/editors.zsh"
 _source "$DOTDOTFILES/zshrc/commands/remote.zsh"
 _source "$DOTDOTFILES/zshrc/commands/aliases.zsh"
-_async bash -lc "builtin cd \"$DOTDOTFILES/lib/dotfilesctl\" && . \"$DOTDOTFILES/lib/dotfilesctl/bootstrap-go.sh\" && run_dotfiles_go_command dispatch"
+_async bash -lc "builtin cd \"$DOTDOTFILES/lib/dotfilesctl\" && source \"$DOTDOTFILES/lib/dotfilesctl/bootstrap-go.sh\" && run_dotfiles_go_command dispatch"
 _source "$DOTDOTFILES/zshrc/integrations/zoxide.zsh"
 _source "$DOTDOTFILES/zshrc/integrations/motd.zsh"
-[[ ! -f "$DOTDOTFILES/.zshrc.local" ]] || _source "$DOTDOTFILES/.zshrc.local"
+if [[ -f "$DOTDOTFILES/.zshrc.local" ]]; then
+    _source "$DOTDOTFILES/.zshrc.local"
+fi
 
 # Show transient "running now" state from background dispatch
 if [[ -d ~/.cache/dotfiles_dispatch.lock ]]; then
     local _update_type=""
-    [[ -f ~/.cache/dotfiles_dispatch.lock/status ]] \
-        && _update_type=$(<~/.cache/dotfiles_dispatch.lock/status)
+    if [[ -f ~/.cache/dotfiles_dispatch.lock/status ]]; then
+        _update_type=$(<~/.cache/dotfiles_dispatch.lock/status)
+    fi
     if [[ "$_update_type" == "weekly" ]]; then
         print -P "%F{blue}↻ weekly update running in background%f"
     elif [[ "$_update_type" == "sync" ]]; then
@@ -55,8 +58,9 @@ if [[ -f "$_notify_file" ]]; then
             warn)    print -P "%F{yellow}⚠  ${_msg}%f" ;;
             error)   print -P "%F{red}✗ ${_msg}%f" ;;
         esac
-        [[ -n "$_logfile" && -f "$_logfile" ]] \
-            && print -P "  %F{242}log: ${_logfile}%f"
+        if [[ -n "$_logfile" && -f "$_logfile" ]]; then
+            print -P "  %F{242}log: ${_logfile}%f"
+        fi
     done < "$_notify_file"
     rm -f "$_notify_file"
 fi

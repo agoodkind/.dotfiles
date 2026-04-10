@@ -27,27 +27,41 @@ mac_only() {
 # Returns 0 on Linux, 1 otherwise. Optional msg: echo skip reason when not Linux.
 # Usage: is_linux "reason" || return
 is_linux() {
-    [[ "$(uname -s)" == "Linux" ]] && return 0
-    [[ -n "${1:-}" ]] && color_echo YELLOW "  ⏭  $1"
+    if [[ "$(uname -s)" == "Linux" ]]; then
+        return 0
+    fi
+    if [[ -n "${1:-}" ]]; then
+        color_echo YELLOW "  ⏭  $1"
+    fi
     return 1
 }
 
 # Returns 0 on macOS, 1 otherwise. Optional msg: echo skip reason when not macOS.
 # Usage: is_macos "reason" || return
 is_macos() {
-    [[ "$(uname -s)" == "Darwin" ]] && return 0
-    [[ -n "${1:-}" ]] && color_echo YELLOW "  ⏭  $1"
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        return 0
+    fi
+    if [[ -n "${1:-}" ]]; then
+        color_echo YELLOW "  ⏭  $1"
+    fi
     return 1
 }
 
 # Returns 0 on Debian/Ubuntu, 1 otherwise.
 is_ubuntu() {
-    [[ -f /etc/os-release ]] && grep -qiE 'ubuntu|debian' /etc/os-release
+    if [[ ! -f /etc/os-release ]]; then
+        return 1
+    fi
+    grep -qiE 'ubuntu|debian' /etc/os-release
 }
 
 # Returns 0 if running on work laptop (WORK_DIR_PATH set).
 is_work_laptop() {
-    [[ -n "${WORK_DIR_PATH:-}" ]]
+    if [[ -n "${WORK_DIR_PATH:-}" ]]; then
+        return 0
+    fi
+    return 1
 }
 
 # GNU realpath. On macOS without coreutils, returns 1.
@@ -120,7 +134,13 @@ calculate_checksum() {
 }
 
 has_sudo_access() {
-    command -v sudo >/dev/null 2>&1 && (sudo -n true 2>/dev/null || sudo -v 2>/dev/null)
+    if ! command -v sudo >/dev/null 2>&1; then
+        return 1
+    fi
+    if sudo -n true 2>/dev/null; then
+        return 0
+    fi
+    sudo -v 2>/dev/null
 }
 
 # Get system architecture and OS type
@@ -344,9 +364,14 @@ _remote_status() {
 }
 
 _has_local_changes() {
-    [[ -n "$(git -C "$DOTDOTFILES" status --porcelain \
+    local changes
+    changes="$(git -C "$DOTDOTFILES" status --porcelain \
         --untracked-files=no \
-        --ignore-submodules 2>/dev/null)" ]]
+        --ignore-submodules 2>/dev/null)"
+    if [[ -n "$changes" ]]; then
+        return 0
+    fi
+    return 1
 }
 
 _has_conflicting_changes() {
@@ -355,7 +380,9 @@ _has_conflicting_changes() {
         --ignore-submodules HEAD origin/main 2>/dev/null)
     local_changed=$(git -C "$DOTDOTFILES" diff --name-only \
         --ignore-submodules 2>/dev/null)
-    [[ -z "$upstream" || -z "$local_changed" ]] && return 1
+    if [[ -z "$upstream" || -z "$local_changed" ]]; then
+        return 1
+    fi
     comm -12 \
         <(echo "$upstream" | sort) \
         <(echo "$local_changed" | sort) | grep -q .
@@ -413,8 +440,12 @@ dotfiles_log_init() {
 # Also prints to terminal when stdout is a tty.
 dotfiles_log() {
     local line="[$(date '+%Y-%m-%d %H:%M:%S')] $*"
-    [[ -n "${DOTFILES_LOG:-}" ]] && printf '%s\n' "$line" >> "$DOTFILES_LOG"
-    [[ -t 1 ]] && printf '%s\n' "$line"
+    if [[ -n "${DOTFILES_LOG:-}" ]]; then
+        printf '%s\n' "$line" >> "$DOTFILES_LOG"
+    fi
+    if [[ -t 1 ]]; then
+        printf '%s\n' "$line"
+    fi
     return 0
 }
 
@@ -447,16 +478,18 @@ dotfiles_notify() {
     local level="$1" msg="$2" logfile="${3:-${DOTFILES_LOG:-}}"
     mkdir -p "${DOTFILES_NOTIFY_FILE%/*}"
     printf '%s|%s|%s\n' "$level" "$logfile" "$msg" >> "$DOTFILES_NOTIFY_FILE"
-    [[ "$level" == "warn" || "$level" == "error" ]] \
-        && echo "$level: $msg" >&2
+    if [[ "$level" == "warn" || "$level" == "error" ]]; then
+        echo "$level: $msg" >&2
+    fi
     return 0
 }
 
 _sync_one_submodule() {
     local d="$1" sub="$2"
     local sub_path="$d/$sub"
-    [[ -d "$sub_path/.git" || -f "$sub_path/.git" ]] \
-        || return 0
+    if [[ ! -d "$sub_path/.git" && ! -f "$sub_path/.git" ]]; then
+        return 0
+    fi
 
     local branch
     branch=$(_sub_tracking_branch "$d" "$sub" "$sub_path")
@@ -465,14 +498,16 @@ _sync_one_submodule() {
     dotfiles_run git -C "$sub_path" fetch || return 0
 
     local stashed=false
-    if [[ "$sub" == "lib/scripts" ]] && \
-       [[ -n "$(git -C "$sub_path" \
-           status --porcelain 2>/dev/null)" ]]; then
-        stashed=true
-        dotfiles_run git -C "$sub_path" stash --include-untracked || {
-            dotfiles_notify warn "stash failed in $sub"
-            return 0
-        }
+    if [[ "$sub" == "lib/scripts" ]]; then
+        local _status_out
+        _status_out="$(git -C "$sub_path" status --porcelain 2>/dev/null)"
+        if [[ -n "$_status_out" ]]; then
+            stashed=true
+            dotfiles_run git -C "$sub_path" stash --include-untracked || {
+                dotfiles_notify warn "stash failed in $sub"
+                return 0
+            }
+        fi
     fi
 
     dotfiles_run git -C "$sub_path" checkout "$branch" || true
@@ -569,7 +604,9 @@ dotfiles_update_repo() {
     esac
 
     has_changes=false
-    _has_local_changes && has_changes=true
+    if _has_local_changes; then
+        has_changes=true
+    fi
 
     if [[ "$has_changes" == true ]]; then
         if _has_conflicting_changes; then

@@ -17,7 +17,9 @@ function tree_print() {
     local prefix=${2:-}
     local -a _tree_data=("${(@P)_tree_name}")
     local tree_total=${#_tree_data}
-    (( tree_total )) || return 0
+    if (( tree_total == 0 )); then
+        return 0
+    fi
 
     local tree_idx look_idx ancestor_depth
     local node_depth node_label node_ms node_tag node_entry look_depth
@@ -34,13 +36,20 @@ function tree_print() {
         node_depth=${node_entry%%:*}; node_entry=${node_entry#*:}
         node_label=${node_entry%%:*}; node_entry=${node_entry#*:}
         node_ms=${node_entry%%:*}; node_tag=${node_entry#*:}
-        [[ "$node_tag" == "$node_ms" ]] && node_tag=""
+        if [[ "$node_tag" == "$node_ms" ]]; then
+            node_tag=""
+        fi
 
         local is_last_sibling=1
         for (( look_idx = tree_idx + 1; look_idx <= tree_total; look_idx++ )); do
             look_depth=${_tree_data[$look_idx]%%:*}
-            if (( look_depth == node_depth )); then is_last_sibling=0; break; fi
-            if (( look_depth < node_depth )); then break; fi
+            if (( look_depth == node_depth )); then
+                is_last_sibling=0
+                break
+            fi
+            if (( look_depth < node_depth )); then
+                break
+            fi
         done
 
         local indent=""
@@ -48,8 +57,13 @@ function tree_print() {
             local ancestor_has_more=0
             for (( look_idx = tree_idx + 1; look_idx <= tree_total; look_idx++ )); do
                 look_depth=${_tree_data[$look_idx]%%:*}
-                if (( look_depth == ancestor_depth )); then ancestor_has_more=1; break; fi
-                if (( look_depth < ancestor_depth )); then break; fi
+                if (( look_depth == ancestor_depth )); then
+                    ancestor_has_more=1
+                    break
+                fi
+                if (( look_depth < ancestor_depth )); then
+                    break
+                fi
             done
             if (( ancestor_has_more )); then
                 indent="${indent}│   "
@@ -59,7 +73,9 @@ function tree_print() {
         done
 
         local branch="├──"
-        (( is_last_sibling )) && branch="└──"
+        if (( is_last_sibling != 0 )); then
+            branch="└──"
+        fi
 
         local left="${prefix}${indent}${branch} ${node_label}"
         _left_parts+=("$left")
@@ -72,7 +88,9 @@ function tree_print() {
         plain=${plain//└/ }
         plain=${plain//─/ }
         local vis_len=${#plain}
-        (( vis_len > max_left )) && max_left=$vis_len
+        if (( vis_len > max_left )); then
+            max_left=$vis_len
+        fi
     done
 
     # --- pass 2: print with aligned right column ---
@@ -88,10 +106,14 @@ function tree_print() {
         plain=${plain//─/ }
         local vis_len=${#plain}
         local pad=$(( pad_target - vis_len ))
-        (( pad < 1 )) && pad=1
+        if (( pad < 1 )); then
+            pad=1
+        fi
 
         local suffix=""
-        [[ -n "$tag" ]] && suffix="  ($tag)"
+        if [[ -n "$tag" ]]; then
+            suffix="  ($tag)"
+        fi
 
         printf "%s%*s%5.1f ms%s\n" "$left" "$pad" "" "$ms_val" "$suffix"
     done

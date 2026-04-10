@@ -23,8 +23,12 @@ function _sshpiper_two_hop_inner() {
     hostname=$(awk '/^hostname / {print $2}' <<< "$expanded")
     user=$(awk '/^user / {print $2}' <<< "$expanded")
 
-    [[ "$hostname" == "ssh.home.goodkind.io" ]] || return 1
-    [[ "$user" =~ $_sshpiper_user_svc_regex ]] || return 1
+    if [[ "$hostname" != "ssh.home.goodkind.io" ]]; then
+        return 1
+    fi
+    if [[ ! "$user" =~ $_sshpiper_user_svc_regex ]]; then
+        return 1
+    fi
 
     printf '%s@%s@localhost' "${match[1]}" "${match[2]}"
 }
@@ -34,14 +38,22 @@ function _sshpiper_run_two_hop() {
     local inner_flag="$2"
     shift 2
 
-    (( $# == 0 )) && { command "$cmd"; return; }
+    if (( $# == 0 )); then
+        command "$cmd"
+        return
+    fi
 
     local dest="${@: -1}"
     local -a args=()
-    (( $# > 1 )) && args=("${@:1:$#-1}")
+    if (( $# > 1 )); then
+        args=("${@:1:$#-1}")
+    fi
 
     local inner
-    inner=$(_sshpiper_two_hop_inner "$dest") || { command "$cmd" "$@"; return; }
+    if ! inner=$(_sshpiper_two_hop_inner "$dest"); then
+        command "$cmd" "$@"
+        return
+    fi
 
     # Use proxy's upstream key for inner SSH (agent forwarding doesn't work through mosh)
     # -tt forces TTY allocation, UpdateHostKeys=no suppresses RSA signature warning

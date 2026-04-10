@@ -133,7 +133,9 @@ main() {
     color_echo BLUE "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
     for tool_script in "${DOTDOTFILES}/bash/setup/tools"/*.bash; do
-        [[ -f "$tool_script" ]] || continue
+        if [[ ! -f "$tool_script" ]]; then
+            continue
+        fi
         run_tool "$tool_script"
     done
 
