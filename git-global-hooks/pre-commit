@@ -51,8 +51,8 @@ if [[ ${#_staged_shell[@]} -gt 0 ]]; then
         local _repo_root
         _repo_root="$(git rev-parse --show-toplevel)"
         local _fmt_files
-        _fmt_files=$(printf '%s\n' "${_staged_shell[@]}" \
-            | "$_repo_root/linting/shfmt-filter.sh")
+        _fmt_files=$(printf '%s\n' "${_staged_shell[@]}" |
+            "$_repo_root/linting/shfmt-filter.sh")
         if [[ -n "$_fmt_files" ]]; then
             if ! printf '%s\n' "$_fmt_files" | xargs shfmt -i 4 -ci -d; then
                 echo ""

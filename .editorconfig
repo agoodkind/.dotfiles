@@ -1,4 +1,4 @@
-# http://editorconfig.org
+# https://editorconfig.org
 root = true
 
 [*]
@@ -10,11 +10,46 @@ trim_trailing_whitespace = true
 insert_final_newline = true
 max_line_length = 90
 
-[*.{md,mdc,json}]
-max_line_length = 0
+# Shell scripts — shfmt reads indent_style/indent_size from here
+[*.{sh,bash,zsh}]
+indent_style = space
+indent_size = 4
 
+# Go — gofmt uses tabs
+[*.go]
+indent_style = tab
+indent_size = 4
+
+# YAML (Makefile, workflows, ast-grep rules)
 [*.{yml,yaml}]
 indent_size = 2
 
-[**/zinit/**]
+# Makefile requires hard tabs
+[Makefile]
+indent_style = tab
+
+# JSON — no line length limit, prettier handles wrapping
+[*.json]
 max_line_length = 0
+
+# Markdown — no line length limit, trailing whitespace is meaningful (line breaks)
+[*.{md,mdc,mdx}]
+max_line_length = 0
+trim_trailing_whitespace = false
+
+# Go module files
+[{go.mod,go.sum}]
+indent_style = tab
+
+# Third-party submodules — don't enforce anything
+[lib/zinit/**]
+max_line_length = 0
+trim_trailing_whitespace = false
+
+[lib/zsh-defer/**]
+max_line_length = 0
+trim_trailing_whitespace = false
+
+[lib/scripts/**]
+max_line_length = 0
+trim_trailing_whitespace = false
