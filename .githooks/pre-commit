@@ -85,6 +85,45 @@ else
     echo -e "  Install with: brew install gitleaks"
 fi
 
+# ─── 3. Shell lint & format ──────────────────────────────────────────────────
+
+_staged_shell=()
+while IFS= read -r _f; do
+    case "$_f" in
+        lib/zinit/* | lib/zsh-defer/*) ;;
+        *.sh | *.bash | *.zsh) _staged_shell+=("$_f") ;;
+    esac
+done < <(git diff --cached --name-only --diff-filter=ACMR)
+
+if [[ ${#_staged_shell[@]} -gt 0 ]]; then
+    if command -v ast-grep >/dev/null; then
+        if ! ast-grep scan "${_staged_shell[@]}"; then
+            echo ""
+            echo "error: shell lint violations found — fix them before committing."
+            echo "hint:  run 'make fix' to auto-fix, then re-stage and commit."
+            blocked=true
+        fi
+    fi
+
+    if command -v shfmt >/dev/null; then
+        _repo_root="$(git rev-parse --show-toplevel)"
+        _filter="$_repo_root/linting/shfmt-filter.sh"
+        if [[ -x "$_filter" ]]; then
+            _fmt_files=$(printf '%s\n' "${_staged_shell[@]}" | "$_filter")
+        else
+            _fmt_files=$(printf '%s\n' "${_staged_shell[@]}")
+        fi
+        if [[ -n "$_fmt_files" ]]; then
+            if ! printf '%s\n' "$_fmt_files" | xargs shfmt -i 4 -ci -d; then
+                echo ""
+                echo "error: shell formatting issues found — fix them before committing."
+                echo "hint:  run 'make fmt' to auto-format, then re-stage and commit."
+                blocked=true
+            fi
+        fi
+    fi
+fi
+
 # ─────────────────────────────────────────────────────────────────────────────
 
 $blocked && exit 1

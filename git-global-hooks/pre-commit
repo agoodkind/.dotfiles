@@ -26,42 +26,4 @@ if [[ -n "$identity" ]]; then
     fi
 fi
 
-# Collect staged shell files (excluding third-party submodules)
-_staged_shell=()
-while IFS= read -r _f; do
-    case "$_f" in
-        lib/zinit/* | lib/zsh-defer/*) ;;
-        *.sh | *.bash | *.zsh) _staged_shell+=("$_f") ;;
-    esac
-done < <(git diff --cached --name-only --diff-filter=ACMR)
-
-if [[ ${#_staged_shell[@]} -gt 0 ]]; then
-    # Style check: every [[ ]]/if and (( ))/if must be a full if/then/fi block
-    if command -v ast-grep >/dev/null; then
-        if ! ast-grep scan "${_staged_shell[@]}"; then
-            echo ""
-            echo "error: shell lint violations found — fix them before committing."
-            echo "hint:  run 'make fix' to auto-fix, then re-stage and commit."
-            exit 1
-        fi
-    fi
-
-    # Format check: shfmt (filter out files with zsh-only syntax it can't parse)
-    if command -v shfmt >/dev/null; then
-        local _repo_root
-        _repo_root="$(git rev-parse --show-toplevel)"
-        local _fmt_files
-        _fmt_files=$(printf '%s\n' "${_staged_shell[@]}" |
-            "$_repo_root/linting/shfmt-filter.sh")
-        if [[ -n "$_fmt_files" ]]; then
-            if ! printf '%s\n' "$_fmt_files" | xargs shfmt -i 4 -ci -d; then
-                echo ""
-                echo "error: shell formatting issues found — fix them before committing."
-                echo "hint:  run 'make fmt' to auto-format, then re-stage and commit."
-                exit 1
-            fi
-        fi
-    fi
-fi
-
 chain_hook pre-commit "$@"
