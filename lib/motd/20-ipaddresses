@@ -727,7 +727,6 @@ if $has_pub4 || $has_pub6 || $has_isp; then
 
     # On Linux, box-drawing characters (─ U+2500) render as 2 columns wide in
     # most terminal fonts, so the continuation indent needs an extra space vs macOS.
-    local _sp_cont _sp_last
     if [[ "$OS_TYPE" == "mac" ]]; then
         _sp_cont="│  "
         _sp_last="   "
