@@ -28,7 +28,7 @@ useDefault = true
 [[rules]]
   id = "dotfiles-ssh-private-key-inline"
   description = "Inline SSH private key content"
-  regex = '''-----BEGIN (RSA|EC|DSA|OPENSSH) PRIVATE KEY-----'''
+  regex = '''-----BEGIN [A-Z ]*PRIVATE KEY[A-Z -]*-----'''
   tags = ["key", "ssh"]
 
 [[rules]]
@@ -36,3 +36,37 @@ useDefault = true
   description = "Generic API token assignment"
   regex = '''(?i)(api[_-]?token|api[_-]?key|access[_-]?token)\s*[=:]\s*['"]?[A-Za-z0-9_\-]{20,}['"]?'''
   tags = ["token", "api"]
+
+[[rules]]
+  id = "dotfiles-generic-secret-assignment"
+  description = "Generic password/secret/credential assignment"
+  regex = '''(?i)(password|passwd|secret|auth[_-]?key|access[_-]?key|private[_-]?key|credentials?|passphrase)\s*[=:]\s*['"]?[^\s'"<>\$\{]{8,}['"]?'''
+  tags = ["secret"]
+  [rules.allowlist]
+    regexes = [
+      '''(?i)(your[_-]|change[_-]?me|placeholder|redacted|xxxx|example|<[^>]+>|\$\{[^}]+\}|\{\{[^}]+\}\}|TODO|FIXME)''',
+    ]
+
+[[rules]]
+  id = "dotfiles-lm-studio-token"
+  description = "LM Studio API token"
+  regex = '''sk-lm-[A-Za-z0-9]{8}:[A-Za-z0-9]{16,}'''
+  tags = ["secret", "api-key"]
+
+[[rules]]
+  id = "dotfiles-jwt"
+  description = "JSON Web Token"
+  regex = '''eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}'''
+  tags = ["secret", "jwt"]
+
+[[rules]]
+  id = "dotfiles-connection-string"
+  description = "Database connection string with embedded credentials"
+  regex = '''(?i)(postgres|mysql|mongodb|redis|amqp|rabbitmq)://[^:@\s]+:[^@\s]{4,}@'''
+  tags = ["secret", "connection-string"]
+
+[[rules]]
+  id = "dotfiles-bearer-token"
+  description = "Bearer token in Authorization header"
+  regex = '''(?i)Authorization['":\s]+Bearer\s+[A-Za-z0-9\-._~+/]{20,}'''
+  tags = ["secret", "token"]
