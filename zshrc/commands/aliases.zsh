@@ -21,9 +21,11 @@ function pbcopy() {
     fi
 }
 
-# claude wrapper: enable remote control and bypass permissions by default
+# claude wrapper: route through agent-gate daemon for per-session model
+# isolation, then inject default flags for the real claude binary.
+# ARGV0=claude makes agent-gate enter wrapper mode (checks argv[0]).
 function claude() {
-    command claude --remote-control --dangerously-skip-permissions "$@"
+    ARGV0=claude "$HOME/go/bin/agent-gate" --remote-control --dangerously-skip-permissions "$@"
 }
 
 # gh wrapper: intercept `gh upload` subcommand
