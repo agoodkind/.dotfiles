@@ -15,7 +15,8 @@
 function tree_print() {
     local _tree_name=$1
     local prefix=${2:-}
-    local -a _tree_data=("${(@P)_tree_name}")
+    _zarr_indirect "$_tree_name"
+    local -a _tree_data=("${_ZSH_ARR[@]}")
     local tree_total=${#_tree_data}
     if ((tree_total == 0)); then
         return 0

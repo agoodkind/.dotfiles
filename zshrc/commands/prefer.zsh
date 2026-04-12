@@ -13,7 +13,8 @@ function _resolve_prefer_target() {
         if [[ -z "$arg" ]]; then
             continue
         fi
-        qargs+=" ${(q)arg}"
+        _zq "$arg"
+        qargs+=" $_ZSH_Q"
     done
 
     if [[ "$binary" == /* && -x "$binary" ]]; then
@@ -74,7 +75,11 @@ function _prefer_impl() {
     _resolve_prefer_target "$binary" "$@" || return
 
     alias "$name=$_PREFER_RESOLVED"
-    echo "alias ${(q)name}=${(q)_PREFER_RESOLVED}" >>"$PREFER_CACHE_FILE"
+    _zq "$name"
+    local _qname=$_ZSH_Q
+    _zq "$_PREFER_RESOLVED"
+    local _qresolved=$_ZSH_Q
+    echo "alias ${_qname}=${_qresolved}" >>"$PREFER_CACHE_FILE"
 }
 
 function _prefer_tty_impl() {

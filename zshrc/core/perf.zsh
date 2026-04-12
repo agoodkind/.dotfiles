@@ -1,15 +1,16 @@
 # Fallback: if .zshenv armed zprof but failed to load it, load now.
-if (( _ZPROF_ARMED != 0 && _ZPROF_LOADED == 0 )); then
+if ((_ZPROF_ARMED != 0 && _ZPROF_LOADED == 0)); then
     zmodload zsh/zprof 2>/dev/null && _ZPROF_LOADED=1
 fi
 
-source "${0:h:h:h}/lib/tree.zsh"
+source "$DOTDOTFILES/lib/tree.zsh"
+source "$DOTDOTFILES/zshrc/core/zsh-shims.zsh"
 
 typeset -gA _PROFILE_TIMES
-_PROFILE_TIMES[_pre_zshrc]=$(( (EPOCHREALTIME - START_TIME) * 1000 ))
+_PROFILE_TIMES[_pre_zshrc]=$(((EPOCHREALTIME - START_TIME) * 1000))
 
 local zshenv_self=${_PROFILE_TIMES[_zshenv_self]:-0}
-local system_time=$(( _PROFILE_TIMES[_pre_zshrc] - zshenv_self ))
+local system_time=$((_PROFILE_TIMES[_pre_zshrc] - zshenv_self))
 _PROFILE_TIMES[_system_zsh]=$system_time
 
 # Inject structural nodes at the front of _PERF_TREE.
@@ -25,50 +26,52 @@ _PERF_TREE=("${_sys_header[@]}" "${_PERF_TREE[@]}")
 local _sc_accounted=0 _sc_entry _sc_rest _sc_ms
 for _sc_entry in "${_PERF_TREE[@]}"; do
     local _sc_depth=${_sc_entry%%:*}
-    if ! (( _sc_depth >= 2 )); then
+    if ! ((_sc_depth >= 2)); then
         continue
     fi
-    _sc_rest=${_sc_entry#*:}; _sc_rest=${_sc_rest#*:}
+    _sc_rest=${_sc_entry#*:}
+    _sc_rest=${_sc_rest#*:}
     _sc_ms=${_sc_rest%%:*}
-    _sc_accounted=$(( _sc_accounted + _sc_ms ))
+    _sc_accounted=$((_sc_accounted + _sc_ms))
 done
-local _sc_remainder=$(( system_time - _sc_accounted ))
+local _sc_remainder=$((system_time - _sc_accounted))
 _PERF_TREE+=("2:[gap /etc/zshrc→.zshrc]:${_sc_remainder}")
 
 typeset -gi _SOURCE_DEPTH=0
 
 function _source() {
-    local _tail=${1:t}
+    local _tail=${1##*/}
     local label=${_tail%.zsh}
     local t0=$EPOCHREALTIME
-    (( _SOURCE_DEPTH++ ))
+    ((_SOURCE_DEPTH++))
     source "$1"
-    (( _SOURCE_DEPTH-- ))
-    local ms=$(( (EPOCHREALTIME - t0) * 1000 ))
+    ((_SOURCE_DEPTH--))
+    local ms=$(((EPOCHREALTIME - t0) * 1000))
     _PROFILE_TIMES[$label]=$ms
-    _PERF_TREE+=("$(( _SOURCE_DEPTH + 2 )):${label}:${ms}")
+    _PERF_TREE+=("$((_SOURCE_DEPTH + 2)):${label}:${ms}")
 }
 
 function _async() {
-    local _tail=${1:t}
+    local _tail=${1##*/}
     local label=${_tail%.zsh}
     local t0=$EPOCHREALTIME
     ("$@" >/dev/null 2>&1 &)
-    local ms=$(( (EPOCHREALTIME - t0) * 1000 ))
-    _PROFILE_TIMES[${label}:async]=$ms
-    _PERF_TREE+=("$(( _SOURCE_DEPTH + 2 )):${label}:${ms}:background")
+    local ms=$(((EPOCHREALTIME - t0) * 1000))
+    local _ak="${label}:async"
+    _PROFILE_TIMES[$_ak]=$ms
+    _PERF_TREE+=("$((_SOURCE_DEPTH + 2)):${label}:${ms}:background")
 }
 
 function _perf_tty_id() {
-    local tty=${TTY:t}
+    local tty=${TTY##*/}
     echo "${tty//\//-}"
 }
 
 typeset -g _ZPROF_OUTPUT=""
 
 function _perf_first_precmd() {
-    _PROFILE_TIMES[_first_precmd]=$(( (EPOCHREALTIME - START_TIME) * 1000 ))
-    if (( _ZPROF_LOADED != 0 )); then
+    _PROFILE_TIMES[_first_precmd]=$(((EPOCHREALTIME - START_TIME) * 1000))
+    if ((_ZPROF_LOADED != 0)); then
         _ZPROF_OUTPUT=$(zprof 2>/dev/null)
     fi
     precmd_functions=(${precmd_functions:#_perf_first_precmd})
@@ -79,32 +82,32 @@ function zsh_perf() {
     local prompt=${_PROFILE_TIMES[_time_to_prompt]:-0}
     local precmd=${_PROFILE_TIMES[_first_precmd]:-0}
     local ready
-    if (( ${+_PROFILE_TIMES[_time_to_ready]} )); then
+    if ((${+_PROFILE_TIMES[_time_to_ready]})); then
         ready=${_PROFILE_TIMES[_time_to_ready]}
     else
-        ready=$(( (EPOCHREALTIME - START_TIME) * 1000 ))
+        ready=$(((EPOCHREALTIME - START_TIME) * 1000))
     fi
 
     printf "shell startup: %.0f ms (time-to-prompt)\n" "$prompt"
     tree_print _PERF_TREE ""
 
-    local has_zprof=$(( ${#_ZPROF_OUTPUT} > 0 ))
-    if (( has_zprof != 0 )); then
+    local has_zprof=$((${#_ZPROF_OUTPUT} > 0))
+    if ((has_zprof != 0)); then
         _perf_print_zprof_section "$_ZPROF_OUTPUT"
     fi
 
-    if (( ${#_PERF_TREE_DEFERRED} != 0 )); then
+    if ((${#_PERF_TREE_DEFERRED} != 0)); then
         printf "\ndeferred:\n"
         tree_print _PERF_TREE_DEFERRED ""
     fi
 
-    local precmd_gap=$(( precmd - prompt ))
-    local ready_settled=$(( ${+_PROFILE_TIMES[_time_to_ready]} ))
-    local deferred_time=$(( ready - precmd ))
+    local precmd_gap=$((precmd - prompt))
+    local ready_settled=$((${+_PROFILE_TIMES[_time_to_ready]}))
+    local deferred_time=$((ready - precmd))
     printf "\ntimeline:\n"
     printf "  prompt visible:      %6.0f ms  (end of .zshrc)\n" "$prompt"
     printf "  first precmd:        %6.0f ms  (+%.0f ms zsh hook overhead)\n" "$precmd" "$precmd_gap"
-    if (( ready_settled )); then
+    if ((ready_settled)); then
         printf "  shell interactive:   %6.0f ms  (+%.0f ms deferred tiers)\n" "$ready" "$deferred_time"
     else
         printf "  shell interactive:   %6.0f ms  (+%.0f ms so far — deferred tiers still loading)\n" "$ready" "$deferred_time"
@@ -121,21 +124,21 @@ function _perf_print_zprof_section() {
     local zp_line sep_count=0
     while IFS= read -r zp_line; do
         if [[ "$zp_line" == --* ]]; then
-            if (( ++sep_count >= 2 )); then
-            break
-        fi
+            if ((++sep_count >= 2)); then
+                break
+            fi
             continue
         fi
-        if (( sep_count != 1 )); then
+        if ((sep_count != 1)); then
             continue
         fi
         if [[ ! "$zp_line" =~ ^[[:space:]]+[0-9]+\) ]]; then
             continue
         fi
         entries+=("$zp_line")
-    done <<< "$zprof_out"
+    done <<<"$zprof_out"
 
-    if (( ${#entries} == 0 )); then
+    if ((${#entries} == 0)); then
         return 0
     fi
 
@@ -143,9 +146,9 @@ function _perf_print_zprof_section() {
     printf "    └── [zprof: %d functions]\n" "$total_entries"
 
     local zi zp_f zp_name zp_total zp_self zp_calls zp_s zp_branch
-    for zi in {1..$total_entries}; do
-        zp_f=( ${=entries[$zi]} )
-        if ! (( ${#zp_f} >= 9 )); then
+    for ((zi = 1; zi <= total_entries; zi++)); do
+        read -ra zp_f <<<"${entries[$zi]}"
+        if ! ((${#zp_f} >= 9)); then
             continue
         fi
 
@@ -154,11 +157,11 @@ function _perf_print_zprof_section() {
         zp_self=${zp_f[6]}
         zp_calls=${zp_f[2]}
         zp_s="s"
-        if (( zp_calls == 1 )); then
+        if ((zp_calls == 1)); then
             zp_s=""
         fi
 
-        if (( zi == total_entries )); then
+        if ((zi == total_entries)); then
             zp_branch="└──"
         else
             zp_branch="├──"
@@ -173,7 +176,7 @@ function _write_startup_log() {
     if [[ ! -t 1 && "${ZSH_PERF:-}" != "1" ]]; then
         return 0
     fi
-    ( __write_startup_log_impl >/dev/null 2>&1 ) &!
+    (__write_startup_log_impl >/dev/null 2>&1) &|
 }
 function __write_startup_log_impl() {
     local log_dir=~/.cache/zsh_startup
@@ -182,19 +185,20 @@ function __write_startup_log_impl() {
     local tty_id=$(_perf_tty_id)
     local ts=$(date '+%Y%m%d_%H%M%S')
     local log="$log_dir/${ts}_${tty_id}.json"
-    local ready_ms=${_PROFILE_TIMES[_time_to_ready]:-$(( (EPOCHREALTIME - START_TIME) * 1000 ))}
+    local ready_ms=${_PROFILE_TIMES[_time_to_ready]:-$(((EPOCHREALTIME - START_TIME) * 1000))}
 
     # Flat sections JSON (simple key -> ms mapping)
     local sections_json="{}"
     local k key
-    for k in ${(ok)_PROFILE_TIMES}; do
+    _zassoc_keys_sorted _PROFILE_TIMES
+    for k in "${_ZSH_ARR[@]}"; do
         if [[ "$k" == _* ]]; then
             continue
         fi
         key=${k//:/_}
         sections_json=$(jq -n \
             --argjson obj "$sections_json" \
-            --arg     key "$key" \
+            --arg key "$key" \
             --argjson val "${_PROFILE_TIMES[$k]}" \
             '$obj + {($key): $val}')
     done
@@ -205,18 +209,21 @@ function __write_startup_log_impl() {
         local json="[]"
         local entry rest depth label ms tag
         for entry in "${entries[@]}"; do
-            depth=${entry%%:*}; rest=${entry#*:}
-            label=${rest%%:*}; rest=${rest#*:}
-            ms=${rest%%:*}; tag=${rest#*:}
+            depth=${entry%%:*}
+            rest=${entry#*:}
+            label=${rest%%:*}
+            rest=${rest#*:}
+            ms=${rest%%:*}
+            tag=${rest#*:}
             if [[ "$tag" == "$ms" ]]; then
-            tag=""
-        fi
+                tag=""
+            fi
             json=$(jq -n \
                 --argjson arr "$json" \
                 --argjson depth "$depth" \
-                --arg     label "$label" \
+                --arg label "$label" \
                 --argjson ms "$ms" \
-                --arg     tag "$tag" \
+                --arg tag "$tag" \
                 '$arr + [{depth: $depth, label: $label, ms: $ms} + (if $tag != "" then {tag: $tag} else {} end)]')
         done
         echo "$json"
@@ -235,27 +242,27 @@ function __write_startup_log_impl() {
 
     local zprof_json="null"
     if [[ -n "${_ZPROF_OUTPUT:-}" ]]; then
-        zprof_json=$(jq -Rs '.' <<< "$_ZPROF_OUTPUT" 2>/dev/null || echo "null")
+        zprof_json=$(jq -Rs '.' <<<"$_ZPROF_OUTPUT" 2>/dev/null || echo "null")
     fi
 
     jq -n \
-        --arg     ts          "$(date '+%Y-%m-%d %H:%M:%S %Z')" \
-        --arg     tty         "$tty_id" \
-        --argjson pid         "$$" \
-        --arg     term        "${TERM_PROGRAM:-unset}" \
-        --argjson pre_zshrc           "${_PROFILE_TIMES[_pre_zshrc]:-0}" \
-        --argjson system_zsh          "${_PROFILE_TIMES[_system_zsh]:-0}" \
-        --argjson path_helper_done    "${_PATH_HELPER_DONE:-0}" \
-        --argjson locale_done         "${_LOCALE_DONE:-0}" \
-        --argjson zshenv_self         "${_PROFILE_TIMES[_zshenv_self]:-0}" \
-        --argjson time_prompt         "${_PROFILE_TIMES[_time_to_prompt]:-0}" \
-        --argjson first_precmd        "${_PROFILE_TIMES[_first_precmd]:-0}" \
-        --argjson time_ready          "$ready_ms" \
-        --argjson tree                "$tree_json" \
-        --argjson deferred            "$deferred_json" \
-        --argjson sections            "$sections_json" \
-        --argjson syssnap             "$syssnap_json" \
-        --argjson zprof               "$zprof_json" \
+        --arg ts "$(date '+%Y-%m-%d %H:%M:%S %Z')" \
+        --arg tty "$tty_id" \
+        --argjson pid "$$" \
+        --arg term "${TERM_PROGRAM:-unset}" \
+        --argjson pre_zshrc "${_PROFILE_TIMES[_pre_zshrc]:-0}" \
+        --argjson system_zsh "${_PROFILE_TIMES[_system_zsh]:-0}" \
+        --argjson path_helper_done "${_PATH_HELPER_DONE:-0}" \
+        --argjson locale_done "${_LOCALE_DONE:-0}" \
+        --argjson zshenv_self "${_PROFILE_TIMES[_zshenv_self]:-0}" \
+        --argjson time_prompt "${_PROFILE_TIMES[_time_to_prompt]:-0}" \
+        --argjson first_precmd "${_PROFILE_TIMES[_first_precmd]:-0}" \
+        --argjson time_ready "$ready_ms" \
+        --argjson tree "$tree_json" \
+        --argjson deferred "$deferred_json" \
+        --argjson sections "$sections_json" \
+        --argjson syssnap "$syssnap_json" \
+        --argjson zprof "$zprof_json" \
         '{
             ts:           $ts,
             tty:          $tty,
@@ -278,23 +285,25 @@ function __write_startup_log_impl() {
             sections:         $sections,
             syssnap:          $syssnap,
             zprof:            $zprof
-        }' > "$log"
+        }' >"$log"
 
     # Prune oldest beyond 500, in background
     (
-        local -a all=("$log_dir"/*.json(N.om))
+        _zglobfiles_mtime "$log_dir" "*.json"
+        local -a all=("${_ZSH_ARR[@]}")
         local count=${#all}
-        if (( count > 500 )); then
-            rm -f "${all[-$(( count - 500 )),-1]}"
+        if ((count > 500)); then
+            rm -f "${all[@]:500}"
         fi
-    ) &!
+    ) &|
 }
 
 function zsh_perf_log() {
     local log_dir=~/.cache/zsh_startup
     local tty_id=$(_perf_tty_id)
-    local -a matches=("$log_dir"/*_${tty_id}.json(N.om))
-    if (( ${#matches} == 0 )); then
+    _zglobfiles_mtime "$log_dir" "*_${tty_id}.json"
+    local -a matches=("${_ZSH_ARR[@]}")
+    if ((${#matches} == 0)); then
         echo "No startup log found for tty ${tty_id}"
         return 1
     fi
@@ -309,22 +318,24 @@ function zsh_perf_history() {
 
     for arg in "$@"; do
         case "$arg" in
-            --slow)   slow_only=true ;;
-            --all)    limit=9999 ;;
-            --json)   json_out=true ;;
+            --slow) slow_only=true ;;
+            --all) limit=9999 ;;
+            --json) json_out=true ;;
             --last=*) limit=${arg#--last=} ;;
         esac
     done
 
-    local -a logs=("$log_dir"/*.json(N.om))
-    logs=("${(@)logs:#*latest.json}")
-    if (( ${#logs} == 0 )); then
+    _zglobfiles_mtime "$log_dir" "*.json"
+    local -a logs=("${_ZSH_ARR[@]}")
+    _zarr_filter logs '*latest.json'
+    logs=("${_ZSH_ARR[@]}")
+    if ((${#logs} == 0)); then
         echo "No startup logs found"
         return 1
     fi
 
     local total=${#logs}
-    if (( total > limit )); then
+    if ((total > limit)); then
         logs=("${logs[@]:0:$limit}")
     fi
 
@@ -365,7 +376,7 @@ function zsh_perf_history() {
     printf "%-18s %-10s %8s %8s %8s %8s %6s %6s\n" \
         "---------" "---" "------" "------" "------" "-----" "--" "------"
 
-    jq -r "$jq_filter" "${logs[@]}" 2>/dev/null | \
+    jq -r "$jq_filter" "${logs[@]}" 2>/dev/null |
         awk -F'\t' '{printf "%-18s %-10s %8s %8s %8s %8s %6s %6s  %s %s\n", $1,$2,$3,$4,$5,$6,$7,$8,$9,$10}'
 
     printf "\n%d logs shown (of %d total).  --slow  --all  --last=N  --json\n" \
@@ -381,7 +392,7 @@ function path_cache_rebuild() {
         echo "path_helper not found at /usr/libexec/path_helper"
         return 1
     fi
-    /usr/libexec/path_helper -s > "$cache_file"
+    /usr/libexec/path_helper -s >"$cache_file"
     echo "path cache rebuilt: $cache_file"
     echo "contents: $(cat $cache_file)"
 }

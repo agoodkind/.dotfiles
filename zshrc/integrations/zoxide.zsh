@@ -34,9 +34,11 @@ function __zoxide_hook() {
 \builtin typeset -ga precmd_functions
 \builtin typeset -ga chpwd_functions
 # shellcheck disable=SC2034,SC2296
-precmd_functions=("${(@)precmd_functions:#__zoxide_hook}")
+_zarr_filter precmd_functions __zoxide_hook
+precmd_functions=("${_ZSH_ARR[@]}")
 # shellcheck disable=SC2034,SC2296
-chpwd_functions=("${(@)chpwd_functions:#__zoxide_hook}")
+_zarr_filter chpwd_functions __zoxide_hook
+chpwd_functions=("${_ZSH_ARR[@]}")
 chpwd_functions+=(__zoxide_hook)
 
 # Report common issues.
@@ -44,7 +46,8 @@ function __zoxide_doctor() {
     if [[ ${_ZO_DOCTOR:-1} -eq 0 ]]; then
         return 0
     fi
-    if [[ ${chpwd_functions[(Ie)__zoxide_hook]:-} -ne 0 ]]; then
+    _zarr_find chpwd_functions __zoxide_hook
+    if [[ ${_ZSH_INT:-0} -ne 0 ]]; then
         return 0
     fi
 
@@ -68,11 +71,11 @@ function __zoxide_doctor() {
 # Jump to a directory using only keywords.
 function __zoxide_z() {
     __zoxide_doctor
-    if [[ "$" -eq 0 ]]; then
+    if [[ "$#" -eq 0 ]]; then
         __zoxide_cd ~
-    elif [[ "$" -eq 1 ]] && { [[ -d "$1" || "$1" = '-' || "$1" =~ ^[-+][0-9]$ ]]; }; then
+    elif [[ "$#" -eq 1 ]] && { [[ -d "$1" || "$1" = '-' || "$1" =~ ^[-+][0-9]$ ]]; }; then
         __zoxide_cd "$1"
-    elif [[ "$" -eq 2 ]] && [[ "$1" = "--" ]]; then
+    elif [[ "$#" -eq 2 ]] && [[ "$1" = "--" ]]; then
         __zoxide_cd "$2"
     else
         \builtin local result
@@ -152,7 +155,8 @@ if [[ -o zle ]]; then
     __zoxide_z_complete_helper() {
         if [[ -n "${__zoxide_result}" ]]; then
             # shellcheck disable=SC2034,SC2296
-            BUFFER="z ${(q-)__zoxide_result}"
+            _zqs "$__zoxide_result"
+            BUFFER="z $_ZSH_Q"
             __zoxide_result=''
             \builtin zle reset-prompt
             \builtin zle accept-line

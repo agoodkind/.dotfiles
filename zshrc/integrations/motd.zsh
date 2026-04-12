@@ -38,7 +38,8 @@ function _motd_cache_expired() {
     local -a last_shown
     zstat -A last_shown +mtime "$MOTD_CACHE_FILE"
     local now=$EPOCHSECONDS
-    local today=${(%):-"%D{%Y-%m-%d}"}
+    local today
+    strftime -s today "%Y-%m-%d" $EPOCHSECONDS
     local cache_date
     strftime -s cache_date "%Y-%m-%d" "$last_shown"
     if [[ "$cache_date" != "$today" ]]; then
@@ -90,7 +91,8 @@ function _logininfo() {
             if [[ -z "$current_line" ]]; then
                 return 0
             fi
-            local -a words=(${=current_line})
+            local -a words
+            read -ra words <<<"$current_line"
             current_terminal=${words[2]}
             if [[ "$current_line" =~ '\(([^)]+)\)' ]]; then
                 current_remote=${match[1]}

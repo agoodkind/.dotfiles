@@ -2,6 +2,8 @@ SHELL_DIRS  := bash/ zshrc/ git-global-hooks/ lib/tree.zsh lib/motd/ lib/dotfile
 SHELL_FILES := install.sh sync.sh uninstall.sh
 AUTOFIX     := python3 linting/shell-autofix.py
 # -i 4: 4-space indent (mirrors .editorconfig). -ci: indent case arms.
+# -ln zsh is NOT set globally: .bash files use ${!foo} which shfmt rejects in zsh
+# dialect. shfmt auto-detects language from the file extension instead.
 SHFMT_FLAGS := -i 4 -ci
 
 .PHONY: lint lint-staged fix fix-dry fix-staged fmt fmt-check fmt-staged check

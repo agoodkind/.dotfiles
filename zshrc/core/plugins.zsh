@@ -70,7 +70,8 @@ function _load_tier2() {
     zstyle ":fzf-tab:complete:curl:*" fzf-preview "echo \$desc"
     zstyle ":fzf-tab:complete:*:options" fzf-preview "echo \$desc"
     zstyle ":fzf-tab:complete:*:argument-rest" fzf-preview
-    zstyle ":completion:*" list-colors ${(s.:.)LS_COLORS}
+    _zsplit_colon "$LS_COLORS"
+    zstyle ":completion:*" list-colors "${_ZSH_ARR[@]}"
     zstyle ":completion:*" menu no
 
     if (($+commands[gcp] != 0)); then
@@ -92,7 +93,11 @@ function _load_tier3() {
     _ready_mark 2 completions
 
     local _zc_dir="${ZINIT[COMPLETIONS_DIR]:-$HOME/.local/share/zinit/completions}"
-    for _zc_link in "$_zc_dir"/*(N@); do
+    setopt local_options null_glob
+    for _zc_link in "$_zc_dir"/*; do
+        if [[ ! -L "$_zc_link" ]]; then
+            continue
+        fi
         if [[ ! -e "$_zc_link" ]]; then
             rm -f "$_zc_link"
         fi
