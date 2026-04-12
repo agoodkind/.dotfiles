@@ -21,6 +21,13 @@ function pbcopy() {
     fi
 }
 
+# claude wrapper: per-process model isolation via clotilde daemon.
+# Each terminal gets its own --settings file so /model changes in one
+# session never affect others. Daemon is lazy-started on first use.
+function claude() {
+    clotilde exec "$@"
+}
+
 # gh wrapper: intercept `gh upload` subcommand
 function gh() {
     if [[ "${1:-}" == "upload" ]]; then
