@@ -21,13 +21,6 @@ function pbcopy() {
     fi
 }
 
-# claude wrapper: route through agent-gate daemon for per-session model
-# isolation, then inject default flags for the real claude binary.
-# ARGV0=claude makes agent-gate enter wrapper mode (checks argv[0]).
-function claude() {
-    ARGV0=claude "$HOME/go/bin/agent-gate" --remote-control --dangerously-skip-permissions "$@"
-}
-
 # gh wrapper: intercept `gh upload` subcommand
 function gh() {
     if [[ "${1:-}" == "upload" ]]; then
