@@ -125,6 +125,7 @@ export BREW_SPECIFIC=(
     tree-sitter
     wireguard-go
     wireguard-tools
+    xq
 )
 
 # Cargo packages (installed via cargo install)
