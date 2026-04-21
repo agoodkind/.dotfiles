@@ -60,7 +60,6 @@ common_packages = [
   "wget",
   "zoxide",
   "zsh",
-  "yq",
 ]
 
 apt_specific = [
@@ -116,6 +115,8 @@ brew_specific = [
   "tree-sitter",
   "wireguard-go",
   "wireguard-tools",
+  "xq",
+  "yq",
 ]
 
 cargo_packages = []
@@ -190,6 +191,11 @@ repo = "ducaale/xh"
 id = "cloudflare-speed-cli"
 bin = "cloudflare-speed-cli"
 repo = "kavehtehrani/cloudflare-speed-cli"
+
+[[tool]]
+id = "yq"
+bin = "yq"
+repo = "mikefarah/yq"
 
 [dispatch]
 workers = [

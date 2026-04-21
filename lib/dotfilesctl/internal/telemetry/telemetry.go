@@ -206,6 +206,7 @@ func (l *Logger) startSpinner(message string) {
 		tea.WithOutput(l.stdout),
 		tea.WithInput(nil),
 		tea.WithoutSignalHandler(),
+		tea.WithoutRenderer(),
 	)
 	l.spinProgram = spinProgram
 	go func() {

@@ -122,23 +122,18 @@ func outputWithLogger(ctx context.Context, logger *telemetry.Logger, env []strin
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	cmd := runner.CommandWithContext(ctx, "", command, args...)
+	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.Stdin = os.Stdin
-	var output strings.Builder
-	cmd.Stdout = runner.NewCommandOutputWriter(runner.CommandOutputWriterConfig{
-		Logger:  logger,
-		Capture: &output,
-	})
-	cmd.Stderr = runner.NewCommandOutputWriter(runner.CommandOutputWriterConfig{
-		Logger:  logger,
-		Capture: &output,
-	})
 	if env != nil {
 		cmd.Env = env
 	} else if command != "bash" && !strings.Contains(command, "bash") {
 		cmd.Env = append(os.Environ(), "DOTDOTFILES="+os.Getenv("DOTDOTFILES"), "DOTFILES_LOG="+os.Getenv("DOTFILES_LOG"))
 	}
-	return output.String(), cmd.Run()
+	out, err := cmd.CombinedOutput()
+	if logger != nil {
+		logger.RawOutput(string(out))
+	}
+	return string(out), err
 }
 
 func mergeEnv(extra map[string]string, base []string) []string {

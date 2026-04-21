@@ -40,11 +40,16 @@ useDefault = true
 [[rules]]
   id = "dotfiles-generic-secret-assignment"
   description = "Generic password/secret/credential assignment"
-  regex = '''(?i)(password|passwd|secret|auth[_-]?key|access[_-]?key|private[_-]?key|credentials?|passphrase)\s*[=:]\s*['"]?[^\s'"<>\$\{]{8,}['"]?'''
+  regex = '''(?i)(password|passwd|secret|auth[_-]?key|access[_-]?key|private[_-]?key|credentials?|passphrase)[^\S\n]*[=:][^\S\n]*['"]?[^\s'"<>\$\{]{8,}['"]?'''
   tags = ["secret"]
   [rules.allowlist]
+    regexTarget = "line"
     regexes = [
       '''(?i)(your[_-]|change[_-]?me|placeholder|redacted|xxxx|example|<[^>]+>|\$\{[^}]+\}|\{\{[^}]+\}\}|TODO|FIXME)''',
+      # op:// paths are 1Password references, not credentials
+      '''op://''',
+      # YAML required: true/false declarations are not credentials
+      '''(?i)(password|secret|passphrase)[^=\n]*:\s*(true|false)''',
     ]
 
 [[rules]]

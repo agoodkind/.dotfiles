@@ -1,20 +1,5 @@
 # shellcheck shell=bash
 
-# claude → clotilde (drop-in session manager)
-# Session commands get --dangerously-skip-permissions + --remote-control appended.
-# All other invocations (unknown subcommands, piped input, --print, etc.) are
-# handled natively by clotilde, which forwards them to the real claude binary.
-function claude() {
-    case "$1" in
-        start | resume | fork | incognito | --resume | -r)
-            clotilde "$@" --dangerously-skip-permissions --remote-control
-            ;;
-        *)
-            clotilde "$@"
-            ;;
-    esac
-}
-
 # pbcopy wrapper: on macOS use native, otherwise ssh to source host
 function pbcopy() {
     if is_macos; then

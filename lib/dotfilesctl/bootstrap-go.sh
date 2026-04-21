@@ -263,8 +263,7 @@ run_dotfiles_go_command() {
         return 1
     fi
 
-    builtin cd "$DOTDOTFILES/lib/dotfilesctl"
-    GO111MODULE=on "$GO_BINARY" run ./cmd/dotfilesctl "$command" "$@"
+    GO111MODULE=on GOWORK=off "$GO_BINARY" run -C "$DOTDOTFILES/lib/dotfilesctl" ./cmd/dotfilesctl "$command" "$@"
 }
 
 run_dotfiles_binary() {
@@ -300,7 +299,7 @@ ensure_dotfilesctl_binary() {
     fi
 
     if ! check_command flock; then
-        GO111MODULE=on "$GO_BINARY" build -o "$DOTFILESCTL_BINARY" "$DOTDOTFILES/lib/dotfilesctl/cmd/dotfilesctl"
+        GO111MODULE=on GOWORK=off "$GO_BINARY" build -C "$DOTDOTFILES/lib/dotfilesctl" -o "$DOTFILESCTL_BINARY" ./cmd/dotfilesctl
         return $?
     fi
 
@@ -309,7 +308,7 @@ ensure_dotfilesctl_binary() {
         if [ -x "$DOTFILESCTL_BINARY" ] && ! dotfilesctl_binary_stale; then
             exit 0
         fi
-        GO111MODULE=on "$GO_BINARY" build -o "$DOTFILESCTL_BINARY" "$DOTDOTFILES/lib/dotfilesctl/cmd/dotfilesctl"
+        GO111MODULE=on GOWORK=off "$GO_BINARY" build -C "$DOTDOTFILES/lib/dotfilesctl" -o "$DOTFILESCTL_BINARY" ./cmd/dotfilesctl
         exit $?
     ) 9>"$DOTFILESCTL_BUILD_LOCK_FILE"
     return $?

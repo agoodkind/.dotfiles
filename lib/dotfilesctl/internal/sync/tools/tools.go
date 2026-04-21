@@ -100,6 +100,8 @@ func installCustomTool(ctx context.Context, tool catalog.ToolDeclaration, logger
 		return installToolFromGitHubRelease(ctx, "xh", "ducaale/xh", mapOSForXH(), mapArchForTool(tool.ID), ".tar.gz", logger)
 	case "cloudflare-speed-cli":
 		return installToolFromGitHubRelease(ctx, "cloudflare-speed-cli", "kavehtehrani/cloudflare-speed-cli", mapOSForTool(tool.ID), mapArchForTool(tool.ID), ".tar.xz", logger)
+	case "yq":
+		return installToolFromGitHubRelease(ctx, "yq", "mikefarah/yq", "linux", mapArchForTool(tool.ID), ".tar.gz", logger)
 	default:
 		common.Warn(logger, "  skipping unknown tool: "+tool.ID)
 		return nil
@@ -110,6 +112,8 @@ func shouldSkipToolByPlatform(toolID string) bool {
 	switch toolID {
 	case "fastfetch":
 		return runtime.GOOS != "linux"
+	case "yq":
+		return runtime.GOOS != "linux"
 	case "cloudflare-speed-cli":
 		return !(runtime.GOOS == "darwin" || runtime.GOOS == "linux")
 	default:
@@ -118,7 +122,7 @@ func shouldSkipToolByPlatform(toolID string) bool {
 }
 
 func isToolSupported(toolID string) bool {
-	return toolID == "zoxide" || toolID == "async-cmd" || toolID == "starship" || toolID == "fastfetch" || toolID == "procs" || toolID == "tokei" || toolID == "tree-sitter" || toolID == "fzf" || toolID == "xh" || toolID == "cloudflare-speed-cli"
+	return toolID == "zoxide" || toolID == "async-cmd" || toolID == "starship" || toolID == "fastfetch" || toolID == "procs" || toolID == "tokei" || toolID == "tree-sitter" || toolID == "fzf" || toolID == "xh" || toolID == "cloudflare-speed-cli" || toolID == "yq"
 }
 
 func shouldSkipToolUpgrade(current, target string) bool {
@@ -460,7 +464,7 @@ func mapArchForTool(tool string) string {
 			return "x86_64"
 		}
 		return "aarch64"
-	case tool == "fzf":
+	case tool == "fzf", tool == "yq":
 		if isIntel() {
 			return "amd64"
 		}

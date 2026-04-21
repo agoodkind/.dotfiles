@@ -85,21 +85,18 @@ func RunShell(ctx context.Context, script string, env map[string]string, dir str
 type CommandOutputWriterConfig struct {
 	Logger   *telemetry.Logger
 	Fallback io.Writer
-	Capture  io.Writer
 }
 
 func NewCommandOutputWriter(config CommandOutputWriterConfig) io.Writer {
 	return commandOutputWriter{
 		logger:   config.Logger,
 		fallback: config.Fallback,
-		capture:  config.Capture,
 	}
 }
 
 type commandOutputWriter struct {
 	logger   *telemetry.Logger
 	fallback io.Writer
-	capture  io.Writer
 }
 
 func (w commandOutputWriter) Write(p []byte) (int, error) {

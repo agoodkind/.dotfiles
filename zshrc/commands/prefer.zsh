@@ -89,13 +89,25 @@ function _prefer_tty_impl() {
 
     _resolve_prefer_target "$binary" "$@" || return
 
+    # Resolve at definition time (zsh): use builtin for shell builtins,
+    # command for external programs. Baked into the function body so no
+    # runtime detection is needed across shells.
+    local agent_fallback="command $name"
+    if [[ "$(whence -w "$name")" == *": builtin" ]]; then
+        agent_fallback="builtin $name"
+    fi
+
     local func_body="
 $name() {
+    if [[ -n \"\$CLAUDECODE\" || -n \"\$CURSOR_AGENT\" ]]; then
+        $agent_fallback \"\$@\"
+        return
+    fi
     if [[ -t 1 ]]; then
-        $_PREFER_RESOLVED \"\$@\";
-    else
-        command $name \"\$@\";
-    fi;
+        $_PREFER_RESOLVED \"\$@\"
+        return
+    fi
+    $agent_fallback \"\$@\"
 }"
 
     eval "$func_body"
