@@ -90,12 +90,10 @@ func runUninstall(ctx context.Context, purgePackages bool) error {
 	}
 	removeSSHSymlink(dotfiles)
 	removeCursorConfig(dotfiles)
-	removeScripts(dotfiles)
 	removeGitConfig(dotfiles)
 	removeCacheFiles()
 	removeHushlogin()
 	removeBackups(dotfiles)
-	removeSystemdUpdater()
 	if err := removePackages(ctx, purgePackages); err != nil {
 		return err
 	}
@@ -182,57 +180,6 @@ func removeCursorConfig(dotfiles string) {
 	}
 }
 
-func removeScripts(dotfiles string) {
-	logInfo("Removing scripts updater...")
-	if runtime.GOOS == "darwin" {
-		daemonName := "com.agoodkind.scripts-updater"
-		daemonPlist := filepath.Join("/Library/LaunchDaemons", daemonName+".plist")
-		oldAgentPlist := filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents", daemonName+".plist")
-		scriptsDir := "/usr/local/opt/scripts"
-
-		_ = cmdexec.Run(context.Background(), "sudo", "launchctl", "unload", daemonPlist)
-		_ = removeIfExists(daemonPlist)
-		if _, err := os.Stat(oldAgentPlist); err == nil {
-			_ = cmdexec.Run(context.Background(), "launchctl", "unload", oldAgentPlist)
-			_ = removeIfExists(oldAgentPlist)
-		}
-		_ = cmdexec.Run(context.Background(), "sudo", "rm", "-f", "/etc/paths.d/scripts")
-
-		entries, err := os.ReadDir(scriptsDir)
-		if err == nil {
-			for _, entry := range entries {
-				name := entry.Name()
-				target := filepath.Join("/usr/local/bin", name)
-				scriptTarget := filepath.Join(scriptsDir, name)
-				_ = removeSymlinkTo(target, scriptTarget)
-			}
-			_ = removeIfExists(scriptsDir)
-		}
-
-		oldScripts := filepath.Join(os.Getenv("HOME"), ".local", "bin", "scripts")
-		if _, err := os.Stat(oldScripts); err == nil {
-			scriptEntries, err := os.ReadDir(oldScripts)
-			if err == nil {
-				for _, entry := range scriptEntries {
-					_ = removeDotfilesSymlink(filepath.Join(oldScripts, entry.Name()), dotfiles)
-				}
-			}
-			_ = removeIfExists(oldScripts)
-		}
-	} else {
-		scriptsDir := filepath.Join(os.Getenv("HOME"), ".local", "bin", "scripts")
-		if _, err := os.Stat(scriptsDir); err == nil {
-			entries, err := os.ReadDir(scriptsDir)
-			if err == nil {
-				for _, entry := range entries {
-					_ = removeDotfilesSymlink(filepath.Join(scriptsDir, entry.Name()), dotfiles)
-				}
-			}
-			_ = removeIfExists(scriptsDir)
-		}
-	}
-}
-
 func removeGitConfig(dotfiles string) {
 	logInfo("Removing git config include...")
 	includePath := filepath.Join(dotfiles, "lib", ".gitconfig_incl")
@@ -274,23 +221,6 @@ func removeBackups(dotfiles string) {
 			_ = removeIfExists(backupsDir)
 		}
 	}
-}
-
-func removeSystemdUpdater() {
-	if runtime.GOOS == "darwin" {
-		return
-	}
-	if _, err := cmdexec.Output(context.Background(), "systemctl", "is-enabled", "scripts-updater.timer"); err != nil {
-		return
-	}
-	if !promptYesNo("Remove scripts-updater systemd timer? (y/n) ") {
-		return
-	}
-	_ = cmdexec.Run(context.Background(), "sudo", "systemctl", "stop", "scripts-updater.timer")
-	_ = cmdexec.Run(context.Background(), "sudo", "systemctl", "disable", "scripts-updater.timer")
-	_ = removeIfExists("/etc/systemd/system/scripts-updater.service")
-	_ = removeIfExists("/etc/systemd/system/scripts-updater.timer")
-	_ = cmdexec.Run(context.Background(), "sudo", "systemctl", "daemon-reload")
 }
 
 func removePackages(ctx context.Context, purge bool) error {

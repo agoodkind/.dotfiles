@@ -226,7 +226,7 @@ func updateWithRevert(ctx context.Context, dotfiles string, hadChanges bool, log
 
 func syncDotfilesSubmodules(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
 	_ = cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "submodule", "update", "--init")
-	subs := []string{"lib/zinit", "lib/scripts", "lib/zsh-defer"}
+	subs := []string{"lib/zinit", "lib/zsh-defer"}
 	for _, sub := range subs {
 		if err := syncOneSubmodule(ctx, dotfiles, sub, logger); err != nil {
 			return nil
@@ -246,7 +246,7 @@ func syncDotfilesSubmodules(ctx context.Context, dotfiles string, logger *teleme
 		}
 	}
 	if pointerDirty {
-		_ = cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "commit", "-m", "Update submodule pointers", "--", "lib/zinit", "lib/scripts", "lib/zsh-defer")
+		_ = cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "commit", "-m", "Update submodule pointers", "--", "lib/zinit", "lib/zsh-defer")
 	}
 	return nil
 }
@@ -268,25 +268,10 @@ func syncOneSubmodule(ctx context.Context, dotfiles string, subPath string, logg
 		}
 	}
 	_ = cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "fetch")
-	wasStashed := false
-	if subPath == "lib/scripts" {
-		if output, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "status", "--porcelain"); err == nil && strings.TrimSpace(output) != "" {
-			_ = output
-			if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "stash", "--include-untracked"); err == nil {
-				wasStashed = true
-			}
-		}
-	}
 	_ = cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "checkout", branch)
 	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "pull", "--rebase", "origin", branch); err != nil {
 		_ = cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "rebase", "--abort")
 		common.Warn(logger, "  pull --rebase failed in "+subPath)
-	}
-	if wasStashed {
-		if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "stash", "pop"); err != nil {
-			_ = cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "checkout", "--", ".")
-			common.Warn(logger, "  stash pop conflict in "+subPath+", recover with: cd "+subPath+" && git stash pop")
-		}
 	}
 	return nil
 }

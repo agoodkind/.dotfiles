@@ -136,11 +136,6 @@ func Run(ctx context.Context, options Options) error {
 	}); err != nil {
 		return err
 	}
-	if err := runStep("Syncing scripts", false, func(ctx context.Context) error {
-		return workspace.SyncAllScripts(ctx, dotfiles, options.SkipNetwork, logger)
-	}); err != nil {
-		return err
-	}
 	if err := runStep("Syncing Cursor configuration", false, func(ctx context.Context) error {
 		if options.SkipCursorSync {
 			logger.Info("  skipping cursor config sync")

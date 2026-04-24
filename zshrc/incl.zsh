@@ -1,4 +1,3 @@
-export PATH="$PATH:/opt/scripts"
 export PATH="$PATH:$HOME/.cargo/bin"
 export PATH="$PATH:$HOME/go/bin"
 export NVM_LAZY_LOAD=true

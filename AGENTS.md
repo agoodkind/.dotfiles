@@ -46,7 +46,7 @@ It spawns workers in parallel and waits for all of them:
 
 | Worker                  | Purpose                                     |
 | ----------------------- | ------------------------------------------- |
-| `updater`               | Pull dotfiles, sync submodules, weekly jobs |
+| `updater`               | Pull dotfiles and run weekly jobs           |
 | `prefer-cache-rebuild`  | Rebuild prefer-alias cache if stale         |
 | `path-cache-rebuild`    | Rebuild path_helper cache (macOS)           |
 | `zwc-recompile`         | Recompile .zwc files for stale .zsh files   |
@@ -66,7 +66,7 @@ prevented by the dispatch lock — see Background Dispatch above):
   - Fetch from origin.
   - Compare HEAD to `origin/main` to determine if behind.
   - Stash local changes if needed, pull `--ff`, pop stash.
-  - Sync submodules.
+  - Sync submodules (`lib/zinit`, `lib/zsh-defer`).
 3. If new commits were pulled, run `sync.sh --quick --skip-git`.
 4. If no new commits, check if a weekly full update is due (7-day interval).
   Weekly update runs `sync.sh --repair --skip-git`, zinit update, and
@@ -83,7 +83,6 @@ The sync logic in the Go sync implementation:
 2. For each submodule:
   - Detect tracking branch (`main` or `master`) from `.gitmodules` or remote.
   - `git fetch` (full output, not quiet).
-  - For submodules with local work: stash (including untracked) before pull.
   - `git checkout <branch>`, then `git pull --rebase origin <branch>`.
   - On failure: abort rebase, notify, preserve local state.
 3. Auto-commit submodule pointer updates when the parent index is clean.
@@ -118,7 +117,7 @@ output comes from the Go command directly rather than shell-side tee helpers.
 ## Work vs. Personal Separation
 
 - `WORK_DIR_PATH` env var (set in `~/.overrides.local`) signals a work laptop.
-- Work laptops skip SSH config sync, authorized_keys, and `/opt/scripts`.
+- Work laptops skip SSH config sync and authorized_keys.
 - `.githooks/pre-commit` blocks committing proprietary patterns. Override
 patterns live in `.githooks/deny-patterns.local` (gitignored).
 - `.zshrc.local` and `~/.overrides.local` hold machine-specific config
