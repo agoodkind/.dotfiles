@@ -4,9 +4,10 @@ Instructions for AI agents (Cursor, Claude Code, Codex) working in this reposito
 
 ## Overview
 
-Cross-platform dotfiles repository deployed on macOS and Ubuntu. Everything is  
-symlinked from `~/.dotfiles` into `$HOME` by `sync.sh`. The shell is **zsh**;  
-helper scripts and background workers are **bash**.
+Cross-platform dotfiles repository deployed on macOS and Ubuntu. Everything is
+symlinked from `~/.dotfiles` into `$HOME` by `sync.sh`. The shell is **zsh**;
+bootstrap entry points are thin **bash** wrappers, and background maintenance
+is handled by the Go-based `dots` binary.
 
 ## Startup Flow
 
@@ -16,23 +17,24 @@ helper scripts and background workers are **bash**.
 2. `**.zshrc**` — Sets `DOTDOTFILES`, sources `zshrc/incl.zsh`, then applies
   theme, PATH, and aliases.
 3. `**zshrc/incl.zsh**` — Sources perf, plugins (zinit turbo), utils, commands,
-  integrations, then launches `dispatch.bash` asynchronously via `_async`.
-   Displays queued notifications from the previous session.
+  integrations, then launches `dots dispatch` asynchronously via `_async`.
+  Displays queued notifications from the previous session.
 
 ### Performance Constraints
 
 - **zshrc load**: target < 20ms
 - **Time-to-interactive-prompt**: target < 40ms
 - The perf tree records timing for every `_source` / `_async` call. Use
-`zsh_perf` to dump the tree.
+`zsh_perf` or `dots perf` to inspect the latest startup log.
 - **3-tier plugin loading**: zinit turbo → zsh-defer → direct source, chosen
 by latency impact.
 - File caching (PATH, prefer aliases, dircolors) keeps startup fast.
 
 ## Background Dispatch
 
-`dispatch.bash` is launched by `_async` from `incl.zsh` on every interactive
-shell login. It acquires a `flock` on `~/.cache/dotfiles_dispatch.flock` so
+`dots dispatch` is launched by `_async` from `incl.zsh` on every
+interactive shell login. It acquires a `flock` on
+`~/.cache/dotfiles_dispatch.flock` so
 that only one dispatch runs at a time — opening many terminals simultaneously
 is safe because all but the first will exit immediately. The lock is released
 automatically by the kernel when the process exits for any reason, including
@@ -42,31 +44,28 @@ after the flock is acquired; `incl.zsh` checks for its existence to show the
 It spawns workers in parallel and waits for all of them:
 
 
-| Worker                      | Purpose                                     |
-| --------------------------- | ------------------------------------------- |
-| `updater.bash`              | Pull dotfiles, sync submodules, weekly jobs |
-| `prefer-cache-rebuild.bash` | Rebuild prefer-alias cache if stale         |
-| `path-cache-rebuild.bash`   | Rebuild path_helper cache (macOS)           |
-| `zwc-recompile.bash`        | Recompile .zwc files for stale .zsh files   |
-| `ssh-key-load-mac.bash`     | Load ed25519 key into macOS keychain        |
+| Worker                  | Purpose                                     |
+| ----------------------- | ------------------------------------------- |
+| `updater`               | Pull dotfiles, sync submodules, weekly jobs |
+| `prefer-cache-rebuild`  | Rebuild prefer-alias cache if stale         |
+| `path-cache-rebuild`    | Rebuild path_helper cache (macOS)           |
+| `zwc-recompile`         | Recompile .zwc files for stale .zsh files   |
+| `ssh-key-load-mac`      | Load ed25519 key into macOS keychain        |
 
-
-`dispatch.bash` itself logs process lifecycle to
-`~/.cache/dotfiles_dispatch.log` (start/finish of each worker). Each worker
-gets its own log via `dotfiles_log_init "<name>"`.
+`dots dispatch` logs process lifecycle and worker output to
+`~/.cache/dotfiles_dispatch.log`.
 
 ## Updater Flow
 
-`updater.bash` runs in the background on every login (concurrency is
+The `updater` worker runs in the background on every login (concurrency is
 prevented by the dispatch lock — see Background Dispatch above):
 
 1. Check internet connectivity.
-2. Update the repo (via `tools.bash`):
+2. Update the repo:
   - Check git health (detached HEAD, rebase in progress, etc.).
   - Fetch from origin.
   - Compare HEAD to `origin/main` to determine if behind.
   - Stash local changes if needed, pull `--ff`, pop stash.
-  - Re-source `tools.bash` after pull so submodule sync uses the freshest code.
   - Sync submodules.
 3. If new commits were pulled, run `sync.sh --quick --skip-git`.
 4. If no new commits, check if a weekly full update is due (7-day interval).
@@ -78,7 +77,7 @@ prevented by the dispatch lock — see Background Dispatch above):
 Submodules live under `lib/` and track upstream branches (not pinned SHAs).
 Run `git submodule status` for the current list.
 
-The sync logic in `tools.bash`:
+The sync logic in the Go sync implementation:
 
 1. `git submodule update --init` to ensure all submodules are checked out.
 2. For each submodule:
@@ -105,21 +104,16 @@ file path if available, then deletes the file.
 
 ## Logging System
 
-All background workers use a unified logging design from `tools.bash`:
-
-- `**dotfiles_log_init "<name>"`** — Creates `~/.cache/dotfiles/<name>.log`,
-exports `DOTFILES_LOG` so all child calls inherit the path.
-- `**dotfiles_log "<message>"`** — Timestamped entry. Always writes to
-`$DOTFILES_LOG`. Also prints to terminal when stdout is a tty.
-- `**dotfiles_run <command...>**` — Runs a command with output routing:
-interactive → tee to log and terminal; background → log only.
+- Background dispatch logs to `~/.cache/dotfiles_dispatch.log`.
+- `dots` command logs default to `~/.cache/dotfiles/dots.log`
+unless `DOTFILES_LOG` is set.
+- Startup performance logs are written to `~/.cache/zsh_startup/*.json` and
+inspected via `zsh_perf` / `dots perf`.
 
 ### Manual `sync.sh` Runs
 
-When `sync.sh` is run interactively, `dotfiles_log_init "sync"` is called at
-the top. All `dotfiles_run` calls tee output to both the terminal and the
-sync log file. Stderr from the repo-update step flows directly to the terminal
-(no capture with `2>&1`).
+`sync.sh` is a thin wrapper around `dots sync`, so interactive sync
+output comes from the Go command directly rather than shell-side tee helpers.
 
 ## Work vs. Personal Separation
 
@@ -132,10 +126,9 @@ patterns live in `.githooks/deny-patterns.local` (gitignored).
 
 ## Shell Compatibility
 
-- Target shells: **zsh** (primary, interactive), **bash** (scripts, background).
+- Target shells: **zsh** (primary, interactive), **bash** (bootstrap wrappers).
 - All `bash/` scripts use `#!/usr/bin/env bash`.
-- Avoid bashisms in code that might be sourced from zsh and vice versa;
-`tools.bash` is sourced from both.
+- Avoid bashisms in code that might be sourced from zsh and vice versa.
 - Use `$EPOCHSECONDS` for timestamps in zsh, `date +%s` in bash. Prefer
 builtins over `gdate`/`gstat` for cross-platform safety.
 - macOS ships BSD `stat`/`date`; Linux ships GNU. The codebase avoids
@@ -147,10 +140,11 @@ portable find/test expressions.
 
 | Command                         | Purpose                                                                             |
 | ------------------------------- | ----------------------------------------------------------------------------------- |
-| `./sync.sh`                     | Full manual sync (git + link + install + compile)                                   |
+| `./sync.sh`                     | Full manual sync (Go `dots sync`)                                            |
 | `./sync.sh --quick --skip-git`  | Re-link and recompile; skips package installs, zinit/nvim updates, and custom tools |
 | `./sync.sh --repair --skip-git` | Deep repair (clean up stale state, reinstall)                                       |
-| `zsh_perf`                      | Print startup performance tree                                                      |
+| `zsh_perf`                      | Inspect the latest startup performance log                                          |
+| `dots perf history`      | Show startup performance history                                                    |
 
 
 ## Git Operations on This Repository
@@ -206,15 +200,14 @@ does not fully replicate a login session.
   after changes. Use `_async` or `zsh-defer` for anything that can wait.
 2. **No secrets**: Never commit keys, tokens, or work-specific paths.
   Use `~/.overrides.local` or env vars.
-3. **Test on both platforms** when touching `tools.bash`, `.zshenv`, or
-  submodule logic. Use `is_macos` / `is_linux` guards for platform-specific
-   code.
-4. **Logging**: Use `dotfiles_log_init`, `dotfiles_log`, `dotfiles_run` for
-  any new background work. Do not invent bespoke log/run helpers.
+3. **Test on both platforms** when touching `.zshenv`, Go sync/dispatch logic,
+  or submodule logic. Use platform guards for macOS/Linux-specific code.
+4. **Logging**: Route new background work through the existing Go telemetry
+  logger and notification flow. Do not reintroduce bespoke shell log helpers.
 5. **Notifications**: Use `dotfiles_notify` to surface messages at next login.
   Always pass the log file path (or rely on `$DOTFILES_LOG` fallback).
 6. **Submodules**: These track upstream branches. Do not pin to specific SHAs.
-  The sync logic in `tools.bash` handles fetch/checkout/rebase.
+  The Go sync logic handles fetch/checkout/rebase.
 7. **Bash version on macOS**: macOS ships bash 3.2 and non-login SSH sessions
   lack `/usr/local/bin` in PATH, breaking any bash 4+ feature. The fix is:
   - For any new top-level entry point script: source `bash/core/init.bash` as
@@ -226,4 +219,3 @@ does not fully replicate a login session.
     DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
     source "$DOTDOTFILES/bash/core/init.bash"
     ```
-

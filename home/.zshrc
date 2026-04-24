@@ -10,8 +10,8 @@ zmodload zsh/datetime                                                         #
 export DOTDOTFILES="$HOME/.dotfiles"                                          #
 #                                                                             #
 # Include OS specific and common zshrc configs                                #
-source $DOTDOTFILES/zshrc/incl.zsh                                            #
-local _t_zshrc=$EPOCHREALTIME                                                 #
+source "$DOTDOTFILES/zshrc/incl.zsh"                                          #
+_t_zshrc=$EPOCHREALTIME                                                       #
 #                                                                             #
 # End: do not edit above this line                                            #
 ###############################################################################
@@ -68,74 +68,17 @@ setopt pushd_ignore_dups
 setopt pushd_silent
 
 ###############################################################################
-# Aliases #####################################################################
-# Use prefer <alias> <target_command> #########################################
-###############################################################################
-
-# cd: zoxide smart jump in TTY, plain builtin otherwise
-prefer_tty cd __zoxide_z
-
-# ls
-prefer ll eza -lah --icons --group-directories-first
-prefer la eza -a --icons --group-directories-first
-prefer lt eza --tree --level=2 --icons
-prefer llt eza -lah --tree --level=2 --icons
-prefer_tty ls ll
-
-# cat / find / grep
-prefer bat batcat --style=auto
-prefer catt bat --style=auto
-prefer rgi rg -i
-prefer rgl rg -l
-
-# disk + process tools
-prefer top btop
-prefer htop btop
-
-prefer cp /bin/cp
-
-# helper CLIs
-prefer help tldr
-prefer lg lazygit
-
-# npm wrapper prefers pnpm implementation
-prefer npm pnpm
-
-prefer docker podman
-
-# ssh helper
-prefer sshrm ssh-keygen -R
-
-# Editor: nvim > vim > vi (with sudoedit wrappers)
-if isinstalled nvim; then
-    export EDITOR=nvim SUDO_EDITOR="nvim -u $HOME/.config/nvim/init.lua"
-    export MANPAGER='nvim +Man!' PAGER="$DOTDOTFILES/bin/nvim-pager" MANWIDTH=999
-elif isinstalled vim; then
-    export EDITOR=vim SUDO_EDITOR=vim
-    export MANPAGER="vim -M +MANPAGER --not-a-term -" PAGER=$MANPAGER
-else
-    export EDITOR=vi SUDO_EDITOR=vi
-fi
-
-prefer edit "$EDITOR"
-prefer nano "$EDITOR"
-prefer emacs "$EDITOR"
-prefer vim _edit_maybe_sudoedit "$EDITOR"
-prefer vi _edit_maybe_sudoedit "$EDITOR"
-prefer nvim _edit_maybe_sudoedit nvim
-
-###############################################################################
 # Profiling support ###########################################################
 ###############################################################################
 # Do not edit below this line #################################################
 ###############################################################################
-local _zl_ms=$(( (EPOCHREALTIME - _t_zshrc) * 1000 ))
+_zl_ms=$(( (EPOCHREALTIME - _t_zshrc) * 1000 ))
 _PROFILE_TIMES[.zshrc]=$_zl_ms
 _PERF_TREE+=("2:.zshrc:${_zl_ms}")
 _PROFILE_TIMES[_time_to_prompt]=$(( (EPOCHREALTIME - START_TIME) * 1000 ))
 
 # Patch the .zshrc structural header with its actual total
-local _zshrc_total=$(( _PROFILE_TIMES[_time_to_prompt] - _PROFILE_TIMES[_pre_zshrc] ))
+_zshrc_total=$(( _PROFILE_TIMES[_time_to_prompt] - _PROFILE_TIMES[_pre_zshrc] ))
 _PERF_TREE[$_ZSHRC_TREE_IDX]="1:.zshrc:${_zshrc_total}"
 
 do_profile

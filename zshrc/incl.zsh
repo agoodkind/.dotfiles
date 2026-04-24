@@ -20,12 +20,13 @@ _PROFILE_TIMES[plugins]=$_pms
 _PERF_TREE+=("$((_SOURCE_DEPTH + 2)):plugins:${_pms}")
 
 _source "$DOTDOTFILES/zshrc/core/utils.zsh"
-_source "$DOTDOTFILES/zshrc/commands/prefer.zsh"
+_source "$DOTDOTFILES/zshrc/core/prefer.zsh"
 _source "$DOTDOTFILES/zshrc/commands/editors.zsh"
 _source "$DOTDOTFILES/zshrc/commands/remote.zsh"
 _source "$DOTDOTFILES/zshrc/commands/aliases.zsh"
-_async bash -lc "builtin cd \"$DOTDOTFILES/lib/dotfilesctl\" && source \"$DOTDOTFILES/lib/dotfilesctl/bootstrap-go.sh\" && run_dotfiles_go_command dispatch"
 _source "$DOTDOTFILES/zshrc/integrations/zoxide.zsh"
+_source "$DOTDOTFILES/zshrc/commands/prefer-decls.zsh"
+_async bash -lc "builtin cd \"$DOTDOTFILES/dots\" && source \"$DOTDOTFILES/dots/bootstrap-go.sh\" && run_dots_go_command dispatch"
 _source "$DOTDOTFILES/zshrc/integrations/motd.zsh"
 if [[ -f "$DOTDOTFILES/.zshrc.local" ]]; then
     _source "$DOTDOTFILES/.zshrc.local"

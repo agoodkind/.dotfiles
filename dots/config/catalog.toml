@@ -1,0 +1,229 @@
+[packages]
+common_packages = [
+  "ack",
+  "ansible",
+  "ansible-lint",
+  "aria2",
+  "bat",
+  "bash",
+  "btop",
+  "coreutils",
+  "curl",
+  "duf",
+  "eza",
+  "fail2ban",
+  "fastfetch",
+  "fd",
+  "ffmpeg",
+  "figlet",
+  "fping",
+  "fzf",
+  "gh",
+  "git",
+  "git-delta",
+  "git-lfs",
+  "gping",
+  "grc",
+  "grep",
+  "htop",
+  "hyperfine",
+  "imagemagick",
+  "ipv6calc",
+  "jq",
+  "less",
+  "mosh",
+  "most",
+  "moreutils",
+  "msmtp",
+  "ncdu",
+  "openssh",
+  "pandoc",
+  "pigz",
+  "pv",
+  "python3",
+  "rename",
+  "rg",
+  "rsync",
+  "ruby",
+  "screen",
+  "sd",
+  "sipcalc",
+  "smartmontools",
+  "sshuttle",
+  "tealdeer",
+  "thefuck",
+  "tree",
+  "trippy",
+  "tshark",
+  "vim",
+  "watch",
+  "wget",
+  "zoxide",
+  "zsh",
+]
+
+apt_specific = [
+  "ack-grep",
+  "et",
+  "golang-go",
+  "golang",
+  "gpg",
+  "ipcalc-ng",
+  "ipcalc",
+  "locales",
+  "msmtp-mta",
+  "net-tools",
+  "nodejs",
+  "openssh-client",
+  "openssh-server",
+  "parted",
+  "rbenv",
+  "rsyslog",
+  "sudo",
+  "speedtest-cli",
+  "ufw",
+  "wireguard",
+]
+
+snap_packages = [
+  "neovim",
+  "fx",
+]
+
+brew_specific = [
+  "ast-grep",
+  "bandwhich",
+  "bottom",
+  "curlie",
+  "doggo",
+  "dust",
+  "MisterTea/et/et",
+  "fx",
+  "gitui",
+  "glow",
+  "lazygit",
+  "mdless",
+  "mitmproxy",
+  "navi",
+  "node",
+  "nvim",
+  "pnpm",
+  "procs",
+  "ripgrep-all",
+  "ssh-copy-id",
+  "tokei",
+  "tree-sitter",
+  "wireguard-go",
+  "wireguard-tools",
+  "xq",
+  "yq",
+]
+
+cargo_packages = []
+
+[packages.brew_casks]
+"1password" = "1Password"
+"1password-cli" = ""
+"iterm2" = "iTerm"
+"keycastr" = "KeyCastr"
+"visual-studio-code" = "Visual Studio Code"
+"google-chrome" = "Google Chrome"
+"font-jetbrains-mono-nerd-font" = ""
+"font-jetbrains-mono" = ""
+"cyberduck" = "Cyberduck"
+"utm" = "UTM"
+"vlc" = "VLC"
+"stats" = "Stats"
+"xcodes-app" = "Xcodes"
+"pingplotter" = "PingPlotter"
+
+[packages.go_packages]
+lazygit = "github.com/jesseduffield/lazygit@latest"
+
+[packages.cargo_git_packages]
+
+[[tool]]
+id = "zoxide"
+bin = "zoxide"
+repo = "ajeetdsouza/zoxide"
+
+[[tool]]
+id = "async-cmd"
+bin = "async"
+repo = ""
+
+[[tool]]
+id = "starship"
+bin = "starship"
+repo = "starship/starship"
+
+[[tool]]
+id = "fastfetch"
+bin = "fastfetch"
+repo = "fastfetch-cli/fastfetch"
+
+[[tool]]
+id = "procs"
+bin = "procs"
+repo = "dalance/procs"
+
+[[tool]]
+id = "tokei"
+bin = "tokei"
+repo = "XAMPPRocky/tokei"
+
+[[tool]]
+id = "tree-sitter"
+bin = "tree-sitter"
+repo = "tree-sitter/tree-sitter"
+
+[[tool]]
+id = "fzf"
+bin = "fzf"
+repo = "junegunn/fzf"
+
+[[tool]]
+id = "xh"
+bin = "xh"
+repo = "ducaale/xh"
+
+[[tool]]
+id = "cloudflare-speed-cli"
+bin = "cloudflare-speed-cli"
+repo = "kavehtehrani/cloudflare-speed-cli"
+
+[[tool]]
+id = "yq"
+bin = "yq"
+repo = "mikefarah/yq"
+
+[dispatch]
+workers = [
+  { name = "updater", enabled = true },
+  { name = "prefer-cache-rebuild", enabled = true },
+  { name = "path-cache-rebuild", enabled = true },
+  { name = "zwc-recompile", enabled = true },
+  { name = "ssh-key-load-mac", enabled = true },
+]
+status_dir = "$HOME/.cache/dotfiles_dispatch.lock"
+lock_file = "$HOME/.cache/dotfiles_dispatch.flock"
+log_path = "$HOME/.cache/dotfiles_dispatch.log"
+weekly_update_hours = 168
+weekly_update_marker = "$HOME/.cache/dotfiles_weekly_update"
+
+[mac_patch]
+enabled = true
+sentinel = "# DOTFILES_PERF_PATCH_V4"
+zprofile_path = "/etc/zprofile"
+zshrc_path = "/etc/zshrc"
+patch_script = "$DOTDOTFILES/bash/setup/platform/patch-etc-zsh.bash"
+
+[prefer_cache]
+cache_file = "$HOME/.cache/zsh_prefer_aliases.zsh"
+invalidate_file = "$HOME/.cache/zsh_prefer_invalidate"
+source_files = [
+  "$DOTDOTFILES/zshrc/core/prefer.zsh",
+  "$DOTDOTFILES/zshrc/commands/prefer-decls.zsh",
+  "$DOTDOTFILES/zshrc/commands/editors.zsh",
+  "$DOTDOTFILES/zshrc/integrations/zoxide.zsh",
+]

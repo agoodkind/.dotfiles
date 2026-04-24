@@ -3,7 +3,6 @@ if ((_ZPROF_ARMED != 0 && _ZPROF_LOADED == 0)); then
     zmodload zsh/zprof 2>/dev/null && _ZPROF_LOADED=1
 fi
 
-source "$DOTDOTFILES/lib/tree.zsh"
 source "$DOTDOTFILES/zshrc/core/zsh-shims.zsh"
 
 typeset -gA _PROFILE_TIMES
@@ -77,100 +76,6 @@ function _perf_first_precmd() {
     precmd_functions=(${precmd_functions:#_perf_first_precmd})
 }
 precmd_functions=(_perf_first_precmd $precmd_functions)
-
-function zsh_perf() {
-    local prompt=${_PROFILE_TIMES[_time_to_prompt]:-0}
-    local precmd=${_PROFILE_TIMES[_first_precmd]:-0}
-    local ready
-    if ((${+_PROFILE_TIMES[_time_to_ready]})); then
-        ready=${_PROFILE_TIMES[_time_to_ready]}
-    else
-        ready=$(((EPOCHREALTIME - START_TIME) * 1000))
-    fi
-
-    printf "shell startup: %.0f ms (time-to-prompt)\n" "$prompt"
-    tree_print _PERF_TREE ""
-
-    local has_zprof=$((${#_ZPROF_OUTPUT} > 0))
-    if ((has_zprof != 0)); then
-        _perf_print_zprof_section "$_ZPROF_OUTPUT"
-    fi
-
-    if ((${#_PERF_TREE_DEFERRED} != 0)); then
-        printf "\ndeferred:\n"
-        tree_print _PERF_TREE_DEFERRED ""
-    fi
-
-    local precmd_gap=$((precmd - prompt))
-    local ready_settled=$((${+_PROFILE_TIMES[_time_to_ready]}))
-    local deferred_time=$((ready - precmd))
-    printf "\ntimeline:\n"
-    printf "  prompt visible:      %6.0f ms  (end of .zshrc)\n" "$prompt"
-    printf "  first precmd:        %6.0f ms  (+%.0f ms zsh hook overhead)\n" "$precmd" "$precmd_gap"
-    if ((ready_settled)); then
-        printf "  shell interactive:   %6.0f ms  (+%.0f ms deferred tiers)\n" "$ready" "$deferred_time"
-    else
-        printf "  shell interactive:   %6.0f ms  (+%.0f ms so far — deferred tiers still loading)\n" "$ready" "$deferred_time"
-    fi
-}
-
-# zprof summary line format (9 fields after word-split):
-#   num)  calls  total_cumul  total_avg  total_%  self_cumul  self_avg  self_%  name
-#   [1]   [2]    [3]          [4]        [5]      [6]         [7]       [8]     [9]
-function _perf_print_zprof_section() {
-    local zprof_out=$1
-
-    local -a entries=()
-    local zp_line sep_count=0
-    while IFS= read -r zp_line; do
-        if [[ "$zp_line" == --* ]]; then
-            if ((++sep_count >= 2)); then
-                break
-            fi
-            continue
-        fi
-        if ((sep_count != 1)); then
-            continue
-        fi
-        if [[ ! "$zp_line" =~ ^[[:space:]]+[0-9]+\) ]]; then
-            continue
-        fi
-        entries+=("$zp_line")
-    done <<<"$zprof_out"
-
-    if ((${#entries} == 0)); then
-        return 0
-    fi
-
-    local total_entries=${#entries}
-    printf "    └── [zprof: %d functions]\n" "$total_entries"
-
-    local zi zp_f zp_name zp_total zp_self zp_calls zp_s zp_branch
-    for ((zi = 1; zi <= total_entries; zi++)); do
-        read -ra zp_f <<<"${entries[$zi]}"
-        if ! ((${#zp_f} >= 9)); then
-            continue
-        fi
-
-        zp_name=${zp_f[9]}
-        zp_total=${zp_f[3]}
-        zp_self=${zp_f[6]}
-        zp_calls=${zp_f[2]}
-        zp_s="s"
-        if ((zp_calls == 1)); then
-            zp_s=""
-        fi
-
-        if ((zi == total_entries)); then
-            zp_branch="└──"
-        else
-            zp_branch="├──"
-        fi
-
-        printf "        %s %-28s %6.2f ms self   %6.2f ms total   (%s call%s)\n" \
-            "$zp_branch" "$zp_name" "$zp_self" "$zp_total" "$zp_calls" "$zp_s"
-    done
-}
 
 function _write_startup_log() {
     if [[ ! -t 1 && "${ZSH_PERF:-}" != "1" ]]; then
@@ -298,108 +203,28 @@ function __write_startup_log_impl() {
     ) &|
 }
 
+function _dots_exec() {
+    command bash -lc 'source "$0" && run_dots_go_command "$@"' "$DOTDOTFILES/dots/bootstrap-go.sh" "$@"
+}
+
+function zsh_perf() {
+    _dots_exec perf "$@"
+}
+
 function zsh_perf_log() {
-    local log_dir=~/.cache/zsh_startup
-    local tty_id=$(_perf_tty_id)
-    _zglobfiles_mtime "$log_dir" "*_${tty_id}.json"
-    local -a matches=("${_ZSH_ARR[@]}")
-    if ((${#matches} == 0)); then
-        echo "No startup log found for tty ${tty_id}"
-        return 1
-    fi
-    jq '.' "${matches[1]}"
+    _dots_exec perf log "$@"
 }
 
 function zsh_perf_history() {
-    local log_dir=~/.cache/zsh_startup
-    local limit=50
-    local slow_only=false
-    local json_out=false
-
-    for arg in "$@"; do
-        case "$arg" in
-            --slow) slow_only=true ;;
-            --all) limit=9999 ;;
-            --json) json_out=true ;;
-            --last=*) limit=${arg#--last=} ;;
-        esac
-    done
-
-    _zglobfiles_mtime "$log_dir" "*.json"
-    local -a logs=("${_ZSH_ARR[@]}")
-    _zarr_filter logs '*latest.json'
-    logs=("${_ZSH_ARR[@]}")
-    if ((${#logs} == 0)); then
-        echo "No startup logs found"
-        return 1
-    fi
-
-    local total=${#logs}
-    if ((total > limit)); then
-        logs=("${logs[@]:0:$limit}")
-    fi
-
-    if [[ "$json_out" == true ]]; then
-        jq -s '.' "${logs[@]}"
-        return 0
-    fi
-
-    local jq_filter='
-        .ms.pre_zshrc    as $pre    |
-        .ms.time_prompt  as $prompt |
-        .ms.first_precmd as $precmd |
-        .ms.time_ready   as $ready  |
-        ((.tree // .system_timeline // []) | map(select(.label == "path_helper_fork")) | .[0].ms // 0) as $ph |
-        ((.tree // .system_timeline // []) | map(select(.label == "combining/locale")) | .[0].ms // 0) as $loc |
-        (if (.bypasses.path_helper_cached // false) then "P" else "-" end) as $ph_flag |
-        (if (.bypasses.locale_bypassed // false)    then "L" else "-" end) as $loc_flag |
-        (if $pre    > 100 then "SLOW-PRE "    else "" end) +
-        (if $prompt > 300 then "SLOW-PROMPT " else "" end)
-        as $slow |
-        [ .ts[0:16], .tty,
-          ($pre    | round | tostring),
-          ($prompt | round | tostring),
-          ($precmd | round | tostring),
-          ($ready  | round | tostring),
-          ($ph     | round | tostring),
-          ($loc    | round | tostring),
-          ($ph_flag + $loc_flag),
-          $slow
-        ] | @tsv'
-
-    if [[ "$slow_only" == true ]]; then
-        jq_filter='select(.ms.pre_zshrc > 100 or .ms.time_prompt > 300) | '"$jq_filter"
-    fi
-
-    printf "%-18s %-10s %8s %8s %8s %8s %6s %6s  %s %s\n" \
-        "timestamp" "tty" "pre-rc" "prompt" "precmd" "ready" "ph" "locale" "by" "flags"
-    printf "%-18s %-10s %8s %8s %8s %8s %6s %6s\n" \
-        "---------" "---" "------" "------" "------" "-----" "--" "------"
-
-    jq -r "$jq_filter" "${logs[@]}" 2>/dev/null |
-        awk -F'\t' '{printf "%-18s %-10s %8s %8s %8s %8s %6s %6s  %s %s\n", $1,$2,$3,$4,$5,$6,$7,$8,$9,$10}'
-
-    printf "\n%d logs shown (of %d total).  --slow  --all  --last=N  --json\n" \
-        "${#logs}" "$total"
-    printf "by: P=path_helper cached  L=locale bypassed\n"
+    _dots_exec perf history "$@"
 }
 
 function path_cache_rebuild() {
-    local cache_dir=~/.cache/zsh_startup
-    local cache_file="$cache_dir/path_cache.zsh"
-    mkdir -p "$cache_dir"
-    if [[ ! -x /usr/libexec/path_helper ]]; then
-        echo "path_helper not found at /usr/libexec/path_helper"
-        return 1
-    fi
-    /usr/libexec/path_helper -s >"$cache_file"
-    echo "path cache rebuilt: $cache_file"
-    echo "contents: $(cat $cache_file)"
+    _dots_exec perf rebuild-path-cache "$@"
 }
 
 function zsh_profile() {
-    touch ~/.zsh_profile_next
-    echo "zprof armed — open a new shell, then run zsh_perf to see function-level detail."
+    _dots_exec perf arm-zprof "$@"
 }
 
 function do_profile() {

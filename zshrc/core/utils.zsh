@@ -148,9 +148,10 @@ function dotfiles_changed_hash() {
     local max_mtime=0 f
     local -a file_stat
     for f in \
-        "$DOTDOTFILES/zshrc/commands/prefer.zsh" \
-        "$DOTDOTFILES/home/.zshrc" \
-        "$DOTDOTFILES/.zshrc.local"; do
+        "$DOTDOTFILES/zshrc/core/prefer.zsh" \
+        "$DOTDOTFILES/zshrc/commands/prefer-decls.zsh" \
+        "$DOTDOTFILES/zshrc/commands/editors.zsh" \
+        "$DOTDOTFILES/zshrc/integrations/zoxide.zsh"; do
         if zstat -A file_stat +mtime "$f" 2>/dev/null; then
             if ((file_stat[1] > max_mtime)); then
                 max_mtime=$file_stat[1]

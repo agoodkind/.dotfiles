@@ -5,5 +5,5 @@ set -o pipefail
 
 DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 
-source "$DOTDOTFILES/lib/dotfilesctl/bootstrap-go.sh"
+source "$DOTDOTFILES/dots/bootstrap-go.sh"
 bootstrap_and_run install "$@"

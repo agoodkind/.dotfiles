@@ -113,7 +113,7 @@ if ((${+functions[cdi]} == 0)); then
     function cdi() { __zoxide_zi "$@"; }
 fi
 
-# cd override is handled by prefer_tty in .zshrc so that non-TTY shells
+# cd override is handled by prefer_tty in prefer-decls.zsh so that non-TTY shells
 # (Claude Code, scripts) get the plain builtin cd.
 
 # Completions.
