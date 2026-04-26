@@ -41,6 +41,7 @@ scrollback-limit = 10000000
 
 # Mouse
 mouse-hide-while-typing = true
+mouse-scroll-multiplier = precision:2.5,discrete:6
 
 # Keyboard. Pass option through normally.
 macos-option-as-alt = false
