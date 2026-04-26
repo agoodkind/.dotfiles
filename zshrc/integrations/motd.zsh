@@ -157,7 +157,7 @@ function _logininfo() {
 #
 # VSCode and Cursor set VSCODE_PID in their integrated terminals. MOTD and
 # logininfo are noisy in small IDE panes, and (critically) we must not touch
-# the cache file so the first iTerm session that day still triggers MOTD.
+# the cache file so the first Ghostty session that day still triggers MOTD.
 # ==============================================================================
 
 function _motd_is_ide_terminal() {

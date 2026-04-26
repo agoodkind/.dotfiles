@@ -1,14 +1,5 @@
 # shellcheck shell=bash
 
-########################
-# iterm customizations #
-# ITERM2_SQUELCH_MARK=1
-if [[ -e "${HOME}/.iterm2_shell_integration.zsh" ]]; then
-    _source "${HOME}/.iterm2_shell_integration.zsh"
-fi
-
-########################
-
 ############
 # homebrew #
 # Detect Homebrew path (Apple Silicon vs Intel)

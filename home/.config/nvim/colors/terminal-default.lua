@@ -1,6 +1,5 @@
 -- =============================================================================
--- iTerm Default Colorscheme
--- Based on iTerm profile colors
+-- Terminal Default Colorscheme
 -- =============================================================================
 
 -- GUI colors (24-bit)
@@ -137,7 +136,7 @@ if vim.fn.exists('syntax_on') then
     vim.cmd('syntax reset')
 end
 
-vim.g.colors_name = 'iterm-default'
+vim.g.colors_name = 'terminal-default'
 
 -- =============================================================================
 -- Base highlights

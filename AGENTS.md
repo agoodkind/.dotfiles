@@ -188,7 +188,7 @@ correct invocation is `ssh -t <host> 'TERM_PROGRAM= zsh -i -l -c "echo ok"'`:
 - `TERM_PROGRAM=` unsets the VSCode/Cursor env var so IDE-specific branches
 (MOTD suppression, editor detection) do not skew the result.
 
-This only works when run from a real terminal (iTerm2, Terminal.app). When run
+This only works when run from a real terminal (Ghostty, Terminal.app). When run
 from Cursor's shell, stdin is not a TTY so `-t` has no effect and ssh falls back
 to no-PTY mode. In that case the test is still useful for catching errors but
 does not fully replicate a login session.

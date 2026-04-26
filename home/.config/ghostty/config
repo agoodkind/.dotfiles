@@ -1,0 +1,75 @@
+# Ghostty config. Snazzy palette.
+
+# Font
+font-family = "JetBrainsMono Nerd Font Mono"
+font-style = "Regular"
+font-style-bold = "Bold"
+font-style-italic = "Italic"
+font-style-bold-italic = "Bold Italic"
+font-size = 12
+font-thicken = true
+
+# Initial window size (cells)
+window-width = 120
+window-height = 25
+
+# Ligatures and stylistic sets
+font-feature = calt
+font-feature = liga
+font-feature = dlig
+font-feature = ss01
+font-feature = ss02
+font-feature = ss19
+font-feature = zero
+
+# Cursor
+cursor-style = bar
+cursor-style-blink = true
+
+# Window, transparency, blur
+background-opacity = 0.97
+background-blur = 25
+window-decoration = auto
+window-padding-balance = true
+macos-titlebar-style = transparent
+
+# Bell. Visual only, no audio.
+bell-features = attention,title,border
+
+# Scrollback
+scrollback-limit = 10000000
+
+# Mouse
+mouse-hide-while-typing = true
+
+# Keyboard. Pass option through normally.
+macos-option-as-alt = false
+
+# Shell integration and clipboard
+shell-integration = detect
+clipboard-read = allow
+clipboard-write = allow
+
+# Snazzy theme
+background = 282a36
+foreground = eff0eb
+cursor-color = eaeaea
+selection-background = 92bbd0
+selection-foreground = 000000
+
+palette = 0=#000000
+palette = 1=#ff5c57
+palette = 2=#5af78e
+palette = 3=#f3f99d
+palette = 4=#57c7ff
+palette = 5=#ff6ac1
+palette = 6=#9aedfe
+palette = 7=#f1f1f0
+palette = 8=#686868
+palette = 9=#ff5c57
+palette = 10=#5af78e
+palette = 11=#f3f99d
+palette = 12=#57c7ff
+palette = 13=#ff6ac1
+palette = 14=#9aedfe
+palette = 15=#f1f1f0

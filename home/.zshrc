@@ -42,14 +42,7 @@ GREEN='%F{green}'
 CYAN='%F{cyan}'
 R='%f'
 
-# Build Prompt with iTerm2 integration
-if [[ -n "$ITERM_SESSION_ID" && -n "$(iterm2_prompt_mark &> /dev/null)" ]]; then
-    # iTerm2 integration - include prompt mark for shell integration features
-    PS1='%{$(iterm2_prompt_mark)%}${GREEN}%m${R} ${CYAN}%~${R} ❯ '
-else
-    # Standard prompt without iTerm2
-    PROMPT='${ORANGE}%D{%H:%M:%S}${R}${GRAY}.%D{%.}${R} ${GREEN}%m${R} ${CYAN}%~${R} ${NL}❯ '
-fi
+PROMPT='${ORANGE}%D{%H:%M:%S}${R}${GRAY}.%D{%.}${R} ${GREEN}%m${R} ${CYAN}%~${R} ${NL}❯ '
 ###############################################################################
 
 ###############################################################################
@@ -82,3 +75,6 @@ _zshrc_total=$(( _PROFILE_TIMES[_time_to_prompt] - _PROFILE_TIMES[_pre_zshrc] ))
 _PERF_TREE[$_ZSHRC_TREE_IDX]="1:.zshrc:${_zshrc_total}"
 
 do_profile
+
+# Added by Antigravity
+export PATH="/Users/agoodkind/.antigravity/antigravity/bin:$PATH"

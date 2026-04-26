@@ -49,8 +49,8 @@ function _load_tier1() {
     sched +0 _load_tier2
 }
 
-# Tier 2: runs at next event loop pass after tier 1. Syntax highlighting,
-# fzf-tab, iterm2 integration — things you won't need in the first ~100ms.
+# Tier 2: runs at next event loop pass after tier 1. Syntax highlighting and
+# fzf-tab. Things you won't need in the first ~100ms.
 function _load_tier2() {
     _ready_mark 1 "tier 2" "sched +0"
 
@@ -79,8 +79,6 @@ function _load_tier2() {
         compdef -d gcp 2>/dev/null
         compdef _files gcp 2>/dev/null
     fi
-
-    _ready_mark 2 iterm2_si
 
     sched +0 _load_tier3
 }

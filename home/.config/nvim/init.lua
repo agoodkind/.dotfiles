@@ -36,7 +36,7 @@ local term = vim.env.TERM or ''
 local term_program = vim.env.TERM_PROGRAM or ''
 
 if colorterm == 'truecolor' or colorterm == '24bit'
-    or term_program == 'iTerm.app'
+    or term_program == 'ghostty'
     or term_program == 'Apple_Terminal'
     or term:match('256color')
     or term:match('kitty')
@@ -106,7 +106,7 @@ require("lazy").setup({
 -- =============================================================================
 -- Colorscheme and Highlighting
 -- =============================================================================
-vim.cmd('colorscheme iterm-default')
+vim.cmd('colorscheme terminal-default')
 -- Restore default background color and tildes after theme loads
 vim.cmd('highlight Normal guibg=NONE ctermbg=NONE guifg=#e8e8e8')
 -- Make tildes on empty lines more visible

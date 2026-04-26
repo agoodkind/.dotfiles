@@ -124,7 +124,7 @@ cargo_packages = []
 [packages.brew_casks]
 "1password" = "1Password"
 "1password-cli" = ""
-"iterm2" = "iTerm"
+"ghostty" = "Ghostty"
 "keycastr" = "KeyCastr"
 "visual-studio-code" = "Visual Studio Code"
 "google-chrome" = "Google Chrome"
