@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
 source "$(dirname "$0")/email-guard.sh"
 source "$(dirname "$0")/chain-hook.sh"
+
+stdin_file="$(mktemp)"
+cleanup() {
+    rm -f "$stdin_file"
+}
+trap cleanup EXIT
+cat >"$stdin_file"
+export CHAIN_HOOK_STDIN_FILE="$stdin_file"
 
 identity=$(resolve_allowed_identity)
 if [[ -n "$identity" ]]; then
@@ -44,7 +54,7 @@ if [[ -n "$identity" ]]; then
             done
             exit 1
         fi
-    done
+    done <"$stdin_file"
 fi
 
 chain_hook pre-push "$@"

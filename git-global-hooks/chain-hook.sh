@@ -9,11 +9,19 @@ chain_hook() {
     local repo_hook
     repo_hook="$(git rev-parse --git-dir)/hooks/$hook_name"
     if [[ -x "$repo_hook" ]]; then
-        "$repo_hook" "$@" || exit $?
+        if [[ "$hook_name" == "pre-push" && -n "${CHAIN_HOOK_STDIN_FILE:-}" ]]; then
+            "$repo_hook" "$@" <"$CHAIN_HOOK_STDIN_FILE" || exit $?
+        else
+            "$repo_hook" "$@" || exit $?
+        fi
     fi
 
     local user_hook="$HOME/.git-hooks/$hook_name"
     if [[ -x "$user_hook" ]]; then
-        "$user_hook" "$@" || exit $?
+        if [[ "$hook_name" == "pre-push" && -n "${CHAIN_HOOK_STDIN_FILE:-}" ]]; then
+            "$user_hook" "$@" <"$CHAIN_HOOK_STDIN_FILE" || exit $?
+        else
+            "$user_hook" "$@" || exit $?
+        fi
     fi
 }
