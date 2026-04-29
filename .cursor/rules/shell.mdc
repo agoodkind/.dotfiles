@@ -10,7 +10,7 @@ Tools: Use bash and zsh compatible commands, one step at a time. Prefer vim or n
 
 Dates: Determine the current year dynamically using: date +"%Y-%m-%d %H:%M:%S %Z"
 
-Shell execution: Obtain explicit permission before making changes, after each logical conversation point; ask for clarification when a command is ambiguous or risky. Run commands when explicitly requested to. When running bash scripts or commands that require shell expansion, invoke with `/usr/bin/env bash -lc` to avoid zsh expansion surprises. Set a reasonable timeout when a command could block. Tee output to a file (e.g., `command 2>&1 | tee /tmp/command-output.log`) so output can be read back if truncated.
+Make sure to mind the shell actively in use, as bash quoting does not work in zsh.
 
 Cross-system compatibility: Use `$EPOCHSECONDS` for Unix timestamps and zsh builtins or `printf` for date and file metadata formatting. This machine has both BSD and GNU variants of `stat` and `date` installed alongside each other (`gstat`, `gdate`), so prefer builtins that sidestep that ambiguity entirely.
 

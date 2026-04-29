@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	claudesync "github.com/agoodkind/.dotfiles/internal/claudesync"
+	agentsync "github.com/agoodkind/.dotfiles/internal/agentsync"
 	cursorSync "github.com/agoodkind/.dotfiles/internal/cursor/syncer"
 	dispatcher "github.com/agoodkind/.dotfiles/internal/dispatch"
 	installer "github.com/agoodkind/.dotfiles/internal/install"
@@ -53,8 +53,10 @@ func run(args []string) int {
 		return runDispatch(args[1:])
 	case "perf":
 		return runPerf(args[1:])
-	case "sync-claude-repo":
-		return runSyncClaudeRepo(args[1:])
+	case "sync-agent-repo":
+		return runSyncAgentRepo(args[1:])
+	case "refresh-shell-caches":
+		return runRefreshShellCaches(args[1:])
 	case "cursor-sync":
 		return runCursorSync(args[1:])
 	case "install":
@@ -139,9 +141,27 @@ func runPerf(args []string) int {
 	return 0
 }
 
-func runSyncClaudeRepo(args []string) int {
-	if err := claudesync.Run(context.Background(), args...); err != nil {
-		logError("sync-claude-repo failed: " + err.Error())
+func runSyncAgentRepo(args []string) int {
+	if err := agentsync.Run(context.Background(), args...); err != nil {
+		logError("sync-agent-repo failed: " + err.Error())
+		return 1
+	}
+	return 0
+}
+
+func runRefreshShellCaches(args []string) int {
+	for _, arg := range args {
+		if arg == "-h" || arg == "--help" {
+			logInfo("Usage: dots refresh-shell-caches")
+			return 0
+		}
+	}
+	if len(args) > 0 {
+		logError("refresh-shell-caches does not accept arguments")
+		return 2
+	}
+	if err := dispatcher.RunWorkers(context.Background(), []string{"prefer-cache-rebuild", "zwc-recompile"}); err != nil {
+		logError("refresh-shell-caches failed: " + err.Error())
 		return 1
 	}
 	return 0
@@ -186,7 +206,8 @@ func printUsage() {
 	logInfo("  dots sync [--repair] [--quick] [--skip-git] [--skip-network] [--skip-cursor-sync] [--dry-run] [--use-defaults]")
 	logInfo("  dots dispatch [worker...]")
 	logInfo("  dots perf [log|history|arm-zprof|rebuild-path-cache]")
-	logInfo("  dots sync-claude-repo [path]")
+	logInfo("  dots sync-agent-repo [path]")
+	logInfo("  dots refresh-shell-caches")
 	logInfo("  dots cursor-sync")
 	logInfo("  dots install [--use-defaults] [--quick] [--skip-git] [--skip-network] [--repair]")
 	logInfo("  dots uninstall [--purge-packages]")

@@ -3,7 +3,8 @@
 set -euo pipefail
 
 DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
+source "$DOTDOTFILES/dots/bootstrap-go.sh"
 
-"$DOTDOTFILES/bin/refresh-shell-caches" --async
+run_dots_go_command refresh-shell-caches >/dev/null 2>&1 &
 
 exit 0

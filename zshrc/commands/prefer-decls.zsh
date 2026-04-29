@@ -52,5 +52,7 @@ prefer vim _edit_maybe_sudoedit "$EDITOR"
 prefer vi _edit_maybe_sudoedit "$EDITOR"
 prefer nvim _edit_maybe_sudoedit nvim
 
-prefer clyde "$HOME"/Sites/clyde-dev/clyde/run.sh
 prefer disable-macos-resume "${DOTFILES_DIR:-$HOME/.dotfiles}/bin/disable-macos-resume"
+
+prefer cursor open -a "/Applications/Cursor.app"
+prefer code cursor

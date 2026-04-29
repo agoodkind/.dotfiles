@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
-
-. "$DOTDOTFILES/dots/bootstrap-go.sh"
-
-run_dots_go_command sync-claude-repo "$@"

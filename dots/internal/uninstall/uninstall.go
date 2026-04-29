@@ -13,6 +13,7 @@ import (
 	"github.com/agoodkind/.dotfiles/internal/catalog"
 	"github.com/agoodkind/.dotfiles/internal/cmdexec"
 	"github.com/agoodkind/.dotfiles/internal/runner"
+	"github.com/agoodkind/.dotfiles/internal/sync/compilation"
 	"github.com/agoodkind/.dotfiles/internal/telemetry"
 )
 
@@ -90,6 +91,8 @@ func runUninstall(ctx context.Context, purgePackages bool) error {
 	}
 	removeSSHSymlink(dotfiles)
 	removeCursorConfig(dotfiles)
+	removeClaudeConfig(dotfiles)
+	removeCodexConfig(dotfiles)
 	removeGitConfig(dotfiles)
 	removeCacheFiles()
 	removeHushlogin()
@@ -170,14 +173,28 @@ func removeSSHSymlink(dotfiles string) {
 func removeCursorConfig(dotfiles string) {
 	logInfo("Removing Cursor configuration...")
 	cursorDir := filepath.Join(os.Getenv("HOME"), ".cursor")
-	commands := filepath.Join(cursorDir, "commands")
-	entries, err := os.ReadDir(commands)
-	if err != nil {
-		return
-	}
-	for _, entry := range entries {
-		_ = removeDotfilesSymlink(filepath.Join(commands, entry.Name()), dotfiles)
-	}
+	removeDotfilesSymlinksInDir(filepath.Join(cursorDir, "commands"), dotfiles)
+	removeDotfilesSymlinksInDir(filepath.Join(cursorDir, "skills"), dotfiles)
+	removeDotfilesSymlinksInDir(filepath.Join(cursorDir, "rules"), dotfiles)
+}
+
+func removeClaudeConfig(dotfiles string) {
+	logInfo("Removing Claude configuration...")
+	claudeDir := filepath.Join(os.Getenv("HOME"), ".claude")
+	removeDotfilesSymlinksInDir(filepath.Join(claudeDir, "commands"), dotfiles)
+	removeDotfilesSymlinksInDir(filepath.Join(claudeDir, "skills"), dotfiles)
+	removeDotfilesSymlinksInDir(filepath.Join(claudeDir, "rules"), dotfiles)
+	_ = removeGeneratedFileIfManaged(filepath.Join(claudeDir, "CLAUDE.md"))
+}
+
+func removeCodexConfig(dotfiles string) {
+	logInfo("Removing Codex configuration...")
+	agentsDir := filepath.Join(os.Getenv("HOME"), ".agents")
+	removeDotfilesSymlinksInDir(filepath.Join(agentsDir, "commands"), dotfiles)
+	removeDotfilesSymlinksInDir(filepath.Join(agentsDir, "skills"), dotfiles)
+	removeDotfilesSymlinksInDir(filepath.Join(agentsDir, "rules"), dotfiles)
+	_ = removeManagedSkillDirs(filepath.Join(agentsDir, "skills"), "cursor-command-")
+	_ = removeGeneratedFileIfManaged(filepath.Join(os.Getenv("HOME"), ".codex", "AGENTS.md"))
 }
 
 func removeGitConfig(dotfiles string) {
@@ -200,9 +217,13 @@ func removeCacheFiles() {
 		"dotfiles_update_error",
 		"dotfiles_update_success",
 		"dotfiles_debug_enabled",
+		"dotfiles_dispatch.flock",
+		"dotfiles_dispatch.log",
+		"dotfiles_weekly_update",
 	} {
 		_ = removeIfExists(filepath.Join(os.Getenv("HOME"), ".cache", name))
 	}
+	_ = removeIfExists(filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles_dispatch.lock"))
 }
 
 func removeHushlogin() {
@@ -405,6 +426,54 @@ func removeSymlinkTo(target string, expected string) error {
 		return fmt.Errorf("remove symlink: %w", err)
 	}
 	logDebugf("Removed symlink: %s", target)
+	return nil
+}
+
+func removeDotfilesSymlinksInDir(dir string, dotfiles string) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		_ = removeDotfilesSymlink(filepath.Join(dir, entry.Name()), dotfiles)
+	}
+}
+
+func removeGeneratedFileIfManaged(path string) error {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	if !strings.Contains(string(content), compilation.GeneratedCursorMarker) {
+		return nil
+	}
+	return os.Remove(path)
+}
+
+func removeManagedSkillDirs(dir string, managedPrefix string) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		if !strings.HasPrefix(entry.Name(), managedPrefix) {
+			continue
+		}
+		skillPath := filepath.Join(dir, entry.Name(), "SKILL.md")
+		content, readErr := os.ReadFile(skillPath)
+		if readErr != nil {
+			continue
+		}
+		if !strings.Contains(string(content), compilation.GeneratedCursorMarker) {
+			continue
+		}
+		if err := os.RemoveAll(filepath.Join(dir, entry.Name())); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

@@ -234,6 +234,9 @@ func SyncClaudeConfig(ctx context.Context, dotfiles string, logger *telemetry.Lo
 	if err := compilation.SyncRulesFromDirAsMd(srcRules, filepath.Join(claudeDir, "rules")); err != nil {
 		return err
 	}
+	if err := compilation.RenderRulesAsInstructionDoc(srcRules, filepath.Join(claudeDir, "CLAUDE.md"), "Claude Memory"); err != nil {
+		return err
+	}
 	if _, err := os.Stat(filepath.Join(srcClaude, "commands")); err == nil {
 		if err := compilation.SyncFilesToDir(filepath.Join(srcClaude, "commands"), filepath.Join(claudeDir, "commands")); err != nil {
 			return err
@@ -249,6 +252,35 @@ func SyncClaudeConfig(ctx context.Context, dotfiles string, logger *telemetry.Lo
 			return err
 		}
 	}
+	return nil
+}
+
+func SyncCodexConfig(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
+	_ = ctx
+	_ = logger
+
+	codexDir := filepath.Join(os.Getenv("HOME"), ".codex")
+	agentsDir := filepath.Join(os.Getenv("HOME"), ".agents")
+	srcCommands := filepath.Join(dotfiles, ".cursor", "commands")
+	srcSkills := filepath.Join(dotfiles, ".cursor", "skills")
+	srcRules := filepath.Join(dotfiles, ".cursor", "rules")
+
+	if err := compilation.SyncFilesToDir(srcCommands, filepath.Join(agentsDir, "commands")); err != nil {
+		return err
+	}
+	if err := compilation.SyncRulesFromDir(srcRules, filepath.Join(agentsDir, "rules")); err != nil {
+		return err
+	}
+	if err := compilation.SyncSkillDirs(srcSkills, filepath.Join(agentsDir, "skills")); err != nil {
+		return err
+	}
+	if err := compilation.SyncCommandFilesAsSkillDirs(srcCommands, filepath.Join(agentsDir, "skills"), "cursor-command-"); err != nil {
+		return err
+	}
+	if err := compilation.RenderRulesAsInstructionDoc(srcRules, filepath.Join(codexDir, "AGENTS.md"), "Codex Instructions"); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -302,10 +334,17 @@ func UpdateZinitPlugins(ctx context.Context, dotfiles string, logger *telemetry.
 	if !runner.HasCommand("zsh") {
 		return fmt.Errorf("zsh is not available")
 	}
-	if _, err := os.Stat(filepath.Join(dotfiles, "bash", "setup", "tools", "zinit-update.zsh")); err != nil {
+	zinitPath := filepath.Join(dotfiles, "lib", "zinit", "zinit.zsh")
+	if _, err := os.Stat(zinitPath); err != nil {
 		return nil
 	}
-	return cmdexec.RunWithLogger(context.Background(), logger, "zsh", filepath.Join(dotfiles, "bash", "setup", "tools", "zinit-update.zsh"))
+	return cmdexec.RunWithLogger(
+		ctx,
+		logger,
+		"zsh",
+		"-c",
+		"source '$DOTDOTFILES/lib/zinit/zinit.zsh'; zinit self-update; zinit update --all --quiet",
+	)
 }
 
 func CleanupHomebrewRepair(ctx context.Context, logger *telemetry.Logger) error {
@@ -388,8 +427,3 @@ func UpdateNeovimPlugins(ctx context.Context, logger *telemetry.Logger) error {
 	}
 	return nil
 }
-
-func SyncScriptsUpdaterMac(ctx context.Context, logger *telemetry.Logger) error   { return ErrNoop }
-func SyncScriptsUpdaterLinux(ctx context.Context, logger *telemetry.Logger) error { return ErrNoop }
-
-var ErrNoop = fmt.Errorf("not implemented")
