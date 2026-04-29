@@ -71,9 +71,3 @@ json\.Unmarshal
 \.corp$
 corp\.
 \.internal\.
-
-# LLM-generated proprietary service references that have appeared in this repo
-console.*debug.*rails
-transaction.service
-bank.account
-server.api
