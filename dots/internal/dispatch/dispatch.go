@@ -8,15 +8,15 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/agoodkind/.dotfiles/internal/catalog"
-	"github.com/agoodkind/.dotfiles/internal/dispatch/pathcache"
-	"github.com/agoodkind/.dotfiles/internal/dispatch/prefercache"
-	"github.com/agoodkind/.dotfiles/internal/dispatch/sshkey"
-	"github.com/agoodkind/.dotfiles/internal/dispatch/updater"
-	"github.com/agoodkind/.dotfiles/internal/dispatch/zwc"
-	"github.com/agoodkind/.dotfiles/internal/runner"
-	"github.com/agoodkind/.dotfiles/internal/telemetry"
-	"github.com/agoodkind/.dotfiles/internal/util"
+	"goodkind.io/.dotfiles/internal/catalog"
+	"goodkind.io/.dotfiles/internal/dispatch/pathcache"
+	"goodkind.io/.dotfiles/internal/dispatch/prefercache"
+	"goodkind.io/.dotfiles/internal/dispatch/sshkey"
+	"goodkind.io/.dotfiles/internal/dispatch/updater"
+	"goodkind.io/.dotfiles/internal/dispatch/zwc"
+	"goodkind.io/.dotfiles/internal/runner"
+	"goodkind.io/.dotfiles/internal/telemetry"
+	"goodkind.io/.dotfiles/internal/util"
 )
 
 func Run(ctx context.Context) error {

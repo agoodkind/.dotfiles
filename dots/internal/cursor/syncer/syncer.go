@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/agoodkind/.dotfiles/internal/cursor/config"
-	"github.com/agoodkind/.dotfiles/internal/cursor/cursorapi"
-	"github.com/agoodkind/.dotfiles/internal/cursor/logging"
-	"github.com/agoodkind/.dotfiles/internal/cursor/models"
-	"github.com/agoodkind/.dotfiles/internal/cursor/rules"
+	"goodkind.io/.dotfiles/internal/cursor/config"
+	"goodkind.io/.dotfiles/internal/cursor/cursorapi"
+	"goodkind.io/.dotfiles/internal/cursor/logging"
+	"goodkind.io/.dotfiles/internal/cursor/models"
+	"goodkind.io/.dotfiles/internal/cursor/rules"
 )
 
 func Run() error {

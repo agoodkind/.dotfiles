@@ -9,11 +9,11 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/agoodkind/.dotfiles/internal/cmdexec"
-	"github.com/agoodkind/.dotfiles/internal/cursor/constants"
-	"github.com/agoodkind/.dotfiles/internal/cursor/logging"
-	"github.com/agoodkind/.dotfiles/internal/cursor/models"
-	"github.com/agoodkind/.dotfiles/internal/cursor/protobuf"
+	"goodkind.io/.dotfiles/internal/cmdexec"
+	"goodkind.io/.dotfiles/internal/cursor/constants"
+	"goodkind.io/.dotfiles/internal/cursor/logging"
+	"goodkind.io/.dotfiles/internal/cursor/models"
+	"goodkind.io/.dotfiles/internal/cursor/protobuf"
 )
 
 func CallCursorAPI(token string, apiBase string, endpoint string, payload []byte) []byte {

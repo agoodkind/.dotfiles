@@ -3,8 +3,8 @@ package protobuf
 import (
 	"fmt"
 
-	"github.com/agoodkind/.dotfiles/internal/cursor/constants"
-	"github.com/agoodkind/.dotfiles/internal/cursor/models"
+	"goodkind.io/.dotfiles/internal/cursor/constants"
+	"goodkind.io/.dotfiles/internal/cursor/models"
 )
 
 func EncodeVarint(value int) []byte {

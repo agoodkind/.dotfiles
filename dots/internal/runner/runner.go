@@ -7,7 +7,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/agoodkind/.dotfiles/internal/telemetry"
+	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
 var commandLogger *telemetry.Logger

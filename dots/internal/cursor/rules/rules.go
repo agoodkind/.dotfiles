@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/agoodkind/.dotfiles/internal/cursor/logging"
+	"goodkind.io/.dotfiles/internal/cursor/logging"
 )
 
 func ParseMdcContent(rawContent string) string {

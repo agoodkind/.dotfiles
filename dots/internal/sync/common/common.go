@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/agoodkind/.dotfiles/internal/cmdexec"
-	"github.com/agoodkind/.dotfiles/internal/catalog"
-	"github.com/agoodkind/.dotfiles/internal/telemetry"
+	"goodkind.io/.dotfiles/internal/catalog"
+	"goodkind.io/.dotfiles/internal/cmdexec"
+	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
 func Info(logger *telemetry.Logger, message string) {

@@ -10,13 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/agoodkind/.dotfiles/internal/cmdexec"
-	"github.com/agoodkind/.dotfiles/internal/cursor/logging"
-	"github.com/agoodkind/.dotfiles/internal/cursor/syncer"
-	"github.com/agoodkind/.dotfiles/internal/runner"
-	"github.com/agoodkind/.dotfiles/internal/sync/common"
-	"github.com/agoodkind/.dotfiles/internal/sync/compilation"
-	"github.com/agoodkind/.dotfiles/internal/telemetry"
+	"goodkind.io/.dotfiles/internal/cmdexec"
+	"goodkind.io/.dotfiles/internal/cursor/logging"
+	"goodkind.io/.dotfiles/internal/cursor/syncer"
+	"goodkind.io/.dotfiles/internal/runner"
+	"goodkind.io/.dotfiles/internal/sync/common"
+	"goodkind.io/.dotfiles/internal/sync/compilation"
+	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
 func CleanupZinitCompletions(ctx context.Context, logger *telemetry.Logger) error {

@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/agoodkind/.dotfiles/internal/cmdexec"
-	"github.com/agoodkind/.dotfiles/internal/runner"
-	"github.com/agoodkind/.dotfiles/internal/telemetry"
+	"goodkind.io/.dotfiles/internal/cmdexec"
+	"goodkind.io/.dotfiles/internal/runner"
+	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
 func Recompile(_ context.Context, dotfiles string, dispatchLogger *telemetry.Logger) error {

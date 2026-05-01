@@ -1,4 +1,4 @@
-module github.com/agoodkind/.dotfiles
+module goodkind.io/.dotfiles
 
 go 1.26.2
 

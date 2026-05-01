@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/agoodkind/.dotfiles/internal/cmdexec"
-	"github.com/agoodkind/.dotfiles/internal/sync/common"
-	"github.com/agoodkind/.dotfiles/internal/telemetry"
+	"goodkind.io/.dotfiles/internal/cmdexec"
+	"goodkind.io/.dotfiles/internal/sync/common"
+	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
 func UpdateRepo(ctx context.Context, dotfiles string, logger *telemetry.Logger) (bool, string, string, error) {

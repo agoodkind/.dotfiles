@@ -3,8 +3,8 @@ package prefercache
 import (
 	"context"
 
-	baseprefercache "github.com/agoodkind/.dotfiles/internal/prefercache"
-	"github.com/agoodkind/.dotfiles/internal/telemetry"
+	baseprefercache "goodkind.io/.dotfiles/internal/prefercache"
+	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
 func Rebuild(ctx context.Context, dotfiles string, force bool, dispatchLogger *telemetry.Logger) error {

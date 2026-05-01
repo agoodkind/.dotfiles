@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/agoodkind/.dotfiles/internal/runner"
-	"github.com/agoodkind/.dotfiles/internal/telemetry"
+	"goodkind.io/.dotfiles/internal/runner"
+	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
 func Run(ctx context.Context, command string, args ...string) error {

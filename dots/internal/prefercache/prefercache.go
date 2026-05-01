@@ -4,11 +4,11 @@ import (
 	"context"
 	"os"
 
-	"github.com/agoodkind/.dotfiles/internal/catalog"
-	configassets "github.com/agoodkind/.dotfiles/config"
-	"github.com/agoodkind/.dotfiles/internal/cmdexec"
-	"github.com/agoodkind/.dotfiles/internal/telemetry"
-	"github.com/agoodkind/.dotfiles/internal/util"
+	configassets "goodkind.io/.dotfiles/config"
+	"goodkind.io/.dotfiles/internal/catalog"
+	"goodkind.io/.dotfiles/internal/cmdexec"
+	"goodkind.io/.dotfiles/internal/telemetry"
+	"goodkind.io/.dotfiles/internal/util"
 )
 
 func Rebuild(ctx context.Context, dotfiles string, force bool, cacheLogger *telemetry.Logger) error {

@@ -10,10 +10,10 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/agoodkind/.dotfiles/internal/cmdexec"
-	"github.com/agoodkind/.dotfiles/internal/runner"
-	"github.com/agoodkind/.dotfiles/internal/sync"
-	"github.com/agoodkind/.dotfiles/internal/telemetry"
+	"goodkind.io/.dotfiles/internal/cmdexec"
+	"goodkind.io/.dotfiles/internal/runner"
+	"goodkind.io/.dotfiles/internal/sync"
+	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
 var installLogger *telemetry.Logger

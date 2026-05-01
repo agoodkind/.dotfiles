@@ -1,10 +1,10 @@
 package logging
 
 import (
-	"path/filepath"
 	"os"
+	"path/filepath"
 
-	"github.com/agoodkind/.dotfiles/internal/telemetry"
+	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
 var syncLogger *telemetry.Logger

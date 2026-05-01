@@ -7,15 +7,15 @@ import (
 	"os"
 	"path/filepath"
 
-	agentsync "github.com/agoodkind/.dotfiles/internal/agentsync"
-	cursorSync "github.com/agoodkind/.dotfiles/internal/cursor/syncer"
-	dispatcher "github.com/agoodkind/.dotfiles/internal/dispatch"
-	installer "github.com/agoodkind/.dotfiles/internal/install"
-	perfcmd "github.com/agoodkind/.dotfiles/internal/perf"
-	"github.com/agoodkind/.dotfiles/internal/runner"
-	syncer "github.com/agoodkind/.dotfiles/internal/sync"
-	"github.com/agoodkind/.dotfiles/internal/telemetry"
-	uninstaller "github.com/agoodkind/.dotfiles/internal/uninstall"
+	agentsync "goodkind.io/.dotfiles/internal/agentsync"
+	cursorSync "goodkind.io/.dotfiles/internal/cursor/syncer"
+	dispatcher "goodkind.io/.dotfiles/internal/dispatch"
+	installer "goodkind.io/.dotfiles/internal/install"
+	perfcmd "goodkind.io/.dotfiles/internal/perf"
+	"goodkind.io/.dotfiles/internal/runner"
+	syncer "goodkind.io/.dotfiles/internal/sync"
+	"goodkind.io/.dotfiles/internal/telemetry"
+	uninstaller "goodkind.io/.dotfiles/internal/uninstall"
 )
 
 var appLogger *telemetry.Logger

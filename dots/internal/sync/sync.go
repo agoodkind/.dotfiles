@@ -8,13 +8,13 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/agoodkind/.dotfiles/internal/runner"
-	"github.com/agoodkind/.dotfiles/internal/sync/compilation"
-	"github.com/agoodkind/.dotfiles/internal/sync/platform"
-	"github.com/agoodkind/.dotfiles/internal/sync/repository"
-	"github.com/agoodkind/.dotfiles/internal/sync/tools"
-	"github.com/agoodkind/.dotfiles/internal/sync/workspace"
-	"github.com/agoodkind/.dotfiles/internal/telemetry"
+	"goodkind.io/.dotfiles/internal/runner"
+	"goodkind.io/.dotfiles/internal/sync/compilation"
+	"goodkind.io/.dotfiles/internal/sync/platform"
+	"goodkind.io/.dotfiles/internal/sync/repository"
+	"goodkind.io/.dotfiles/internal/sync/tools"
+	"goodkind.io/.dotfiles/internal/sync/workspace"
+	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
 type Options struct {

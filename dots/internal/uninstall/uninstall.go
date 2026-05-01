@@ -10,11 +10,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/agoodkind/.dotfiles/internal/catalog"
-	"github.com/agoodkind/.dotfiles/internal/cmdexec"
-	"github.com/agoodkind/.dotfiles/internal/runner"
-	"github.com/agoodkind/.dotfiles/internal/sync/compilation"
-	"github.com/agoodkind/.dotfiles/internal/telemetry"
+	"goodkind.io/.dotfiles/internal/catalog"
+	"goodkind.io/.dotfiles/internal/cmdexec"
+	"goodkind.io/.dotfiles/internal/runner"
+	"goodkind.io/.dotfiles/internal/sync/compilation"
+	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
 var uninstallLogger *telemetry.Logger

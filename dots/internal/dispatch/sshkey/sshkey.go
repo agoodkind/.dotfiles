@@ -7,8 +7,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/agoodkind/.dotfiles/internal/cmdexec"
-	"github.com/agoodkind/.dotfiles/internal/telemetry"
+	"goodkind.io/.dotfiles/internal/cmdexec"
+	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
 func Load(_ context.Context, dispatchLogger *telemetry.Logger) error {

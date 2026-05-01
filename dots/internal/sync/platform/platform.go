@@ -7,13 +7,13 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/agoodkind/.dotfiles/internal/catalog"
-	"github.com/agoodkind/.dotfiles/internal/cmdexec"
-	"github.com/agoodkind/.dotfiles/internal/runner"
-	"github.com/agoodkind/.dotfiles/internal/sync/common"
-	"github.com/agoodkind/.dotfiles/internal/sync/tools"
-	"github.com/agoodkind/.dotfiles/internal/telemetry"
-	"github.com/agoodkind/.dotfiles/internal/util"
+	"goodkind.io/.dotfiles/internal/catalog"
+	"goodkind.io/.dotfiles/internal/cmdexec"
+	"goodkind.io/.dotfiles/internal/runner"
+	"goodkind.io/.dotfiles/internal/sync/common"
+	"goodkind.io/.dotfiles/internal/sync/tools"
+	"goodkind.io/.dotfiles/internal/telemetry"
+	"goodkind.io/.dotfiles/internal/util"
 )
 
 func RunOSInstall(ctx context.Context, quickMode bool, useDefaults bool, logger *telemetry.Logger) error {

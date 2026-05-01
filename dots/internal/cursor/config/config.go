@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/agoodkind/.dotfiles/internal/cursor/models"
+	"goodkind.io/.dotfiles/internal/cursor/models"
 )
 
 func splitRuleDirectories(rawRuleDirs string) []string {

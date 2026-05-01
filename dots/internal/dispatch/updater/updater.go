@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/agoodkind/.dotfiles/internal/cmdexec"
-	"github.com/agoodkind/.dotfiles/internal/runner"
-	syncer "github.com/agoodkind/.dotfiles/internal/sync"
-	"github.com/agoodkind/.dotfiles/internal/sync/repository"
-	"github.com/agoodkind/.dotfiles/internal/telemetry"
+	"goodkind.io/.dotfiles/internal/cmdexec"
+	"goodkind.io/.dotfiles/internal/runner"
+	syncer "goodkind.io/.dotfiles/internal/sync"
+	"goodkind.io/.dotfiles/internal/sync/repository"
+	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
 func Run(
