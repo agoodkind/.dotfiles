@@ -1,6 +1,6 @@
 ---
 description: Sensitive data handling - store keys/tokens in env or files only
-globs: **/*
+globs: "**/*"
 alwaysApply: true
 ---
 

@@ -1,6 +1,6 @@
 ---
 description: Python code style, typing, toolchain, and project conventions
-globs: *.py
+globs: "*.py"
 alwaysApply: false
 ---
 

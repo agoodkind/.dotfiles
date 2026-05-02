@@ -1,1 +1,0 @@
-/Users/agoodkind/.dotfiles/.cursor/rules/general.mdc

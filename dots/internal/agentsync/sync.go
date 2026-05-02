@@ -49,43 +49,62 @@ func Run(ctx context.Context, args ...string) error {
 		return nil
 	}
 
-	cursorDir := filepath.Join(repoInfo.path, ".cursor")
-	if _, statErr := os.Stat(cursorDir); statErr != nil {
-		return fmt.Errorf("no .cursor directory found in %s", repoInfo.path)
+	source := compilation.ResolveAgentSource(repoInfo.path)
+	if _, statErr := os.Stat(source.Root); statErr != nil {
+		return fmt.Errorf("no .agents directory found in %s", repoInfo.path)
+	}
+	if err := compilation.EnsureCursorCompatibilityLink(repoInfo.path); err != nil {
+		return err
 	}
 
 	claudeDir := filepath.Join(repoInfo.path, ".claude")
 	agentsDir := filepath.Join(repoInfo.path, ".agents")
-	srcCommands := filepath.Join(cursorDir, "commands")
-	srcSkills := filepath.Join(cursorDir, "skills")
-	srcRules := filepath.Join(cursorDir, "rules")
+	githubDir := filepath.Join(repoInfo.path, ".github")
 
-	logInfof("Syncing %s into %s and %s", cursorDir, claudeDir, agentsDir)
+	logInfof("Syncing %s into agent targets", source.Root)
 
-	if err := compilation.SyncFilesToDir(srcCommands, filepath.Join(claudeDir, "commands")); err != nil {
+	if err := compilation.SyncFilesToDir(source.Commands, filepath.Join(claudeDir, "commands")); err != nil {
 		return err
 	}
-	if err := compilation.SyncSkillDirs(srcSkills, filepath.Join(claudeDir, "skills")); err != nil {
+	if err := compilation.SyncSkillDirs(source.Skills, filepath.Join(claudeDir, "skills")); err != nil {
 		return err
 	}
-	if err := compilation.SyncRulesFromDirAsMd(srcRules, filepath.Join(claudeDir, "rules")); err != nil {
+	if err := compilation.SyncRulesFromDirAsMd(source.Rules, filepath.Join(claudeDir, "rules")); err != nil {
 		return err
 	}
-	if err := compilation.RenderRulesAsInstructionDoc(srcRules, filepath.Join(claudeDir, "CLAUDE.md"), "Claude Memory"); err != nil {
+	if err := compilation.RenderRulesAsInstructionDoc(source.Rules, filepath.Join(claudeDir, "CLAUDE.md"), "Claude Memory"); err != nil {
 		return err
 	}
 
-	if err := compilation.SyncFilesToDir(srcCommands, filepath.Join(agentsDir, "commands")); err != nil {
+	if err := compilation.RenderRulesAsInstructionDoc(source.Rules, filepath.Join(repoInfo.path, "AGENTS.md"), "Agent Instructions"); err != nil {
 		return err
 	}
-	if err := compilation.SyncRulesFromDir(srcRules, filepath.Join(agentsDir, "rules")); err != nil {
+	if err := compilation.RenderRulesAsInstructionDoc(source.Rules, filepath.Join(githubDir, "copilot-instructions.md"), "Copilot Instructions"); err != nil {
 		return err
 	}
-	if err := compilation.SyncSkillDirs(srcSkills, filepath.Join(agentsDir, "skills")); err != nil {
+	if err := compilation.RenderCopilotInstructionFiles(source.Rules, filepath.Join(githubDir, "instructions")); err != nil {
 		return err
 	}
-	if err := compilation.SyncCommandFilesAsSkillDirs(srcCommands, filepath.Join(agentsDir, "skills"), "cursor-command-"); err != nil {
+	if err := compilation.RenderCopilotPromptFiles(source.Commands, filepath.Join(githubDir, "prompts")); err != nil {
 		return err
+	}
+	if err := compilation.SyncSkillDirs(source.Skills, filepath.Join(githubDir, "skills")); err != nil {
+		return err
+	}
+
+	if filepath.Clean(source.Root) != filepath.Clean(agentsDir) {
+		if err := compilation.SyncFilesToDir(source.Commands, filepath.Join(agentsDir, "commands")); err != nil {
+			return err
+		}
+		if err := compilation.SyncRulesFromDir(source.Rules, filepath.Join(agentsDir, "rules")); err != nil {
+			return err
+		}
+		if err := compilation.SyncSkillDirs(source.Skills, filepath.Join(agentsDir, "skills")); err != nil {
+			return err
+		}
+		if err := compilation.SyncCommandFilesAsSkillDirs(source.Commands, filepath.Join(agentsDir, "skills"), "cursor-command-"); err != nil {
+			return err
+		}
 	}
 
 	logSuccess("Done.")

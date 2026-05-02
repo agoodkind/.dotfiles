@@ -1,6 +1,6 @@
 ---
 description: Shell and command execution mechanics
-globs: **/*
+globs: "**/*"
 alwaysApply: true
 ---
 

@@ -20,3 +20,11 @@ mypy_cache/
 
 # Machine-local email identity overrides (may contain work-specific paths)
 git-global-hooks/email-rules.local
+
+# Generated agent configuration fan-out - source of truth lives in .agents/
+/.cursor
+/.claude/
+/.github/copilot-instructions.md
+/.github/instructions/
+/.github/prompts/
+/.github/skills/

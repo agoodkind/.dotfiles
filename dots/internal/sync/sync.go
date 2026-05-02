@@ -164,6 +164,11 @@ func Run(ctx context.Context, options Options) error {
 	}); err != nil {
 		return err
 	}
+	if err := runStep("Syncing Copilot configuration", false, func(ctx context.Context) error {
+		return workspace.SyncCopilotConfig(ctx, dotfiles, logger)
+	}); err != nil {
+		return err
+	}
 	if err := runStep("Checking git hooks path", false, func(ctx context.Context) error {
 		return workspace.CheckGitHooksPath(ctx, dotfiles, logger)
 	}); err != nil {

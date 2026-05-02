@@ -1,6 +1,6 @@
 ---
 description: Code style conventions for JavaScript, TypeScript, Ruby, and Shell
-globs: *.js,*.jsx,*.ts,*.tsx,*.rb,*.sh,*.zsh,*.bash,*.go
+globs: "*.js,*.jsx,*.ts,*.tsx,*.rb,*.sh,*.zsh,*.bash,*.go"
 alwaysApply: false
 ---
 

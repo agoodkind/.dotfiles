@@ -1,1 +1,0 @@
-/Users/agoodkind/.dotfiles/.cursor/commands/push.md

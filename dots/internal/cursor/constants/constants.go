@@ -2,7 +2,7 @@ package constants
 
 const (
 	APIBase             = "https://api2.cursor.sh/aiserver.v1.AiService"
-	DefaultRulesDir     = ".dotfiles/.cursor/rules"
+	DefaultRulesDir     = ".dotfiles/.agents/rules"
 	DefaultWorkspaceURL = "https://github.com/agoodkind/.dotfiles"
 	MaxParallelWorkers  = 10
 

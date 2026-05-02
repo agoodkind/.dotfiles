@@ -93,6 +93,7 @@ func runUninstall(ctx context.Context, purgePackages bool) error {
 	removeCursorConfig(dotfiles)
 	removeClaudeConfig(dotfiles)
 	removeCodexConfig(dotfiles)
+	removeCopilotConfig(dotfiles)
 	removeGitConfig(dotfiles)
 	removeCacheFiles()
 	removeHushlogin()
@@ -195,6 +196,17 @@ func removeCodexConfig(dotfiles string) {
 	removeDotfilesSymlinksInDir(filepath.Join(agentsDir, "rules"), dotfiles)
 	_ = removeManagedSkillDirs(filepath.Join(agentsDir, "skills"), "cursor-command-")
 	_ = removeGeneratedFileIfManaged(filepath.Join(os.Getenv("HOME"), ".codex", "AGENTS.md"))
+}
+
+func removeCopilotConfig(dotfiles string) {
+	logInfo("Removing Copilot configuration...")
+	githubDir := filepath.Join(dotfiles, ".github")
+	removeDotfilesSymlinksInDir(filepath.Join(githubDir, "skills"), dotfiles)
+	removeDotfilesSymlinksInDir(filepath.Join(os.Getenv("HOME"), ".copilot", "skills"), dotfiles)
+	_ = removeGeneratedFileIfManaged(filepath.Join(dotfiles, "AGENTS.md"))
+	_ = removeGeneratedFileIfManaged(filepath.Join(githubDir, "copilot-instructions.md"))
+	_ = removeGeneratedFilesIfManaged(filepath.Join(githubDir, "instructions"), ".instructions.md")
+	_ = removeGeneratedFilesIfManaged(filepath.Join(githubDir, "prompts"), ".prompt.md")
 }
 
 func removeGitConfig(dotfiles string) {
@@ -444,10 +456,29 @@ func removeGeneratedFileIfManaged(path string) error {
 	if err != nil {
 		return nil
 	}
-	if !strings.Contains(string(content), compilation.GeneratedCursorMarker) {
+	if !compilation.HasGeneratedMarker(string(content)) {
 		return nil
 	}
 	return os.Remove(path)
+}
+
+func removeGeneratedFilesIfManaged(dir string, suffix string) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		if !strings.HasSuffix(entry.Name(), suffix) {
+			continue
+		}
+		if err := removeGeneratedFileIfManaged(filepath.Join(dir, entry.Name())); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func removeManagedSkillDirs(dir string, managedPrefix string) error {
@@ -467,7 +498,7 @@ func removeManagedSkillDirs(dir string, managedPrefix string) error {
 		if readErr != nil {
 			continue
 		}
-		if !strings.Contains(string(content), compilation.GeneratedCursorMarker) {
+		if !compilation.HasGeneratedMarker(string(content)) {
 			continue
 		}
 		if err := os.RemoveAll(filepath.Join(dir, entry.Name())); err != nil {

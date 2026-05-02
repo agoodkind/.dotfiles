@@ -174,17 +174,19 @@ func UpdateAuthorizedKeys(ctx context.Context, skipNetwork bool, logger *telemet
 
 func SyncCursorConfig(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
 	cursorDir := filepath.Join(os.Getenv("HOME"), ".cursor")
-	srcCommands := filepath.Join(dotfiles, ".cursor", "commands")
-	srcSkills := filepath.Join(dotfiles, ".cursor", "skills")
-	srcRules := filepath.Join(dotfiles, ".cursor", "rules")
+	source := compilation.ResolveAgentSource(dotfiles)
 
-	if err := compilation.SyncFilesToDir(srcCommands, filepath.Join(cursorDir, "commands")); err != nil {
+	if err := compilation.EnsureCursorCompatibilityLink(dotfiles); err != nil {
 		return err
 	}
-	if err := compilation.SyncSkillDirs(srcSkills, filepath.Join(cursorDir, "skills")); err != nil {
+
+	if err := compilation.SyncFilesToDir(source.Commands, filepath.Join(cursorDir, "commands")); err != nil {
 		return err
 	}
-	if err := compilation.SyncRulesFromDir(srcRules, filepath.Join(cursorDir, "rules")); err != nil {
+	if err := compilation.SyncSkillDirs(source.Skills, filepath.Join(cursorDir, "skills")); err != nil {
+		return err
+	}
+	if err := compilation.SyncRulesFromDir(source.Rules, filepath.Join(cursorDir, "rules")); err != nil {
 		return err
 	}
 
@@ -220,37 +222,19 @@ func SyncCursorUserRules(ctx context.Context, dotfiles string, logger *telemetry
 
 func SyncClaudeConfig(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
 	claudeDir := filepath.Join(os.Getenv("HOME"), ".claude")
-	srcCommands := filepath.Join(dotfiles, ".cursor", "commands")
-	srcSkills := filepath.Join(dotfiles, ".cursor", "skills")
-	srcRules := filepath.Join(dotfiles, ".cursor", "rules")
-	srcClaude := filepath.Join(dotfiles, ".claude")
+	source := compilation.ResolveAgentSource(dotfiles)
 
-	if err := compilation.SyncFilesToDir(srcCommands, filepath.Join(claudeDir, "commands")); err != nil {
+	if err := compilation.SyncFilesToDir(source.Commands, filepath.Join(claudeDir, "commands")); err != nil {
 		return err
 	}
-	if err := compilation.SyncSkillDirs(srcSkills, filepath.Join(claudeDir, "skills")); err != nil {
+	if err := compilation.SyncSkillDirs(source.Skills, filepath.Join(claudeDir, "skills")); err != nil {
 		return err
 	}
-	if err := compilation.SyncRulesFromDirAsMd(srcRules, filepath.Join(claudeDir, "rules")); err != nil {
+	if err := compilation.SyncRulesFromDirAsMd(source.Rules, filepath.Join(claudeDir, "rules")); err != nil {
 		return err
 	}
-	if err := compilation.RenderRulesAsInstructionDoc(srcRules, filepath.Join(claudeDir, "CLAUDE.md"), "Claude Memory"); err != nil {
+	if err := compilation.RenderRulesAsInstructionDoc(source.Rules, filepath.Join(claudeDir, "CLAUDE.md"), "Claude Memory"); err != nil {
 		return err
-	}
-	if _, err := os.Stat(filepath.Join(srcClaude, "commands")); err == nil {
-		if err := compilation.SyncFilesToDir(filepath.Join(srcClaude, "commands"), filepath.Join(claudeDir, "commands")); err != nil {
-			return err
-		}
-	}
-	if _, err := os.Stat(filepath.Join(srcClaude, "skills")); err == nil {
-		if err := compilation.SyncSkillDirs(filepath.Join(srcClaude, "skills"), filepath.Join(claudeDir, "skills")); err != nil {
-			return err
-		}
-	}
-	if _, err := os.Stat(filepath.Join(srcClaude, "rules")); err == nil {
-		if err := compilation.SyncFilesToDir(filepath.Join(srcClaude, "rules"), filepath.Join(claudeDir, "rules")); err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -261,27 +245,50 @@ func SyncCodexConfig(ctx context.Context, dotfiles string, logger *telemetry.Log
 
 	codexDir := filepath.Join(os.Getenv("HOME"), ".codex")
 	agentsDir := filepath.Join(os.Getenv("HOME"), ".agents")
-	srcCommands := filepath.Join(dotfiles, ".cursor", "commands")
-	srcSkills := filepath.Join(dotfiles, ".cursor", "skills")
-	srcRules := filepath.Join(dotfiles, ".cursor", "rules")
+	source := compilation.ResolveAgentSource(dotfiles)
 
-	if err := compilation.SyncFilesToDir(srcCommands, filepath.Join(agentsDir, "commands")); err != nil {
+	if err := compilation.SyncFilesToDir(source.Commands, filepath.Join(agentsDir, "commands")); err != nil {
 		return err
 	}
-	if err := compilation.SyncRulesFromDir(srcRules, filepath.Join(agentsDir, "rules")); err != nil {
+	if err := compilation.SyncRulesFromDir(source.Rules, filepath.Join(agentsDir, "rules")); err != nil {
 		return err
 	}
-	if err := compilation.SyncSkillDirs(srcSkills, filepath.Join(agentsDir, "skills")); err != nil {
+	if err := compilation.SyncSkillDirs(source.Skills, filepath.Join(agentsDir, "skills")); err != nil {
 		return err
 	}
-	if err := compilation.SyncCommandFilesAsSkillDirs(srcCommands, filepath.Join(agentsDir, "skills"), "cursor-command-"); err != nil {
+	if err := compilation.SyncCommandFilesAsSkillDirs(source.Commands, filepath.Join(agentsDir, "skills"), "cursor-command-"); err != nil {
 		return err
 	}
-	if err := compilation.RenderRulesAsInstructionDoc(srcRules, filepath.Join(codexDir, "AGENTS.md"), "Codex Instructions"); err != nil {
+	if err := compilation.RenderRulesAsInstructionDoc(source.Rules, filepath.Join(codexDir, "AGENTS.md"), "Codex Instructions"); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func SyncCopilotConfig(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
+	_ = ctx
+	_ = logger
+
+	source := compilation.ResolveAgentSource(dotfiles)
+	githubDir := filepath.Join(dotfiles, ".github")
+
+	if err := compilation.RenderRulesAsInstructionDoc(source.Rules, filepath.Join(dotfiles, "AGENTS.md"), "Agent Instructions"); err != nil {
+		return err
+	}
+	if err := compilation.RenderRulesAsInstructionDoc(source.Rules, filepath.Join(githubDir, "copilot-instructions.md"), "Copilot Instructions"); err != nil {
+		return err
+	}
+	if err := compilation.RenderCopilotInstructionFiles(source.Rules, filepath.Join(githubDir, "instructions")); err != nil {
+		return err
+	}
+	if err := compilation.RenderCopilotPromptFiles(source.Commands, filepath.Join(githubDir, "prompts")); err != nil {
+		return err
+	}
+	if err := compilation.SyncSkillDirs(source.Skills, filepath.Join(githubDir, "skills")); err != nil {
+		return err
+	}
+	return compilation.SyncSkillDirs(source.Skills, filepath.Join(os.Getenv("HOME"), ".copilot", "skills"))
 }
 
 func SyncGitHooks(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
