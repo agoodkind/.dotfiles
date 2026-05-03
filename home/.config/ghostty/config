@@ -37,7 +37,7 @@ macos-titlebar-style = transparent
 bell-features = attention,title,border
 
 # Scrollback
-scrollback-limit = 10737418240
+scrollback-limit = 107374182400000
 
 # Mouse
 mouse-hide-while-typing = true
