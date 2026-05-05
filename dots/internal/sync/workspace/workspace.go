@@ -7,9 +7,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
-	"time"
 
+	"goodkind.io/.dotfiles/internal/clock"
 	"goodkind.io/.dotfiles/internal/cmdexec"
 	"goodkind.io/.dotfiles/internal/cursor/logging"
 	"goodkind.io/.dotfiles/internal/cursor/syncer"
@@ -42,7 +43,7 @@ func CleanupZinitCompletions(ctx context.Context, logger *telemetry.Logger) erro
 
 func LinkDotfiles(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
 	homeDir := os.Getenv("HOME")
-	backupPath := filepath.Join(dotfiles, "backups", time.Now().Format("20060102_150405"))
+	backupPath := filepath.Join(dotfiles, "backups", clock.Now().Format("20060102_150405"))
 	source := filepath.Join(dotfiles, "home")
 	linked, skipped, backed := 0, 0, 0
 
@@ -87,7 +88,7 @@ func LinkDotfiles(ctx context.Context, dotfiles string, logger *telemetry.Logger
 	if walkErr != nil {
 		return walkErr
 	}
-	common.Infof(logger, "  Linked: %d Skipped: %d Backed up: %d", linked, skipped, backed)
+	common.Infof(logger, "  Linked: %s Skipped: %s Backed up: %s", strconv.Itoa(linked), strconv.Itoa(skipped), strconv.Itoa(backed))
 	return nil
 }
 
@@ -168,7 +169,7 @@ func UpdateAuthorizedKeys(ctx context.Context, skipNetwork bool, logger *telemet
 		_ = f.Close()
 		added++
 	}
-	common.Infof(logger, "  Added %d authorized key(s)", added)
+	common.Infof(logger, "  Added %s authorized key(s)", strconv.Itoa(added))
 	return nil
 }
 

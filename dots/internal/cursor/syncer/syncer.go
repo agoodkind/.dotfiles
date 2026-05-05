@@ -43,12 +43,15 @@ func SyncRules() int {
 	logging.Info("Cursor rule sync start")
 
 	if _, err := os.Stat(cfg.CursorDB); err != nil {
-		logging.Error(fmt.Sprintf("Cursor database not found: %s", cfg.CursorDB))
-		logging.Error("Make sure Cursor is installed and you're logged in.")
+		logging.ErrorWithErr("Cursor database not found: "+cfg.CursorDB, err)
+		logging.Info("Make sure Cursor is installed and you're logged in.")
 		return 1
 	}
 
-	rules.ValidateRuleDirectories(cfg.RuleDirectories)
+	if err := rules.ValidateRuleDirectories(cfg.RuleDirectories); err != nil {
+		logging.ErrorWithErr("Cursor rule directories unavailable", err)
+		return 1
+	}
 	logging.Info(fmt.Sprintf("API endpoint: %s", cfg.APIBase))
 
 	logging.Info("Authenticating...")
@@ -74,6 +77,8 @@ func SyncRules() int {
 	attempted := 0
 	succeeded := 0
 	failed := 0
+	uploadedTitles := []string{}
+	failedUploads := []string{}
 	for _, ruleFile := range localRuleFiles {
 		resolvedFile := rules.ResolveRuleFile(ruleFile)
 		displayFile := rules.FormatRuleSource(ruleFile)
@@ -83,7 +88,7 @@ func SyncRules() int {
 
 		rawBody, readErr := os.ReadFile(resolvedFile)
 		if readErr != nil {
-			logging.Error(readErr.Error())
+			logging.ErrorWithErr("Read rule file failed", readErr)
 			failed++
 			continue
 		}
@@ -92,7 +97,7 @@ func SyncRules() int {
 		payload := buildRulePayload(title, body)
 		attempted++
 
-		logging.Info(fmt.Sprintf("[%d/%d] uploading %s", attempted, totalRules, title))
+		logging.Debug(fmt.Sprintf("Uploading rule %d/%d: %s", attempted, totalRules, title))
 		logging.Debug("Source: " + displayFile)
 		logging.Debug(fmt.Sprintf("Size: %d bytes", len(payload)))
 
@@ -105,14 +110,22 @@ func SyncRules() int {
 		)
 		if success {
 			succeeded++
+			uploadedTitles = append(uploadedTitles, title)
 			if response != "" {
 				logging.Debug("Response: " + response)
 			}
 			logging.Debug("Status: uploaded")
 		} else {
 			failed++
-			logging.Info(fmt.Sprintf("Upload failed for %s: %s", title, response))
+			failedUploads = append(failedUploads, title)
+			logging.Debug(fmt.Sprintf("Upload failed for %s: %s", title, response))
 		}
+	}
+	if len(failedUploads) > 0 {
+		logging.Info("Upload failures: " + strings.Join(failedUploads, ", "))
+	}
+	if len(uploadedTitles) > 0 {
+		logging.Debug("Uploaded rules: " + strings.Join(uploadedTitles, ", "))
 	}
 
 	logging.Info("Verifying uploaded rules...")
@@ -121,6 +134,8 @@ func SyncRules() int {
 
 	verified := 0
 	verifyFailed := 0
+	missingTitles := []string{}
+	mismatchedTitles := []string{}
 	for _, ruleFile := range localRuleFiles {
 		resolvedFile := rules.ResolveRuleFile(ruleFile)
 		if _, err := os.Stat(resolvedFile); err != nil {
@@ -135,18 +150,25 @@ func SyncRules() int {
 		expectedContent := buildRulePayload(title, rules.ParseMdcContent(string(rawBody)))
 		remoteRule, exists := remoteByTitle[title]
 		if !exists {
-			logging.Info("Verification failed, missing rule: " + title)
+			missingTitles = append(missingTitles, title)
 			verifyFailed++
 			continue
 		}
 		if remoteRule["content"] != expectedContent {
-			logging.Info("Verification failed, content mismatch: " + title)
+			mismatchedTitles = append(mismatchedTitles, title)
 			logging.Debug(fmt.Sprintf("Expected %d bytes, got %d bytes", len(expectedContent), len(remoteRule["content"])))
 			verifyFailed++
 			continue
 		}
 		logging.Debug(fmt.Sprintf("%s: content verified", title))
 		verified++
+	}
+
+	if len(missingTitles) > 0 {
+		logging.Info("Verification missing rules: " + strings.Join(missingTitles, ", "))
+	}
+	if len(mismatchedTitles) > 0 {
+		logging.Info("Verification content mismatches: " + strings.Join(mismatchedTitles, ", "))
 	}
 
 	if verifyFailed == 0 {

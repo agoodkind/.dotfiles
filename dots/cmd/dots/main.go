@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -21,6 +22,7 @@ import (
 var appLogger *telemetry.Logger
 
 func main() {
+	slog.InfoContext(context.Background(), "dots process started")
 	os.Exit(run(os.Args[1:]))
 }
 
@@ -40,6 +42,8 @@ func run(args []string) int {
 		appLogger = nil
 		runner.SetLogger(nil)
 	}()
+
+	logger.InfoContext(context.Background(), "dots command started")
 
 	if len(args) == 0 {
 		printUsage()
@@ -70,7 +74,7 @@ func run(args []string) int {
 		printUsage()
 		return 0
 	default:
-		logError("unknown command: " + args[0])
+		logWarn("unknown command: " + args[0])
 		printUsage()
 		return 2
 	}
@@ -108,7 +112,7 @@ func runSync(args []string) int {
 		DryRun:         *dryRun,
 		UseDefaults:    *useDefaults,
 	}); err != nil {
-		logError("sync failed: " + err.Error())
+		logError("sync failed", err)
 		return 1
 	}
 
@@ -126,7 +130,7 @@ func runDispatch(args []string) int {
 	}
 
 	if err := dispatcher.RunWorkers(context.Background(), args); err != nil {
-		logError("dispatch failed: " + err.Error())
+		logError("dispatch failed", err)
 		return 1
 	}
 
@@ -135,7 +139,7 @@ func runDispatch(args []string) int {
 
 func runPerf(args []string) int {
 	if err := perfcmd.Run(args); err != nil {
-		logError("perf failed: " + err.Error())
+		logError("perf failed", err)
 		return 1
 	}
 	return 0
@@ -143,7 +147,7 @@ func runPerf(args []string) int {
 
 func runSyncAgentRepo(args []string) int {
 	if err := agentsync.Run(context.Background(), args...); err != nil {
-		logError("sync-agent-repo failed: " + err.Error())
+		logError("sync-agent-repo failed", err)
 		return 1
 	}
 	return 0
@@ -157,11 +161,11 @@ func runRefreshShellCaches(args []string) int {
 		}
 	}
 	if len(args) > 0 {
-		logError("refresh-shell-caches does not accept arguments")
+		logWarn("refresh-shell-caches does not accept arguments")
 		return 2
 	}
 	if err := dispatcher.RunWorkers(context.Background(), []string{"prefer-cache-rebuild", "zwc-recompile"}); err != nil {
-		logError("refresh-shell-caches failed: " + err.Error())
+		logError("refresh-shell-caches failed", err)
 		return 1
 	}
 	return 0
@@ -177,7 +181,7 @@ func runCursorSync(args []string) int {
 		}
 	}
 	if err := cursorSync.Run(); err != nil {
-		logError("cursor sync failed: " + err.Error())
+		logError("cursor sync failed", err)
 		return 1
 	}
 	return 0
@@ -185,7 +189,7 @@ func runCursorSync(args []string) int {
 
 func runInstall(args []string) int {
 	if err := installer.Run(context.Background(), args...); err != nil {
-		logError("install failed: " + err.Error())
+		logError("install failed", err)
 		return 1
 	}
 
@@ -194,7 +198,7 @@ func runInstall(args []string) int {
 
 func runUninstall(args []string) int {
 	if err := uninstaller.Run(context.Background(), args...); err != nil {
-		logError("uninstall failed: " + err.Error())
+		logError("uninstall failed", err)
 		return 1
 	}
 
@@ -226,8 +230,8 @@ func logWarn(message string) {
 	}
 }
 
-func logError(message string) {
+func logError(message string, err error) {
 	if appLogger != nil {
-		appLogger.Error(message)
+		appLogger.ErrorWithErr(message, err)
 	}
 }

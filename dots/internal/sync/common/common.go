@@ -3,7 +3,6 @@ package common
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -27,22 +26,30 @@ func Warn(logger *telemetry.Logger, message string) {
 	}
 }
 
-func Infof(logger *telemetry.Logger, format string, args ...any) {
+func Infof(logger *telemetry.Logger, format string, args ...string) {
 	if logger != nil {
-		logger.Info(fmt.Sprintf(format, args...))
+		logger.Info(formatString(format, args...))
 	}
 }
 
-func Warnf(logger *telemetry.Logger, format string, args ...any) {
+func Warnf(logger *telemetry.Logger, format string, args ...string) {
 	if logger != nil {
-		logger.Warn(fmt.Sprintf(format, args...))
+		logger.Warn(formatString(format, args...))
 	}
 }
 
-func Debugf(logger *telemetry.Logger, format string, args ...any) {
+func Debugf(logger *telemetry.Logger, format string, args ...string) {
 	if logger != nil {
-		logger.Debug(fmt.Sprintf(format, args...))
+		logger.Debug(formatString(format, args...))
 	}
+}
+
+func formatString(format string, args ...string) string {
+	formatted := format
+	for _, arg := range args {
+		formatted = strings.Replace(formatted, "%s", arg, 1)
+	}
+	return formatted
 }
 
 func LoadOverrides() {

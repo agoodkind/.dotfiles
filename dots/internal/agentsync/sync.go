@@ -159,8 +159,16 @@ func logInfo(message string) {
 	}
 }
 
-func logInfof(format string, args ...any) {
+func logInfof(format string, args ...string) {
 	if agentSyncLogger != nil {
-		agentSyncLogger.Info(fmt.Sprintf(format, args...))
+		agentSyncLogger.Info(formatString(format, args...))
 	}
+}
+
+func formatString(format string, args ...string) string {
+	formatted := format
+	for _, arg := range args {
+		formatted = strings.Replace(formatted, "%s", arg, 1)
+	}
+	return formatted
 }

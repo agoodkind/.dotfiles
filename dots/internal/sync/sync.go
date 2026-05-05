@@ -66,10 +66,10 @@ func Run(ctx context.Context, options Options) error {
 
 	notify := func(level string, message string) {
 		if err := telemetry.Notify(level, message, logPath); err != nil {
-			logger.Warn(fmt.Sprintf("notification write failed: %v", err))
+			logger.WarnContextWithErr(ctx, "notification write failed", err)
 		}
 		if level == "warn" || level == "error" {
-			logger.Warn(message)
+			logger.WarnContext(ctx, message)
 		}
 	}
 
@@ -83,28 +83,28 @@ func Run(ctx context.Context, options Options) error {
 	}
 	defer lockFile.Close()
 	if err := syscall.Flock(int(lockFile.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		logger.Info("sync already running, exiting")
+		logger.InfoContext(ctx, "sync already running, exiting")
 		return nil
 	}
 	defer syscall.Flock(int(lockFile.Fd()), syscall.LOCK_UN)
 
 	failed := make([]string, 0)
-	logger.Info("Dotfiles sync started")
+	logger.InfoContext(ctx, "Dotfiles sync started")
 
 	runStep := func(name string, critical bool, fn func(context.Context) error) error {
-		done := logger.Section(name)
+		done := logger.SectionContext(ctx, name)
 		defer done()
 		if options.DryRun {
-			logger.Info("  dry-run: no changes applied")
+			logger.InfoContext(ctx, "  dry-run: no changes applied")
 			return nil
 		}
 		if err := fn(ctx); err != nil {
 			if critical {
-				logger.Error(fmt.Sprintf("FATAL: %s: %v", name, err))
+				logger.ErrorContextWithErr(ctx, fmt.Sprintf("FATAL: %s", name), err)
 				notify("error", fmt.Sprintf("sync failed at %s: %v", name, err))
 				return err
 			}
-			logger.Warn(fmt.Sprintf("WARN: %s: %v", name, err))
+			logger.WarnContextWithErr(ctx, fmt.Sprintf("WARN: %s", name), err)
 			notify("warn", fmt.Sprintf("sync step failed (continued): %s", name))
 			failed = append(failed, name)
 		}
@@ -138,7 +138,7 @@ func Run(ctx context.Context, options Options) error {
 	}
 	if err := runStep("Syncing Cursor configuration", false, func(ctx context.Context) error {
 		if options.SkipCursorSync {
-			logger.Info("  skipping cursor config sync")
+			logger.InfoContext(ctx, "  skipping cursor config sync")
 			return nil
 		}
 		return workspace.SyncCursorConfig(ctx, dotfiles, logger)
@@ -147,7 +147,7 @@ func Run(ctx context.Context, options Options) error {
 	}
 	if err := runStep("Syncing Cursor User Rules", false, func(ctx context.Context) error {
 		if options.SkipCursorSync {
-			logger.Info("  skipping cursor user rules sync")
+			logger.InfoContext(ctx, "  skipping cursor user rules sync")
 			return nil
 		}
 		return workspace.SyncCursorUserRules(ctx, dotfiles, logger)
@@ -253,9 +253,9 @@ func Run(ctx context.Context, options Options) error {
 	if len(failed) > 0 {
 		msg := strings.Join(failed, ", ")
 		notify("warn", "sync completed with non-critical failures: "+msg)
-		logger.Warn("Completed with non-critical failures: " + msg)
+		logger.WarnContext(ctx, "Completed with non-critical failures: "+msg)
 	}
 
-	logger.Success("Dotfiles synced")
+	logger.SuccessContext(ctx, "Dotfiles synced")
 	return nil
 }

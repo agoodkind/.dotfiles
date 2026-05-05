@@ -53,9 +53,12 @@ func ParseField(data []byte, position int) models.ParsedField {
 	if wireType == constants.WireTypeVarint {
 		integerValue, endPosition := ReadVarint(data, nextPosition)
 		return models.ParsedField{
-			FieldNumber:  fieldNumber,
-			WireType:     wireType,
-			Value:        integerValue,
+			FieldNumber: fieldNumber,
+			WireType:    wireType,
+			Value: models.ParsedValue{
+				Kind:    models.ParsedValueInteger,
+				Integer: integerValue,
+			},
 			NextPosition: endPosition,
 			Ok:           true,
 		}
@@ -70,9 +73,12 @@ func ParseField(data []byte, position int) models.ParsedField {
 		}
 		bytesValue := data[payloadStart:payloadEnd]
 		return models.ParsedField{
-			FieldNumber:  fieldNumber,
-			WireType:     wireType,
-			Value:        bytesValue,
+			FieldNumber: fieldNumber,
+			WireType:    wireType,
+			Value: models.ParsedValue{
+				Kind:  models.ParsedValueBytes,
+				Bytes: bytesValue,
+			},
 			NextPosition: payloadEnd,
 			Ok:           true,
 		}
@@ -83,17 +89,21 @@ func ParseField(data []byte, position int) models.ParsedField {
 	}
 }
 
-func AddFieldValue(fields models.ParsedMessage, fieldNumber int, value interface{}) {
+func AddFieldValue(fields models.ParsedMessage, fieldNumber int, value models.ParsedValue) {
 	existingValue, exists := fields[fieldNumber]
 	if !exists {
 		fields[fieldNumber] = value
 		return
 	}
-	if currentSlice, ok := existingValue.([]interface{}); ok {
-		fields[fieldNumber] = append(currentSlice, value)
+	if existingValue.Kind == models.ParsedValueList {
+		existingValue.List = append(existingValue.List, value)
+		fields[fieldNumber] = existingValue
 		return
 	}
-	fields[fieldNumber] = []interface{}{existingValue, value}
+	fields[fieldNumber] = models.ParsedValue{
+		Kind: models.ParsedValueList,
+		List: []models.ParsedValue{existingValue, value},
+	}
 }
 
 func ParseMessage(data []byte) models.ParsedMessage {
@@ -101,7 +111,7 @@ func ParseMessage(data []byte) models.ParsedMessage {
 	cursorPosition := 0
 	for cursorPosition < len(data) {
 		field := ParseField(data, cursorPosition)
-		if !field.Ok || field.Value == nil {
+		if !field.Ok || field.Value.Kind == models.ParsedValueInvalid {
 			break
 		}
 		AddFieldValue(fields, field.FieldNumber, field.Value)
@@ -112,14 +122,10 @@ func ParseMessage(data []byte) models.ParsedMessage {
 
 func GetBytesField(fields models.ParsedMessage, fieldNumber int) []byte {
 	fieldValue, found := fields[fieldNumber]
-	if !found {
+	if !found || fieldValue.Kind != models.ParsedValueBytes {
 		return nil
 	}
-	bytesValue, ok := fieldValue.([]byte)
-	if !ok {
-		return nil
-	}
-	return bytesValue
+	return fieldValue.Bytes
 }
 
 func DecodeBytesField(value []byte, defaultValue string) string {

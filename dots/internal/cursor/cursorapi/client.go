@@ -149,7 +149,12 @@ func DeleteAllRules(token string, apiBase string) int {
 	for i := 0; i < workerCount; i++ {
 		waitGroup.Add(1)
 		go func() {
-			defer waitGroup.Done()
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					results <- removalResult{err: fmt.Errorf("remove worker panic: %v", recovered)}
+				}
+				waitGroup.Done()
+			}()
 			for ruleID := range jobs {
 				results <- removalResult{err: RemoveRule(token, apiBase, ruleID)}
 			}
@@ -157,6 +162,11 @@ func DeleteAllRules(token string, apiBase string) int {
 	}
 
 	go func() {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				results <- removalResult{err: fmt.Errorf("remove coordinator panic: %v", recovered)}
+			}
+		}()
 		for _, ruleID := range existingRuleIDs {
 			jobs <- ruleID
 		}
@@ -168,7 +178,7 @@ func DeleteAllRules(token string, apiBase string) int {
 	for result := range results {
 		if result.err != nil {
 			removalErrors = append(removalErrors, result.err.Error())
-			logging.Error(fmt.Sprintf("Rule remove failed: %s", result.err))
+			logging.ErrorWithErr("Rule remove failed", result.err)
 			continue
 		}
 		index := atomic.AddInt64(&removedCount, 1)
@@ -198,21 +208,20 @@ func buildRuleRecord(parsedEntry models.ParsedMessage) models.RuleRecord {
 }
 
 func CollectRawRuleMessages(parsedResponse models.ParsedMessage) [][]byte {
-	rawRules, hasRules := parsedResponse[constants.FieldRulesList]
+	rawRule, hasRules := parsedResponse[constants.FieldRulesList]
 	if !hasRules {
 		return nil
 	}
-	if rawRule, ok := rawRules.([]byte); ok {
-		return [][]byte{rawRule}
+	if rawRule.Kind == models.ParsedValueBytes {
+		return [][]byte{rawRule.Bytes}
 	}
-	rawRuleList, ok := rawRules.([]interface{})
-	if !ok {
+	if rawRule.Kind != models.ParsedValueList {
 		return nil
 	}
 	rawRuleMessages := [][]byte{}
-	for _, rawRule := range rawRuleList {
-		if rawRuleBytes, ok := rawRule.([]byte); ok {
-			rawRuleMessages = append(rawRuleMessages, rawRuleBytes)
+	for _, value := range rawRule.List {
+		if value.Kind == models.ParsedValueBytes {
+			rawRuleMessages = append(rawRuleMessages, value.Bytes)
 		}
 	}
 	return rawRuleMessages

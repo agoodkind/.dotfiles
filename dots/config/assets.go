@@ -9,7 +9,7 @@ import (
 //go:embed *.tmpl
 var embeddedTemplates embed.FS
 
-func RenderTemplate(name string, data map[string]any) (string, error) {
+func RenderTemplate(name string, data map[string]string) (string, error) {
 	raw, err := embeddedTemplates.ReadFile(name)
 	if err != nil {
 		return "", err

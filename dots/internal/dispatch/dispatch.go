@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"goodkind.io/.dotfiles/internal/catalog"
@@ -63,7 +64,7 @@ func RunWorkers(ctx context.Context, selectedWorkers []string) error {
 	defer lockFile.Close()
 
 	if err := syscall.Flock(int(lockFile.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		dispatchLogger.Warn("another dispatch already running, exiting")
+		dispatchLogger.WarnContext(ctx, "another dispatch already running, exiting")
 		return nil
 	}
 	defer syscall.Flock(int(lockFile.Fd()), syscall.LOCK_UN)
@@ -151,12 +152,12 @@ func RunWorkers(ctx context.Context, selectedWorkers []string) error {
 				},
 			})
 		default:
-			dispatchLogger.Warn(fmt.Sprintf("unknown worker: %s", workerConfig.Name))
+			dispatchLogger.WarnContext(ctx, fmt.Sprintf("unknown worker: %s", workerConfig.Name))
 		}
 	}
 	for name, found := range selected {
 		if !found {
-			dispatchLogger.Warn(fmt.Sprintf("unknown or disabled worker: %s", name))
+			dispatchLogger.WarnContext(ctx, fmt.Sprintf("unknown or disabled worker: %s", name))
 		}
 	}
 	if len(workers) == 0 {
@@ -197,9 +198,18 @@ func RunWorkers(ctx context.Context, selectedWorkers []string) error {
 
 	dispatchCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	workerNames := make([]string, 0, len(workers))
 	for _, current := range workers {
-		dispatchLogger.Info(fmt.Sprintf("starting %s", current.name))
+		workerNames = append(workerNames, current.name)
+	}
+	dispatchLogger.InfoContext(ctx, fmt.Sprintf("starting workers: %s", strings.Join(workerNames, ", ")))
+	for _, current := range workers {
 		go func(name string, fn func(context.Context, string) error) {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					workerDone <- workerResult{name: name, err: fmt.Errorf("panic: %v", recovered)}
+				}
+			}()
 			workerDone <- workerResult{name: name, err: fn(dispatchCtx, dotfiles)}
 		}(current.name, current.run)
 	}
@@ -211,7 +221,7 @@ func RunWorkers(ctx context.Context, selectedWorkers []string) error {
 			for active > 0 {
 				result := <-workerDone
 				if result.err != nil {
-					dispatchLogger.Warn(fmt.Sprintf("WARN: %s exited with %v", result.name, result.err))
+					dispatchLogger.WarnContextWithErr(ctx, fmt.Sprintf("WARN: %s exited", result.name), result.err)
 				}
 				active--
 			}
@@ -224,14 +234,14 @@ func RunWorkers(ctx context.Context, selectedWorkers []string) error {
 			for active > 0 {
 				result := <-workerDone
 				if result.err != nil {
-					dispatchLogger.Warn(fmt.Sprintf("WARN: %s exited with %v", result.name, result.err))
+					dispatchLogger.WarnContextWithErr(ctx, fmt.Sprintf("WARN: %s exited", result.name), result.err)
 				}
 				active--
 			}
 			return fmt.Errorf("interrupted")
 		case result := <-workerDone:
 			if result.err != nil {
-				dispatchLogger.Warn(fmt.Sprintf("WARN: %s: %v", result.name, result.err))
+				dispatchLogger.WarnContextWithErr(ctx, fmt.Sprintf("WARN: %s", result.name), result.err)
 			}
 			active--
 		}

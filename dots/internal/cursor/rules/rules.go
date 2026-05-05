@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -80,22 +81,20 @@ func FormatRuleSource(ruleFile string) string {
 	return ruleFile + " -> " + resolvedFile
 }
 
-func ValidateRuleDirectories(ruleDirectories []string) {
+func ValidateRuleDirectories(ruleDirectories []string) error {
 	existing := []string{}
-	for _, ruleDirectory := range ruleDirectories {
-		if _, err := os.Stat(ruleDirectory); err == nil {
-			existing = append(existing, ruleDirectory)
-		}
-	}
-	if len(existing) == 0 {
-		logging.Info("No rules directories found. Checked: " + strings.Join(ruleDirectories, ", "))
-		os.Exit(1)
-	}
+	statuses := []string{}
 	for _, ruleDirectory := range ruleDirectories {
 		status := "missing"
 		if _, err := os.Stat(ruleDirectory); err == nil {
+			existing = append(existing, ruleDirectory)
 			status = "present"
 		}
-		logging.Info("Rules directory: " + ruleDirectory + " (" + status + ")")
+		statuses = append(statuses, ruleDirectory+" ("+status+")")
 	}
+	if len(existing) == 0 {
+		return fmt.Errorf("no rules directories found; checked: %s", strings.Join(ruleDirectories, ", "))
+	}
+	logging.Info("Rules directories: " + strings.Join(statuses, "; "))
+	return nil
 }

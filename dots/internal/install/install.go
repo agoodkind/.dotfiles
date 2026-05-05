@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -89,6 +90,8 @@ func createSocketDir() error {
 func configureGit(useDefaults bool) error {
 	libPath := filepath.Join(dotfilesRoot(), "lib", ".gitconfig_incl")
 	if err := cmdexec.Run(context.Background(), "git", "config", "--global", "include.path", libPath); err != nil {
+		slog.Warn("Failed to set git include path", "err", err)
+		installLogger.WarnWithErr("Failed to set git include path", err)
 		return fmt.Errorf("set git include path: %w", err)
 	}
 
@@ -172,6 +175,8 @@ func configureGit(useDefaults bool) error {
 	}
 	keyRaw, err := os.ReadFile(strings.TrimSpace(keyPath))
 	if err != nil {
+		slog.Warn("Failed to read SSH public key", "err", err)
+		installLogger.WarnWithErr("Failed to read SSH public key", err)
 		return fmt.Errorf("read ssh public key: %w", err)
 	}
 	line := strings.TrimSpace(string(keyRaw))
@@ -208,6 +213,8 @@ func ensureLoginShell() error {
 		return nil
 	}
 	if err := cmdexec.Run(context.Background(), "chsh", "-s", zshPath); err != nil {
+		slog.Warn("Failed to change login shell", "err", err)
+		installLogger.WarnWithErr("Failed to change login shell", err)
 		return fmt.Errorf("change login shell: %w", err)
 	}
 	logInfo("Login shell changed to zsh")
@@ -266,10 +273,18 @@ func logInfo(message string) {
 	}
 }
 
-func logInfof(format string, args ...any) {
+func logInfof(format string, args ...string) {
 	if installLogger != nil {
-		installLogger.Info(fmt.Sprintf(format, args...))
+		installLogger.Info(formatString(format, args...))
 	}
+}
+
+func formatString(format string, args ...string) string {
+	formatted := format
+	for _, arg := range args {
+		formatted = strings.Replace(formatted, "%s", arg, 1)
+	}
+	return formatted
 }
 
 func dotfilesRoot() string {

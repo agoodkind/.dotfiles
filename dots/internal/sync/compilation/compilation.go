@@ -38,20 +38,10 @@ type agentRuleFrontmatter struct {
 	AlwaysApply bool   `yaml:"alwaysApply,omitempty"`
 }
 
-type copilotInstructionFrontmatter struct {
-	Name        string `yaml:"name"`
+type frontmatterMetadata struct {
+	Name        string `yaml:"name,omitempty"`
 	Description string `yaml:"description,omitempty"`
 	ApplyTo     string `yaml:"applyTo,omitempty"`
-}
-
-type copilotPromptFrontmatter struct {
-	Name        string `yaml:"name"`
-	Description string `yaml:"description"`
-}
-
-type commandSkillFrontmatter struct {
-	Name        string `yaml:"name"`
-	Description string `yaml:"description"`
 }
 
 func ResolveAgentSource(dotfiles string) AgentSourcePaths {
@@ -497,7 +487,7 @@ func renderCommandAsSkill(skillName string, body string) (string, error) {
 		skillName,
 		skillName,
 	)
-	frontmatter, err := renderFrontmatter(commandSkillFrontmatter{
+	frontmatter, err := renderFrontmatter(frontmatterMetadata{
 		Name:        "cursor-command-" + skillName,
 		Description: description,
 	})
@@ -513,7 +503,7 @@ func renderCopilotInstruction(baseName string, frontmatter agentRuleFrontmatter,
 		applyTo = "**/*"
 	}
 
-	metadata := copilotInstructionFrontmatter{
+	metadata := frontmatterMetadata{
 		Name:    baseName,
 		ApplyTo: applyTo,
 	}
@@ -540,7 +530,7 @@ func renderCopilotPrompt(baseName string, content string) (string, error) {
 		description = fmt.Sprintf("Run the %s workflow.", baseName)
 	}
 
-	renderedFrontmatter, renderErr := renderFrontmatter(copilotPromptFrontmatter{
+	renderedFrontmatter, renderErr := renderFrontmatter(frontmatterMetadata{
 		Name:        baseName,
 		Description: description,
 	})
@@ -581,7 +571,7 @@ func firstMarkdownHeading(content string) string {
 	return ""
 }
 
-func renderFrontmatter(metadata interface{}) (string, error) {
+func renderFrontmatter(metadata frontmatterMetadata) (string, error) {
 	content, err := yaml.Marshal(metadata)
 	if err != nil {
 		return "", err

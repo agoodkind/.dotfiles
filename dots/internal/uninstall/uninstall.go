@@ -4,10 +4,12 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 
 	"goodkind.io/.dotfiles/internal/catalog"
@@ -53,6 +55,8 @@ func Run(ctx context.Context, args ...string) error {
 	}
 
 	if err := runUninstall(ctx, purgePackages); err != nil {
+		slog.WarnContext(ctx, "Uninstall flow failed", "err", err)
+		uninstallLogger.WarnWithErr("Uninstall flow failed", err)
 		return fmt.Errorf("uninstall flow failed: %w", err)
 	}
 	return nil
@@ -167,7 +171,7 @@ func removeHomeSymlinks(dotfiles string) error {
 
 func removeSSHSymlink(dotfiles string) {
 	if err := removeDotfilesSymlink(filepath.Join(os.Getenv("HOME"), ".ssh", "config"), dotfiles); err != nil {
-		logInfof("Skipping ~/.ssh/config: %v", err)
+		logInfo("Skipping ~/.ssh/config: " + err.Error())
 	}
 }
 
@@ -310,7 +314,7 @@ func removeBrewPackages(ctx context.Context, lists *packageLists) error {
 	}
 	toRemove := toInstallableSet(strings.Fields(installedFormulae), all)
 	if len(toRemove) > 0 {
-		logInfof("Will remove %d formulae: %s", len(toRemove), strings.Join(toRemove, " "))
+		logInfof("Will remove %s formulae: %s", strconv.Itoa(len(toRemove)), strings.Join(toRemove, " "))
 		if promptYesNo("Continue? (y/n) ") {
 			args := append([]string{"uninstall", "--force"}, toRemove...)
 			_ = cmdexec.Run(ctx, "brew", args...)
@@ -325,7 +329,7 @@ func removeBrewPackages(ctx context.Context, lists *packageLists) error {
 	}
 	casksToRemove := toInstallableSet(strings.Fields(installedCasks), lists.brewCasks)
 	if len(casksToRemove) > 0 {
-		logInfof("Will remove %d casks: %s", len(casksToRemove), strings.Join(casksToRemove, " "))
+		logInfof("Will remove %s casks: %s", strconv.Itoa(len(casksToRemove)), strings.Join(casksToRemove, " "))
 		if promptYesNo("Continue? (y/n) ") {
 			args := append([]string{"uninstall", "--cask", "--force"}, casksToRemove...)
 			_ = cmdexec.Run(ctx, "brew", args...)
@@ -352,7 +356,7 @@ func removeAptPackages(ctx context.Context, lists *packageLists) error {
 		logInfo("No matching APT packages installed")
 		return nil
 	}
-	logInfof("Will remove %d APT packages", len(toRemove))
+	logInfof("Will remove %s APT packages", strconv.Itoa(len(toRemove)))
 	if !promptYesNo("Continue? (y/n) ") {
 		return nil
 	}
@@ -376,7 +380,7 @@ func removeSnapPackages(ctx context.Context, lists *packageLists) error {
 		logInfo("No matching Snap packages installed")
 		return nil
 	}
-	logInfof("Will remove %d Snap packages: %s", len(toRemove), strings.Join(toRemove, ", "))
+	logInfof("Will remove %s Snap packages: %s", strconv.Itoa(len(toRemove)), strings.Join(toRemove, ", "))
 	if !promptYesNo("Continue? (y/n) ") {
 		return nil
 	}
@@ -392,6 +396,8 @@ func removeDotfilesSymlink(target string, dotfiles string) error {
 		if os.IsNotExist(err) {
 			return nil
 		}
+		slog.Warn("Failed to read symlink target", "err", err)
+		uninstallLogger.WarnWithErr("Failed to read symlink target", err)
 		return fmt.Errorf("read target: %w", err)
 	}
 	if fi.Mode()&os.ModeSymlink == 0 {
@@ -408,6 +414,8 @@ func removeDotfilesSymlink(target string, dotfiles string) error {
 	cleanLink := filepath.Clean(link)
 	if cleanLink == dotfilesRoot || strings.HasPrefix(cleanLink, dotfilesRoot+string(filepath.Separator)) {
 		if err := os.Remove(target); err != nil {
+			slog.Warn("Failed to remove dotfiles symlink", "err", err)
+			uninstallLogger.WarnWithErr("Failed to remove dotfiles symlink", err)
 			return fmt.Errorf("remove symlink: %w", err)
 		}
 		logDebugf("Removed symlink: %s", target)
@@ -423,6 +431,8 @@ func removeSymlinkTo(target string, expected string) error {
 		if os.IsNotExist(err) {
 			return nil
 		}
+		slog.Warn("Failed to read symlink target", "err", err)
+		uninstallLogger.WarnWithErr("Failed to read symlink target", err)
 		return fmt.Errorf("read target: %w", err)
 	}
 	if fi.Mode()&os.ModeSymlink == 0 {
@@ -437,6 +447,8 @@ func removeSymlinkTo(target string, expected string) error {
 		return nil
 	}
 	if err := os.Remove(target); err != nil {
+		slog.Warn("Failed to remove managed script symlink", "err", err)
+		uninstallLogger.WarnWithErr("Failed to remove managed script symlink", err)
 		return fmt.Errorf("remove symlink: %w", err)
 	}
 	logDebugf("Removed symlink: %s", target)
@@ -551,9 +563,9 @@ func logInfo(message string) {
 	}
 }
 
-func logInfof(format string, args ...any) {
+func logInfof(format string, args ...string) {
 	if uninstallLogger != nil {
-		uninstallLogger.Info(fmt.Sprintf(format, args...))
+		uninstallLogger.Info(formatString(format, args...))
 	}
 }
 
@@ -563,8 +575,16 @@ func logWarn(message string) {
 	}
 }
 
-func logDebugf(format string, args ...any) {
+func logDebugf(format string, args ...string) {
 	if uninstallLogger != nil {
-		uninstallLogger.Debug(fmt.Sprintf(format, args...))
+		uninstallLogger.Debug(formatString(format, args...))
 	}
+}
+
+func formatString(format string, args ...string) string {
+	formatted := format
+	for _, arg := range args {
+		formatted = strings.Replace(formatted, "%s", arg, 1)
+	}
+	return formatted
 }

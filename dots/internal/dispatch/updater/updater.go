@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"goodkind.io/.dotfiles/internal/clock"
 	"goodkind.io/.dotfiles/internal/cmdexec"
 	"goodkind.io/.dotfiles/internal/runner"
 	syncer "goodkind.io/.dotfiles/internal/sync"
@@ -29,36 +30,36 @@ func Run(
 ) error {
 	notifyf := func(level string, message string) {
 		if err := telemetry.Notify(level, message, notifyLogPath); err != nil {
-			dispatchLogger.Warn(fmt.Sprintf("notification write failed: %v", err))
+			dispatchLogger.WarnContextWithErr(ctx, "notification write failed", err)
 		}
 	}
 
 	if !hasInternet(ctx) {
-		dispatchLogger.Info("updater: no internet, skipping")
+		dispatchLogger.InfoContext(ctx, "updater: no internet, skipping")
 		return nil
 	}
 
 	pulled, oldSHA, newSHA, err := repository.UpdateRepo(ctx, dotfiles, dispatchLogger)
 	if err != nil {
-		dispatchLogger.Error(fmt.Sprintf("updater: fetch failed: %s", strings.TrimSpace(err.Error())))
+		dispatchLogger.ErrorContextWithErr(ctx, "updater: fetch failed", err)
 		return nil
 	}
 
 	if pulled {
 		if oldSHA != "" && newSHA != "" {
-			dispatchLogger.Info(fmt.Sprintf(
+			dispatchLogger.InfoContext(ctx, fmt.Sprintf(
 				"updater: new changes found (%s -> %s), running sync",
 				truncateSHA(oldSHA),
 				truncateSHA(newSHA),
 			))
 		} else {
-			dispatchLogger.Info("updater: new changes found, running sync")
+			dispatchLogger.InfoContext(ctx, "updater: new changes found, running sync")
 		}
 		if statusDir != "" {
 			_ = os.WriteFile(filepath.Join(statusDir, "status"), []byte("sync"), 0o644)
 		}
 		if err := runSyncOnly(ctx, dotfiles, dispatchLogger); err != nil {
-			dispatchLogger.Warn(fmt.Sprintf("updater: sync step failed: %v", err))
+			dispatchLogger.WarnContextWithErr(ctx, "updater: sync step failed", err)
 			notifyf("warn", "Dotfiles sync completed with non-critical issues")
 		}
 		notifyf("success", "Dotfiles updated in background")
@@ -66,17 +67,17 @@ func Run(
 	}
 
 	if !needsWeeklyUpdate(weeklyMarkerPath, weeklyHours) {
-		dispatchLogger.Info("updater: no new changes and weekly update not due")
+		dispatchLogger.InfoContext(ctx, "updater: no new changes and weekly update not due")
 		return nil
 	}
 
 	lastUpdateDate := epochToDate(readEpoch(weeklyMarkerPath))
-	dispatchLogger.Info(fmt.Sprintf("updater: weekly update due (last: %s), running weekly update", lastUpdateDate))
+	dispatchLogger.InfoContext(ctx, fmt.Sprintf("updater: weekly update due (last: %s), running weekly update", lastUpdateDate))
 	if statusDir != "" {
 		_ = os.WriteFile(filepath.Join(statusDir, "status"), []byte("weekly"), 0o644)
 	}
 	if err := doWeeklyUpdate(ctx, dotfiles, weeklyMarkerPath, dispatchLogger); err != nil {
-		dispatchLogger.Error(fmt.Sprintf("updater: weekly update failed: %v", err))
+		dispatchLogger.ErrorContextWithErr(ctx, "updater: weekly update failed", err)
 		notifyf("warn", "Weekly sync completed with non-critical issues")
 		return err
 	}
@@ -94,10 +95,10 @@ func runSyncOnly(ctx context.Context, dotfiles string, dispatchLogger *telemetry
 		UseDefaults: true,
 	})
 	if runErr != nil {
-		dispatchLogger.Warn("updater: sync exited with non-zero status")
+		dispatchLogger.WarnContextWithErr(ctx, "updater: sync exited with non-zero status", runErr)
 		return runErr
 	}
-	dispatchLogger.Info("updater: sync exited successfully")
+	dispatchLogger.InfoContext(ctx, "updater: sync exited successfully")
 	return nil
 }
 
@@ -111,10 +112,10 @@ func doWeeklyUpdate(ctx context.Context, dotfiles, weeklyMarkerPath string, disp
 		UseDefaults: true,
 	})
 	if runErr != nil {
-		dispatchLogger.Warn("updater: weekly sync exited with non-zero status")
+		dispatchLogger.WarnContextWithErr(ctx, "updater: weekly sync exited with non-zero status", runErr)
 		return runErr
 	}
-	dispatchLogger.Info("updater: weekly sync exited successfully")
+	dispatchLogger.InfoContext(ctx, "updater: weekly sync exited successfully")
 
 	zinitPath := filepath.Join(dotfiles, "lib", "zinit", "zinit.zsh")
 	if _, err := os.Stat(zinitPath); err == nil {
@@ -131,7 +132,7 @@ func doWeeklyUpdate(ctx context.Context, dotfiles, weeklyMarkerPath string, disp
 	_ = doBrewUpgrade(ctx, dispatchLogger)
 	_ = doAptUpgrade(ctx, dispatchLogger)
 
-	now := strconv.FormatInt(time.Now().Unix(), 10)
+	now := strconv.FormatInt(clock.Now().Unix(), 10)
 	if weeklyMarkerPath == "" {
 		weeklyMarkerPath = filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles_weekly_update")
 	}
@@ -149,15 +150,15 @@ func needsWeeklyUpdate(weekPath string, weekDurationHours int64) bool {
 	}
 	last, err := strconv.ParseInt(strings.TrimSpace(string(raw)), 10, 64)
 	if err != nil {
-		now := time.Now().Unix()
-		_ = os.WriteFile(weekPath, []byte(strconv.FormatInt(now, 10)), 0o644)
+		currentTimestamp := clock.Now().Unix()
+		_ = os.WriteFile(weekPath, []byte(strconv.FormatInt(currentTimestamp, 10)), 0o644)
 		return false
 	}
 	if weekDurationHours == 0 {
 		weekDurationHours = 168
 	}
 	threshold := weekDurationHours * 60 * 60
-	return time.Now().Unix()-last > threshold
+	return clock.Now().Unix()-last > threshold
 }
 
 func hasInternet(ctx context.Context) bool {

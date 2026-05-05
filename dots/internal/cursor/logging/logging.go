@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -55,9 +56,13 @@ func Debug(message string) {
 }
 
 func Error(message string) {
+	ErrorWithErr(message, errors.New(message))
+}
+
+func ErrorWithErr(message string, err error) {
 	logger := ensureLogger()
 	if logger != nil {
-		logger.Error(message)
+		logger.ErrorWithErr(message, err)
 		return
 	}
 }

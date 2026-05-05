@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
+	"goodkind.io/.dotfiles/internal/clock"
 )
 
 const (
@@ -69,38 +69,78 @@ func (l *Logger) Close() error {
 }
 
 func (l *Logger) Section(title string) func() {
+	return l.SectionContext(context.Background(), title)
+}
+
+func (l *Logger) SectionContext(ctx context.Context, title string) func() {
 	lines := strings.Repeat("═", 56)
 	if l.interactive {
-		l.logStructured("SECTION", slog.LevelInfo, title, "stream", "stdout")
+		l.logStructured(ctx, "SECTION", slog.LevelInfo, title, slog.String("stream", "stdout"))
 		l.writeRaw(l.stdout, fmt.Sprintf("\n%s%s%s", colorBlue, lines, colorReset))
 		l.writeRaw(l.stdout, fmt.Sprintf("%s%s%s", colorBlue, title, colorReset))
 		l.startSpinner(title)
 		return l.stopSpinner
 	}
 
-	l.Info(lines)
-	l.Info(title)
+	l.InfoContext(ctx, lines)
+	l.InfoContext(ctx, title)
 	return func() {}
 }
 
 func (l *Logger) Info(message string) {
-	l.log("INFO", slog.LevelInfo, message, l.stdout, "info", colorBlue)
+	l.InfoContext(context.Background(), message)
+}
+
+func (l *Logger) InfoContext(ctx context.Context, message string) {
+	l.log(ctx, "INFO", slog.LevelInfo, message, l.stdout, "info", colorBlue)
 }
 
 func (l *Logger) Debug(message string) {
-	l.log("DEBUG", slog.LevelDebug, message, l.stdout, "dbg", colorGray)
+	l.DebugContext(context.Background(), message)
+}
+
+func (l *Logger) DebugContext(ctx context.Context, message string) {
+	l.log(ctx, "DEBUG", slog.LevelDebug, message, l.stdout, "dbg", colorGray)
 }
 
 func (l *Logger) Warn(message string) {
-	l.log("WARN", slog.LevelWarn, message, l.stderr, "warn", colorYellow)
+	l.WarnContext(context.Background(), message)
 }
 
-func (l *Logger) Error(message string) {
-	l.log("ERROR", slog.LevelError, message, l.stderr, "err", colorRed)
+func (l *Logger) WarnContext(ctx context.Context, message string) {
+	l.log(ctx, "WARN", slog.LevelWarn, message, l.stderr, "warn", colorYellow)
+}
+
+func (l *Logger) WarnWithErr(message string, err error) {
+	l.WarnContextWithErr(context.Background(), message, err)
+}
+
+func (l *Logger) WarnContextWithErr(ctx context.Context, message string, err error) {
+	if err == nil {
+		l.WarnContext(ctx, message)
+		return
+	}
+	l.log(ctx, "WARN", slog.LevelWarn, message, l.stderr, "warn", colorYellow, slog.String("err", err.Error()))
+}
+
+func (l *Logger) ErrorWithErr(message string, err error) {
+	l.ErrorContextWithErr(context.Background(), message, err)
+}
+
+func (l *Logger) ErrorContextWithErr(ctx context.Context, message string, err error) {
+	if err == nil {
+		l.log(ctx, "ERROR", slog.LevelError, message, l.stderr, "err", colorRed)
+		return
+	}
+	l.log(ctx, "ERROR", slog.LevelError, message, l.stderr, "err", colorRed, slog.String("err", err.Error()))
 }
 
 func (l *Logger) Success(message string) {
-	l.log("OK", slog.LevelInfo, message, l.stdout, "ok", colorGreen)
+	l.SuccessContext(context.Background(), message)
+}
+
+func (l *Logger) SuccessContext(ctx context.Context, message string) {
+	l.log(ctx, "OK", slog.LevelInfo, message, l.stdout, "ok", colorGreen)
 }
 
 func (l *Logger) RawOutput(output string) {
@@ -109,23 +149,37 @@ func (l *Logger) RawOutput(output string) {
 		if line == "" {
 			continue
 		}
-		l.logStructured("OUTPUT", slog.LevelDebug, line, "source", "command")
+		l.logStructured(context.Background(), "OUTPUT", slog.LevelDebug, line, slog.String("source", "command"))
 		if !l.interactive {
-			l.log("OUTPUT", slog.LevelDebug, line, l.stdout, "out", colorGray)
+			l.log(context.Background(), "OUTPUT", slog.LevelDebug, line, l.stdout, "out", colorGray)
 			continue
 		}
 		l.write(l.stdout, fmt.Sprintf("%s- %s%s", colorGray, line, colorReset))
 	}
 }
 
-func (l *Logger) log(levelLabel string, level slog.Level, message string, stream io.Writer, icon string, color string) {
+func (l *Logger) log(
+	ctx context.Context,
+	levelLabel string,
+	level slog.Level,
+	message string,
+	stream io.Writer,
+	icon string,
+	color string,
+	attributes ...slog.Attr,
+) {
 	message = strings.TrimSpace(message)
 	if message == "" {
 		return
 	}
 
-	timestamp := time.Now().Format("2006-01-02 15:04:05")
-	l.logStructured(levelLabel, level, message, "stream", streamName(stream), "timestamp", timestamp)
+	timestamp := clock.Now().Format("2006-01-02 15:04:05")
+	attrs := []slog.Attr{
+		slog.String("stream", streamName(stream)),
+		slog.String("timestamp", timestamp),
+	}
+	attrs = append(attrs, attributes...)
+	l.logStructured(ctx, levelLabel, level, message, attrs...)
 
 	humanLine := fmt.Sprintf("%s[%s] %s%s", color, levelLabel, message, colorReset)
 	if l.interactive {
@@ -135,15 +189,18 @@ func (l *Logger) log(levelLabel string, level slog.Level, message string, stream
 	l.write(stream, humanLine)
 }
 
-func (l *Logger) logStructured(levelLabel string, level slog.Level, message string, attributes ...any) {
+func (l *Logger) logStructured(ctx context.Context, levelLabel string, level slog.Level, message string, attributes ...slog.Attr) {
 	if l.slogLogger == nil {
 		return
 	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
 
-	attrs := make([]any, 0, 2+len(attributes))
+	attrs := make([]slog.Attr, 0, 2+len(attributes))
 	attrs = append(attrs, slog.String("level_label", levelLabel), slog.String("log_file", l.filePath))
 	attrs = append(attrs, attributes...)
-	l.slogLogger.Log(context.Background(), level, message, attrs...)
+	l.slogLogger.LogAttrs(ctx, level, message, attrs...)
 }
 
 func (l *Logger) write(stream io.Writer, message string) {
@@ -174,7 +231,7 @@ func (l *Logger) PrintTTYLine(plain string, ttyStyled string) {
 		return
 	}
 
-	l.logStructured("TTY", slog.LevelInfo, plain, "stream", "stdout")
+	l.logStructured(context.Background(), "TTY", slog.LevelInfo, plain, slog.String("stream", "stdout"))
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.interactive {
@@ -210,6 +267,11 @@ func (l *Logger) startSpinner(message string) {
 	)
 	l.spinProgram = spinProgram
 	go func() {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				l.ErrorWithErr("spinner crashed", fmt.Errorf("panic: %v", recovered))
+			}
+		}()
 		_, _ = spinProgram.Run()
 	}()
 }

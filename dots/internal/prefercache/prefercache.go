@@ -26,19 +26,19 @@ func Rebuild(ctx context.Context, dotfiles string, force bool, cacheLogger *tele
 
 	if !shouldRebuildPreferCache(cacheFile, invalidateFile, sourceFiles, force) {
 		if cacheLogger != nil {
-			cacheLogger.Info("prefer cache up to date, skipping")
+			cacheLogger.InfoContext(ctx, "prefer cache up to date, skipping")
 		}
 		return nil
 	}
 
-	script, err := configassets.RenderTemplate("prefercache-bootstrap.zsh.tmpl", map[string]any{
+	script, err := configassets.RenderTemplate("prefercache-bootstrap.zsh.tmpl", map[string]string{
 		"Dotfiles": dotfiles,
 	})
 	if err != nil {
 		return err
 	}
 	_, err = cmdexec.OutputWithLoggerAndEnv(
-		context.Background(),
+		ctx,
 		cacheLogger,
 		append(os.Environ(), "DOTDOTFILES="+dotfiles),
 		"zsh",
