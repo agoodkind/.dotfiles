@@ -1,3 +1,10 @@
+# Lint is centralized in go-makefile. Do NOT define project-local lint,
+# deadcode, audit, fmt, vet, or staticcheck targets here. They duplicate
+# the central pipeline and let agents bypass strict rules. Run `make help`
+# for the canonical entry points (build/check/lint/fmt) and per-linter
+# sub-targets (lint-golangci, lint-format, lint-gocyclo, lint-deadcode,
+# staticcheck-extra). Refresh baselines via the matching *-baseline target.
+#
 # dots Makefile.
 # Build/lint pipeline lives in go-makefile and is fetched at runtime.
 # dots ships via bootstrap-go.sh (which `go run`s from source); release-mk
