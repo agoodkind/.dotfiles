@@ -243,20 +243,18 @@ func SyncCodexConfig(ctx context.Context, dotfiles string, logger *telemetry.Log
 	_ = ctx
 	_ = logger
 
-	codexDir := filepath.Join(os.Getenv("HOME"), ".codex")
-	agentsDir := filepath.Join(os.Getenv("HOME"), ".agents")
+	homeDir := os.Getenv("HOME")
+	codexDir := filepath.Join(homeDir, ".codex")
+	agentsDir := filepath.Join(homeDir, ".agents")
 	source := compilation.ResolveAgentSource(dotfiles)
 
-	if err := compilation.SyncFilesToDir(source.Commands, filepath.Join(agentsDir, "commands")); err != nil {
-		return err
-	}
-	if err := compilation.SyncRulesFromDir(source.Rules, filepath.Join(agentsDir, "rules")); err != nil {
-		return err
-	}
 	if err := compilation.SyncSkillDirs(source.Skills, filepath.Join(agentsDir, "skills")); err != nil {
 		return err
 	}
 	if err := compilation.SyncCommandFilesAsSkillDirs(source.Commands, filepath.Join(agentsDir, "skills"), "cursor-command-"); err != nil {
+		return err
+	}
+	if err := compilation.RenderCodexRules(source.Rules, filepath.Join(codexDir, "rules", "dotfiles.rules")); err != nil {
 		return err
 	}
 	if err := compilation.RenderRulesAsInstructionDoc(source.Rules, filepath.Join(codexDir, "AGENTS.md"), "Codex Instructions"); err != nil {

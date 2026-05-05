@@ -106,6 +106,9 @@ func Run(ctx context.Context, args ...string) error {
 			return err
 		}
 	}
+	if err := compilation.RenderCodexRules(source.Rules, filepath.Join(repoInfo.path, ".codex", "rules", "dotfiles.rules")); err != nil {
+		return err
+	}
 
 	logSuccess("Done.")
 	return nil

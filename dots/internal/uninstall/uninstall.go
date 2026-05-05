@@ -191,11 +191,13 @@ func removeClaudeConfig(dotfiles string) {
 func removeCodexConfig(dotfiles string) {
 	logInfo("Removing Codex configuration...")
 	agentsDir := filepath.Join(os.Getenv("HOME"), ".agents")
-	removeDotfilesSymlinksInDir(filepath.Join(agentsDir, "commands"), dotfiles)
+	codexDir := filepath.Join(os.Getenv("HOME"), ".codex")
 	removeDotfilesSymlinksInDir(filepath.Join(agentsDir, "skills"), dotfiles)
-	removeDotfilesSymlinksInDir(filepath.Join(agentsDir, "rules"), dotfiles)
+	removeDotfilesSymlinksInDir(filepath.Join(codexDir, "skills"), dotfiles)
 	_ = removeManagedSkillDirs(filepath.Join(agentsDir, "skills"), "cursor-command-")
-	_ = removeGeneratedFileIfManaged(filepath.Join(os.Getenv("HOME"), ".codex", "AGENTS.md"))
+	_ = removeManagedSkillDirs(filepath.Join(codexDir, "skills"), "cursor-command-")
+	_ = removeGeneratedFileIfManaged(filepath.Join(codexDir, "AGENTS.md"))
+	_ = removeGeneratedFileIfManaged(filepath.Join(codexDir, "rules", "dotfiles.rules"))
 }
 
 func removeCopilotConfig(dotfiles string) {

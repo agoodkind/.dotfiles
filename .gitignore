@@ -28,3 +28,4 @@ git-global-hooks/email-rules.local
 /.github/instructions/
 /.github/prompts/
 /.github/skills/
+/.codex/rules/dotfiles.rules
