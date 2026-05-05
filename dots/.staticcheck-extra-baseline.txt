@@ -1,0 +1,210 @@
+# staticcheck-extra: generated_at=2026-05-05T02:40:23Z
+-: # goodkind.io/.dotfiles/internal/sync/compilation	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+banned_direct_output: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+banned_direct_output: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+banned_direct_output: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+banned_direct_output: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+banned_direct_output: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+banned_direct_output: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+banned_direct_output: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+banned_direct_output: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+banned_direct_output: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+config/assets.go:12:50: do not use any; define a deeply enumerated named type	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+context_todo_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+context_todo_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+context_todo_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+context_todo_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+context_todo_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+context_todo_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+context_todo_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+context_todo_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+context_todo_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+goroutine_without_recover: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+goroutine_without_recover: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+goroutine_without_recover: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+goroutine_without_recover: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+goroutine_without_recover: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+goroutine_without_recover: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+goroutine_without_recover: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+goroutine_without_recover: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+goroutine_without_recover: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+grpc_handler_missing_peer_enrichment: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+grpc_handler_missing_peer_enrichment: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+grpc_handler_missing_peer_enrichment: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+grpc_handler_missing_peer_enrichment: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+grpc_handler_missing_peer_enrichment: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+grpc_handler_missing_peer_enrichment: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+grpc_handler_missing_peer_enrichment: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+grpc_handler_missing_peer_enrichment: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+grpc_handler_missing_peer_enrichment: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+hot_loop_info_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+hot_loop_info_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+hot_loop_info_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+hot_loop_info_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+hot_loop_info_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+hot_loop_info_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+hot_loop_info_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+hot_loop_info_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+hot_loop_info_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+internal/cursor/cursorapi/client.go:151:3: goroutine launched without a deferred recover(); add `defer func() { if r := recover(); r != nil { slog.Error(...) } }()` or //nolint:goroutine_without_recover	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/cursor/cursorapi/client.go:159:2: goroutine launched without a deferred recover(); add `defer func() { if r := recover(); r != nil { slog.Error(...) } }()` or //nolint:goroutine_without_recover	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/cursor/cursorapi/client.go:171:4: error-level slog event must include an err field	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/cursor/logging/logging.go:60:3: error-level slog event must include an err field	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+internal/cursor/models/models.go:13:15: do not use interface{}; define a deeply enumerated named type	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/cursor/models/models.go:18:28: do not use interface{}; define a deeply enumerated named type	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/cursor/protobuf/protobuf.go:86:72: do not use interface{}; define a deeply enumerated named type	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/cursor/rules/rules.go:92:3: os.Exit called outside main()/init(); return error to caller instead	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/cursor/rules/rules.go:99:3: do not emit info-level slog events directly inside loops; log state transitions or summaries	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/cursor/syncer/syncer.go:114:4: do not emit info-level slog events directly inside loops; log state transitions or summaries	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/cursor/syncer/syncer.go:138:4: do not emit info-level slog events directly inside loops; log state transitions or summaries	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/cursor/syncer/syncer.go:143:4: do not emit info-level slog events directly inside loops; log state transitions or summaries	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/cursor/syncer/syncer.go:46:3: error-level slog event must include an err field	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/cursor/syncer/syncer.go:47:3: error-level slog event must include an err field	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/cursor/syncer/syncer.go:86:4: error-level slog event must include an err field	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/cursor/syncer/syncer.go:95:3: do not emit info-level slog events directly inside loops; log state transitions or summaries	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/dispatch/sshkey/sshkey.go:20:3: slog call inside func taking context.Context does not pass the ctx; use slog.InfoContext or include ctx for trace correlation	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/dispatch/sshkey/sshkey.go:31:3: slog call inside func taking context.Context does not pass the ctx; use slog.InfoContext or include ctx for trace correlation	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/dispatch/zwc/zwc.go:49:2: slog call inside func taking context.Context does not pass the ctx; use slog.InfoContext or include ctx for trace correlation	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:147:2: do not use fmt.Print for production diagnostics; use slog or write to an explicit user-facing writer	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:156:3: function runLog returns a wrapped error without an accompanying slog.Error/Warn; either log before returning or add //nolint:wrapped_error_without_slog	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:166:3: function runLog returns a wrapped error without an accompanying slog.Error/Warn; either log before returning or add //nolint:wrapped_error_without_slog	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:170:3: function runLog returns a wrapped error without an accompanying slog.Error/Warn; either log before returning or add //nolint:wrapped_error_without_slog	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:172:2: do not use fmt.Println for production diagnostics; use slog or write to an explicit user-facing writer	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:184:3: function runHistory returns a wrapped error without an accompanying slog.Error/Warn; either log before returning or add //nolint:wrapped_error_without_slog	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:213:4: function runHistory returns a wrapped error without an accompanying slog.Error/Warn; either log before returning or add //nolint:wrapped_error_without_slog	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:215:3: do not use fmt.Println for production diagnostics; use slog or write to an explicit user-facing writer	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:219:2: do not use fmt.Printf for production diagnostics; use slog or write to an explicit user-facing writer	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:221:2: do not use fmt.Printf for production diagnostics; use slog or write to an explicit user-facing writer	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:246:3: do not use fmt.Printf for production diagnostics; use slog or write to an explicit user-facing writer	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:260:2: do not use fmt.Printf for production diagnostics; use slog or write to an explicit user-facing writer	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:261:2: do not use fmt.Println for production diagnostics; use slog or write to an explicit user-facing writer	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:269:5: do not use fmt.Println for production diagnostics; use slog or write to an explicit user-facing writer	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:276:3: function runArmZprof returns a wrapped error without an accompanying slog.Error/Warn; either log before returning or add //nolint:wrapped_error_without_slog	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:280:3: function runArmZprof returns a wrapped error without an accompanying slog.Error/Warn; either log before returning or add //nolint:wrapped_error_without_slog	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:282:2: do not use fmt.Println for production diagnostics; use slog or write to an explicit user-facing writer	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:290:5: do not use fmt.Println for production diagnostics; use slog or write to an explicit user-facing writer	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:302:3: function runRebuildPathCache returns a wrapped error without an accompanying slog.Error/Warn; either log before returning or add //nolint:wrapped_error_without_slog	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:307:3: function runRebuildPathCache returns a wrapped error without an accompanying slog.Error/Warn; either log before returning or add //nolint:wrapped_error_without_slog	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:311:3: function runRebuildPathCache returns a wrapped error without an accompanying slog.Error/Warn; either log before returning or add //nolint:wrapped_error_without_slog	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:315:3: function runRebuildPathCache returns a wrapped error without an accompanying slog.Error/Warn; either log before returning or add //nolint:wrapped_error_without_slog	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:317:2: do not use fmt.Printf for production diagnostics; use slog or write to an explicit user-facing writer	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:318:2: do not use fmt.Printf for production diagnostics; use slog or write to an explicit user-facing writer	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:323:2: do not use fmt.Println for production diagnostics; use slog or write to an explicit user-facing writer	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:324:2: do not use fmt.Println for production diagnostics; use slog or write to an explicit user-facing writer	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:325:2: do not use fmt.Println for production diagnostics; use slog or write to an explicit user-facing writer	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:326:2: do not use fmt.Println for production diagnostics; use slog or write to an explicit user-facing writer	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:327:2: do not use fmt.Println for production diagnostics; use slog or write to an explicit user-facing writer	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:328:2: do not use fmt.Println for production diagnostics; use slog or write to an explicit user-facing writer	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:357:3: function loadRecords returns a wrapped error without an accompanying slog.Error/Warn; either log before returning or add //nolint:wrapped_error_without_slog	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:362:3: function loadRecords returns a wrapped error without an accompanying slog.Error/Warn; either log before returning or add //nolint:wrapped_error_without_slog	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/perf/perf.go:99:3: function runSummary returns a wrapped error without an accompanying slog.Error/Warn; either log before returning or add //nolint:wrapped_error_without_slog	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/prefercache/prefercache.go:29:4: slog call inside func taking context.Context does not pass the ctx; use slog.InfoContext or include ctx for trace correlation	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/runner/runner.go:59:3: function RunCommand returns a wrapped error without an accompanying slog.Error/Warn; either log before returning or add //nolint:wrapped_error_without_slog	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/sync/common/common.go:30:61: do not use any; define a deeply enumerated named type	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/sync/common/common.go:36:61: do not use any; define a deeply enumerated named type	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/sync/common/common.go:42:62: do not use any; define a deeply enumerated named type	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/sync/compilation/compilation.go:464:13: undefined: removeDotfilesSymlink	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+internal/sync/compilation/compilation.go:464:13: undefined: removeDotfilesSymlink	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+internal/sync/repository/repository.go:103:4: function runDotfilesUpdate returns a wrapped error without an accompanying slog.Error/Warn; either log before returning or add //nolint:wrapped_error_without_slog	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/telemetry/telemetry.go:127:15: time.Now() outside clock helper; inject a clock.Clock for testability or //nolint:time_now_outside_clock	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/telemetry/telemetry.go:138:99: do not use any; define a deeply enumerated named type	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+internal/telemetry/telemetry.go:212:2: goroutine launched without a deferred recover(); add `defer func() { if r := recover(); r != nil { slog.Error(...) } }()` or //nolint:goroutine_without_recover	# staticcheck-extra:first_added=2026-05-05T02:39:18Z last_seen=2026-05-05T02:40:23Z
+missing_boundary_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+missing_boundary_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+missing_boundary_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+missing_boundary_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+missing_boundary_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+missing_boundary_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+missing_boundary_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+missing_boundary_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+missing_boundary_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+no_any_or_empty_interface: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+no_any_or_empty_interface: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+no_any_or_empty_interface: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+no_any_or_empty_interface: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+no_any_or_empty_interface: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+no_any_or_empty_interface: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+no_any_or_empty_interface: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+no_any_or_empty_interface: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+no_any_or_empty_interface: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+nolint_ban: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+nolint_ban: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+nolint_ban: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+nolint_ban: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+nolint_ban: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+nolint_ban: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+nolint_ban: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+nolint_ban: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+nolint_ban: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+os_exit_outside_main: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+os_exit_outside_main: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+os_exit_outside_main: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+os_exit_outside_main: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+os_exit_outside_main: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+os_exit_outside_main: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+os_exit_outside_main: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+os_exit_outside_main: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+os_exit_outside_main: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+panic_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+panic_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+panic_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+panic_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+panic_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+panic_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+panic_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+panic_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+panic_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+sensitive_field_in_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+sensitive_field_in_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+sensitive_field_in_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+sensitive_field_in_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+sensitive_field_in_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+sensitive_field_in_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+sensitive_field_in_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+sensitive_field_in_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+sensitive_field_in_log: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+slog_error_without_err: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+slog_error_without_err: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+slog_error_without_err: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+slog_error_without_err: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+slog_error_without_err: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+slog_error_without_err: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+slog_error_without_err: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+slog_error_without_err: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+slog_error_without_err: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+slog_missing_trace_id: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+slog_missing_trace_id: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+slog_missing_trace_id: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+slog_missing_trace_id: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+slog_missing_trace_id: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+slog_missing_trace_id: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+slog_missing_trace_id: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+slog_missing_trace_id: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+slog_missing_trace_id: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+time_now_outside_clock: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+time_now_outside_clock: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+time_now_outside_clock: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+time_now_outside_clock: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+time_now_outside_clock: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+time_now_outside_clock: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+time_now_outside_clock: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+time_now_outside_clock: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+time_now_outside_clock: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+time_sleep_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+time_sleep_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+time_sleep_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+time_sleep_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+time_sleep_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+time_sleep_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+time_sleep_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+time_sleep_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+time_sleep_in_production: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+wrapped_error_without_slog: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+wrapped_error_without_slog: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+wrapped_error_without_slog: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+wrapped_error_without_slog: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+wrapped_error_without_slog: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+wrapped_error_without_slog: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+wrapped_error_without_slog: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+wrapped_error_without_slog: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z
+wrapped_error_without_slog: analysis skipped due to errors in package	# staticcheck-extra:first_added=2026-05-05T02:40:23Z last_seen=2026-05-05T02:40:23Z

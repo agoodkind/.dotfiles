@@ -7,8 +7,10 @@ import (
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
-var syncLogger *telemetry.Logger
-var debugEnabled bool
+var (
+	syncLogger   *telemetry.Logger
+	debugEnabled bool
+)
 
 func Configure() {
 	debugEnabled = true

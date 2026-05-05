@@ -24,4 +24,3 @@ func RenderTemplate(name string, data map[string]any) (string, error) {
 	}
 	return bb.String(), nil
 }
-
