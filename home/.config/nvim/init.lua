@@ -107,10 +107,6 @@ require("lazy").setup({
 -- Colorscheme and Highlighting
 -- =============================================================================
 vim.cmd('colorscheme terminal-default')
--- Restore default background color and tildes after theme loads
-vim.cmd('highlight Normal guibg=NONE ctermbg=NONE guifg=#e8e8e8')
--- Make tildes on empty lines more visible
-vim.cmd('highlight EndOfBuffer guifg=#00ffff ctermfg=cyan')
 
 -- =============================================================================
 -- Search Settings
