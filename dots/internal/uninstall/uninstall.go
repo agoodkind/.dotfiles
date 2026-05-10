@@ -1,3 +1,4 @@
+// Package uninstall implements dotfiles uninstallation routines.
 package uninstall
 
 import (
@@ -21,14 +22,20 @@ import (
 
 var uninstallLogger *telemetry.Logger
 
+type uninstallFlag string
+
+const (
+	flagPurgePackages uninstallFlag = "--purge-packages"
+	flagHelp          uninstallFlag = "--help"
+	flagHelpShort     uninstallFlag = "-h"
+)
+
+// Run executes the dotfiles uninstall workflow with the given arguments.
 func Run(ctx context.Context, args ...string) error {
-	if ctx == nil {
-		ctx = context.Background()
-	}
 	logPath := filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "uninstall.log")
 	logger, err := telemetry.NewLogger(logPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("creating uninstall logger: %w", err)
 	}
 	uninstallLogger = logger
 	defer logger.Close()
@@ -38,16 +45,16 @@ func Run(ctx context.Context, args ...string) error {
 	}()
 	runner.SetLogger(logger)
 	_ = os.Setenv("DOTFILES_LOG", logPath)
-	done := logger.Section("Uninstall")
+	done := logger.SectionContext(ctx, "Uninstall")
 	defer done()
 
 	purgePackages := false
 	for _, arg := range args {
-		switch arg {
-		case "--purge-packages":
+		switch uninstallFlag(arg) {
+		case flagPurgePackages:
 			purgePackages = true
-		case "--help", "-h":
-			printUninstallUsage()
+		case flagHelp, flagHelpShort:
+			printUninstallUsage(ctx)
 			return nil
 		default:
 			return fmt.Errorf("unsupported uninstall flag: %s", arg)
@@ -56,14 +63,14 @@ func Run(ctx context.Context, args ...string) error {
 
 	if err := runUninstall(ctx, purgePackages); err != nil {
 		slog.WarnContext(ctx, "Uninstall flow failed", "err", err)
-		uninstallLogger.WarnWithErr("Uninstall flow failed", err)
+		uninstallLogger.WarnContextWithErr(ctx, "Uninstall flow failed", err)
 		return fmt.Errorf("uninstall flow failed: %w", err)
 	}
 	return nil
 }
 
-func printUninstallUsage() {
-	logInfo("Usage: dots uninstall [--purge-packages]")
+func printUninstallUsage(ctx context.Context) {
+	logInfo(ctx, "Usage: dots uninstall [--purge-packages]")
 }
 
 type packageLists struct {
@@ -75,68 +82,68 @@ type packageLists struct {
 }
 
 func runUninstall(ctx context.Context, purgePackages bool) error {
-	if err := printUninstallBanner(purgePackages); err != nil {
+	if err := printUninstallBanner(ctx, purgePackages); err != nil {
 		return err
 	}
-	if !promptYesNo("Continue with uninstall? (y/n) ") {
-		logInfo("Uninstall cancelled")
+	if !promptYesNo(ctx, "Continue with uninstall? (y/n) ") {
+		logInfo(ctx, "Uninstall cancelled")
 		return nil
 	}
 
-	logInfo("")
+	logInfo(ctx, "")
 
 	dotfiles := os.Getenv("DOTDOTFILES")
 	if dotfiles == "" {
 		dotfiles = filepath.Join(os.Getenv("HOME"), ".dotfiles")
 	}
 
-	if err := removeHomeSymlinks(dotfiles); err != nil {
+	if err := removeHomeSymlinks(ctx, dotfiles); err != nil {
 		return err
 	}
-	removeSSHSymlink(dotfiles)
-	removeCursorConfig(dotfiles)
-	removeClaudeConfig(dotfiles)
-	removeCodexConfig(dotfiles)
-	removeCopilotConfig(dotfiles)
-	removeGitConfig(dotfiles)
+	removeSSHSymlink(ctx, dotfiles)
+	removeCursorConfig(ctx, dotfiles)
+	removeClaudeConfig(ctx, dotfiles)
+	removeCodexConfig(ctx, dotfiles)
+	removeCopilotConfig(ctx, dotfiles)
+	removeGitConfig(ctx, dotfiles)
 	removeCacheFiles()
-	removeHushlogin()
-	removeBackups(dotfiles)
+	removeHushlogin(ctx)
+	removeBackups(ctx, dotfiles)
 	if err := removePackages(ctx, purgePackages); err != nil {
 		return err
 	}
 
-	logInfo("")
-	logInfo("Uninstall complete!")
-	logInfof("The dotfiles directory (%s) was NOT removed", dotfiles)
+	logInfo(ctx, "")
+	logInfo(ctx, "Uninstall complete!")
+	logInfof(ctx, "The dotfiles directory (%s) was NOT removed", dotfiles)
 	if !purgePackages {
-		logInfo("Installed packages were NOT removed (use --purge-packages)")
+		logInfo(ctx, "Installed packages were NOT removed (use --purge-packages)")
 	}
-	logInfo("To fully remove, run: rm -rf " + dotfiles)
+	logInfo(ctx, "To fully remove, run: rm -rf "+dotfiles)
 	return nil
 }
 
-func printUninstallBanner(purgePackages bool) error {
+func printUninstallBanner(ctx context.Context, purgePackages bool) error {
 	if purgePackages {
-		logInfo("╔═══════════════════════════════════════════╗")
-		logInfo("║         Dotfiles Uninstaller              ║")
-		logInfo("║  This will remove symlinks & configs      ║")
-		logInfo("║  ⚠️  PACKAGES WILL ALSO BE REMOVED ⚠️      ║")
-		logInfo("╚═══════════════════════════════════════════╝")
+		logInfo(ctx, "╔═══════════════════════════════════════════╗")
+		logInfo(ctx, "║         Dotfiles Uninstaller              ║")
+		logInfo(ctx, "║  This will remove symlinks & configs      ║")
+		logInfo(ctx, "║  ⚠️  PACKAGES WILL ALSO BE REMOVED ⚠️      ║")
+		logInfo(ctx, "╚═══════════════════════════════════════════╝")
 		return nil
 	}
 
-	logInfo("╔═══════════════════════════════════════════╗")
-	logInfo("║         Dotfiles Uninstaller              ║")
-	logInfo("║  This will remove symlinks & configs      ║")
-	logInfo("║  Packages will NOT be removed             ║")
-	logInfo("║  Use --purge-packages to remove them      ║")
-	logInfo("╚═══════════════════════════════════════════╝")
+	logInfo(ctx, "╔═══════════════════════════════════════════╗")
+	logInfo(ctx, "║         Dotfiles Uninstaller              ║")
+	logInfo(ctx, "║  This will remove symlinks & configs      ║")
+	logInfo(ctx, "║  Packages will NOT be removed             ║")
+	logInfo(ctx, "║  Use --purge-packages to remove them      ║")
+	logInfo(ctx, "╚═══════════════════════════════════════════╝")
 	return nil
 }
 
-func promptYesNo(prompt string) bool {
-	logInfo(prompt)
+func promptYesNo(ctx context.Context, prompt string) bool {
+	logInfo(ctx, prompt)
 	reader := bufio.NewReader(os.Stdin)
 	response, err := reader.ReadString('\n')
 	if err != nil {
@@ -146,86 +153,96 @@ func promptYesNo(prompt string) bool {
 	return response == "y" || response == "yes"
 }
 
-func removeHomeSymlinks(dotfiles string) error {
-	logInfo("Removing home directory symlinks...")
+func removeHomeSymlinks(ctx context.Context, dotfiles string) error {
+	logInfo(ctx, "Removing home directory symlinks...")
 	homeDir := filepath.Join(dotfiles, "home")
-	if _, err := os.Stat(homeDir); err != nil {
-		return nil
+	if _, err := os.Stat(filepath.Clean(homeDir)); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		slog.WarnContext(ctx, "uninstall: stat home symlinks dir", slog.Any("error", err))
+		return fmt.Errorf("checking home symlinks directory: %w", err)
 	}
 
-	return filepath.WalkDir(homeDir, func(path string, entry os.DirEntry, err error) error {
+	if err := filepath.WalkDir(filepath.Clean(homeDir), func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			slog.WarnContext(ctx, "uninstall: walking home dir entry", slog.Any("error", err))
+			return fmt.Errorf("walking %s: %w", path, err)
 		}
 		if entry.IsDir() {
 			return nil
 		}
 		relative, err := filepath.Rel(homeDir, path)
 		if err != nil {
-			return nil
+			slog.WarnContext(ctx, "uninstall: computing relative path", slog.Any("error", err))
+			return fmt.Errorf("computing relative path for %s: %w", path, err)
 		}
 		target := filepath.Join(os.Getenv("HOME"), relative)
-		return removeDotfilesSymlink(target, dotfiles)
-	})
+		return removeDotfilesSymlink(ctx, target, dotfiles)
+	}); err != nil {
+		slog.WarnContext(ctx, "uninstall: walk home dir", slog.Any("error", err))
+		return fmt.Errorf("walking home dir %s: %w", homeDir, err)
+	}
+	return nil
 }
 
-func removeSSHSymlink(dotfiles string) {
-	if err := removeDotfilesSymlink(filepath.Join(os.Getenv("HOME"), ".ssh", "config"), dotfiles); err != nil {
-		logInfo("Skipping ~/.ssh/config: " + err.Error())
+func removeSSHSymlink(ctx context.Context, dotfiles string) {
+	if err := removeDotfilesSymlink(ctx, filepath.Join(os.Getenv("HOME"), ".ssh", "config"), dotfiles); err != nil {
+		logInfo(ctx, "Skipping ~/.ssh/config: "+err.Error())
 	}
 }
 
-func removeCursorConfig(dotfiles string) {
-	logInfo("Removing Cursor configuration...")
+func removeCursorConfig(ctx context.Context, dotfiles string) {
+	logInfo(ctx, "Removing Cursor configuration...")
 	cursorDir := filepath.Join(os.Getenv("HOME"), ".cursor")
-	removeDotfilesSymlinksInDir(filepath.Join(cursorDir, "commands"), dotfiles)
-	removeDotfilesSymlinksInDir(filepath.Join(cursorDir, "skills"), dotfiles)
-	removeDotfilesSymlinksInDir(filepath.Join(cursorDir, "rules"), dotfiles)
+	removeDotfilesSymlinksInDir(ctx, filepath.Join(cursorDir, "commands"), dotfiles)
+	removeDotfilesSymlinksInDir(ctx, filepath.Join(cursorDir, "skills"), dotfiles)
+	removeDotfilesSymlinksInDir(ctx, filepath.Join(cursorDir, "rules"), dotfiles)
 }
 
-func removeClaudeConfig(dotfiles string) {
-	logInfo("Removing Claude configuration...")
+func removeClaudeConfig(ctx context.Context, dotfiles string) {
+	logInfo(ctx, "Removing Claude configuration...")
 	claudeDir := filepath.Join(os.Getenv("HOME"), ".claude")
-	removeDotfilesSymlinksInDir(filepath.Join(claudeDir, "commands"), dotfiles)
-	removeDotfilesSymlinksInDir(filepath.Join(claudeDir, "skills"), dotfiles)
-	removeDotfilesSymlinksInDir(filepath.Join(claudeDir, "rules"), dotfiles)
+	removeDotfilesSymlinksInDir(ctx, filepath.Join(claudeDir, "commands"), dotfiles)
+	removeDotfilesSymlinksInDir(ctx, filepath.Join(claudeDir, "skills"), dotfiles)
+	removeDotfilesSymlinksInDir(ctx, filepath.Join(claudeDir, "rules"), dotfiles)
 	_ = removeGeneratedFileIfManaged(filepath.Join(claudeDir, "CLAUDE.md"))
 }
 
-func removeCodexConfig(dotfiles string) {
-	logInfo("Removing Codex configuration...")
+func removeCodexConfig(ctx context.Context, dotfiles string) {
+	logInfo(ctx, "Removing Codex configuration...")
 	agentsDir := filepath.Join(os.Getenv("HOME"), ".agents")
 	codexDir := filepath.Join(os.Getenv("HOME"), ".codex")
-	removeDotfilesSymlinksInDir(filepath.Join(agentsDir, "skills"), dotfiles)
-	removeDotfilesSymlinksInDir(filepath.Join(codexDir, "skills"), dotfiles)
+	removeDotfilesSymlinksInDir(ctx, filepath.Join(agentsDir, "skills"), dotfiles)
+	removeDotfilesSymlinksInDir(ctx, filepath.Join(codexDir, "skills"), dotfiles)
 	_ = removeManagedSkillDirs(filepath.Join(agentsDir, "skills"), "cursor-command-")
 	_ = removeManagedSkillDirs(filepath.Join(codexDir, "skills"), "cursor-command-")
 	_ = removeGeneratedFileIfManaged(filepath.Join(codexDir, "AGENTS.md"))
 	_ = removeGeneratedFileIfManaged(filepath.Join(codexDir, "rules", "dotfiles.rules"))
 }
 
-func removeCopilotConfig(dotfiles string) {
-	logInfo("Removing Copilot configuration...")
+func removeCopilotConfig(ctx context.Context, dotfiles string) {
+	logInfo(ctx, "Removing Copilot configuration...")
 	githubDir := filepath.Join(dotfiles, ".github")
-	removeDotfilesSymlinksInDir(filepath.Join(githubDir, "skills"), dotfiles)
-	removeDotfilesSymlinksInDir(filepath.Join(os.Getenv("HOME"), ".copilot", "skills"), dotfiles)
+	removeDotfilesSymlinksInDir(ctx, filepath.Join(githubDir, "skills"), dotfiles)
+	removeDotfilesSymlinksInDir(ctx, filepath.Join(os.Getenv("HOME"), ".copilot", "skills"), dotfiles)
 	_ = removeGeneratedFileIfManaged(filepath.Join(dotfiles, "AGENTS.md"))
 	_ = removeGeneratedFileIfManaged(filepath.Join(githubDir, "copilot-instructions.md"))
 	_ = removeGeneratedFilesIfManaged(filepath.Join(githubDir, "instructions"), ".instructions.md")
 	_ = removeGeneratedFilesIfManaged(filepath.Join(githubDir, "prompts"), ".prompt.md")
 }
 
-func removeGitConfig(dotfiles string) {
-	logInfo("Removing git config include...")
+func removeGitConfig(ctx context.Context, dotfiles string) {
+	logInfo(ctx, "Removing git config include...")
 	includePath := filepath.Join(dotfiles, "lib", ".gitconfig_incl")
-	output, err := cmdexec.Output(context.Background(), "git", "config", "--global", "--get", "include.path")
+	output, err := cmdexec.Output(ctx, "git", "config", "--global", "--get", "include.path")
 	if err != nil {
 		return
 	}
 	if strings.TrimSpace(output) != includePath {
 		return
 	}
-	_ = cmdexec.Run(context.Background(), "git", "config", "--global", "--unset", "include.path")
+	_ = cmdexec.Run(ctx, "git", "config", "--global", "--unset", "include.path")
 }
 
 func removeCacheFiles() {
@@ -244,19 +261,19 @@ func removeCacheFiles() {
 	_ = removeIfExists(filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles_dispatch.lock"))
 }
 
-func removeHushlogin() {
+func removeHushlogin(ctx context.Context) {
 	hush := filepath.Join(os.Getenv("HOME"), ".hushlogin")
-	if _, err := os.Stat(hush); err == nil {
-		if promptYesNo("Remove .hushlogin (show login message)? (y/n) ") {
+	if _, err := os.Stat(filepath.Clean(hush)); err == nil {
+		if promptYesNo(ctx, "Remove .hushlogin (show login message)? (y/n) ") {
 			_ = removeIfExists(hush)
 		}
 	}
 }
 
-func removeBackups(dotfiles string) {
+func removeBackups(ctx context.Context, dotfiles string) {
 	backupsDir := filepath.Join(dotfiles, "backups")
-	if _, err := os.Stat(backupsDir); err == nil {
-		if promptYesNo("Remove backups directory? (y/n) ") {
+	if _, err := os.Stat(filepath.Clean(backupsDir)); err == nil {
+		if promptYesNo(ctx, "Remove backups directory? (y/n) ") {
 			_ = removeIfExists(backupsDir)
 		}
 	}
@@ -266,7 +283,7 @@ func removePackages(ctx context.Context, purge bool) error {
 	if !purge {
 		return nil
 	}
-	logInfo("Package removal requested...")
+	logInfo(ctx, "Package removal requested...")
 	lists, err := parsePackageLists()
 	if err != nil {
 		return err
@@ -289,13 +306,13 @@ func parsePackageLists() (*packageLists, error) {
 		return nil, fmt.Errorf("package config is unavailable")
 	}
 	lists := &packageLists{
-		common:    append([]string{}, cfg.COMMON_PACKAGES...),
-		brew:      append([]string{}, cfg.BREW_SPECIFIC...),
-		apt:       append([]string{}, cfg.APT_SPECIFIC...),
-		snap:      append([]string{}, cfg.SNAP_PACKAGES...),
-		brewCasks: make([]string, 0, len(cfg.BREW_CASKS)),
+		common:    append([]string{}, cfg.CommonPackages...),
+		brew:      append([]string{}, cfg.BrewSpecific...),
+		apt:       append([]string{}, cfg.AptSpecific...),
+		snap:      append([]string{}, cfg.SnapPackages...),
+		brewCasks: make([]string, 0, len(cfg.BrewCasks)),
 	}
-	for cask := range cfg.BREW_CASKS {
+	for cask := range cfg.BrewCasks {
 		lists.brewCasks = append(lists.brewCasks, cask)
 	}
 	return lists, nil
@@ -303,46 +320,48 @@ func parsePackageLists() (*packageLists, error) {
 
 func removeBrewPackages(ctx context.Context, lists *packageLists) error {
 	if !runner.HasCommand("brew") {
-		logWarn("Homebrew not installed, skipping package removal")
+		logWarn(ctx, "Homebrew not installed, skipping package removal")
 		return nil
 	}
 
 	all := append(append([]string{}, lists.common...), lists.brew...)
 	installedFormulae, err := cmdexec.Output(ctx, "brew", "list", "--formula")
 	if err != nil {
-		return nil
+		slog.WarnContext(ctx, "uninstall: listing brew formulae", slog.Any("error", err))
+		return fmt.Errorf("listing installed brew formulae: %w", err)
 	}
 	toRemove := toInstallableSet(strings.Fields(installedFormulae), all)
 	if len(toRemove) > 0 {
-		logInfof("Will remove %s formulae: %s", strconv.Itoa(len(toRemove)), strings.Join(toRemove, " "))
-		if promptYesNo("Continue? (y/n) ") {
+		logInfof(ctx, "Will remove %s formulae: %s", strconv.Itoa(len(toRemove)), strings.Join(toRemove, " "))
+		if promptYesNo(ctx, "Continue? (y/n) ") {
 			args := append([]string{"uninstall", "--force"}, toRemove...)
 			_ = cmdexec.Run(ctx, "brew", args...)
 		}
 	} else {
-		logInfo("No matching formulae installed")
+		logInfo(ctx, "No matching formulae installed")
 	}
 
 	installedCasks, err := cmdexec.Output(ctx, "brew", "list", "--cask")
 	if err != nil {
-		return nil
+		slog.WarnContext(ctx, "uninstall: listing brew casks", slog.Any("error", err))
+		return fmt.Errorf("listing installed brew casks: %w", err)
 	}
 	casksToRemove := toInstallableSet(strings.Fields(installedCasks), lists.brewCasks)
 	if len(casksToRemove) > 0 {
-		logInfof("Will remove %s casks: %s", strconv.Itoa(len(casksToRemove)), strings.Join(casksToRemove, " "))
-		if promptYesNo("Continue? (y/n) ") {
+		logInfof(ctx, "Will remove %s casks: %s", strconv.Itoa(len(casksToRemove)), strings.Join(casksToRemove, " "))
+		if promptYesNo(ctx, "Continue? (y/n) ") {
 			args := append([]string{"uninstall", "--cask", "--force"}, casksToRemove...)
 			_ = cmdexec.Run(ctx, "brew", args...)
 		}
 	} else {
-		logInfo("No matching casks installed")
+		logInfo(ctx, "No matching casks installed")
 	}
 	return nil
 }
 
 func removeAptPackages(ctx context.Context, lists *packageLists) error {
 	if !runner.HasCommand("apt-get") {
-		logWarn("apt-get not found, skipping package removal")
+		logWarn(ctx, "apt-get not found, skipping package removal")
 		return nil
 	}
 	all := append(append([]string{}, lists.common...), lists.apt...)
@@ -353,11 +372,11 @@ func removeAptPackages(ctx context.Context, lists *packageLists) error {
 		}
 	}
 	if len(toRemove) == 0 {
-		logInfo("No matching APT packages installed")
+		logInfo(ctx, "No matching APT packages installed")
 		return nil
 	}
-	logInfof("Will remove %s APT packages", strconv.Itoa(len(toRemove)))
-	if !promptYesNo("Continue? (y/n) ") {
+	logInfof(ctx, "Will remove %s APT packages", strconv.Itoa(len(toRemove)))
+	if !promptYesNo(ctx, "Continue? (y/n) ") {
 		return nil
 	}
 	args := append([]string{"apt-get", "remove", "-y"}, toRemove...)
@@ -377,11 +396,11 @@ func removeSnapPackages(ctx context.Context, lists *packageLists) error {
 		}
 	}
 	if len(toRemove) == 0 {
-		logInfo("No matching Snap packages installed")
+		logInfo(ctx, "No matching Snap packages installed")
 		return nil
 	}
-	logInfof("Will remove %s Snap packages: %s", strconv.Itoa(len(toRemove)), strings.Join(toRemove, ", "))
-	if !promptYesNo("Continue? (y/n) ") {
+	logInfof(ctx, "Will remove %s Snap packages: %s", strconv.Itoa(len(toRemove)), strings.Join(toRemove, ", "))
+	if !promptYesNo(ctx, "Continue? (y/n) ") {
 		return nil
 	}
 	for _, pkg := range toRemove {
@@ -390,14 +409,14 @@ func removeSnapPackages(ctx context.Context, lists *packageLists) error {
 	return nil
 }
 
-func removeDotfilesSymlink(target string, dotfiles string) error {
-	fi, err := os.Lstat(target)
+func removeDotfilesSymlink(ctx context.Context, target string, dotfiles string) error {
+	fi, err := os.Lstat(filepath.Clean(target))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
-		slog.Warn("Failed to read symlink target", "err", err)
-		uninstallLogger.WarnWithErr("Failed to read symlink target", err)
+		slog.WarnContext(ctx, "Failed to read symlink target", "err", err)
+		uninstallLogger.WarnContextWithErr(ctx, "Failed to read symlink target", err)
 		return fmt.Errorf("read target: %w", err)
 	}
 	if fi.Mode()&os.ModeSymlink == 0 {
@@ -405,7 +424,7 @@ func removeDotfilesSymlink(target string, dotfiles string) error {
 	}
 	link, err := os.Readlink(target)
 	if err != nil {
-		return err
+		return fmt.Errorf("reading symlink %s: %w", target, err)
 	}
 	dotfilesRoot := filepath.Clean(dotfiles)
 	if !filepath.IsAbs(link) {
@@ -413,73 +432,55 @@ func removeDotfilesSymlink(target string, dotfiles string) error {
 	}
 	cleanLink := filepath.Clean(link)
 	if cleanLink == dotfilesRoot || strings.HasPrefix(cleanLink, dotfilesRoot+string(filepath.Separator)) {
-		if err := os.Remove(target); err != nil {
-			slog.Warn("Failed to remove dotfiles symlink", "err", err)
-			uninstallLogger.WarnWithErr("Failed to remove dotfiles symlink", err)
+		if err := os.Remove(filepath.Clean(target)); err != nil {
+			slog.WarnContext(ctx, "Failed to remove dotfiles symlink", "err", err)
+			uninstallLogger.WarnContextWithErr(ctx, "Failed to remove dotfiles symlink", err)
 			return fmt.Errorf("remove symlink: %w", err)
 		}
-		logDebugf("Removed symlink: %s", target)
+		logDebugf(ctx, "Removed symlink: %s", target)
 		return nil
 	}
-	logInfof("Skipping %s (not a dotfiles symlink)", target)
+	logInfof(ctx, "Skipping %s (not a dotfiles symlink)", target)
 	return nil
 }
 
-func removeSymlinkTo(target string, expected string) error {
-	fi, err := os.Lstat(target)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		slog.Warn("Failed to read symlink target", "err", err)
-		uninstallLogger.WarnWithErr("Failed to read symlink target", err)
-		return fmt.Errorf("read target: %w", err)
-	}
-	if fi.Mode()&os.ModeSymlink == 0 {
-		return fmt.Errorf("not a symlink")
-	}
-	link, err := os.Readlink(target)
-	if err != nil {
-		return err
-	}
-	if link != expected {
-		logInfof("Skipping %s (not managed script symlink)", target)
-		return nil
-	}
-	if err := os.Remove(target); err != nil {
-		slog.Warn("Failed to remove managed script symlink", "err", err)
-		uninstallLogger.WarnWithErr("Failed to remove managed script symlink", err)
-		return fmt.Errorf("remove symlink: %w", err)
-	}
-	logDebugf("Removed symlink: %s", target)
-	return nil
-}
-
-func removeDotfilesSymlinksInDir(dir string, dotfiles string) {
+func removeDotfilesSymlinksInDir(ctx context.Context, dir string, dotfiles string) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return
 	}
 	for _, entry := range entries {
-		_ = removeDotfilesSymlink(filepath.Join(dir, entry.Name()), dotfiles)
+		_ = removeDotfilesSymlink(ctx, filepath.Join(dir, entry.Name()), dotfiles)
 	}
 }
 
 func removeGeneratedFileIfManaged(path string) error {
-	content, err := os.ReadFile(path)
+	slog.Info("uninstall: removeGeneratedFileIfManaged")
+	content, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
-		return nil
+		if os.IsNotExist(err) {
+			return nil
+		}
+		slog.Error("uninstall: removeGeneratedFileIfManaged", "err", err)
+		return fmt.Errorf("read file: %w", err)
 	}
 	if !compilation.HasGeneratedMarker(string(content)) {
 		return nil
 	}
-	return os.Remove(path)
+	if err := os.Remove(filepath.Clean(path)); err != nil {
+		return fmt.Errorf("removing file %s: %w", path, err)
+	}
+	return nil
 }
 
 func removeGeneratedFilesIfManaged(dir string, suffix string) error {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil
+		if os.IsNotExist(err) {
+			return nil
+		}
+		slog.Error("uninstall: removeGeneratedFilesIfManaged", "err", err)
+		return fmt.Errorf("read dir: %w", err)
 	}
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -496,9 +497,14 @@ func removeGeneratedFilesIfManaged(dir string, suffix string) error {
 }
 
 func removeManagedSkillDirs(dir string, managedPrefix string) error {
+	slog.Info("uninstall: removeManagedSkillDirs")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil
+		if os.IsNotExist(err) {
+			return nil
+		}
+		slog.Error("uninstall: removeManagedSkillDirs", "err", err)
+		return fmt.Errorf("read dir: %w", err)
 	}
 	for _, entry := range entries {
 		if !entry.IsDir() {
@@ -508,25 +514,33 @@ func removeManagedSkillDirs(dir string, managedPrefix string) error {
 			continue
 		}
 		skillPath := filepath.Join(dir, entry.Name(), "SKILL.md")
-		content, readErr := os.ReadFile(skillPath)
+		content, readErr := os.ReadFile(filepath.Clean(skillPath))
 		if readErr != nil {
 			continue
 		}
 		if !compilation.HasGeneratedMarker(string(content)) {
 			continue
 		}
-		if err := os.RemoveAll(filepath.Join(dir, entry.Name())); err != nil {
-			return err
+		if err := os.RemoveAll(filepath.Clean(filepath.Join(dir, entry.Name()))); err != nil {
+			return fmt.Errorf("removing skill directory: %w", err)
 		}
 	}
 	return nil
 }
 
 func removeIfExists(path string) error {
-	if _, err := os.Stat(path); err != nil {
-		return nil
+	slog.Info("uninstall: removeIfExists")
+	if _, err := os.Stat(filepath.Clean(path)); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		slog.Error("uninstall: removeIfExists", "err", err)
+		return fmt.Errorf("stat path: %w", err)
 	}
-	return os.RemoveAll(path)
+	if err := os.RemoveAll(filepath.Clean(path)); err != nil {
+		return fmt.Errorf("removing path %s: %w", path, err)
+	}
+	return nil
 }
 
 func toInstallableSet(installed, targets []string) []string {
@@ -557,27 +571,27 @@ func deduplicate(values []string) []string {
 	return out
 }
 
-func logInfo(message string) {
+func logInfo(ctx context.Context, message string) {
 	if uninstallLogger != nil {
-		uninstallLogger.Info(message)
+		uninstallLogger.InfoContext(ctx, message)
 	}
 }
 
-func logInfof(format string, args ...string) {
+func logInfof(ctx context.Context, format string, args ...string) {
 	if uninstallLogger != nil {
-		uninstallLogger.Info(formatString(format, args...))
+		uninstallLogger.InfoContext(ctx, formatString(format, args...))
 	}
 }
 
-func logWarn(message string) {
+func logWarn(ctx context.Context, message string) {
 	if uninstallLogger != nil {
-		uninstallLogger.Warn(message)
+		uninstallLogger.WarnContext(ctx, message)
 	}
 }
 
-func logDebugf(format string, args ...string) {
+func logDebugf(ctx context.Context, format string, args ...string) {
 	if uninstallLogger != nil {
-		uninstallLogger.Debug(formatString(format, args...))
+		uninstallLogger.DebugContext(ctx, formatString(format, args...))
 	}
 }
 

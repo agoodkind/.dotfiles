@@ -1,3 +1,4 @@
+// Package main is the entry point for the dots command-line tool.
 package main
 
 import (
@@ -17,6 +18,23 @@ import (
 	syncer "goodkind.io/.dotfiles/internal/sync"
 	"goodkind.io/.dotfiles/internal/telemetry"
 	uninstaller "goodkind.io/.dotfiles/internal/uninstall"
+)
+
+type subcommand string
+
+const (
+	cmdSync               subcommand = "sync"
+	cmdDispatch           subcommand = "dispatch"
+	cmdPerf               subcommand = "perf"
+	cmdSyncAgentRepo      subcommand = "sync-agent-repo"
+	cmdRefreshShellCaches subcommand = "refresh-shell-caches"
+	cmdCursorSync         subcommand = "cursor-sync"
+	cmdInstall            subcommand = "install"
+	cmdUninstall          subcommand = "uninstall"
+	cmdVersion            subcommand = "version"
+	cmdHelp               subcommand = "help"
+	cmdHelpShort          subcommand = "-h"
+	cmdHelpLong           subcommand = "--help"
 )
 
 var appLogger *telemetry.Logger
@@ -50,27 +68,27 @@ func run(args []string) int {
 		return 2
 	}
 
-	switch args[0] {
-	case "sync":
+	switch subcommand(args[0]) {
+	case cmdSync:
 		return runSync(args[1:])
-	case "dispatch":
+	case cmdDispatch:
 		return runDispatch(args[1:])
-	case "perf":
+	case cmdPerf:
 		return runPerf(args[1:])
-	case "sync-agent-repo":
+	case cmdSyncAgentRepo:
 		return runSyncAgentRepo(args[1:])
-	case "refresh-shell-caches":
+	case cmdRefreshShellCaches:
 		return runRefreshShellCaches(args[1:])
-	case "cursor-sync":
+	case cmdCursorSync:
 		return runCursorSync(args[1:])
-	case "install":
+	case cmdInstall:
 		return runInstall(args[1:])
-	case "uninstall":
+	case cmdUninstall:
 		return runUninstall(args[1:])
-	case "version":
+	case cmdVersion:
 		logInfo("dots 0.1.0")
 		return 0
-	case "help", "-h", "--help":
+	case cmdHelp, cmdHelpShort, cmdHelpLong:
 		printUsage()
 		return 0
 	default:

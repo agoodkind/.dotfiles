@@ -1,22 +1,30 @@
+// Package repository implements git repository sync operations.
 package repository
 
 import (
 	"bufio"
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"goodkind.io/.dotfiles/internal/cmdexec"
-	"goodkind.io/.dotfiles/internal/sync/common"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
+type remoteStatusCode string
+
+const (
+	remoteStatusUpToDate remoteStatusCode = "up-to-date"
+	remoteStatusDiverged remoteStatusCode = "diverged"
+	remoteStatusBehind   remoteStatusCode = "behind"
+	remoteStatusUnknown  remoteStatusCode = "unknown"
+)
+
+// UpdateRepo fetches and fast-forwards the dotfiles git repository, returning whether commits were pulled and the old/new SHAs.
 func UpdateRepo(ctx context.Context, dotfiles string, logger *telemetry.Logger) (bool, string, string, error) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
 	if dotfiles == "" {
 		dotfiles = filepath.Join(os.Getenv("HOME"), ".dotfiles")
 	}
@@ -24,7 +32,8 @@ func UpdateRepo(ctx context.Context, dotfiles string, logger *telemetry.Logger) 
 
 	preSHA, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "rev-parse", "HEAD")
 	if err != nil {
-		return false, "", "", err
+		slog.ErrorContext(ctx, "repository: UpdateRepo: rev-parse HEAD", "err", err)
+		return false, "", "", fmt.Errorf("running git rev-parse HEAD: %w", err)
 	}
 	output, err := runDotfilesUpdate(ctx, dotfiles, logger)
 	if err != nil {
@@ -35,7 +44,8 @@ func UpdateRepo(ctx context.Context, dotfiles string, logger *telemetry.Logger) 
 	if oldSHA == "" || newSHA == "" {
 		postSHA, postErr := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "rev-parse", "HEAD")
 		if postErr != nil {
-			return false, "", "", postErr
+			slog.ErrorContext(ctx, "repository: UpdateRepo: post rev-parse HEAD", "err", postErr)
+			return false, "", "", fmt.Errorf("running git rev-parse HEAD: %w", postErr)
 		}
 		if strings.TrimSpace(preSHA) != strings.TrimSpace(postSHA) {
 			return true, strings.TrimSpace(preSHA), strings.TrimSpace(postSHA), nil
@@ -45,11 +55,15 @@ func UpdateRepo(ctx context.Context, dotfiles string, logger *telemetry.Logger) 
 	return true, oldSHA, newSHA, nil
 }
 
+// UpdateGitRepoSync fetches the dotfiles repository unless skipGit is true.
 func UpdateGitRepoSync(ctx context.Context, skipGit bool, logger *telemetry.Logger) error {
 	if skipGit {
 		return nil
 	}
-	_, _, _, err := UpdateRepo(ctx, os.Getenv("DOTDOTFILES"), logger)
+	pulled, _, _, err := UpdateRepo(ctx, os.Getenv("DOTDOTFILES"), logger)
+	if pulled {
+		slog.DebugContext(ctx, "repository: synced")
+	}
 	return err
 }
 
@@ -58,25 +72,23 @@ func runDotfilesUpdate(ctx context.Context, dotfiles string, logger *telemetry.L
 	if reason != "" {
 		return "", fmt.Errorf("skip: %s", reason)
 	}
-	if err := clearGitLocks(dotfiles); err != nil {
-		common.Warn(logger, "  failed clearing git locks: "+err.Error())
-	}
+	clearGitLocks(dotfiles)
 
 	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "fetch", "origin", "--prune"); err != nil {
-		return "fetch failed", err
+		return "fetch failed", fmt.Errorf("running git fetch: %w", err)
 	}
 
 	remoteStatus := getRemoteStatus(ctx, dotfiles, "origin/main", logger)
-	common.Info(logger, "  remote status: "+remoteStatus)
-	switch remoteStatus {
-	case "up-to-date":
+	logger.InfoContext(ctx, "  remote status: "+remoteStatus)
+	switch remoteStatusCode(remoteStatus) {
+	case remoteStatusUpToDate:
 		_ = syncDotfilesSubmodules(ctx, dotfiles, logger)
 		return "", nil
-	case "diverged":
+	case remoteStatusDiverged:
 		return "", fmt.Errorf("local history diverged from origin/main, needs manual fix")
-	case "behind":
+	case remoteStatusBehind:
 		// continue below
-	case "unknown":
+	case remoteStatusUnknown:
 		return "", fmt.Errorf("unable to determine remote status")
 	default:
 		return "", fmt.Errorf("unknown remote status: %s", remoteStatus)
@@ -91,7 +103,7 @@ func runDotfilesUpdate(ctx context.Context, dotfiles string, logger *telemetry.L
 			return "", fmt.Errorf("upstream changes conflict with local work (overlapping files)")
 		}
 		if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "stash", "--include-untracked"); err != nil {
-			return "", err
+			return "", fmt.Errorf("running git stash: %w", err)
 		}
 	}
 	prePullHead, err := updateWithRevert(ctx, dotfiles, hasChanges, logger)
@@ -100,12 +112,13 @@ func runDotfilesUpdate(ctx context.Context, dotfiles string, logger *telemetry.L
 	}
 	if hasChanges {
 		if restoreErr := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "stash", "pop"); restoreErr != nil {
+			slog.ErrorContext(ctx, "repository: runDotfilesUpdate: stash pop failed", "err", restoreErr)
 			return "", fmt.Errorf("stash pop failed after pull, repository restored: %w", restoreErr)
 		}
 	}
 	postPullHead, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "rev-parse", "HEAD")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("running git rev-parse HEAD: %w", err)
 	}
 	if strings.TrimSpace(prePullHead) != strings.TrimSpace(postPullHead) {
 		_ = syncDotfilesSubmodules(ctx, dotfiles, logger)
@@ -122,10 +135,10 @@ func checkDotfilesGitHealth(ctx context.Context, dotfiles string, logger *teleme
 	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "rev-parse", "MERGE_HEAD"); err == nil {
 		return "merge in progress"
 	}
-	if _, err := os.Stat(filepath.Join(dotfiles, ".git", "rebase-merge")); err == nil {
+	if _, err := os.Stat(filepath.Clean(filepath.Join(dotfiles, ".git", "rebase-merge"))); err == nil {
 		return "rebase in progress"
 	}
-	if _, err := os.Stat(filepath.Join(dotfiles, ".git", "rebase-apply")); err == nil {
+	if _, err := os.Stat(filepath.Clean(filepath.Join(dotfiles, ".git", "rebase-apply"))); err == nil {
 		return "rebase in progress"
 	}
 	if output, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "ls-files", "-u"); err == nil && strings.TrimSpace(output) != "" {
@@ -134,15 +147,15 @@ func checkDotfilesGitHealth(ctx context.Context, dotfiles string, logger *teleme
 	return ""
 }
 
-func clearGitLocks(dotfiles string) error {
+func clearGitLocks(dotfiles string) {
+	slog.Info("repository: clearGitLocks")
 	paths := []string{
 		filepath.Join(dotfiles, ".git", "index.lock"),
 		filepath.Join(dotfiles, ".git", "objects", "info", "commit-graph-chain.lock"),
 	}
 	for _, path := range paths {
-		_ = os.Remove(path)
+		_ = os.Remove(filepath.Clean(path))
 	}
-	return nil
 }
 
 func getRemoteStatus(ctx context.Context, dotfiles string, remoteRef string, logger *telemetry.Logger) string {
@@ -176,7 +189,8 @@ func isMergeBaseAncestor(ctx context.Context, dotfiles string, ancestor string, 
 func hasLocalChanges(ctx context.Context, dotfiles string, logger *telemetry.Logger) (bool, error) {
 	output, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "status", "--porcelain", "--untracked-files=no", "--ignore-submodules")
 	if err != nil {
-		return false, err
+		slog.ErrorContext(ctx, "repository: hasLocalChanges: git status", "err", err)
+		return false, fmt.Errorf("running git status: %w", err)
 	}
 	return strings.TrimSpace(output) != "", nil
 }
@@ -184,20 +198,22 @@ func hasLocalChanges(ctx context.Context, dotfiles string, logger *telemetry.Log
 func hasConflictingChanges(ctx context.Context, dotfiles string, logger *telemetry.Logger) (bool, error) {
 	upstream, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "diff", "--name-only", "HEAD", "origin/main")
 	if err != nil {
-		return false, nil
+		slog.ErrorContext(ctx, "repository: hasConflictingChanges: git diff", "err", err)
+		return false, fmt.Errorf("running git diff: %w", err)
 	}
 	localChanged, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "diff", "--name-only")
 	if err != nil {
-		return false, nil
+		slog.ErrorContext(ctx, "repository: hasConflictingChanges: git diff local", "err", err)
+		return false, fmt.Errorf("running git diff: %w", err)
 	}
 	upstreamSet := make(map[string]struct{})
-	for _, line := range strings.Split(strings.TrimSpace(upstream), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(upstream), "\n") {
 		line = strings.TrimSpace(line)
 		if line != "" {
 			upstreamSet[line] = struct{}{}
 		}
 	}
-	for _, line := range strings.Split(strings.TrimSpace(localChanged), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(localChanged), "\n") {
 		line = strings.TrimSpace(line)
 		if line != "" {
 			if _, ok := upstreamSet[line]; ok {
@@ -211,7 +227,8 @@ func hasConflictingChanges(ctx context.Context, dotfiles string, logger *telemet
 func updateWithRevert(ctx context.Context, dotfiles string, hadChanges bool, logger *telemetry.Logger) (string, error) {
 	prePullHead, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "rev-parse", "HEAD")
 	if err != nil {
-		return "", err
+		slog.ErrorContext(ctx, "repository: updateWithRevert: rev-parse HEAD", "err", err)
+		return "", fmt.Errorf("running git rev-parse HEAD: %w", err)
 	}
 	prePullHead = strings.TrimSpace(prePullHead)
 	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "pull", "--ff-only", "origin/main"); err != nil {
@@ -229,7 +246,7 @@ func syncDotfilesSubmodules(ctx context.Context, dotfiles string, logger *teleme
 	subs := []string{"lib/zinit", "lib/zsh-defer"}
 	for _, sub := range subs {
 		if err := syncOneSubmodule(ctx, dotfiles, sub, logger); err != nil {
-			return nil
+			return err
 		}
 	}
 
@@ -253,7 +270,11 @@ func syncDotfilesSubmodules(ctx context.Context, dotfiles string, logger *teleme
 
 func syncOneSubmodule(ctx context.Context, dotfiles string, subPath string, logger *telemetry.Logger) error {
 	subAbs := filepath.Join(dotfiles, subPath)
-	if _, err := os.Stat(filepath.Join(subAbs, ".git")); err != nil {
+	if _, err := os.Stat(filepath.Clean(filepath.Join(subAbs, ".git"))); err != nil {
+		if !os.IsNotExist(err) {
+			logger.WarnContextWithErr(ctx, "stat submodule .git", err)
+			return fmt.Errorf("stat submodule .git: %w", err)
+		}
 		return nil
 	}
 	branch, _ := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "config", "-f", filepath.Join(dotfiles, ".gitmodules"), "--get", "submodule."+subPath+".branch")
@@ -271,14 +292,15 @@ func syncOneSubmodule(ctx context.Context, dotfiles string, subPath string, logg
 	_ = cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "checkout", branch)
 	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "pull", "--rebase", "origin", branch); err != nil {
 		_ = cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "rebase", "--abort")
-		common.Warn(logger, "  pull --rebase failed in "+subPath)
+		logger.WarnContext(ctx, "  pull --rebase failed in "+subPath)
 	}
 	return nil
 }
 
+// LoadOverrides reads machine-specific override settings from the local environment.
 func LoadOverrides() {
 	overrides := filepath.Join(os.Getenv("HOME"), ".overrides.local")
-	file, err := os.Open(overrides)
+	file, err := os.Open(filepath.Clean(overrides))
 	if err != nil {
 		return
 	}
@@ -290,8 +312,8 @@ func LoadOverrides() {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		if strings.HasPrefix(line, "export ") {
-			line = strings.TrimSpace(strings.TrimPrefix(line, "export "))
+		if after, ok := strings.CutPrefix(line, "export "); ok {
+			line = strings.TrimSpace(after)
 		}
 		parts := strings.SplitN(line, "=", 2)
 		if len(parts) != 2 {
@@ -306,9 +328,9 @@ func LoadOverrides() {
 }
 
 func parsePulledLine(output string) (string, string) {
-	for _, line := range strings.Split(output, "\n") {
-		if strings.HasPrefix(line, "pulled:") {
-			parts := strings.SplitN(strings.TrimPrefix(line, "pulled:"), ":", 2)
+	for line := range strings.SplitSeq(output, "\n") {
+		if after, ok := strings.CutPrefix(line, "pulled:"); ok {
+			parts := strings.SplitN(after, ":", 2)
 			if len(parts) == 2 {
 				return strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
 			}

@@ -1,3 +1,4 @@
+// Package config provides Cursor editor configuration management.
 package config
 
 import (
@@ -10,7 +11,7 @@ import (
 
 func splitRuleDirectories(rawRuleDirs string) []string {
 	var directories []string
-	for _, rawRuleDir := range strings.Split(rawRuleDirs, ":") {
+	for rawRuleDir := range strings.SplitSeq(rawRuleDirs, ":") {
 		trimmedRuleDir := strings.TrimSpace(rawRuleDir)
 		if trimmedRuleDir == "" {
 			continue
@@ -35,6 +36,7 @@ func loadRuleDirectories() []string {
 	return append([]string{rawDefaultRuleDir}, extraRuleDirs...)
 }
 
+// BuildSyncConfig assembles a SyncConfig from environment variables and defaults.
 func BuildSyncConfig() models.SyncConfig {
 	workspaceURL := os.Getenv("DEFAULT_RULE_URL")
 	if workspaceURL == "" {

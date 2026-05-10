@@ -1,12 +1,23 @@
 zmodload zsh/datetime
 START_TIME=$EPOCHREALTIME
 
-# AI agent compatibility mode (Cursor, Claude Code):
-# keep shell metacharacters literal unless explicitly handled by the command.
-# Only applies in a non-interactive shell; an interactive shell (zsh -i) needs
-# normal glob/history behavior for zshrc to work.
-local is_agent=$(( ${+CURSOR_AGENT} || ${+CLAUDECODE} ))
-if (( is_agent )) && [[ ! -o interactive ]]; then
+# Single source of truth for interactive-session detection.
+# 1 = real human interactive TTY session; 0 = agent CLI or non-TTY shell.
+# Agents detected: CLAUDECODE (Claude Code), CURSOR_AGENT (Cursor),
+# CODEX_CI (OpenAI Codex), GEMINI_CLI (Gemini CLI).
+if [[ -o interactive && -t 0 \
+      && -z "$CLAUDECODE"  && -z "$CURSOR_AGENT" \
+      && -z "$CODEX_CI"    && -z "$GEMINI_CLI" ]]; then
+    typeset -gi DOTFILES_INTERACTIVE=1
+else
+    typeset -gi DOTFILES_INTERACTIVE=0
+fi
+export DOTFILES_INTERACTIVE
+
+# Agent compatibility: keep shell metacharacters literal in non-interactive
+# agent shells. Skipped for interactive (zsh -i) so zshrc glob/history works.
+if [[ -n "$CLAUDECODE" || -n "$CURSOR_AGENT" || -n "$CODEX_CI" || -n "$GEMINI_CLI" ]] \
+   && [[ ! -o interactive ]]; then
     setopt NO_GLOB
     setopt NO_NOMATCH
     unsetopt BANG_HIST

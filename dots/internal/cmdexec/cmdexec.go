@@ -1,8 +1,11 @@
+// Package cmdexec provides utilities for executing shell commands.
 package cmdexec
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
@@ -11,80 +14,70 @@ import (
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
+// Run runs command with the given context and args.
 func Run(ctx context.Context, command string, args ...string) error {
 	return RunWithEnv(ctx, nil, command, args...)
 }
 
+// RunWithEnv runs command with the given context, env, and args.
 func RunWithEnv(ctx context.Context, env map[string]string, command string, args ...string) error {
 	return RunWithDirAndEnv(ctx, "", env, command, args...)
 }
 
-func RunWithDir(ctx context.Context, dir string, command string, args ...string) error {
-	return RunWithDirAndEnv(ctx, dir, nil, command, args...)
-}
-
+// RunWithDirAndEnv runs command with the given context, working directory, env, and args.
 func RunWithDirAndEnv(ctx context.Context, dir string, env map[string]string, command string, args ...string) error {
-	if ctx == nil {
-		ctx = context.Background()
-	}
 	cmd := runner.CommandWithContext(ctx, dir, command, args...)
 	cmd.Env = mergeEnv(env, os.Environ())
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		slog.WarnContext(ctx, "cmdexec: RunWithDirAndEnv failed", "command", command, "err", err)
+		return fmt.Errorf("running %s: %w", command, err)
+	}
+	return nil
 }
 
+// Output runs command and returns its stdout.
 func Output(ctx context.Context, command string, args ...string) (string, error) {
 	return OutputWithEnv(ctx, nil, command, args...)
 }
 
+// OutputWithEnv runs command with the given env and returns its stdout.
 func OutputWithEnv(ctx context.Context, env map[string]string, command string, args ...string) (string, error) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
+	slog.InfoContext(ctx, "cmdexec: running command", "command", command)
 	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.Env = mergeEnv(env, os.Environ())
 	output, err := cmd.Output()
 	return string(output), err
 }
 
+// OutputTrimmed runs command and returns its stdout with leading and trailing whitespace trimmed.
 func OutputTrimmed(ctx context.Context, command string, args ...string) (string, error) {
 	output, err := Output(ctx, command, args...)
 	return strings.TrimSpace(output), err
 }
 
+// RunWithLogger runs command with the given context and logger.
 func RunWithLogger(ctx context.Context, logger *telemetry.Logger, command string, args ...string) error {
 	return RunWithLoggerAndEnv(ctx, logger, nil, command, args...)
 }
 
+// RunWithLoggerAndEnv runs command with the given context, logger, and env.
 func RunWithLoggerAndEnv(ctx context.Context, logger *telemetry.Logger, env []string, command string, args ...string) error {
 	return runWithLogger(ctx, logger, env, command, args...)
 }
 
+// OutputWithLogger runs command and returns combined output, routing it through logger.
 func OutputWithLogger(ctx context.Context, logger *telemetry.Logger, command string, args ...string) (string, error) {
 	return OutputWithLoggerAndEnv(ctx, logger, nil, command, args...)
 }
 
+// OutputWithLoggerAndEnv runs command with the given logger and env and returns combined output.
 func OutputWithLoggerAndEnv(ctx context.Context, logger *telemetry.Logger, env []string, command string, args ...string) (string, error) {
 	return outputWithLogger(ctx, logger, env, command, args...)
 }
 
-func CombinedOutput(ctx context.Context, command string, args ...string) (string, error) {
-	return CombinedOutputWithEnv(ctx, nil, command, args...)
-}
-
-func CombinedOutputWithEnv(ctx context.Context, env map[string]string, command string, args ...string) (string, error) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	cmd := exec.CommandContext(ctx, command, args...)
-	cmd.Env = mergeEnv(env, os.Environ())
-	output, err := cmd.CombinedOutput()
-	return string(output), err
-}
-
+// CombinedOutputWithInput runs command with the given env and stdin, returning combined output.
 func CombinedOutputWithInput(ctx context.Context, env map[string]string, input io.Reader, command string, args ...string) (string, error) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
+	slog.InfoContext(ctx, "cmdexec: running command with input", "command", command)
 	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.Env = mergeEnv(env, os.Environ())
 	cmd.Stdin = input
@@ -92,14 +85,8 @@ func CombinedOutputWithInput(ctx context.Context, env map[string]string, input i
 	return string(output), err
 }
 
-func HasCommand(name string) bool {
-	return runner.HasCommand(name)
-}
-
 func runWithLogger(ctx context.Context, logger *telemetry.Logger, env []string, command string, args ...string) error {
-	if ctx == nil {
-		ctx = context.Background()
-	}
+	slog.InfoContext(ctx, "cmdexec: running command with logger", "command", command)
 	cmd := runner.CommandWithContext(ctx, "", command, args...)
 	if env != nil {
 		cmd.Env = env
@@ -115,13 +102,15 @@ func runWithLogger(ctx context.Context, logger *telemetry.Logger, env []string, 
 		Logger:   logger,
 		Fallback: os.Stderr,
 	})
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		slog.WarnContext(ctx, "cmdexec: command failed", "command", command, "err", err)
+		return fmt.Errorf("running %s: %w", command, err)
+	}
+	return nil
 }
 
 func outputWithLogger(ctx context.Context, logger *telemetry.Logger, env []string, command string, args ...string) (string, error) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
+	slog.InfoContext(ctx, "cmdexec: outputWithLogger", "command", command)
 	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.Stdin = os.Stdin
 	if env != nil {
@@ -131,7 +120,7 @@ func outputWithLogger(ctx context.Context, logger *telemetry.Logger, env []strin
 	}
 	out, err := cmd.CombinedOutput()
 	if logger != nil {
-		logger.RawOutput(string(out))
+		logger.RawOutputContext(ctx, string(out))
 	}
 	return string(out), err
 }

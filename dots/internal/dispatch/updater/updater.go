@@ -1,8 +1,10 @@
+// Package updater implements the dotfiles repository update worker.
 package updater
 
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"path/filepath"
@@ -19,6 +21,7 @@ import (
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
+// Run executes the background updater worker, checking for new commits and running weekly maintenance.
 func Run(
 	ctx context.Context,
 	dotfiles string,
@@ -56,7 +59,7 @@ func Run(
 			dispatchLogger.InfoContext(ctx, "updater: new changes found, running sync")
 		}
 		if statusDir != "" {
-			_ = os.WriteFile(filepath.Join(statusDir, "status"), []byte("sync"), 0o644)
+			_ = os.WriteFile(filepath.Join(statusDir, "status"), []byte("sync"), 0o600)
 		}
 		if err := runSyncOnly(ctx, dotfiles, dispatchLogger); err != nil {
 			dispatchLogger.WarnContextWithErr(ctx, "updater: sync step failed", err)
@@ -74,7 +77,7 @@ func Run(
 	lastUpdateDate := epochToDate(readEpoch(weeklyMarkerPath))
 	dispatchLogger.InfoContext(ctx, fmt.Sprintf("updater: weekly update due (last: %s), running weekly update", lastUpdateDate))
 	if statusDir != "" {
-		_ = os.WriteFile(filepath.Join(statusDir, "status"), []byte("weekly"), 0o644)
+		_ = os.WriteFile(filepath.Join(statusDir, "status"), []byte("weekly"), 0o600)
 	}
 	if err := doWeeklyUpdate(ctx, dotfiles, weeklyMarkerPath, dispatchLogger); err != nil {
 		dispatchLogger.ErrorContextWithErr(ctx, "updater: weekly update failed", err)
@@ -90,13 +93,18 @@ func runSyncOnly(ctx context.Context, dotfiles string, dispatchLogger *telemetry
 		_ = os.Setenv("DOTDOTFILES", dotfiles)
 	}
 	runErr := syncer.Run(ctx, syncer.Options{
-		QuickMode:   true,
-		SkipGit:     true,
-		UseDefaults: true,
+		RepairMode:     false,
+		QuickMode:      true,
+		SkipGit:        true,
+		SkipNetwork:    false,
+		SkipCursorSync: false,
+		DryRun:         false,
+		UseDefaults:    true,
 	})
 	if runErr != nil {
 		dispatchLogger.WarnContextWithErr(ctx, "updater: sync exited with non-zero status", runErr)
-		return runErr
+		slog.WarnContext(ctx, "updater: sync exited with non-zero status", "err", runErr)
+		return fmt.Errorf("running sync: %w", runErr)
 	}
 	dispatchLogger.InfoContext(ctx, "updater: sync exited successfully")
 	return nil
@@ -107,13 +115,18 @@ func doWeeklyUpdate(ctx context.Context, dotfiles, weeklyMarkerPath string, disp
 		_ = os.Setenv("DOTDOTFILES", dotfiles)
 	}
 	runErr := syncer.Run(ctx, syncer.Options{
-		RepairMode:  true,
-		SkipGit:     true,
-		UseDefaults: true,
+		RepairMode:     true,
+		QuickMode:      false,
+		SkipGit:        true,
+		SkipNetwork:    false,
+		SkipCursorSync: false,
+		DryRun:         false,
+		UseDefaults:    true,
 	})
 	if runErr != nil {
 		dispatchLogger.WarnContextWithErr(ctx, "updater: weekly sync exited with non-zero status", runErr)
-		return runErr
+		slog.WarnContext(ctx, "updater: weekly sync exited with non-zero status", "err", runErr)
+		return fmt.Errorf("running weekly sync: %w", runErr)
 	}
 	dispatchLogger.InfoContext(ctx, "updater: weekly sync exited successfully")
 
@@ -129,18 +142,19 @@ func doWeeklyUpdate(ctx context.Context, dotfiles, weeklyMarkerPath string, disp
 		)
 	}
 
-	_ = doBrewUpgrade(ctx, dispatchLogger)
-	_ = doAptUpgrade(ctx, dispatchLogger)
+	doBrewUpgrade(ctx, dispatchLogger)
+	doAptUpgrade(ctx, dispatchLogger)
 
 	now := strconv.FormatInt(clock.Now().Unix(), 10)
 	if weeklyMarkerPath == "" {
 		weeklyMarkerPath = filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles_weekly_update")
 	}
-	_ = os.WriteFile(weeklyMarkerPath, []byte(now), 0o644)
+	_ = os.WriteFile(filepath.Clean(weeklyMarkerPath), []byte(now), 0o600)
 	return nil
 }
 
 func needsWeeklyUpdate(weekPath string, weekDurationHours int64) bool {
+	slog.Info("updater: needsWeeklyUpdate", "weekPath", weekPath)
 	if _, err := os.Stat(weekPath); err != nil {
 		return true
 	}
@@ -151,7 +165,7 @@ func needsWeeklyUpdate(weekPath string, weekDurationHours int64) bool {
 	last, err := strconv.ParseInt(strings.TrimSpace(string(raw)), 10, 64)
 	if err != nil {
 		currentTimestamp := clock.Now().Unix()
-		_ = os.WriteFile(weekPath, []byte(strconv.FormatInt(currentTimestamp, 10)), 0o644)
+		_ = os.WriteFile(weekPath, []byte(strconv.FormatInt(currentTimestamp, 10)), 0o600)
 		return false
 	}
 	if weekDurationHours == 0 {
@@ -206,46 +220,43 @@ func truncateSHA(value string) string {
 	return value[:width]
 }
 
-func doBrewUpgrade(ctx context.Context, dispatchLogger *telemetry.Logger) error {
+func doBrewUpgrade(ctx context.Context, dispatchLogger *telemetry.Logger) {
 	if runtime.GOOS != "darwin" {
-		return nil
+		return
 	}
 	if !runner.HasCommand("brew") {
-		return nil
+		return
 	}
 	_, _ = cmdexec.OutputWithLogger(ctx, dispatchLogger, "brew", "update")
 	_, _ = cmdexec.OutputWithLogger(ctx, dispatchLogger, "brew", "upgrade")
 	_, _ = cmdexec.OutputWithLogger(ctx, dispatchLogger, "brew", "upgrade", "--cask")
 	_, _ = cmdexec.OutputWithLogger(ctx, dispatchLogger, "brew", "cleanup", "--prune=all")
-	return nil
 }
 
-func doAptUpgrade(ctx context.Context, dispatchLogger *telemetry.Logger) error {
+func doAptUpgrade(ctx context.Context, dispatchLogger *telemetry.Logger) {
 	if runtime.GOOS != "linux" || !isUbuntu() {
-		return nil
+		return
 	}
 	if !runner.HasCommand("apt-get") {
-		return nil
+		return
 	}
-	if _, err := cmdexec.OutputWithLogger(ctx, dispatchLogger, "sudo", "-n", "true"); err != nil {
-		return nil
+	if _, err := cmdexec.OutputWithLogger(ctx, dispatchLogger, "sudo", "-n", "true"); err == nil {
+		_, _ = cmdexec.OutputWithLogger(ctx, dispatchLogger, "sudo", "-n", "apt-get", "update")
+		_, _ = cmdexec.OutputWithLogger(
+			ctx,
+			dispatchLogger,
+			"sudo",
+			"-n",
+			"env",
+			"DEBIAN_FRONTEND=noninteractive",
+			"apt-get",
+			"-y",
+			"-o",
+			"Dpkg::Options::=--force-confdef",
+			"-o",
+			"Dpkg::Options::=--force-confold",
+			"dist-upgrade",
+		)
+		_, _ = cmdexec.OutputWithLogger(ctx, dispatchLogger, "sudo", "-n", "apt-get", "-y", "autoremove")
 	}
-	_, _ = cmdexec.OutputWithLogger(ctx, dispatchLogger, "sudo", "-n", "apt-get", "update")
-	_, _ = cmdexec.OutputWithLogger(
-		ctx,
-		dispatchLogger,
-		"sudo",
-		"-n",
-		"env",
-		"DEBIAN_FRONTEND=noninteractive",
-		"apt-get",
-		"-y",
-		"-o",
-		"Dpkg::Options::=--force-confdef",
-		"-o",
-		"Dpkg::Options::=--force-confold",
-		"dist-upgrade",
-	)
-	_, _ = cmdexec.OutputWithLogger(ctx, dispatchLogger, "sudo", "-n", "apt-get", "-y", "autoremove")
-	return nil
 }

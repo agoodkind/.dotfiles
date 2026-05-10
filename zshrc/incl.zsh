@@ -2,6 +2,14 @@ export PATH="$PATH:$HOME/.cargo/bin"
 export PATH="$PATH:$HOME/go/bin"
 export NVM_LAZY_LOAD=true
 
+# Use the local go-makefile checkout so consumer repos pick up unpushed
+# pipeline changes immediately. Conditional so machines without the
+# checkout fall back to the network fetch path. Run `make smoke-fetch`
+# in any consumer repo to exercise the remote curl chain explicitly.
+if [[ -d "$HOME/Sites/go-makefile" ]]; then
+    export GO_MK_DEV_DIR="$HOME/Sites/go-makefile"
+fi
+
 # shellcheck shell=bash
 source "$DOTDOTFILES/zshrc/core/perf.zsh"
 
@@ -9,6 +17,15 @@ source "$DOTDOTFILES/zshrc/core/perf.zsh"
 # ms is 0 here; .zshrc epilogue patches it with the actual total.
 typeset -gi _ZSHRC_TREE_IDX=$((${#_PERF_TREE} + 1))
 _PERF_TREE+=("1:.zshrc:0")
+
+_source "$DOTDOTFILES/zshrc/core/utils.zsh"
+
+# Everything below is only needed for interactive human terminal sessions.
+# Agents (CLAUDECODE, CURSOR_AGENT, CODEX_CI, GEMINI_CLI) and non-TTY shells
+# skip plugins, aliases, completion, dispatch, and motd entirely.
+if ((!DOTFILES_INTERACTIVE)); then
+    return 0 2>/dev/null || true
+fi
 
 # plugins.zsh uses plain source (zinit turbo mode stores scope references
 # that break when sourced inside a function). Timing is done inline instead.
@@ -18,7 +35,6 @@ local _pms=$(((EPOCHREALTIME - _t0) * 1000))
 _PROFILE_TIMES[plugins]=$_pms
 _PERF_TREE+=("$((_SOURCE_DEPTH + 2)):plugins:${_pms}")
 
-_source "$DOTDOTFILES/zshrc/core/utils.zsh"
 _source "$DOTDOTFILES/zshrc/core/prefer.zsh"
 _source "$DOTDOTFILES/zshrc/commands/editors.zsh"
 _source "$DOTDOTFILES/zshrc/commands/remote.zsh"

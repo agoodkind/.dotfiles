@@ -7,3 +7,5 @@ agoodkind_debug.rb
 debug.json
 node_modules
 .halo-lite-ns
+.claude
+.codex

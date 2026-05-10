@@ -1,3 +1,4 @@
+// Package syncer implements the Cursor configuration sync workflow.
 package syncer
 
 import (
@@ -13,6 +14,7 @@ import (
 	"goodkind.io/.dotfiles/internal/cursor/rules"
 )
 
+// Run executes the Cursor rule sync workflow, returning an error if any step fails.
 func Run() error {
 	if SyncRules() != 0 {
 		return fmt.Errorf("cursor rule sync failed")
@@ -36,6 +38,46 @@ func ruleTitleFromPath(resolvedFile string) string {
 	return strings.TrimSuffix(filepath.Base(resolvedFile), filepath.Ext(resolvedFile))
 }
 
+type ruleUploadResult struct {
+	skipped  bool
+	readErr  bool
+	title    string
+	uploaded bool
+}
+
+func uploadRuleFile(token, apiBase, workspaceURL, ruleFile string, attemptNum, totalRules int) ruleUploadResult {
+	resolvedFile := rules.ResolveRuleFile(ruleFile)
+	displayFile := rules.FormatRuleSource(ruleFile)
+	if _, err := os.Stat(resolvedFile); err != nil {
+		return ruleUploadResult{skipped: true, readErr: false, title: "", uploaded: false}
+	}
+
+	rawBody, readErr := os.ReadFile(resolvedFile)
+	if readErr != nil {
+		logging.ErrorWithErr("Read rule file failed", readErr)
+		return ruleUploadResult{skipped: false, readErr: true, title: "", uploaded: false}
+	}
+	title := ruleTitleFromPath(resolvedFile)
+	body := rules.ParseMdcContent(string(rawBody))
+	payload := buildRulePayload(title, body)
+
+	logging.Debug(fmt.Sprintf("Uploading rule %d/%d: %s", attemptNum, totalRules, title))
+	logging.Debug("Source: " + displayFile)
+	logging.Debug(fmt.Sprintf("Size: %d bytes", len(payload)))
+
+	success, response := cursorapi.AddRule(token, apiBase, workspaceURL, title, payload)
+	if success {
+		if response != "" {
+			logging.Debug("Response: " + response)
+		}
+		logging.Debug("Status: uploaded")
+		return ruleUploadResult{skipped: false, readErr: false, title: title, uploaded: true}
+	}
+	logging.Debug(fmt.Sprintf("Upload failed for %s: %s", title, response))
+	return ruleUploadResult{skipped: false, readErr: false, title: title, uploaded: false}
+}
+
+// SyncRules uploads local rule files to the Cursor workspace, returning the number of failures.
 func SyncRules() int {
 	cfg := config.BuildSyncConfig()
 	logging.Configure()
@@ -52,7 +94,7 @@ func SyncRules() int {
 		logging.ErrorWithErr("Cursor rule directories unavailable", err)
 		return 1
 	}
-	logging.Info(fmt.Sprintf("API endpoint: %s", cfg.APIBase))
+	logging.Info("API endpoint: " + cfg.APIBase)
 
 	logging.Info("Authenticating...")
 	token := cursorapi.GetCursorAuthToken(cfg.CursorDB)
@@ -67,60 +109,12 @@ func SyncRules() int {
 
 	localRuleFiles := rules.CollectRuleFiles(cfg.RuleDirectories)
 	if len(localRuleFiles) == 0 {
-		logging.Info(fmt.Sprintf("No .mdc files found in: %s", strings.Join(cfg.RuleDirectories, ", ")))
+		logging.Info("No .mdc files found in: " + strings.Join(cfg.RuleDirectories, ", "))
 		return 0
 	}
 
-	totalRules := len(localRuleFiles)
-	logging.Info(fmt.Sprintf("Uploading %d rule(s) to cloud...", totalRules))
-
-	attempted := 0
-	succeeded := 0
-	failed := 0
-	uploadedTitles := []string{}
-	failedUploads := []string{}
-	for _, ruleFile := range localRuleFiles {
-		resolvedFile := rules.ResolveRuleFile(ruleFile)
-		displayFile := rules.FormatRuleSource(ruleFile)
-		if _, err := os.Stat(resolvedFile); err != nil {
-			continue
-		}
-
-		rawBody, readErr := os.ReadFile(resolvedFile)
-		if readErr != nil {
-			logging.ErrorWithErr("Read rule file failed", readErr)
-			failed++
-			continue
-		}
-		title := ruleTitleFromPath(resolvedFile)
-		body := rules.ParseMdcContent(string(rawBody))
-		payload := buildRulePayload(title, body)
-		attempted++
-
-		logging.Debug(fmt.Sprintf("Uploading rule %d/%d: %s", attempted, totalRules, title))
-		logging.Debug("Source: " + displayFile)
-		logging.Debug(fmt.Sprintf("Size: %d bytes", len(payload)))
-
-		success, response := cursorapi.AddRule(
-			token,
-			cfg.APIBase,
-			cfg.WorkspaceURL,
-			title,
-			payload,
-		)
-		if success {
-			succeeded++
-			uploadedTitles = append(uploadedTitles, title)
-			if response != "" {
-				logging.Debug("Response: " + response)
-			}
-			logging.Debug("Status: uploaded")
-		} else {
-			failed++
-			failedUploads = append(failedUploads, title)
-			logging.Debug(fmt.Sprintf("Upload failed for %s: %s", title, response))
-		}
-	}
+	logging.Info(fmt.Sprintf("Uploading %d rule(s) to cloud...", len(localRuleFiles)))
+	attempted, succeeded, failed, uploadedTitles, failedUploads := doUploadRules(token, cfg.APIBase, cfg.WorkspaceURL, localRuleFiles)
 	if len(failedUploads) > 0 {
 		logging.Info("Upload failures: " + strings.Join(failedUploads, ", "))
 	}
@@ -131,38 +125,7 @@ func SyncRules() int {
 	logging.Info("Verifying uploaded rules...")
 	remoteRules := cursorapi.ListRules(token, cfg.APIBase)
 	remoteByTitle := buildRemoteRuleIndex(remoteRules)
-
-	verified := 0
-	verifyFailed := 0
-	missingTitles := []string{}
-	mismatchedTitles := []string{}
-	for _, ruleFile := range localRuleFiles {
-		resolvedFile := rules.ResolveRuleFile(ruleFile)
-		if _, err := os.Stat(resolvedFile); err != nil {
-			continue
-		}
-		rawBody, readErr := os.ReadFile(resolvedFile)
-		if readErr != nil {
-			verifyFailed++
-			continue
-		}
-		title := ruleTitleFromPath(resolvedFile)
-		expectedContent := buildRulePayload(title, rules.ParseMdcContent(string(rawBody)))
-		remoteRule, exists := remoteByTitle[title]
-		if !exists {
-			missingTitles = append(missingTitles, title)
-			verifyFailed++
-			continue
-		}
-		if remoteRule["content"] != expectedContent {
-			mismatchedTitles = append(mismatchedTitles, title)
-			logging.Debug(fmt.Sprintf("Expected %d bytes, got %d bytes", len(expectedContent), len(remoteRule["content"])))
-			verifyFailed++
-			continue
-		}
-		logging.Debug(fmt.Sprintf("%s: content verified", title))
-		verified++
-	}
+	verified, verifyFailed, missingTitles, mismatchedTitles := doVerifyRules(localRuleFiles, remoteByTitle)
 
 	if len(missingTitles) > 0 {
 		logging.Info("Verification missing rules: " + strings.Join(missingTitles, ", "))
@@ -187,4 +150,62 @@ func SyncRules() int {
 	}
 	logging.Info(fmt.Sprintf("Sync completed but %d rule(s) failed content verification", verifyFailed))
 	return 1
+}
+
+func doUploadRules(token, apiBase, workspaceURL string, localRuleFiles []string) (int, int, int, []string, []string) {
+	var attempted, succeeded, failed int
+	var uploadedTitles, failedUploads []string
+	totalRules := len(localRuleFiles)
+	for i, ruleFile := range localRuleFiles {
+		res := uploadRuleFile(token, apiBase, workspaceURL, ruleFile, i+1, totalRules)
+		if res.skipped {
+			continue
+		}
+		if res.readErr {
+			failed++
+			continue
+		}
+		attempted++
+		if !res.uploaded {
+			failed++
+			failedUploads = append(failedUploads, res.title)
+			continue
+		}
+		succeeded++
+		uploadedTitles = append(uploadedTitles, res.title)
+	}
+	return attempted, succeeded, failed, uploadedTitles, failedUploads
+}
+
+func doVerifyRules(localRuleFiles []string, remoteByTitle map[string]models.RuleRecord) (int, int, []string, []string) {
+	var verified, verifyFailed int
+	var missingTitles, mismatchedTitles []string
+	for _, ruleFile := range localRuleFiles {
+		resolvedFile := rules.ResolveRuleFile(ruleFile)
+		if _, err := os.Stat(resolvedFile); err != nil {
+			continue
+		}
+		rawBody, readErr := os.ReadFile(resolvedFile)
+		if readErr != nil {
+			verifyFailed++
+			continue
+		}
+		title := ruleTitleFromPath(resolvedFile)
+		expectedContent := buildRulePayload(title, rules.ParseMdcContent(string(rawBody)))
+		remoteRule, exists := remoteByTitle[title]
+		if !exists {
+			missingTitles = append(missingTitles, title)
+			verifyFailed++
+			continue
+		}
+		if remoteRule["content"] != expectedContent {
+			mismatchedTitles = append(mismatchedTitles, title)
+			logging.Debug(fmt.Sprintf("Expected %d bytes, got %d bytes", len(expectedContent), len(remoteRule["content"])))
+			verifyFailed++
+			continue
+		}
+		logging.Debug(title + ": content verified")
+		verified++
+	}
+	return verified, verifyFailed, missingTitles, mismatchedTitles
 }

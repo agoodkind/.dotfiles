@@ -1,3 +1,4 @@
+// Package telemetry provides structured logging and telemetry for dots.
 package telemetry
 
 import (
@@ -24,6 +25,7 @@ const (
 	colorGray   = "\x1b[90m"
 )
 
+// Logger provides structured logging to both a JSON log file and a TTY-aware stdout/stderr.
 type Logger struct {
 	mu         sync.Mutex
 	filePath   string
@@ -36,14 +38,17 @@ type Logger struct {
 	spinProgram *tea.Program
 }
 
+// NewLogger creates and opens a Logger that writes structured JSON logs to logPath.
 func NewLogger(logPath string) (*Logger, error) {
 	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
-		return nil, err
+		slog.Error("telemetry: NewLogger: creating log directory", "path", logPath, "err", err)
+		return nil, fmt.Errorf("creating log directory: %w", err)
 	}
 
 	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
-		return nil, err
+		slog.Error("telemetry: NewLogger: opening log file", "path", logPath, "err", err)
+		return nil, fmt.Errorf("opening log file: %w", err)
 	}
 
 	fileHandler := slog.NewJSONHandler(logFile, &slog.HandlerOptions{
@@ -52,33 +57,42 @@ func NewLogger(logPath string) (*Logger, error) {
 	})
 
 	return &Logger{
+		mu:          sync.Mutex{},
 		filePath:    logPath,
 		logFile:     logFile,
 		slogLogger:  slog.New(fileHandler),
 		stdout:      os.Stdout,
 		stderr:      os.Stderr,
 		interactive: isTTY(os.Stdout),
+		spinProgram: nil,
 	}, nil
 }
 
+// Close flushes any in-progress spinner and closes the underlying log file.
 func (l *Logger) Close() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.stopSpinnerLocked()
-	return l.logFile.Close()
+	if err := l.logFile.Close(); err != nil {
+		slog.Error("telemetry: Close: closing log file", "err", err)
+		return fmt.Errorf("closing log file: %w", err)
+	}
+	return nil
 }
 
+// Section starts a named section header and returns a stop function.
 func (l *Logger) Section(title string) func() {
 	return l.SectionContext(context.Background(), title)
 }
 
+// SectionContext starts a named section header with context and returns a stop function.
 func (l *Logger) SectionContext(ctx context.Context, title string) func() {
 	lines := strings.Repeat("═", 56)
 	if l.interactive {
 		l.logStructured(ctx, "SECTION", slog.LevelInfo, title, slog.String("stream", "stdout"))
 		l.writeRaw(l.stdout, fmt.Sprintf("\n%s%s%s", colorBlue, lines, colorReset))
 		l.writeRaw(l.stdout, fmt.Sprintf("%s%s%s", colorBlue, title, colorReset))
-		l.startSpinner(title)
+		l.startSpinner(ctx, title)
 		return l.stopSpinner
 	}
 
@@ -87,34 +101,42 @@ func (l *Logger) SectionContext(ctx context.Context, title string) func() {
 	return func() {}
 }
 
+// Info logs a message at info level.
 func (l *Logger) Info(message string) {
 	l.InfoContext(context.Background(), message)
 }
 
+// InfoContext logs a message at info level with context.
 func (l *Logger) InfoContext(ctx context.Context, message string) {
 	l.log(ctx, "INFO", slog.LevelInfo, message, l.stdout, "info", colorBlue)
 }
 
+// Debug logs a message at debug level.
 func (l *Logger) Debug(message string) {
 	l.DebugContext(context.Background(), message)
 }
 
+// DebugContext logs a message at debug level with context.
 func (l *Logger) DebugContext(ctx context.Context, message string) {
 	l.log(ctx, "DEBUG", slog.LevelDebug, message, l.stdout, "dbg", colorGray)
 }
 
+// Warn logs a message at warn level.
 func (l *Logger) Warn(message string) {
 	l.WarnContext(context.Background(), message)
 }
 
+// WarnContext logs a message at warn level with context.
 func (l *Logger) WarnContext(ctx context.Context, message string) {
 	l.log(ctx, "WARN", slog.LevelWarn, message, l.stderr, "warn", colorYellow)
 }
 
+// WarnWithErr logs a warning message along with an error.
 func (l *Logger) WarnWithErr(message string, err error) {
 	l.WarnContextWithErr(context.Background(), message, err)
 }
 
+// WarnContextWithErr logs a warning message with context and an error.
 func (l *Logger) WarnContextWithErr(ctx context.Context, message string, err error) {
 	if err == nil {
 		l.WarnContext(ctx, message)
@@ -123,10 +145,12 @@ func (l *Logger) WarnContextWithErr(ctx context.Context, message string, err err
 	l.log(ctx, "WARN", slog.LevelWarn, message, l.stderr, "warn", colorYellow, slog.String("err", err.Error()))
 }
 
+// ErrorWithErr logs an error message along with an error.
 func (l *Logger) ErrorWithErr(message string, err error) {
 	l.ErrorContextWithErr(context.Background(), message, err)
 }
 
+// ErrorContextWithErr logs an error message with context and an error.
 func (l *Logger) ErrorContextWithErr(ctx context.Context, message string, err error) {
 	if err == nil {
 		l.log(ctx, "ERROR", slog.LevelError, message, l.stderr, "err", colorRed)
@@ -135,23 +159,31 @@ func (l *Logger) ErrorContextWithErr(ctx context.Context, message string, err er
 	l.log(ctx, "ERROR", slog.LevelError, message, l.stderr, "err", colorRed, slog.String("err", err.Error()))
 }
 
+// Success logs a success message at info level.
 func (l *Logger) Success(message string) {
 	l.SuccessContext(context.Background(), message)
 }
 
+// SuccessContext logs a success message at info level with context.
 func (l *Logger) SuccessContext(ctx context.Context, message string) {
 	l.log(ctx, "OK", slog.LevelInfo, message, l.stdout, "ok", colorGreen)
 }
 
+// RawOutput logs raw command output lines, stripping blank lines.
 func (l *Logger) RawOutput(output string) {
-	for _, line := range strings.Split(output, "\n") {
+	l.RawOutputContext(context.Background(), output)
+}
+
+// RawOutputContext logs raw command output lines with the given context.
+func (l *Logger) RawOutputContext(ctx context.Context, output string) {
+	for line := range strings.SplitSeq(output, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		l.logStructured(context.Background(), "OUTPUT", slog.LevelDebug, line, slog.String("source", "command"))
+		l.logStructured(ctx, "OUTPUT", slog.LevelDebug, line, slog.String("source", "command"))
 		if !l.interactive {
-			l.log(context.Background(), "OUTPUT", slog.LevelDebug, line, l.stdout, "out", colorGray)
+			l.log(ctx, "OUTPUT", slog.LevelDebug, line, l.stdout, "out", colorGray)
 			continue
 		}
 		l.write(l.stdout, fmt.Sprintf("%s- %s%s", colorGray, line, colorReset))
@@ -192,9 +224,6 @@ func (l *Logger) log(
 func (l *Logger) logStructured(ctx context.Context, levelLabel string, level slog.Level, message string, attributes ...slog.Attr) {
 	if l.slogLogger == nil {
 		return
-	}
-	if ctx == nil {
-		ctx = context.Background()
 	}
 
 	attrs := make([]slog.Attr, 0, 2+len(attributes))
@@ -244,7 +273,7 @@ func (l *Logger) PrintTTYLine(plain string, ttyStyled string) {
 	_, _ = fmt.Fprintln(l.stdout, out)
 }
 
-func (l *Logger) startSpinner(message string) {
+func (l *Logger) startSpinner(ctx context.Context, message string) {
 	if !l.interactive {
 		return
 	}
@@ -269,7 +298,7 @@ func (l *Logger) startSpinner(message string) {
 	go func() {
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				l.ErrorWithErr("spinner crashed", fmt.Errorf("panic: %v", recovered))
+				l.ErrorContextWithErr(ctx, "spinner crashed", fmt.Errorf("panic: %v", recovered))
 			}
 		}()
 		_, _ = spinProgram.Run()
@@ -310,22 +339,29 @@ func streamName(stream io.Writer) string {
 	return "other"
 }
 
+// Notify appends a notification entry to the dotfiles notification queue file.
 func Notify(level, message, logPath string) error {
 	notifyPath := filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "notifications")
-	if err := os.MkdirAll(filepath.Dir(notifyPath), 0o755); err != nil {
-		return err
+	if err := os.MkdirAll(filepath.Dir(filepath.Clean(notifyPath)), 0o755); err != nil {
+		slog.Error("telemetry: Notify: creating notification directory", "err", err)
+		return fmt.Errorf("creating notification directory: %w", err)
 	}
 	return appendLine(notifyPath, fmt.Sprintf("%s|%s|%s", level, logPath, message))
 }
 
 func appendLine(path string, line string) error {
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	cleanPath := filepath.Clean(path)
+	file, err := os.OpenFile(cleanPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
-		return err
+		slog.Error("telemetry: appendLine: opening file", "path", cleanPath, "err", err)
+		return fmt.Errorf("opening notification file: %w", err)
 	}
 	defer file.Close()
-	_, err = fmt.Fprintln(file, line)
-	return err
+	if _, err = fmt.Fprintln(file, line); err != nil {
+		slog.Error("telemetry: appendLine: writing notification", "err", err)
+		return fmt.Errorf("writing notification: %w", err)
+	}
+	return nil
 }
 
 type sectionSpinnerModel struct {

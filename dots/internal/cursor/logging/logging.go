@@ -1,7 +1,7 @@
+// Package logging provides logging utilities for Cursor sync operations.
 package logging
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 
@@ -13,6 +13,7 @@ var (
 	debugEnabled bool
 )
 
+// Configure initialises the package-level sync logger using DOTFILES_LOG or a default path.
 func Configure() {
 	debugEnabled = true
 	logPath := os.Getenv("DOTFILES_LOG")
@@ -28,6 +29,7 @@ func Configure() {
 	syncLogger = logger
 }
 
+// ConfigureWithLogger sets the sync logger to logger, falling back to Configure if logger is nil.
 func ConfigureWithLogger(logger *telemetry.Logger) {
 	if logger != nil {
 		syncLogger = logger
@@ -36,6 +38,7 @@ func ConfigureWithLogger(logger *telemetry.Logger) {
 	Configure()
 }
 
+// Info logs an informational message through the sync logger.
 func Info(message string) {
 	logger := ensureLogger()
 	if logger != nil {
@@ -44,6 +47,7 @@ func Info(message string) {
 	}
 }
 
+// Debug logs a debug message through the sync logger when debug mode is enabled.
 func Debug(message string) {
 	if !debugEnabled {
 		return
@@ -55,10 +59,7 @@ func Debug(message string) {
 	}
 }
 
-func Error(message string) {
-	ErrorWithErr(message, errors.New(message))
-}
-
+// ErrorWithErr logs an error message and its associated error through the sync logger.
 func ErrorWithErr(message string, err error) {
 	logger := ensureLogger()
 	if logger != nil {

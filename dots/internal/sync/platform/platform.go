@@ -1,10 +1,14 @@
+// Package platform implements platform-specific sync steps.
 package platform
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 
 	"goodkind.io/.dotfiles/internal/catalog"
@@ -16,6 +20,7 @@ import (
 	"goodkind.io/.dotfiles/internal/util"
 )
 
+// RunOSInstall runs the platform-specific package installation and setup steps.
 func RunOSInstall(ctx context.Context, quickMode bool, useDefaults bool, logger *telemetry.Logger) error {
 	if quickMode {
 		return nil
@@ -24,20 +29,20 @@ func RunOSInstall(ctx context.Context, quickMode bool, useDefaults bool, logger 
 	var osType string
 	if runtime.GOOS == "darwin" {
 		osType = "macOS"
-		common.Infof(logger, "  Running %s setup", osType)
+		common.InfoContextf(ctx, logger, "  Running %s setup", osType)
 		return runMacSetup(ctx, useDefaults, logger)
 	} else if common.IsUbuntu() {
 		osType = "Debian/Ubuntu/Proxmox"
-		common.Infof(logger, "  Running %s setup", osType)
+		common.InfoContextf(ctx, logger, "  Running %s setup", osType)
 		return runDebianSetup(ctx, useDefaults, logger)
 	}
-	common.Warn(logger, "  No OS-specific setup handler for this platform")
+	common.WarnContext(ctx, logger, "  No OS-specific setup handler for this platform")
 	return nil
 }
 
 func runMacSetup(ctx context.Context, useDefaults bool, logger *telemetry.Logger) error {
 	_ = useDefaults
-	common.Info(logger, "  running macOS bootstrap")
+	common.InfoContext(ctx, logger, "  running macOS bootstrap")
 	if err := ensureHomebrewInstalled(ctx, logger); err != nil {
 		return err
 	}
@@ -45,7 +50,7 @@ func runMacSetup(ctx context.Context, useDefaults bool, logger *telemetry.Logger
 		return err
 	}
 	if runner.HasCommand("brew") {
-		_ = cmdexec.RunWithLogger(context.Background(), logger, "brew", "cleanup")
+		_ = cmdexec.RunWithLogger(ctx, logger, "brew", "cleanup")
 	}
 	if err := installMacPackages(ctx, logger); err != nil {
 		return err
@@ -61,7 +66,7 @@ func runMacSetup(ctx context.Context, useDefaults bool, logger *telemetry.Logger
 
 func runDebianSetup(ctx context.Context, useDefaults bool, logger *telemetry.Logger) error {
 	_ = useDefaults
-	common.Info(logger, "  running Linux bootstrap")
+	common.InfoContext(ctx, logger, "  running Linux bootstrap")
 	if err := installDebianPackages(ctx, logger); err != nil {
 		return err
 	}
@@ -75,60 +80,80 @@ func runDebianSetup(ctx context.Context, useDefaults bool, logger *telemetry.Log
 }
 
 func ensureHomebrewInstalled(ctx context.Context, logger *telemetry.Logger) error {
+	slog.InfoContext(ctx, "platform: ensureHomebrewInstalled")
 	if runner.HasCommand("brew") {
 		return nil
 	}
 	installer, err := tools.DownloadToTempFile(ctx, logger, "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh")
 	if err != nil {
-		return err
+		slog.WarnContext(ctx, "downloading tool", "err", err)
+		return fmt.Errorf("downloading tool: %w", err)
 	}
 	defer os.Remove(installer)
-	return cmdexec.RunWithLogger(context.Background(), logger, "bash", installer)
+	if err := cmdexec.RunWithLogger(ctx, logger, "bash", installer); err != nil {
+		slog.WarnContext(ctx, "running bash", "err", err)
+		return fmt.Errorf("running bash: %w", err)
+	}
+	return nil
 }
 
 func runMacDefaults(ctx context.Context, logger *telemetry.Logger) error {
-	if err := cmdexec.RunWithLogger(context.Background(), logger, "defaults", "write", "com.apple.finder", "AppleShowAllFiles", "-bool", "true"); err != nil {
-		return err
+	if err := cmdexec.RunWithLogger(ctx, logger, "defaults", "write", "com.apple.finder", "AppleShowAllFiles", "-bool", "true"); err != nil {
+		slog.WarnContext(ctx, "running defaults", "err", err)
+		return fmt.Errorf("running defaults: %w", err)
 	}
-	if err := cmdexec.RunWithLogger(context.Background(), logger, "defaults", "write", "com.apple.finder", "ShowPathbar", "-bool", "true"); err != nil {
-		return err
+	if err := cmdexec.RunWithLogger(ctx, logger, "defaults", "write", "com.apple.finder", "ShowPathbar", "-bool", "true"); err != nil {
+		slog.WarnContext(ctx, "running defaults", "err", err)
+		return fmt.Errorf("running defaults: %w", err)
 	}
-	if err := cmdexec.RunWithLogger(context.Background(), logger, "defaults", "write", "com.apple.finder", "ShowStatusBar", "-bool", "true"); err != nil {
-		return err
+	if err := cmdexec.RunWithLogger(ctx, logger, "defaults", "write", "com.apple.finder", "ShowStatusBar", "-bool", "true"); err != nil {
+		slog.WarnContext(ctx, "running defaults", "err", err)
+		return fmt.Errorf("running defaults: %w", err)
 	}
-	if err := cmdexec.RunWithLogger(context.Background(), logger, "defaults", "write", "NSGlobalDomain", "AppleShowAllExtensions", "-bool", "true"); err != nil {
-		return err
+	if err := cmdexec.RunWithLogger(ctx, logger, "defaults", "write", "NSGlobalDomain", "AppleShowAllExtensions", "-bool", "true"); err != nil {
+		slog.WarnContext(ctx, "running defaults", "err", err)
+		return fmt.Errorf("running defaults: %w", err)
 	}
-	if err := cmdexec.RunWithLogger(context.Background(), logger, "defaults", "write", "com.apple.desktopservices", "DSDontWriteNetworkStores", "-bool", "true"); err != nil {
-		return err
+	if err := cmdexec.RunWithLogger(ctx, logger, "defaults", "write", "com.apple.desktopservices", "DSDontWriteNetworkStores", "-bool", "true"); err != nil {
+		slog.WarnContext(ctx, "running defaults", "err", err)
+		return fmt.Errorf("running defaults: %w", err)
 	}
-	if err := cmdexec.RunWithLogger(context.Background(), logger, "defaults", "write", "com.apple.desktopservices", "DSDontWriteUSBStores", "-bool", "true"); err != nil {
-		return err
+	if err := cmdexec.RunWithLogger(ctx, logger, "defaults", "write", "com.apple.desktopservices", "DSDontWriteUSBStores", "-bool", "true"); err != nil {
+		slog.WarnContext(ctx, "running defaults", "err", err)
+		return fmt.Errorf("running defaults: %w", err)
 	}
-	if err := cmdexec.RunWithLogger(context.Background(), logger, "defaults", "write", "com.apple.dock", "mouse-over-hilite-stack", "-bool", "true"); err != nil {
-		return err
+	if err := cmdexec.RunWithLogger(ctx, logger, "defaults", "write", "com.apple.dock", "mouse-over-hilite-stack", "-bool", "true"); err != nil {
+		slog.WarnContext(ctx, "running defaults", "err", err)
+		return fmt.Errorf("running defaults: %w", err)
 	}
-	if err := cmdexec.RunWithLogger(context.Background(), logger, "defaults", "write", "com.apple.dock", "mineffect", "-string", "suck"); err != nil {
-		return err
+	if err := cmdexec.RunWithLogger(ctx, logger, "defaults", "write", "com.apple.dock", "mineffect", "-string", "suck"); err != nil {
+		slog.WarnContext(ctx, "running defaults", "err", err)
+		return fmt.Errorf("running defaults: %w", err)
 	}
 	shotDir := filepath.Join(os.Getenv("HOME"), "Documents", "Screenshots")
-	if err := os.MkdirAll(shotDir, 0o755); err == nil {
-		_ = cmdexec.RunWithLogger(context.Background(), logger, "defaults", "write", "com.apple.screencapture", "location", shotDir)
+	if err := os.MkdirAll(filepath.Clean(shotDir), 0o755); err == nil {
+		_ = cmdexec.RunWithLogger(ctx, logger, "defaults", "write", "com.apple.screencapture", "location", shotDir)
 	}
-	_ = cmdexec.RunWithLogger(context.Background(), logger, "defaults", "write", "com.google.Chrome", "BuiltInDnsClientEnabled", "-bool", "false")
-	_ = cmdexec.RunWithLogger(context.Background(), logger, "killall", "Finder")
-	_ = cmdexec.RunWithLogger(context.Background(), logger, "killall", "Dock")
-	_ = cmdexec.RunWithLogger(context.Background(), logger, "killall", "SystemUIServer")
+	_ = cmdexec.RunWithLogger(ctx, logger, "defaults", "write", "com.google.Chrome", "BuiltInDnsClientEnabled", "-bool", "false")
+	_ = cmdexec.RunWithLogger(ctx, logger, "killall", "Finder")
+	_ = cmdexec.RunWithLogger(ctx, logger, "killall", "Dock")
+	_ = cmdexec.RunWithLogger(ctx, logger, "killall", "SystemUIServer")
 	return nil
 }
 
 func installTouchIDHelper(ctx context.Context, logger *telemetry.Logger) error {
+	slog.InfoContext(ctx, "platform: installTouchIDHelper")
 	scriptPath, err := tools.DownloadToTempFile(ctx, logger, "https://git.io/sudo-touch-id")
 	if err != nil {
-		return err
+		slog.WarnContext(ctx, "downloading tool", "err", err)
+		return fmt.Errorf("downloading tool: %w", err)
 	}
 	defer os.Remove(scriptPath)
-	return cmdexec.RunWithLogger(context.Background(), logger, "sh", scriptPath)
+	if err := cmdexec.RunWithLogger(ctx, logger, "sh", scriptPath); err != nil {
+		slog.WarnContext(ctx, "running sh", "err", err)
+		return fmt.Errorf("running sh: %w", err)
+	}
+	return nil
 }
 
 func ensureMacPatchIfNeeded(ctx context.Context, logger *telemetry.Logger) error {
@@ -154,10 +179,18 @@ func ensureMacPatchIfNeeded(ctx context.Context, logger *telemetry.Logger) error
 	}
 	zprofile, err := os.ReadFile(zprofilePath)
 	if err != nil {
+		if !os.IsNotExist(err) {
+			logger.WarnContextWithErr(ctx, "read zprofile", err)
+			return fmt.Errorf("read zprofile: %w", err)
+		}
 		return nil
 	}
 	zshrc, err2 := os.ReadFile(zshrcPath)
 	if err2 != nil {
+		if !os.IsNotExist(err2) {
+			logger.WarnContextWithErr(ctx, "read zshrc", err2)
+			return fmt.Errorf("read zshrc: %w", err2)
+		}
 		return nil
 	}
 	if strings.Contains(string(zprofile), cfg.Sentinel) && strings.Contains(string(zshrc), cfg.Sentinel) {
@@ -166,60 +199,72 @@ func ensureMacPatchIfNeeded(ctx context.Context, logger *telemetry.Logger) error
 	if !common.HasSudoAccess(ctx, logger) {
 		return nil
 	}
-	return cmdexec.RunWithLogger(context.Background(), logger, "sudo", "bash", patch)
+	if err := cmdexec.RunWithLogger(ctx, logger, "sudo", "bash", patch); err != nil {
+		slog.WarnContext(ctx, "running sudo bash", "err", err)
+		return fmt.Errorf("running sudo bash: %w", err)
+	}
+	return nil
 }
 
 func installRustupIfNeeded(ctx context.Context, logger *telemetry.Logger) error {
+	slog.InfoContext(ctx, "platform: installRustupIfNeeded")
 	if runner.HasCommand("rustup") {
 		return nil
 	}
 	inst, err := tools.DownloadToTempFile(ctx, logger, "https://sh.rustup.rs")
 	if err != nil {
-		return err
+		slog.WarnContext(ctx, "downloading tool", "err", err)
+		return fmt.Errorf("downloading tool: %w", err)
 	}
 	defer os.Remove(inst)
-	return cmdexec.RunWithLogger(context.Background(), logger, "sh", inst, "-s", "--", "-y")
+	if err := cmdexec.RunWithLogger(ctx, logger, "sh", inst, "-s", "--", "-y"); err != nil {
+		slog.WarnContext(ctx, "running sh", "err", err)
+		return fmt.Errorf("running sh: %w", err)
+	}
+	return nil
 }
 
 func installGoToolsIfNeeded(ctx context.Context, logger *telemetry.Logger) error {
 	if !runner.HasCommand("go") {
 		return nil
 	}
-	common.Info(logger, "  checking Go tools")
+	common.InfoContext(ctx, logger, "  checking Go tools")
 	cfg := common.DefaultPackageConfig()
 	if cfg == nil {
-		common.Warn(logger, "  failed to parse package config for Go tools: no config")
+		common.WarnContext(ctx, logger, "  failed to parse package config for Go tools: no config")
 		return nil
 	}
-	for bin, pkg := range cfg.GO_PACKAGES {
+	for bin, pkg := range cfg.GoPackages {
 		if runner.HasCommand(bin) {
 			continue
 		}
-		common.Infof(logger, "  installing go tool %s", bin)
-		if err := cmdexec.RunWithLogger(context.Background(), logger, "go", "install", pkg); err != nil {
-			return err
+		common.InfoContextf(ctx, logger, "  installing go tool %s", bin)
+		if err := cmdexec.RunWithLogger(ctx, logger, "go", "install", pkg); err != nil {
+			slog.WarnContext(ctx, "running go install", "err", err)
+			return fmt.Errorf("running go install: %w", err)
 		}
 	}
-	_ = installCargoToolsIfNeeded(cfg, logger)
+	_ = installCargoToolsIfNeeded(ctx, cfg, logger)
 	return nil
 }
 
-func installCargoToolsIfNeeded(cfg *catalog.PackageConfig, logger *telemetry.Logger) error {
+func installCargoToolsIfNeeded(ctx context.Context, cfg *catalog.PackageConfig, logger *telemetry.Logger) error {
 	if !runner.HasCommand("cargo") {
 		return nil
 	}
-	if len(cfg.CARGO_PACKAGES) == 0 {
+	if len(cfg.CargoPackages) == 0 {
 		return nil
 	}
-	for _, tool := range cfg.CARGO_PACKAGES {
+	for _, tool := range cfg.CargoPackages {
 		if runner.HasCommand(tool) {
 			continue
 		}
-		if err := cmdexec.RunWithLogger(context.Background(), logger, "cargo", "install", tool); err != nil {
-			return err
+		if err := cmdexec.RunWithLogger(ctx, logger, "cargo", "install", tool); err != nil {
+			slog.WarnContext(ctx, "running cargo install", "err", err)
+			return fmt.Errorf("running cargo install: %w", err)
 		}
 	}
-	for tool, repo := range cfg.CARGO_GIT_PACKAGES {
+	for tool, repo := range cfg.CargoGitPackages {
 		if tool == "" || repo == "" || runner.HasCommand(tool) {
 			continue
 		}
@@ -232,8 +277,9 @@ func installCargoToolsIfNeeded(cfg *catalog.PackageConfig, logger *telemetry.Log
 		if features != "" {
 			args = append(args, "--features", features)
 		}
-		if err := cmdexec.RunWithLogger(context.Background(), logger, "cargo", args...); err != nil {
-			return err
+		if err := cmdexec.RunWithLogger(ctx, logger, "cargo", args...); err != nil {
+			slog.WarnContext(ctx, "running cargo install", "err", err)
+			return fmt.Errorf("running cargo install: %w", err)
 		}
 	}
 	return nil
@@ -247,12 +293,12 @@ func installMacPackages(ctx context.Context, logger *telemetry.Logger) error {
 	if cfg == nil {
 		return nil
 	}
-	if err := cmdexec.RunWithLogger(context.Background(), logger, "brew", "update", "--quiet"); err != nil {
-		common.Warn(logger, "  brew update failed, continuing")
+	if err := cmdexec.RunWithLogger(ctx, logger, "brew", "update", "--quiet"); err != nil {
+		common.WarnContext(ctx, logger, "  brew update failed, continuing")
 	}
 	formulae := make(map[string]struct{})
 	var formulaList []string
-	for _, item := range append(cfg.COMMON_PACKAGES, cfg.BREW_SPECIFIC...) {
+	for _, item := range append(cfg.CommonPackages, cfg.BrewSpecific...) {
 		name := brewPackageName(item)
 		if name == "" {
 			continue
@@ -265,22 +311,22 @@ func installMacPackages(ctx context.Context, logger *telemetry.Logger) error {
 	}
 	if len(formulaList) > 0 {
 		brewArgs := append([]string{"install"}, formulaList...)
-		if err := cmdexec.RunWithLogger(context.Background(), logger, "brew", brewArgs...); err != nil {
-			common.Warn(logger, "  brew formula install returned an error")
+		if err := cmdexec.RunWithLogger(ctx, logger, "brew", brewArgs...); err != nil {
+			common.WarnContext(ctx, logger, "  brew formula install returned an error")
 		}
 	}
-	for cask := range cfg.BREW_CASKS {
-		app := cfg.BREW_CASKS[cask]
+	for cask := range cfg.BrewCasks {
+		app := cfg.BrewCasks[cask]
 		if app != "" {
 			if _, err := os.Stat(filepath.Join("/Applications", app)); err == nil {
 				continue
 			}
-			if _, err := os.Stat(filepath.Join(os.Getenv("HOME"), "Applications", app)); err == nil {
+			if _, err := os.Stat(filepath.Clean(filepath.Join(os.Getenv("HOME"), "Applications", app))); err == nil {
 				continue
 			}
 		}
-		if err := cmdexec.RunWithLogger(context.Background(), logger, "brew", "install", "--cask", cask); err != nil {
-			common.Warnf(logger, "  failed to install cask %s", cask)
+		if err := cmdexec.RunWithLogger(ctx, logger, "brew", "install", "--cask", cask); err != nil {
+			common.WarnContextf(ctx, logger, "  failed to install cask %s", cask)
 		}
 	}
 	return nil
@@ -294,17 +340,18 @@ func installDebianPackages(ctx context.Context, logger *telemetry.Logger) error 
 	if cfg == nil {
 		return nil
 	}
-	if err := cmdexec.RunWithLogger(context.Background(), logger, "sudo", "apt-get", "update", "-qq"); err != nil {
-		return err
+	if err := cmdexec.RunWithLogger(ctx, logger, "sudo", "apt-get", "update", "-qq"); err != nil {
+		slog.WarnContext(ctx, "running apt-get update", "err", err)
+		return fmt.Errorf("running apt-get update: %w", err)
 	}
 
 	packages := make(map[string]struct{})
 	var aptPkgs []string
-	for _, item := range append(cfg.COMMON_PACKAGES, cfg.APT_SPECIFIC...) {
-		if isSnapPackage(item, cfg.SNAP_PACKAGES) {
+	for _, item := range append(cfg.CommonPackages, cfg.AptSpecific...) {
+		if isSnapPackage(item, cfg.SnapPackages) {
 			continue
 		}
-		for _, mapped := range strings.Fields(aptPackageName(item)) {
+		for mapped := range strings.FieldsSeq(aptPackageName(item)) {
 			if _, ok := packages[mapped]; ok {
 				continue
 			}
@@ -314,18 +361,19 @@ func installDebianPackages(ctx context.Context, logger *telemetry.Logger) error 
 	}
 	if len(aptPkgs) > 0 {
 		aptArgs := append([]string{"install", "-y", "-qq"}, aptPkgs...)
-		if err := cmdexec.RunWithLogger(context.Background(), logger, "sudo", aptArgs...); err != nil {
-			return err
+		if err := cmdexec.RunWithLogger(ctx, logger, "sudo", aptArgs...); err != nil {
+			slog.WarnContext(ctx, "running apt-get install", "err", err)
+			return fmt.Errorf("running apt-get install: %w", err)
 		}
 	}
-	for _, pkg := range cfg.SNAP_PACKAGES {
+	for _, pkg := range cfg.SnapPackages {
 		target := snapPackageName(pkg)
 		if target == "" {
 			continue
 		}
 		if runner.HasCommand("snap") {
 			if err := installSnapPackage(ctx, target, logger); err != nil {
-				common.Warn(logger, "  failed to install snap package "+target)
+				common.WarnContext(ctx, logger, "  failed to install snap package "+target)
 			}
 		}
 	}
@@ -333,46 +381,57 @@ func installDebianPackages(ctx context.Context, logger *telemetry.Logger) error 
 }
 
 func installSnapPackage(ctx context.Context, packageName string, logger *telemetry.Logger) error {
-	if cmdexec.RunWithLogger(context.Background(), logger, "snap", "list", packageName) == nil {
+	if cmdexec.RunWithLogger(ctx, logger, "snap", "list", packageName) == nil {
 		return nil
 	}
 	args := []string{"install", packageName}
-	if isSnapClassic(packageName) {
+	if isSnapClassic(ctx, packageName) {
 		args = []string{"install", "--classic", packageName}
 	}
 	snapArgs := append([]string{}, args...)
-	if err := cmdexec.RunWithLogger(context.Background(), logger, "sudo", snapArgs...); err != nil {
-		if isSnapClassic(packageName) {
-			return err
+	if err := cmdexec.RunWithLogger(ctx, logger, "sudo", snapArgs...); err != nil {
+		if isSnapClassic(ctx, packageName) {
+			slog.WarnContext(ctx, "running snap install", "err", err)
+			return fmt.Errorf("running snap install: %w", err)
 		}
-		if cmdexec.RunWithLogger(context.Background(), logger, "snap", "info", packageName) != nil {
-			return err
+		if cmdexec.RunWithLogger(ctx, logger, "snap", "info", packageName) != nil {
+			slog.WarnContext(ctx, "running snap install", "err", err)
+			return fmt.Errorf("running snap install: %w", err)
 		}
-		if err := cmdexec.RunWithLogger(context.Background(), logger, "sudo", "snap", "install", "--classic", packageName); err != nil {
-			return err
+		if err := cmdexec.RunWithLogger(ctx, logger, "sudo", "snap", "install", "--classic", packageName); err != nil {
+			slog.WarnContext(ctx, "running snap install", "err", err)
+			return fmt.Errorf("running snap install: %w", err)
 		}
 	}
 	return nil
 }
 
-func isSnapClassic(packageName string) bool {
-	output, err := cmdexec.OutputWithLoggerAndEnv(context.Background(), nil, nil, "snap", "info", packageName)
+func isSnapClassic(ctx context.Context, packageName string) bool {
+	output, err := cmdexec.OutputWithLoggerAndEnv(ctx, nil, nil, "snap", "info", packageName)
 	if err != nil {
 		return false
 	}
-	text := string(output)
-	return strings.Contains(text, "classic") && strings.Contains(text, "confinement")
+	return strings.Contains(output, "classic") && strings.Contains(output, "confinement")
 }
 
+type toolName string
+
+const (
+	toolAck     toolName = "ack"
+	toolFd      toolName = "fd"
+	toolRg      toolName = "rg"
+	toolOpenssh toolName = "openssh"
+)
+
 func aptPackageName(packageName string) string {
-	switch packageName {
-	case "ack":
+	switch toolName(packageName) {
+	case toolAck:
 		return "ack-grep"
-	case "fd":
+	case toolFd:
 		return "fd-find"
-	case "rg":
+	case toolRg:
 		return "ripgrep"
-	case "openssh":
+	case toolOpenssh:
 		return "openssh-client openssh-server"
 	}
 	return packageName
@@ -387,12 +446,7 @@ func brewPackageName(packageName string) string {
 }
 
 func isSnapPackage(packageName string, snapList []string) bool {
-	for _, snap := range snapList {
-		if snap == packageName {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(snapList, packageName)
 }
 
 func snapPackageName(packageName string) string {
@@ -400,12 +454,4 @@ func snapPackageName(packageName string) string {
 		return "nvim"
 	}
 	return packageName
-}
-
-func ensureRustupPath() []string {
-	gopath, err := cmdexec.Output(context.Background(), "go", "env", "GOPATH")
-	if err != nil {
-		return os.Environ()
-	}
-	return append(os.Environ(), "PATH="+os.Getenv("PATH")+":"+strings.TrimSpace(string(gopath))+string(filepath.Separator)+"bin")
 }

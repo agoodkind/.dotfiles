@@ -1,14 +1,18 @@
+// Package perf implements zsh startup performance log parsing and reporting.
 package perf
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -66,21 +70,34 @@ type zprofEntry struct {
 
 var zprofLinePattern = regexp.MustCompile(`^\s+[0-9]+\)`)
 
+type perfSubcmd string
+
+const (
+	subcmdLog              perfSubcmd = "log"
+	subcmdHistory          perfSubcmd = "history"
+	subcmdArmZprof         perfSubcmd = "arm-zprof"
+	subcmdRebuildPathCache perfSubcmd = "rebuild-path-cache"
+	subcmdHelp             perfSubcmd = "help"
+	subcmdHelpShort        perfSubcmd = "-h"
+	subcmdHelpLong         perfSubcmd = "--help"
+)
+
+// Run is the entry point for the perf subcommand, dispatching to the appropriate handler.
 func Run(args []string) error {
 	if len(args) == 0 {
 		return runSummary(args)
 	}
 
-	switch args[0] {
-	case "log":
+	switch perfSubcmd(args[0]) {
+	case subcmdLog:
 		return runLog(args[1:])
-	case "history":
+	case subcmdHistory:
 		return runHistory(args[1:])
-	case "arm-zprof":
+	case subcmdArmZprof:
 		return runArmZprof(args[1:])
-	case "rebuild-path-cache":
+	case subcmdRebuildPathCache:
 		return runRebuildPathCache(args[1:])
-	case "help", "-h", "--help":
+	case subcmdHelp, subcmdHelpShort, subcmdHelpLong:
 		printUsage()
 		return nil
 	default:
@@ -96,11 +113,13 @@ func runSummary(args []string) error {
 	fs.SetOutput(ioDiscard{})
 	useGlobal := fs.Bool("global", false, "use the newest log across all ttys")
 	if err := fs.Parse(args); err != nil {
+		slog.Error("parse perf flags", "err", err)
 		return fmt.Errorf("parse perf flags: %w", err)
 	}
 
 	record, err := selectRecord(*useGlobal)
 	if err != nil {
+		slog.Error("select startup record", "err", err)
 		return err
 	}
 
@@ -110,7 +129,7 @@ func runSummary(args []string) error {
 
 	zprofEntries := parseZprof(record.Log.Zprof)
 	if len(zprofEntries) > 0 {
-		out.WriteString(fmt.Sprintf("    └── [zprof: %d functions]\n", len(zprofEntries)))
+		fmt.Fprintf(&out, "    └── [zprof: %d functions]\n", len(zprofEntries))
 		for idx, entry := range zprofEntries {
 			branch := "├──"
 			if idx == len(zprofEntries)-1 {
@@ -120,8 +139,8 @@ func runSummary(args []string) error {
 			if entry.Calls == "1" {
 				callSuffix = ""
 			}
-			out.WriteString(fmt.Sprintf("        %s %-28s %6.2f ms self   %6.2f ms total   (%s call%s)\n",
-				branch, entry.Name, entry.Self, entry.Total, entry.Calls, callSuffix))
+			fmt.Fprintf(&out, "        %s %-28s %6.2f ms self   %6.2f ms total   (%s call%s)\n",
+				branch, entry.Name, entry.Self, entry.Total, entry.Calls, callSuffix)
 		}
 	}
 
@@ -140,40 +159,46 @@ func runSummary(args []string) error {
 		deferredTime = 0
 	}
 	out.WriteString("\ntimeline:\n")
-	out.WriteString(fmt.Sprintf("  prompt visible:      %6.0f ms  (end of .zshrc)\n", record.Log.MS.TimePrompt))
-	out.WriteString(fmt.Sprintf("  first precmd:        %6.0f ms  (+%.0f ms zsh hook overhead)\n", record.Log.MS.FirstPrecmd, precmdGap))
-	out.WriteString(fmt.Sprintf("  shell interactive:   %6.0f ms  (+%.0f ms deferred tiers)\n", ready, deferredTime))
+	fmt.Fprintf(&out, "  prompt visible:      %6.0f ms  (end of .zshrc)\n", record.Log.MS.TimePrompt)
+	fmt.Fprintf(&out, "  first precmd:        %6.0f ms  (+%.0f ms zsh hook overhead)\n", record.Log.MS.FirstPrecmd, precmdGap)
+	fmt.Fprintf(&out, "  shell interactive:   %6.0f ms  (+%.0f ms deferred tiers)\n", ready, deferredTime)
 
-	fmt.Print(out.String())
+	fmt.Fprint(os.Stdout, out.String())
 	return nil
 }
 
 func runLog(args []string) error {
+	slog.Info("perf: log")
 	fs := flag.NewFlagSet("perf log", flag.ContinueOnError)
 	fs.SetOutput(ioDiscard{})
 	useGlobal := fs.Bool("global", false, "use the newest log across all ttys")
 	if err := fs.Parse(args); err != nil {
+		slog.Error("parse perf log flags", "err", err)
 		return fmt.Errorf("parse perf log flags: %w", err)
 	}
 
 	record, err := selectRecord(*useGlobal)
 	if err != nil {
+		slog.Error("select startup record", "err", err)
 		return err
 	}
 
-	var obj any
+	var obj json.RawMessage
 	if err := json.Unmarshal(record.Raw, &obj); err != nil {
+		slog.Error("decode startup log", "err", err)
 		return fmt.Errorf("decode startup log: %w", err)
 	}
 	pretty, err := json.MarshalIndent(obj, "", "  ")
 	if err != nil {
+		slog.Error("format startup log", "err", err)
 		return fmt.Errorf("format startup log: %w", err)
 	}
-	fmt.Println(string(pretty))
+	fmt.Fprintln(os.Stdout, string(pretty))
 	return nil
 }
 
 func runHistory(args []string) error {
+	slog.Info("perf: history")
 	fs := flag.NewFlagSet("perf history", flag.ContinueOnError)
 	fs.SetOutput(ioDiscard{})
 	slowOnly := fs.Bool("slow", false, "show only slow startups")
@@ -181,11 +206,13 @@ func runHistory(args []string) error {
 	jsonOut := fs.Bool("json", false, "print logs as json")
 	last := fs.Int("last", 50, "number of logs to show")
 	if err := fs.Parse(args); err != nil {
+		slog.Error("parse perf history flags", "err", err)
 		return fmt.Errorf("parse perf history flags: %w", err)
 	}
 
 	records, err := loadRecords()
 	if err != nil {
+		slog.Error("load startup records", "err", err)
 		return err
 	}
 	total := len(records)
@@ -210,15 +237,16 @@ func runHistory(args []string) error {
 		}
 		pretty, err := json.MarshalIndent(items, "", "  ")
 		if err != nil {
+			slog.Error("encode history json", "err", err)
 			return fmt.Errorf("encode history json: %w", err)
 		}
-		fmt.Println(string(pretty))
+		fmt.Fprintln(os.Stdout, string(pretty))
 		return nil
 	}
 
-	fmt.Printf("%-18s %-10s %8s %8s %8s %8s %6s %6s  %s %s\n",
+	fmt.Fprintf(os.Stdout, "%-18s %-10s %8s %8s %8s %8s %6s %6s  %s %s\n",
 		"timestamp", "tty", "pre-rc", "prompt", "precmd", "ready", "ph", "locale", "by", "flags")
-	fmt.Printf("%-18s %-10s %8s %8s %8s %8s %6s %6s\n",
+	fmt.Fprintf(os.Stdout, "%-18s %-10s %8s %8s %8s %8s %6s %6s\n",
 		"---------", "---", "------", "------", "------", "-----", "--", "------")
 	for _, record := range records {
 		pathHelperMS := findTreeMS(record.Log.Tree, "path_helper", "path_helper_fork")
@@ -243,7 +271,7 @@ func runHistory(args []string) error {
 		if len(ts) > 16 {
 			ts = ts[:16]
 		}
-		fmt.Printf("%-18s %-10s %8.0f %8.0f %8.0f %8.0f %6.0f %6.0f  %s %s\n",
+		fmt.Fprintf(os.Stdout, "%-18s %-10s %8.0f %8.0f %8.0f %8.0f %6.0f %6.0f  %s %s\n",
 			ts,
 			record.Log.TTY,
 			record.Log.MS.PreZshrc,
@@ -257,37 +285,41 @@ func runHistory(args []string) error {
 		)
 	}
 
-	fmt.Printf("\n%d logs shown (of %d total).  --slow  --all  --last=N  --json\n", len(records), total)
-	fmt.Println("by: P=path_helper cached  L=locale bypassed")
+	fmt.Fprintf(os.Stdout, "\n%d logs shown (of %d total).  --slow  --all  --last=N  --json\n", len(records), total)
+	fmt.Fprintln(os.Stdout, "by: P=path_helper cached  L=locale bypassed")
 	return nil
 }
 
 func runArmZprof(args []string) error {
+	slog.Info("perf: arm-zprof")
 	if len(args) > 0 {
 		for _, arg := range args {
 			if arg == "-h" || arg == "--help" {
-				fmt.Println("Usage: dots perf arm-zprof")
+				fmt.Fprintln(os.Stdout, "Usage: dots perf arm-zprof")
 				return nil
 			}
 		}
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
+		slog.Error("resolve home directory", "err", err)
 		return fmt.Errorf("resolve home directory: %w", err)
 	}
 	path := filepath.Join(home, ".zsh_profile_next")
-	if err := os.WriteFile(path, []byte{}, 0o644); err != nil {
+	if err := os.WriteFile(path, []byte{}, 0o600); err != nil {
+		slog.Error("arm zprof", "err", err)
 		return fmt.Errorf("arm zprof: %w", err)
 	}
-	fmt.Println("zprof armed — open a new shell, then run zsh_perf to see function-level detail.")
+	fmt.Fprintln(os.Stdout, "zprof armed — open a new shell, then run zsh_perf to see function-level detail.")
 	return nil
 }
 
 func runRebuildPathCache(args []string) error {
+	slog.Info("perf: rebuild-path-cache")
 	if len(args) > 0 {
 		for _, arg := range args {
 			if arg == "-h" || arg == "--help" {
-				fmt.Println("Usage: dots perf rebuild-path-cache")
+				fmt.Fprintln(os.Stdout, "Usage: dots perf rebuild-path-cache")
 				return nil
 			}
 		}
@@ -295,37 +327,42 @@ func runRebuildPathCache(args []string) error {
 
 	pathHelper := "/usr/libexec/path_helper"
 	if _, err := os.Stat(pathHelper); err != nil {
+		slog.Error("stat path_helper", "err", err)
 		return fmt.Errorf("path_helper not found at %s", pathHelper)
 	}
-	output, err := exec.Command(pathHelper, "-s").CombinedOutput()
+	output, err := exec.CommandContext(context.Background(), pathHelper, "-s").CombinedOutput()
 	if err != nil {
+		slog.Error("run path_helper", "err", err)
 		return fmt.Errorf("run path_helper: %w", err)
 	}
 
 	home, err := os.UserHomeDir()
 	if err != nil {
+		slog.Error("resolve home directory", "err", err)
 		return fmt.Errorf("resolve home directory: %w", err)
 	}
 	cacheDir := filepath.Join(home, ".cache", "zsh_startup")
 	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		slog.Error("create path cache directory", "err", err)
 		return fmt.Errorf("create path cache directory: %w", err)
 	}
 	cacheFile := filepath.Join(cacheDir, "path_cache.zsh")
-	if err := os.WriteFile(cacheFile, output, 0o644); err != nil {
+	if err := os.WriteFile(cacheFile, output, 0o600); err != nil {
+		slog.Error("write path cache", "err", err)
 		return fmt.Errorf("write path cache: %w", err)
 	}
-	fmt.Printf("path cache rebuilt: %s\n", cacheFile)
-	fmt.Printf("contents: %s\n", strings.TrimSpace(string(output)))
+	fmt.Fprintf(os.Stdout, "path cache rebuilt: %s\n", cacheFile)
+	fmt.Fprintf(os.Stdout, "contents: %s\n", strings.TrimSpace(string(output)))
 	return nil
 }
 
 func printUsage() {
-	fmt.Println("Usage:")
-	fmt.Println("  dots perf")
-	fmt.Println("  dots perf log [--global]")
-	fmt.Println("  dots perf history [--slow] [--all] [--last=N] [--json]")
-	fmt.Println("  dots perf arm-zprof")
-	fmt.Println("  dots perf rebuild-path-cache")
+	fmt.Fprintln(os.Stdout, "Usage:")
+	fmt.Fprintln(os.Stdout, "  dots perf")
+	fmt.Fprintln(os.Stdout, "  dots perf log [--global]")
+	fmt.Fprintln(os.Stdout, "  dots perf history [--slow] [--all] [--last=N] [--json]")
+	fmt.Fprintln(os.Stdout, "  dots perf arm-zprof")
+	fmt.Fprintln(os.Stdout, "  dots perf rebuild-path-cache")
 }
 
 func selectRecord(useGlobal bool) (startupRecord, error) {
@@ -354,11 +391,13 @@ func selectRecord(useGlobal bool) (startupRecord, error) {
 func loadRecords() ([]startupRecord, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
+		slog.Error("resolve home directory", "err", err)
 		return nil, fmt.Errorf("resolve home directory: %w", err)
 	}
 	pattern := filepath.Join(home, ".cache", "zsh_startup", "*.json")
 	paths, err := filepath.Glob(pattern)
 	if err != nil {
+		slog.Error("list startup logs", "err", err)
 		return nil, fmt.Errorf("list startup logs: %w", err)
 	}
 
@@ -426,19 +465,8 @@ func renderTree(entries []treeEntry, prefix string) string {
 		}
 
 		var indent strings.Builder
-		for ancestorDepth := 0; ancestorDepth < entry.Depth; ancestorDepth++ {
-			ancestorHasMore := false
-			for lookIdx := idx + 1; lookIdx < len(entries); lookIdx++ {
-				lookDepth := entries[lookIdx].Depth
-				if lookDepth == ancestorDepth {
-					ancestorHasMore = true
-					break
-				}
-				if lookDepth < ancestorDepth {
-					break
-				}
-			}
-			if ancestorHasMore {
+		for ancestorDepth := range entry.Depth {
+			if ancestorHasSibling(idx, ancestorDepth, entries) {
 				indent.WriteString("│   ")
 			} else {
 				indent.WriteString("    ")
@@ -461,16 +489,27 @@ func renderTree(entries []treeEntry, prefix string) string {
 	for idx, entry := range entries {
 		left := leftParts[idx]
 		pad := padTarget - visualWidth(left)
-		if pad < 1 {
-			pad = 1
-		}
+		pad = max(pad, 1)
 		suffix := ""
 		if entry.Tag != "" {
 			suffix = fmt.Sprintf("  (%s)", entry.Tag)
 		}
-		out.WriteString(fmt.Sprintf("%s%s%5.1f ms%s\n", left, strings.Repeat(" ", pad), entry.MS, suffix))
+		fmt.Fprintf(&out, "%s%s%5.1f ms%s\n", left, strings.Repeat(" ", pad), entry.MS, suffix)
 	}
 	return out.String()
+}
+
+func ancestorHasSibling(idx int, ancestorDepth int, entries []treeEntry) bool {
+	for lookIdx := idx + 1; lookIdx < len(entries); lookIdx++ {
+		lookDepth := entries[lookIdx].Depth
+		if lookDepth == ancestorDepth {
+			return true
+		}
+		if lookDepth < ancestorDepth {
+			return false
+		}
+	}
+	return false
 }
 
 func visualWidth(value string) int {
@@ -522,17 +561,16 @@ func parseZprof(raw *string) []zprofEntry {
 func parseFloat(value string) (float64, error) {
 	var parsed float64
 	if _, err := fmt.Sscanf(value, "%f", &parsed); err != nil {
-		return 0, err
+		slog.Warn("perf: parseFloat: failed to parse value", "value", value, "err", err)
+		return 0, fmt.Errorf("parsing float %q: %w", value, err)
 	}
 	return parsed, nil
 }
 
 func findTreeMS(entries []treeEntry, labels ...string) float64 {
 	for _, entry := range entries {
-		for _, label := range labels {
-			if entry.Label == label {
-				return entry.MS
-			}
+		if slices.Contains(labels, entry.Label) {
+			return entry.MS
 		}
 	}
 	return 0

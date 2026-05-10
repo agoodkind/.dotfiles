@@ -1,3 +1,4 @@
+// Package tools implements custom tool installation during sync.
 package tools
 
 import (
@@ -6,11 +7,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -20,6 +23,15 @@ import (
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
+type installMethod string
+
+const (
+	installMethodScript        installMethod = "script"
+	installMethodCargo         installMethod = "cargo"
+	installMethodGitHubRelease installMethod = "github-release"
+)
+
+// InstallCustomTools installs or updates the custom CLI tools defined in the catalog.
 func InstallCustomTools(ctx context.Context, _ string, logger *telemetry.Logger) error {
 	return runCustomTools(ctx, logger)
 }
@@ -37,7 +49,7 @@ type crateResponse struct {
 }
 
 func runCustomTools(ctx context.Context, logger *telemetry.Logger) error {
-	entries := common.DefaultCustomToolDeclarations()
+	entries := catalog.DefaultToolDeclarations()
 	failed := make([]string, 0)
 	for _, tool := range entries {
 		if tool.ID == "" || tool.Bin == "" {
@@ -46,83 +58,66 @@ func runCustomTools(ctx context.Context, logger *telemetry.Logger) error {
 		if err := installCustomTool(ctx, tool, logger); err != nil {
 			failed = append(failed, tool.ID)
 			_ = telemetry.Notify("warn", "tool install/upgrade failed: "+tool.ID, getSyncLogPath())
-			common.Warn(logger, "  "+tool.ID+": failed")
+			logger.WarnContext(ctx, "  "+tool.ID+": failed")
 		}
 	}
 	if len(failed) > 0 {
-		common.Warn(logger, "  custom tools completed with failures: "+strings.Join(failed, ", "))
+		logger.WarnContext(ctx, "  custom tools completed with failures: "+strings.Join(failed, ", "))
 		return nil
 	}
 	return nil
 }
 
 func installCustomTool(ctx context.Context, tool catalog.ToolDeclaration, logger *telemetry.Logger) error {
-	if shouldSkipToolByPlatform(tool.ID) {
+	if !isPlatformAllowed(tool) {
 		return nil
 	}
-
-	if !isToolSupported(tool.ID) {
-		common.Warn(logger, "  skipping unsupported tool: "+tool.ID)
+	if tool.InstallMethod == "" {
+		logger.WarnContext(ctx, "  skipping tool with no install method: "+tool.ID)
 		return nil
 	}
-
 	current := getCurrentToolVersion(ctx, tool.Bin, logger)
-	if tool.Repo != "" {
-		latest, err := getLatestGitHubVersion(tool.Repo)
-		if err != nil {
-			return err
-		}
-		if current != "" && shouldSkipToolUpgrade(current, latest) {
-			common.Infof(logger, "  %s is up to date (%s)", tool.ID, current)
-			return nil
-		}
+	latest, err := resolveLatestVersion(ctx, tool)
+	if err != nil {
+		return err
 	}
-
-	common.Infof(logger, "  installing %s", tool.ID)
-	switch tool.ID {
-	case "zoxide":
-		return installToolFromScript(ctx, "zoxide", "https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh", nil, logger)
-	case "async-cmd":
-		return installAsyncCmd(ctx, logger)
-	case "starship":
-		return installToolFromScript(ctx, "starship", "https://starship.rs/install.sh", []string{"--", "--yes"}, logger)
-	case "fastfetch":
-		return installToolFromGitHubRelease(ctx, "fastfetch", "fastfetch-cli/fastfetch", "linux", "amd64", ".deb", logger)
-	case "procs":
-		return installToolFromGitHubRelease(ctx, "procs", "dalance/procs", mapOSForTool(tool.ID), mapArchForTool(tool.ID), ".zip", logger)
-	case "tokei":
-		return installToolFromGitHubRelease(ctx, "tokei", "XAMPPRocky/tokei", mapOSForTokei(), mapArchForTool(tool.ID), ".tar.gz", logger)
-	case "tree-sitter":
-		return installToolFromGitHubRelease(ctx, "tree-sitter", "tree-sitter/tree-sitter", mapOSForTool(tool.ID), mapArchTreeSitter(), ".gz", logger)
-	case "fzf":
-		return installToolFromGitHubRelease(ctx, "fzf", "junegunn/fzf", mapOSForFZF(), mapArchForTool(tool.ID), ".tar.gz", logger)
-	case "xh":
-		return installToolFromGitHubRelease(ctx, "xh", "ducaale/xh", mapOSForXH(), mapArchForTool(tool.ID), ".tar.gz", logger)
-	case "cloudflare-speed-cli":
-		return installToolFromGitHubRelease(ctx, "cloudflare-speed-cli", "kavehtehrani/cloudflare-speed-cli", mapOSForTool(tool.ID), mapArchForTool(tool.ID), ".tar.xz", logger)
-	case "yq":
-		return installToolFromGitHubRelease(ctx, "yq", "mikefarah/yq", "linux", mapArchForTool(tool.ID), ".tar.gz", logger)
+	if current != "" && latest != "" && shouldSkipToolUpgrade(current, latest) {
+		logger.InfoContext(ctx, "  "+tool.ID+" is up to date ("+current+")")
+		return nil
+	}
+	logger.InfoContext(ctx, "  installing "+tool.ID)
+	switch installMethod(tool.InstallMethod) {
+	case installMethodScript:
+		return installToolFromScript(ctx, tool.ID, tool.ScriptURL, tool.ScriptArgs, logger)
+	case installMethodCargo:
+		return installToolViaCargo(ctx, tool, logger)
+	case installMethodGitHubRelease:
+		return installToolFromGitHubRelease(ctx, tool.ID, tool.Bin, tool.Repo, resolveOSTag(tool), resolveArchTag(tool), tool.ArchiveExt, logger)
 	default:
-		common.Warn(logger, "  skipping unknown tool: "+tool.ID)
+		logger.WarnContext(ctx, "  skipping tool with unknown install method: "+tool.ID+" ("+tool.InstallMethod+")")
 		return nil
 	}
 }
 
-func shouldSkipToolByPlatform(toolID string) bool {
-	switch toolID {
-	case "fastfetch":
-		return runtime.GOOS != "linux"
-	case "yq":
-		return runtime.GOOS != "linux"
-	case "cloudflare-speed-cli":
-		return !(runtime.GOOS == "darwin" || runtime.GOOS == "linux")
-	default:
-		return false
+func isPlatformAllowed(tool catalog.ToolDeclaration) bool {
+	if len(tool.Platforms) == 0 {
+		return true
 	}
+	return slices.Contains(tool.Platforms, runtime.GOOS)
 }
 
-func isToolSupported(toolID string) bool {
-	return toolID == "zoxide" || toolID == "async-cmd" || toolID == "starship" || toolID == "fastfetch" || toolID == "procs" || toolID == "tokei" || toolID == "tree-sitter" || toolID == "fzf" || toolID == "xh" || toolID == "cloudflare-speed-cli" || toolID == "yq"
+func resolveOSTag(tool catalog.ToolDeclaration) string {
+	if runtime.GOOS == "darwin" {
+		return tool.OSDarwin
+	}
+	return tool.OSLinux
+}
+
+func resolveArchTag(tool catalog.ToolDeclaration) string {
+	if runtime.GOARCH == "amd64" {
+		return tool.ArchAMD64
+	}
+	return tool.ArchARM64
 }
 
 func shouldSkipToolUpgrade(current, target string) bool {
@@ -142,35 +137,46 @@ func getCurrentToolVersion(ctx context.Context, toolName string, logger *telemet
 	return strings.TrimSpace(m)
 }
 
-func installAsyncCmd(ctx context.Context, logger *telemetry.Logger) error {
-	latest, err := getLatestCrateVersion("async-cmd")
-	if err != nil {
-		return err
+func resolveLatestVersion(ctx context.Context, tool catalog.ToolDeclaration) (string, error) {
+	if tool.Repo != "" {
+		return getLatestGitHubVersion(ctx, tool.Repo)
 	}
-	current := getCurrentToolVersion(ctx, "async", logger)
-	if shouldSkipToolUpgrade(current, latest) && current != "" {
-		common.Infof(logger, "  async-cmd is up to date (%s)", current)
-		return nil
+	if tool.CrateName != "" {
+		return getLatestCrateVersion(ctx, tool.CrateName)
 	}
+	return "", nil
+}
+
+func installToolViaCargo(ctx context.Context, tool catalog.ToolDeclaration, logger *telemetry.Logger) error {
 	if os.Getenv("GITHUB_ACTIONS") == "true" {
 		return nil
 	}
-	return cmdexec.RunWithLogger(ctx, logger, "cargo", "install", "async-cmd", "--locked", "--force")
+	if err := cmdexec.RunWithLogger(ctx, logger, "cargo", "install", tool.CrateName, "--locked", "--force"); err != nil {
+		slog.WarnContext(ctx, "tools: installToolViaCargo failed", "crate", tool.CrateName, "err", err)
+		return fmt.Errorf("running cargo install %s: %w", tool.CrateName, err)
+	}
+	return nil
 }
 
 func installToolFromScript(ctx context.Context, name, scriptURL string, args []string, logger *telemetry.Logger) error {
-	common.Infof(logger, "  installing %s", name)
+	slog.InfoContext(ctx, "tools: installToolFromScript")
+	logger.InfoContext(ctx, "  installing "+name)
 	scriptPath, err := downloadToTempFile(ctx, scriptURL)
 	if err != nil {
 		return err
 	}
 	defer os.Remove(scriptPath)
 	cmdArgs := append([]string{scriptPath}, args...)
-	return cmdexec.RunWithLogger(ctx, logger, "sh", cmdArgs...)
+	if err := cmdexec.RunWithLogger(ctx, logger, "sh", cmdArgs...); err != nil {
+		slog.WarnContext(ctx, "tools: installToolFromScript run failed", "name", name, "err", err)
+		return fmt.Errorf("running install script for %s: %w", name, err)
+	}
+	return nil
 }
 
-func installToolFromGitHubRelease(ctx context.Context, name, repo, osTag, archTag, ext string, logger *telemetry.Logger) error {
-	release, err := fetchLatestRelease(repo)
+func installToolFromGitHubRelease(ctx context.Context, name, bin, repo, osTag, archTag, ext string, logger *telemetry.Logger) error {
+	slog.InfoContext(ctx, "tools: installToolFromGitHubRelease")
+	release, err := fetchLatestRelease(ctx, repo)
 	if err != nil {
 		return err
 	}
@@ -189,20 +195,24 @@ func installToolFromGitHubRelease(ctx context.Context, name, repo, osTag, archTa
 		return err
 	}
 	defer os.Remove(localPath)
-	return installToolArtifact(ctx, logger, name, localPath, ext)
+	return installToolArtifact(ctx, logger, bin, localPath)
 }
 
-func fetchLatestRelease(repo string) (githubRelease, error) {
+func fetchLatestRelease(ctx context.Context, repo string) (githubRelease, error) {
 	var rel githubRelease
-	req, err := http.NewRequest(http.MethodGet, "https://api.github.com/repos/"+repo+"/releases/latest", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.github.com/repos/"+repo+"/releases/latest", nil)
 	if err != nil {
-		return rel, err
+		slog.ErrorContext(ctx, "creating github request", "repo", repo, "err", err)
+		return rel, fmt.Errorf("creating github request for %s: %w", repo, err)
 	}
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 	client := &http.Client{Timeout: 120 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return rel, err
+		return rel, fmt.Errorf("executing github request for %s: %w", repo, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -210,28 +220,29 @@ func fetchLatestRelease(repo string) (githubRelease, error) {
 		return rel, fmt.Errorf("github api error %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
-		return rel, err
+		return rel, fmt.Errorf("decoding github response for %s: %w", repo, err)
 	}
 	return rel, nil
 }
 
-func getLatestGitHubVersion(repo string) (string, error) {
-	release, err := fetchLatestRelease(repo)
+func getLatestGitHubVersion(ctx context.Context, repo string) (string, error) {
+	release, err := fetchLatestRelease(ctx, repo)
 	if err != nil {
 		return "", err
 	}
 	return normalizeSemver(release.TagName), nil
 }
 
-func getLatestCrateVersion(crateName string) (string, error) {
+func getLatestCrateVersion(ctx context.Context, crateName string) (string, error) {
 	client := &http.Client{Timeout: 120 * time.Second}
-	req, err := http.NewRequest(http.MethodGet, "https://crates.io/api/v1/crates/"+crateName, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://crates.io/api/v1/crates/"+crateName, nil)
 	if err != nil {
-		return "", err
+		slog.ErrorContext(ctx, "creating crates request", "crate", crateName, "err", err)
+		return "", fmt.Errorf("creating crates request for %s: %w", crateName, err)
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("executing crates request for %s: %w", crateName, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -240,7 +251,7 @@ func getLatestCrateVersion(crateName string) (string, error) {
 	}
 	var payload crateResponse
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return "", err
+		return "", fmt.Errorf("decoding crates response for %s: %w", crateName, err)
 	}
 	return normalizeSemver(payload.MaxVersion), nil
 }
@@ -251,14 +262,20 @@ func normalizeSemver(value string) string {
 	return value
 }
 
-func installToolArtifact(ctx context.Context, logger *telemetry.Logger, tool string, artifactPath string, ext string) error {
+func installToolArtifact(ctx context.Context, logger *telemetry.Logger, tool string, artifactPath string) error {
+	slog.InfoContext(ctx, "tools: installToolArtifact")
 	switch {
 	case strings.HasSuffix(artifactPath, ".deb") || strings.HasSuffix(artifactPath, ".rpm"):
-		return cmdexec.RunWithLogger(ctx, logger, "sudo", "dpkg", "-i", artifactPath)
+		if err := cmdexec.RunWithLogger(ctx, logger, "sudo", "dpkg", "-i", artifactPath); err != nil {
+			slog.WarnContext(ctx, "tools: installToolArtifact dpkg failed", "artifact", filepath.Base(artifactPath), "err", err)
+			return fmt.Errorf("installing deb/rpm package %s: %w", filepath.Base(artifactPath), err)
+		}
+		return nil
 	case strings.HasSuffix(artifactPath, ".gz") && !strings.Contains(artifactPath, ".tar"):
 		binPath := filepath.Join(os.Getenv("HOME"), ".local", "bin", tool)
-		if err := os.MkdirAll(filepath.Dir(binPath), 0o755); err != nil {
-			return err
+		if err := os.MkdirAll(filepath.Dir(filepath.Clean(binPath)), 0o755); err != nil {
+			slog.WarnContext(ctx, "tools: installToolArtifact mkdir bin failed", "err", err)
+			return fmt.Errorf("creating bin directory: %w", err)
 		}
 		if err := decompressGzipBinary(artifactPath, binPath); err != nil {
 			return err
@@ -267,21 +284,26 @@ func installToolArtifact(ctx context.Context, logger *telemetry.Logger, tool str
 	case strings.HasSuffix(artifactPath, ".zip") || strings.HasSuffix(artifactPath, ".tar.gz") || strings.HasSuffix(artifactPath, ".tar.xz"):
 		tmpDir, err := os.MkdirTemp("", "dotfiles-tool-*")
 		if err != nil {
-			return err
+			slog.WarnContext(ctx, "tools: installToolArtifact mkdirtemp failed", "err", err)
+			return fmt.Errorf("creating temp directory: %w", err)
 		}
 		defer os.RemoveAll(tmpDir)
 
-		if strings.HasSuffix(artifactPath, ".zip") {
+		switch {
+		case strings.HasSuffix(artifactPath, ".zip"):
 			if err := cmdexec.RunWithLogger(ctx, logger, "unzip", "-o", artifactPath, "-d", tmpDir); err != nil {
-				return err
+				slog.WarnContext(ctx, "tools: installToolArtifact unzip failed", "err", err)
+				return fmt.Errorf("extracting zip archive: %w", err)
 			}
-		} else if strings.HasSuffix(artifactPath, ".xz") {
+		case strings.HasSuffix(artifactPath, ".xz"):
 			if err := cmdexec.RunWithLogger(ctx, logger, "tar", "xJf", artifactPath, "-C", tmpDir); err != nil {
-				return err
+				slog.WarnContext(ctx, "tools: installToolArtifact tar xz failed", "err", err)
+				return fmt.Errorf("extracting xz archive: %w", err)
 			}
-		} else {
+		default:
 			if err := cmdexec.RunWithLogger(ctx, logger, "tar", "xzf", artifactPath, "-C", tmpDir); err != nil {
-				return err
+				slog.WarnContext(ctx, "tools: installToolArtifact tar gz failed", "err", err)
+				return fmt.Errorf("extracting tar archive: %w", err)
 			}
 		}
 
@@ -292,40 +314,50 @@ func installToolArtifact(ctx context.Context, logger *telemetry.Logger, tool str
 }
 
 func decompressGzipBinary(source, destination string) error {
+	slog.Info("tools: decompressGzipBinary")
 	input, err := os.Open(source)
 	if err != nil {
-		return err
+		slog.Warn("tools: decompressGzipBinary open failed", "source", source, "err", err)
+		return fmt.Errorf("opening gzip file %s: %w", source, err)
 	}
 	defer input.Close()
 	reader, err := gzip.NewReader(input)
 	if err != nil {
-		return err
+		return fmt.Errorf("creating gzip reader: %w", err)
 	}
 	defer reader.Close()
 
-	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
-		return err
+	if err := os.MkdirAll(filepath.Dir(filepath.Clean(destination)), 0o755); err != nil {
+		return fmt.Errorf("creating destination directory: %w", err)
 	}
-	output, err := os.Create(destination)
+	output, err := os.Create(filepath.Clean(destination))
 	if err != nil {
-		return err
+		return fmt.Errorf("creating destination file %s: %w", destination, err)
 	}
 	defer output.Close()
-	if _, err := io.Copy(output, reader); err != nil {
-		return err
+	const maxDecompressSize = 512 * 1024 * 1024 // 512MB
+	if _, err := io.Copy(output, io.LimitReader(reader, maxDecompressSize)); err != nil {
+		return fmt.Errorf("decompressing gzip data: %w", err)
 	}
-	return os.Chmod(destination, 0o755)
+	if err := os.Chmod(filepath.Clean(destination), 0o755); err != nil {
+		return fmt.Errorf("setting permissions on %s: %w", destination, err)
+	}
+	return nil
 }
 
-func installFromDir(tool string, dir string) error {
+func installFromDir(tool, dir string) error {
 	targetDir := filepath.Join(os.Getenv("HOME"), ".local", "bin")
-	if err := os.MkdirAll(targetDir, 0o755); err != nil {
-		return err
+	if err := os.MkdirAll(filepath.Clean(targetDir), 0o755); err != nil {
+		slog.Warn("tools: installFromDir mkdir failed", "err", err)
+		return fmt.Errorf("creating target directory: %w", err)
 	}
 	bin := filepath.Join(targetDir, tool)
 	found := ""
 	_ = filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
-		if err != nil || entry.IsDir() {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
 			return nil
 		}
 		if entry.Name() == tool || strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name())) == tool {
@@ -335,20 +367,30 @@ func installFromDir(tool string, dir string) error {
 		return nil
 	})
 	if found == "" {
+		slog.Warn("tools: installFromDir binary not found", "tool", tool)
 		return fmt.Errorf("binary %s not found in archive", tool)
 	}
 	return copyExecutable(found, bin)
 }
 
 func copyExecutable(src, dst string) error {
-	payload, err := os.ReadFile(src)
+	cleanSrc := filepath.Clean(src)
+	cleanDst := filepath.Clean(dst)
+	slog.Info("tools: copyExecutable")
+	payload, err := os.ReadFile(cleanSrc)
 	if err != nil {
-		return err
+		slog.Warn("tools: copyExecutable read failed", "err", err)
+		return fmt.Errorf("reading executable %s: %w", src, err)
 	}
-	if err := os.WriteFile(dst, payload, 0o755); err != nil {
-		return err
+	if err := os.WriteFile(cleanDst, payload, 0o600); err != nil {
+		slog.Warn("tools: copyExecutable write failed", "err", err)
+		return fmt.Errorf("writing executable %s: %w", dst, err)
 	}
-	return os.Chmod(dst, 0o755)
+	if err := os.Chmod(cleanDst, 0o755); err != nil {
+		slog.Warn("tools: copyExecutable chmod failed", "err", err)
+		return fmt.Errorf("setting permissions on %s: %w", dst, err)
+	}
+	return nil
 }
 
 func getSyncLogPath() string {
@@ -358,20 +400,23 @@ func getSyncLogPath() string {
 	return filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "sync.log")
 }
 
+// DownloadToTempFile downloads fileURL to a temporary file and returns its path.
 func DownloadToTempFile(ctx context.Context, _ *telemetry.Logger, fileURL string) (string, error) {
 	return downloadToTempFile(ctx, fileURL)
 }
 
 func downloadToTempFile(ctx context.Context, fileURL string) (string, error) {
-	request, err := http.NewRequest(http.MethodGet, fileURL, nil)
+	slog.InfoContext(ctx, "tools: downloadToTempFile")
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, fileURL, nil)
 	if err != nil {
-		return "", err
+		slog.ErrorContext(ctx, "creating download request", "url", fileURL, "err", err)
+		return "", fmt.Errorf("creating request for %s: %w", fileURL, err)
 	}
 	request.Header.Set("User-Agent", "dots")
 	client := &http.Client{Timeout: 120 * time.Second}
-	response, err := client.Do(request.WithContext(ctx))
+	response, err := client.Do(request)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("executing download request for %s: %w", fileURL, err)
 	}
 	defer response.Body.Close()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
@@ -381,7 +426,7 @@ func downloadToTempFile(ctx context.Context, fileURL string) (string, error) {
 
 	tmp, err := os.CreateTemp("", "dots-*")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("creating temp file: %w", err)
 	}
 	defer func() {
 		if err != nil {
@@ -391,137 +436,13 @@ func downloadToTempFile(ctx context.Context, fileURL string) (string, error) {
 	_, err = io.Copy(tmp, response.Body)
 	if err != nil {
 		_ = tmp.Close()
-		return "", err
+		return "", fmt.Errorf("copying response body: %w", err)
 	}
 	if err := tmp.Close(); err != nil {
-		return "", err
+		return "", fmt.Errorf("closing temp file: %w", err)
 	}
 	if err := os.Chmod(tmp.Name(), 0o755); err != nil {
-		return "", err
+		return "", fmt.Errorf("setting permissions on temp file: %w", err)
 	}
 	return tmp.Name(), nil
-}
-
-func mapOSForTool(tool string) string {
-	if runtime.GOOS == "darwin" {
-		if tool == "procs" || tool == "fzf" {
-			return "mac"
-		}
-		if tool == "tree-sitter" {
-			return "macos"
-		}
-		return "apple-darwin"
-	}
-	if runtime.GOOS == "linux" {
-		return "linux"
-	}
-	return ""
-}
-
-func mapOSForFZF() string {
-	if runtime.GOOS == "darwin" {
-		return "darwin"
-	}
-	return "linux"
-}
-
-func mapOSForXH() string {
-	if runtime.GOOS == "darwin" {
-		return "apple-darwin"
-	}
-	return "unknown-linux-musl"
-}
-
-func mapOSForTokei() string {
-	if runtime.GOOS == "darwin" {
-		return "apple-darwin"
-	}
-	return "unknown-linux-gnu"
-}
-
-func mapArchForTool(tool string) string {
-	switch {
-	case tool == "procs":
-		if isIntel() {
-			return "amd64"
-		}
-		return "aarch64"
-	case tool == "tree-sitter":
-		if runtime.GOOS == "darwin" {
-			return mapArchTreeSitter()
-		}
-		if isIntel() {
-			return "x64"
-		}
-		return "arm64"
-	case tool == "cloudflare-speed-cli", tool == "xh":
-		if isIntel() {
-			return "x86_64"
-		}
-		return "aarch64"
-	case tool == "tokei":
-		if isIntel() {
-			return "x86_64"
-		}
-		return "aarch64"
-	case tool == "fzf", tool == "yq":
-		if isIntel() {
-			return "amd64"
-		}
-		return "arm64"
-	default:
-		if isIntel() {
-			return "amd64"
-		}
-		return "aarch64"
-	}
-}
-
-func mapArchTreeSitter() string {
-	if isIntel() {
-		return "x64"
-	}
-	return "arm64"
-}
-
-func isIntel() bool {
-	return runtime.GOARCH == "amd64"
-}
-
-func aptPackageName(packageName string) string {
-	switch packageName {
-	case "ack":
-		return "ack-grep"
-	case "fd":
-		return "fd-find"
-	case "rg":
-		return "ripgrep"
-	case "openssh":
-		return "openssh-client openssh-server"
-	}
-	return packageName
-}
-
-func brewPackageName(packageName string) string {
-	switch packageName {
-	case "tshark":
-		return "wireshark"
-	}
-	return packageName
-}
-
-func isSnapPackage(packageName string, snapList []string) bool {
-	for _, snap := range snapList {
-		if snap == packageName {
-			return true
-		}
-	}
-	return false
-}
-
-func snapPackageName(packageName string) string {
-	if packageName == "neovim" {
-		return "nvim"
-	}
-	return packageName
 }

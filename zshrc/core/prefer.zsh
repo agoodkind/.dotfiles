@@ -102,7 +102,7 @@ function _prefer_tty_impl() {
 
     local func_body="
 $name() {
-    if [[ -n \"\$CLAUDECODE\" || -n \"\$CURSOR_AGENT\" ]]; then
+    if (( ! \$DOTFILES_INTERACTIVE )); then
         $agent_fallback \"\$@\"
         return
     fi

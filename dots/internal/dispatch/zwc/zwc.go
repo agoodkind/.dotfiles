@@ -1,3 +1,4 @@
+// Package zwc implements recompilation of stale zsh compiled (.zwc) files.
 package zwc
 
 import (
@@ -12,7 +13,8 @@ import (
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
-func Recompile(_ context.Context, dotfiles string, dispatchLogger *telemetry.Logger) error {
+// Recompile recompiles stale .zsh files to .zwc byte-code in the dotfiles directories.
+func Recompile(ctx context.Context, dotfiles string, dispatchLogger *telemetry.Logger) error {
 	if !runner.HasCommand("zsh") {
 		return nil
 	}
@@ -27,18 +29,18 @@ func Recompile(_ context.Context, dotfiles string, dispatchLogger *telemetry.Log
 	}
 	compiled := 0
 	for _, dir := range dirs {
-		_ = filepath.WalkDir(dir, func(path string, entry os.DirEntry, walkErr error) error {
+		_ = filepath.WalkDir(filepath.Clean(dir), func(path string, entry os.DirEntry, walkErr error) error {
 			if walkErr != nil {
-				return nil
+				return walkErr
 			}
 			if entry.IsDir() {
 				return nil
 			}
-			if !(strings.HasSuffix(path, ".zsh") || filepath.Base(path) == ".zshrc") {
+			if !strings.HasSuffix(path, ".zsh") && filepath.Base(path) != ".zshrc" {
 				return nil
 			}
 			if needsCompile(path) {
-				_, err := cmdexec.OutputWithLogger(context.Background(), dispatchLogger, "zsh", "-c", fmt.Sprintf("zcompile %q", path))
+				_, err := cmdexec.OutputWithLogger(ctx, dispatchLogger, "zsh", "-c", fmt.Sprintf("zcompile %q", path))
 				if err == nil {
 					compiled++
 				}
@@ -46,7 +48,7 @@ func Recompile(_ context.Context, dotfiles string, dispatchLogger *telemetry.Log
 			return nil
 		})
 	}
-	dispatchLogger.Info(fmt.Sprintf("compiled %d file(s)", compiled))
+	dispatchLogger.InfoContext(ctx, fmt.Sprintf("compiled %d file(s)", compiled))
 	return nil
 }
 

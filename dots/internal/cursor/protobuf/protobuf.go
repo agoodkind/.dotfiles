@@ -1,23 +1,29 @@
+// Package protobuf implements protobuf encoding for Cursor API requests.
 package protobuf
 
 import (
-	"fmt"
-
 	"goodkind.io/.dotfiles/internal/cursor/constants"
 	"goodkind.io/.dotfiles/internal/cursor/models"
 )
 
+// EncodeVarint encodes an integer as a protobuf varint byte sequence.
 func EncodeVarint(value int) []byte {
 	encodedBytes := []byte{}
 	remainingValue := value
 	for remainingValue > constants.VarintDataMask {
-		encodedBytes = append(encodedBytes, byte((remainingValue&constants.VarintDataMask)|constants.VarintContinuationBit))
+		byteVal := min((remainingValue&constants.VarintDataMask)|constants.VarintContinuationBit, 255)
+		if byteVal < 0 || byteVal > 255 {
+			byteVal = 255
+		}
+		encodedBytes = append(encodedBytes, byte(byteVal))
 		remainingValue >>= 7
 	}
-	encodedBytes = append(encodedBytes, byte(remainingValue&constants.VarintDataMask))
+	finalByte := min(remainingValue&constants.VarintDataMask, 255)
+	encodedBytes = append(encodedBytes, byte(finalByte))
 	return encodedBytes
 }
 
+// ReadVarint reads a varint from data at position and returns the decoded value and the next byte position.
 func ReadVarint(data []byte, position int) (int, int) {
 	decodedValue := 0
 	shiftCount := 0
@@ -34,16 +40,27 @@ func ReadVarint(data []byte, position int) (int, int) {
 	return decodedValue, cursorPosition
 }
 
+// EncodeBytesField encodes a string as a protobuf length-delimited field with the given field number.
 func EncodeBytesField(fieldNumber int, value string) []byte {
 	payloadBytes := []byte(value)
 	fieldTag := (fieldNumber << 3) | constants.WireTypeLength
-	return append(append([]byte{byte(fieldTag)}, EncodeVarint(len(payloadBytes))...), payloadBytes...)
+	return append(append(EncodeVarint(fieldTag), EncodeVarint(len(payloadBytes))...), payloadBytes...)
 }
 
+// ParseField parses a single protobuf field from data starting at position.
 func ParseField(data []byte, position int) models.ParsedField {
 	if position >= len(data) {
 		return models.ParsedField{
+			FieldNumber: 0,
+			WireType:    0,
+			Value: models.ParsedValue{
+				Kind:    models.ParsedValueInvalid,
+				Integer: 0,
+				Bytes:   nil,
+				List:    nil,
+			},
 			NextPosition: position,
+			Ok:           false,
 		}
 	}
 	tag, nextPosition := ReadVarint(data, position)
@@ -58,6 +75,8 @@ func ParseField(data []byte, position int) models.ParsedField {
 			Value: models.ParsedValue{
 				Kind:    models.ParsedValueInteger,
 				Integer: integerValue,
+				Bytes:   nil,
+				List:    nil,
 			},
 			NextPosition: endPosition,
 			Ok:           true,
@@ -68,16 +87,16 @@ func ParseField(data []byte, position int) models.ParsedField {
 		payloadLength, endPosition := ReadVarint(data, nextPosition)
 		payloadStart := endPosition
 		payloadEnd := payloadStart + payloadLength
-		if payloadEnd > len(data) {
-			payloadEnd = len(data)
-		}
+		payloadEnd = min(payloadEnd, len(data))
 		bytesValue := data[payloadStart:payloadEnd]
 		return models.ParsedField{
 			FieldNumber: fieldNumber,
 			WireType:    wireType,
 			Value: models.ParsedValue{
-				Kind:  models.ParsedValueBytes,
-				Bytes: bytesValue,
+				Kind:    models.ParsedValueBytes,
+				Integer: 0,
+				Bytes:   bytesValue,
+				List:    nil,
 			},
 			NextPosition: payloadEnd,
 			Ok:           true,
@@ -85,10 +104,20 @@ func ParseField(data []byte, position int) models.ParsedField {
 	}
 
 	return models.ParsedField{
+		FieldNumber: 0,
+		WireType:    0,
+		Value: models.ParsedValue{
+			Kind:    models.ParsedValueInvalid,
+			Integer: 0,
+			Bytes:   nil,
+			List:    nil,
+		},
 		NextPosition: len(data),
+		Ok:           false,
 	}
 }
 
+// AddFieldValue sets or appends value to fields at fieldNumber, promoting to a list on collision.
 func AddFieldValue(fields models.ParsedMessage, fieldNumber int, value models.ParsedValue) {
 	existingValue, exists := fields[fieldNumber]
 	if !exists {
@@ -101,11 +130,14 @@ func AddFieldValue(fields models.ParsedMessage, fieldNumber int, value models.Pa
 		return
 	}
 	fields[fieldNumber] = models.ParsedValue{
-		Kind: models.ParsedValueList,
-		List: []models.ParsedValue{existingValue, value},
+		Kind:    models.ParsedValueList,
+		Integer: 0,
+		Bytes:   nil,
+		List:    []models.ParsedValue{existingValue, value},
 	}
 }
 
+// ParseMessage decodes a protobuf byte slice into a ParsedMessage field map.
 func ParseMessage(data []byte) models.ParsedMessage {
 	fields := models.ParsedMessage{}
 	cursorPosition := 0
@@ -120,6 +152,7 @@ func ParseMessage(data []byte) models.ParsedMessage {
 	return fields
 }
 
+// GetBytesField returns the raw bytes stored at fieldNumber in fields, or nil if absent.
 func GetBytesField(fields models.ParsedMessage, fieldNumber int) []byte {
 	fieldValue, found := fields[fieldNumber]
 	if !found || fieldValue.Kind != models.ParsedValueBytes {
@@ -128,13 +161,10 @@ func GetBytesField(fields models.ParsedMessage, fieldNumber int) []byte {
 	return fieldValue.Bytes
 }
 
+// DecodeBytesField converts a bytes field to a string, returning defaultValue when value is nil.
 func DecodeBytesField(value []byte, defaultValue string) string {
 	if value == nil {
 		return defaultValue
 	}
 	return string(value)
-}
-
-func Dump(fields models.ParsedMessage) string {
-	return fmt.Sprintf("%v", fields)
 }

@@ -1,15 +1,17 @@
+// Package constants defines constants for the Cursor API and default paths.
 package constants
 
+// APIBase and the following constants define Cursor API endpoints, authentication headers, and protobuf field identifiers.
 const (
 	APIBase             = "https://api2.cursor.sh/aiserver.v1.AiService"
 	DefaultRulesDir     = ".dotfiles/.agents/rules"
 	DefaultWorkspaceURL = "https://github.com/agoodkind/.dotfiles"
 	MaxParallelWorkers  = 10
 
-	CursorAuthHeader      = "authorization: Bearer"
-	CursorAuthTokenQuery  = "SELECT value FROM ItemTable WHERE key = 'cursorAuth/accessToken'"
-	ContentTypeHeader     = "content-type: application/proto"
-	ConnectProtocolHeader = "connect-protocol-version: 1"
+	CursorRequestHeaderPrefix = "authorization: Bearer"
+	CursorItemTableQuery      = "SELECT value FROM ItemTable WHERE key = 'cursorAuth/accessToken'"
+	ContentTypeHeader         = "content-type: application/proto"
+	ConnectProtocolHeader     = "connect-protocol-version: 1"
 
 	EndpointList   = "KnowledgeBaseList"
 	EndpointRemove = "KnowledgeBaseRemove"

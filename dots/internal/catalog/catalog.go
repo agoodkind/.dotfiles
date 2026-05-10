@@ -1,7 +1,9 @@
+// Package catalog implements the configuration catalog for dotfiles sync targets.
 package catalog
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"sync"
@@ -9,28 +11,55 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
+// PackageConfig holds the package lists for each supported package manager.
 type PackageConfig struct {
-	COMMON_PACKAGES    []string          `toml:"common_packages"`
-	APT_SPECIFIC       []string          `toml:"apt_specific"`
-	SNAP_PACKAGES      []string          `toml:"snap_packages"`
-	BREW_SPECIFIC      []string          `toml:"brew_specific"`
-	BREW_CASKS         map[string]string `toml:"brew_casks"`
-	GO_PACKAGES        map[string]string `toml:"go_packages"`
-	CARGO_PACKAGES     []string          `toml:"cargo_packages"`
-	CARGO_GIT_PACKAGES map[string]string `toml:"cargo_git_packages"`
+	CommonPackages   []string          `toml:"common_packages"`
+	AptSpecific      []string          `toml:"apt_specific"`
+	SnapPackages     []string          `toml:"snap_packages"`
+	BrewSpecific     []string          `toml:"brew_specific"`
+	BrewCasks        map[string]string `toml:"brew_casks"`
+	GoPackages       map[string]string `toml:"go_packages"`
+	CargoPackages    []string          `toml:"cargo_packages"`
+	CargoGitPackages map[string]string `toml:"cargo_git_packages"`
 }
 
+// ToolDeclaration describes a custom tool to install or upgrade.
 type ToolDeclaration struct {
-	ID   string `toml:"id"`
-	Bin  string `toml:"bin"`
+	// ID is the canonical tool identifier (matches the catalog.toml [[tool]] id field).
+	ID string `toml:"id"`
+	// Bin is the binary name used to invoke the tool and check its version.
+	Bin string `toml:"bin"`
+	// Repo is the GitHub repository slug (owner/name) for version and release lookup.
 	Repo string `toml:"repo"`
+	// InstallMethod is one of "script", "cargo", or "github-release".
+	InstallMethod string `toml:"install_method"`
+	// Platforms restricts installation to the listed GOOS values. Empty means all platforms.
+	Platforms []string `toml:"platforms"`
+	// ScriptURL is the URL of the install script (used when InstallMethod is "script").
+	ScriptURL string `toml:"script_url"`
+	// ScriptArgs are extra arguments passed to the install script after the script path.
+	ScriptArgs []string `toml:"script_args"`
+	// ArchiveExt is the file extension of the release asset (e.g. ".tar.gz", ".zip", ".gz", ".deb").
+	ArchiveExt string `toml:"archive_ext"`
+	// OSDarwin is the OS tag embedded in the release asset filename when running on macOS.
+	OSDarwin string `toml:"os_darwin"`
+	// OSLinux is the OS tag embedded in the release asset filename when running on Linux.
+	OSLinux string `toml:"os_linux"`
+	// ArchAMD64 is the architecture tag embedded in the release asset filename for amd64.
+	ArchAMD64 string `toml:"arch_amd64"`
+	// ArchARM64 is the architecture tag embedded in the release asset filename for arm64.
+	ArchARM64 string `toml:"arch_arm64"`
+	// CrateName is the crates.io crate name (used when InstallMethod is "cargo").
+	CrateName string `toml:"crate_name"`
 }
 
+// DispatchWorker represents a named background worker entry in the dispatch config.
 type DispatchWorker struct {
 	Name    string `toml:"name"`
 	Enabled bool   `toml:"enabled"`
 }
 
+// DispatchConfig holds configuration for the background dispatch system.
 type DispatchConfig struct {
 	Workers            []DispatchWorker `toml:"workers"`
 	StatusDir          string           `toml:"status_dir"`
@@ -40,6 +69,7 @@ type DispatchConfig struct {
 	WeeklyUpdateMarker string           `toml:"weekly_update_marker"`
 }
 
+// MacPatchConfig holds configuration for the macOS /etc/zsh patch.
 type MacPatchConfig struct {
 	Enabled      bool   `toml:"enabled"`
 	Sentinel     string `toml:"sentinel"`
@@ -48,6 +78,7 @@ type MacPatchConfig struct {
 	PatchScript  string `toml:"patch_script"`
 }
 
+// PreferCacheConfig holds configuration for the prefer-alias cache.
 type PreferCacheConfig struct {
 	CacheFile      string   `toml:"cache_file"`
 	InvalidateFile string   `toml:"invalidate_file"`
@@ -66,58 +97,62 @@ var (
 	loadOnce sync.Once
 	mu       sync.RWMutex
 	cached   catalogDocument
-	loadErr  error
+	errLoad  error
 )
 
+// DefaultPackageConfig returns the package config from the catalog, or a zero-value config on load error.
 func DefaultPackageConfig() *PackageConfig {
 	loadCatalog()
 	mu.RLock()
 	defer mu.RUnlock()
-	if loadErr != nil {
-		return &PackageConfig{}
+	if errLoad != nil {
+		return &PackageConfig{
+			CommonPackages:   nil,
+			AptSpecific:      nil,
+			SnapPackages:     nil,
+			BrewSpecific:     nil,
+			BrewCasks:        nil,
+			GoPackages:       nil,
+			CargoPackages:    nil,
+			CargoGitPackages: nil,
+		}
 	}
 	source := cached.Packages
 	duplicated := &PackageConfig{
-		COMMON_PACKAGES:    append([]string{}, source.COMMON_PACKAGES...),
-		APT_SPECIFIC:       append([]string{}, source.APT_SPECIFIC...),
-		SNAP_PACKAGES:      append([]string{}, source.SNAP_PACKAGES...),
-		BREW_SPECIFIC:      append([]string{}, source.BREW_SPECIFIC...),
-		CARGO_PACKAGES:     append([]string{}, source.CARGO_PACKAGES...),
-		BREW_CASKS:         make(map[string]string, len(source.BREW_CASKS)),
-		GO_PACKAGES:        make(map[string]string, len(source.GO_PACKAGES)),
-		CARGO_GIT_PACKAGES: make(map[string]string, len(source.CARGO_GIT_PACKAGES)),
+		CommonPackages:   append([]string{}, source.CommonPackages...),
+		AptSpecific:      append([]string{}, source.AptSpecific...),
+		SnapPackages:     append([]string{}, source.SnapPackages...),
+		BrewSpecific:     append([]string{}, source.BrewSpecific...),
+		CargoPackages:    append([]string{}, source.CargoPackages...),
+		BrewCasks:        make(map[string]string, len(source.BrewCasks)),
+		GoPackages:       make(map[string]string, len(source.GoPackages)),
+		CargoGitPackages: make(map[string]string, len(source.CargoGitPackages)),
 	}
-	for key, value := range source.BREW_CASKS {
-		duplicated.BREW_CASKS[key] = value
-	}
-	for key, value := range source.GO_PACKAGES {
-		duplicated.GO_PACKAGES[key] = value
-	}
-	for key, value := range source.CARGO_GIT_PACKAGES {
-		duplicated.CARGO_GIT_PACKAGES[key] = value
-	}
+	maps.Copy(duplicated.BrewCasks, source.BrewCasks)
+	maps.Copy(duplicated.GoPackages, source.GoPackages)
+	maps.Copy(duplicated.CargoGitPackages, source.CargoGitPackages)
 	return duplicated
 }
 
+// DefaultToolDeclarations returns the tool declarations from the catalog, or nil on load error.
 func DefaultToolDeclarations() []ToolDeclaration {
 	loadCatalog()
 	mu.RLock()
 	defer mu.RUnlock()
-	if loadErr != nil {
+	if errLoad != nil {
 		return nil
 	}
 	tools := make([]ToolDeclaration, 0, len(cached.Tools))
-	for _, tool := range cached.Tools {
-		tools = append(tools, tool)
-	}
+	tools = append(tools, cached.Tools...)
 	return tools
 }
 
+// DefaultDispatchConfig returns the dispatch config from the catalog, or a built-in default on load error.
 func DefaultDispatchConfig() *DispatchConfig {
 	loadCatalog()
 	mu.RLock()
 	defer mu.RUnlock()
-	if loadErr != nil {
+	if errLoad != nil {
 		return &DispatchConfig{
 			StatusDir:          "$HOME/.cache/dotfiles_dispatch.lock",
 			LockFile:           "$HOME/.cache/dotfiles_dispatch.flock",
@@ -135,9 +170,7 @@ func DefaultDispatchConfig() *DispatchConfig {
 	}
 	source := cached.Dispatch
 	copyWorkers := make([]DispatchWorker, 0, len(source.Workers))
-	for _, worker := range source.Workers {
-		copyWorkers = append(copyWorkers, worker)
-	}
+	copyWorkers = append(copyWorkers, source.Workers...)
 	return &DispatchConfig{
 		Workers:            copyWorkers,
 		StatusDir:          source.StatusDir,
@@ -148,11 +181,12 @@ func DefaultDispatchConfig() *DispatchConfig {
 	}
 }
 
+// DefaultMacPatchConfig returns the macOS patch config from the catalog, or a built-in default on load error.
 func DefaultMacPatchConfig() *MacPatchConfig {
 	loadCatalog()
 	mu.RLock()
 	defer mu.RUnlock()
-	if loadErr != nil {
+	if errLoad != nil {
 		return &MacPatchConfig{
 			Enabled:      true,
 			Sentinel:     "# DOTFILES_PERF_PATCH_V4",
@@ -171,11 +205,12 @@ func DefaultMacPatchConfig() *MacPatchConfig {
 	}
 }
 
+// DefaultPreferCacheConfig returns the prefer-cache config from the catalog, or a built-in default on load error.
 func DefaultPreferCacheConfig() *PreferCacheConfig {
 	loadCatalog()
 	mu.RLock()
 	defer mu.RUnlock()
-	if loadErr != nil {
+	if errLoad != nil {
 		return &PreferCacheConfig{
 			CacheFile:      "$HOME/.cache/zsh_prefer_aliases.zsh",
 			InvalidateFile: "$HOME/.cache/zsh_prefer_invalidate",
@@ -189,9 +224,7 @@ func DefaultPreferCacheConfig() *PreferCacheConfig {
 	}
 	source := cached.PreferCache
 	copySourceFiles := make([]string, 0, len(source.SourceFiles))
-	for _, item := range source.SourceFiles {
-		copySourceFiles = append(copySourceFiles, item)
-	}
+	copySourceFiles = append(copySourceFiles, source.SourceFiles...)
 	return &PreferCacheConfig{
 		CacheFile:      source.CacheFile,
 		InvalidateFile: source.InvalidateFile,
@@ -204,17 +237,17 @@ func loadCatalog() {
 		catalogPath := resolveCatalogPath()
 		data, err := os.ReadFile(catalogPath)
 		if err != nil {
-			loadErr = fmt.Errorf("read catalog file: %w", err)
+			errLoad = fmt.Errorf("read catalog file: %w", err)
 			return
 		}
 		var doc catalogDocument
 		if err := toml.Unmarshal(data, &doc); err != nil {
-			loadErr = fmt.Errorf("parse catalog file: %w", err)
+			errLoad = fmt.Errorf("parse catalog file: %w", err)
 			return
 		}
 		mu.Lock()
 		cached = doc
-		loadErr = nil
+		errLoad = nil
 		mu.Unlock()
 	})
 }

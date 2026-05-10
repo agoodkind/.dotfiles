@@ -1,3 +1,4 @@
+// Package install implements dotfiles installation routines.
 package install
 
 import (
@@ -19,14 +20,26 @@ import (
 
 var installLogger *telemetry.Logger
 
+type installFlag string
+
+const (
+	flagHelp             installFlag = "--help"
+	flagHelpShort        installFlag = "-h"
+	flagUseDefaults      installFlag = "--use-defaults"
+	flagUseDefaultsShort installFlag = "-d"
+	flagRepair           installFlag = "--repair"
+	flagQuick            installFlag = "--quick"
+	flagSkipGit          installFlag = "--skip-git"
+	flagSkipNetwork      installFlag = "--skip-network"
+)
+
+// Run executes the dotfiles install workflow with the given arguments.
 func Run(ctx context.Context, args ...string) error {
-	if ctx == nil {
-		ctx = context.Background()
-	}
 	logPath := filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "install.log")
 	logger, err := telemetry.NewLogger(logPath)
 	if err != nil {
-		return err
+		slog.WarnContext(ctx, "creating logger", "err", err)
+		return fmt.Errorf("creating logger: %w", err)
 	}
 	installLogger = logger
 	defer logger.Close()
@@ -36,27 +49,35 @@ func Run(ctx context.Context, args ...string) error {
 	}()
 	runner.SetLogger(logger)
 	_ = os.Setenv("DOTFILES_LOG", logPath)
-	done := logger.Section("Install")
+	done := logger.SectionContext(ctx, "Install")
 	defer done()
 
 	useDefaults := false
-	syncOpts := sync.Options{}
+	syncOpts := sync.Options{
+		RepairMode:     false,
+		QuickMode:      false,
+		SkipGit:        false,
+		SkipNetwork:    false,
+		SkipCursorSync: false,
+		DryRun:         false,
+		UseDefaults:    false,
+	}
 
 	for _, arg := range args {
-		switch arg {
-		case "--help", "-h":
-			printInstallUsage()
+		switch installFlag(arg) {
+		case flagHelp, flagHelpShort:
+			printInstallUsage(ctx)
 			return nil
-		case "--use-defaults", "-d":
+		case flagUseDefaults, flagUseDefaultsShort:
 			useDefaults = true
 			syncOpts.UseDefaults = true
-		case "--repair":
+		case flagRepair:
 			syncOpts.RepairMode = true
-		case "--quick":
+		case flagQuick:
 			syncOpts.QuickMode = true
-		case "--skip-git":
+		case flagSkipGit:
 			syncOpts.SkipGit = true
-		case "--skip-network":
+		case flagSkipNetwork:
 			syncOpts.SkipNetwork = true
 		default:
 			return fmt.Errorf("unsupported install flag: %s", arg)
@@ -67,171 +88,183 @@ func Run(ctx context.Context, args ...string) error {
 	if err := createSocketDir(); err != nil {
 		return err
 	}
-	if err := configureGit(useDefaults); err != nil {
+	if err := configureGit(ctx, useDefaults); err != nil {
 		return err
 	}
 	if err := sync.Run(ctx, syncOpts); err != nil {
-		return err
+		slog.WarnContext(ctx, "running sync", "err", err)
+		return fmt.Errorf("running sync: %w", err)
 	}
-	if err := ensureLoginShell(); err != nil {
+	if err := ensureLoginShell(ctx); err != nil {
 		return err
 	}
 	return nil
 }
 
-func printInstallUsage() {
-	logInfo("Usage: dots install [--use-defaults] [--quick] [--skip-git] [--skip-network] [--repair]")
+func printInstallUsage(ctx context.Context) {
+	logInfo(ctx, "Usage: dots install [--use-defaults] [--quick] [--skip-git] [--skip-network] [--repair]")
 }
 
 func createSocketDir() error {
-	return os.MkdirAll(filepath.Join(os.Getenv("HOME"), ".ssh", "sockets"), 0o700)
+	if err := os.MkdirAll(filepath.Clean(filepath.Join(os.Getenv("HOME"), ".ssh", "sockets")), 0o700); err != nil {
+		slog.Warn("creating socket directory", "err", err)
+		return fmt.Errorf("creating socket directory: %w", err)
+	}
+	return nil
 }
 
-func configureGit(useDefaults bool) error {
+func configureGit(ctx context.Context, useDefaults bool) error {
 	libPath := filepath.Join(dotfilesRoot(), "lib", ".gitconfig_incl")
-	if err := cmdexec.Run(context.Background(), "git", "config", "--global", "include.path", libPath); err != nil {
-		slog.Warn("Failed to set git include path", "err", err)
-		installLogger.WarnWithErr("Failed to set git include path", err)
+	if err := cmdexec.Run(ctx, "git", "config", "--global", "include.path", libPath); err != nil {
+		slog.WarnContext(ctx, "Failed to set git include path", "err", err)
+		installLogger.WarnContextWithErr(ctx, "Failed to set git include path", err)
+		slog.WarnContext(ctx, "set git include path", "err", err)
 		return fmt.Errorf("set git include path: %w", err)
 	}
 
-	name, err := gitConfig("user.name")
-	if err != nil {
-		return err
-	}
+	name := gitConfig(ctx, "user.name")
 	if name == "" {
-		if useDefaults {
-			logInfo("Skipping git user.name (use defaults mode)")
-		} else {
-			input := readLine("Enter your name for git (First Last): ")
-			if input != "" {
-				if err := cmdexec.Run(context.Background(), "git", "config", "--global", "user.name", input); err != nil {
-					return err
-				}
-			}
+		if err := promptAndSetGitConfig(ctx, useDefaults, "Skipping git user.name (use defaults mode)", "Enter your name for git (First Last): ", "user.name"); err != nil {
+			return err
 		}
 	}
 
-	email, err := gitConfig("user.email")
-	if err != nil {
-		return err
-	}
+	email := gitConfig(ctx, "user.email")
 	if email == "" {
-		if useDefaults {
-			logInfo("Skipping git user email (use defaults mode)")
-		} else {
-			input := readLine("Enter your git email: ")
-			if input != "" {
-				if err := cmdexec.Run(context.Background(), "git", "config", "--global", "user.email", input); err != nil {
-					return err
-				}
-			}
+		if err := promptAndSetGitConfig(ctx, useDefaults, "Skipping git user email (use defaults mode)", "Enter your git email: ", "user.email"); err != nil {
+			return err
 		}
 	}
 
-	currentCommand, err := gitConfig("gpg.ssh.defaultKeyCommand")
-	if err != nil {
-		return err
-	}
+	currentCommand := gitConfig(ctx, "gpg.ssh.defaultKeyCommand")
 	if currentCommand != "" {
 		return nil
 	}
 
-	sshAddOutput, _ := cmdexec.OutputTrimmed(context.Background(), "ssh-add", "-L")
-	for _, line := range strings.Split(strings.TrimSpace(sshAddOutput), "\n") {
-		if line == "" {
-			continue
-		}
-		if strings.Contains(line, "ed25519") {
-			fields := strings.Fields(line)
-			if len(fields) >= 2 {
-				keyID := fields[1]
-				keyValue := line
-				if err := cmdexec.Run(context.Background(), "git", "config", "--global", "gpg.ssh.defaultKeyCommand", fmt.Sprintf("ssh-add -L | grep '%s'", keyID)); err != nil {
-					return err
-				}
-				return cmdexec.Run(context.Background(), "git", "config", "--global", "user.signingKey", "key::"+keyValue)
-			}
-			break
-		}
+	sshAddOutput, _ := cmdexec.OutputTrimmed(ctx, "ssh-add", "-L")
+	agentDone, agentErr := setSigningKeyFromAgent(ctx, sshAddOutput)
+	if agentErr != nil {
+		return agentErr
+	}
+	if agentDone {
+		return nil
 	}
 
 	publicKeyPath := filepath.Join(os.Getenv("HOME"), ".ssh", "id_ed25519.pub")
-	if publicKeyRaw, err := os.ReadFile(publicKeyPath); err == nil {
+	if publicKeyRaw, err := os.ReadFile(filepath.Clean(publicKeyPath)); err == nil {
 		line := strings.TrimSpace(string(publicKeyRaw))
 		if line != "" {
-			return cmdexec.Run(context.Background(), "git", "config", "--global", "user.signingKey", "key::"+line)
+			if err := cmdexec.Run(ctx, "git", "config", "--global", "user.signingKey", "key::"+line); err != nil {
+				slog.WarnContext(ctx, "running git config", "err", err)
+				return fmt.Errorf("running git config: %w", err)
+			}
+			return nil
 		}
 	}
 
 	if useDefaults {
-		logInfo("Skipping SSH key setup (use defaults mode)")
+		logInfo(ctx, "Skipping SSH key setup (use defaults mode)")
 		return nil
 	}
 
-	keyPath := readLine("Enter path to your SSH public key (or leave empty to skip): ")
+	keyPath := readLine(ctx, "Enter path to your SSH public key (or leave empty to skip): ")
 	if keyPath == "" {
 		return nil
 	}
 	keyRaw, err := os.ReadFile(strings.TrimSpace(keyPath))
 	if err != nil {
-		slog.Warn("Failed to read SSH public key", "err", err)
-		installLogger.WarnWithErr("Failed to read SSH public key", err)
+		slog.WarnContext(ctx, "Failed to read SSH public key", "err", err)
+		installLogger.WarnContextWithErr(ctx, "Failed to read SSH public key", err)
+		slog.WarnContext(ctx, "read ssh public key", "err", err)
 		return fmt.Errorf("read ssh public key: %w", err)
 	}
 	line := strings.TrimSpace(string(keyRaw))
 	if line == "" {
 		return nil
 	}
-	return cmdexec.Run(context.Background(), "git", "config", "--global", "user.signingKey", "key::"+line)
+	if err := cmdexec.Run(ctx, "git", "config", "--global", "user.signingKey", "key::"+line); err != nil {
+		slog.WarnContext(ctx, "running git config", "err", err)
+		return fmt.Errorf("running git config: %w", err)
+	}
+	return nil
 }
 
-func ensureLoginShell() error {
+func setSigningKeyFromAgent(ctx context.Context, sshAddOutput string) (bool, error) {
+	for line := range strings.SplitSeq(strings.TrimSpace(sshAddOutput), "\n") {
+		if line == "" {
+			continue
+		}
+		if !strings.Contains(line, "ed25519") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			break
+		}
+		keyID := fields[1]
+		if err := cmdexec.Run(ctx, "git", "config", "--global", "gpg.ssh.defaultKeyCommand", fmt.Sprintf("ssh-add -L | grep '%s'", keyID)); err != nil {
+			slog.WarnContext(ctx, "running git config", "err", err)
+			return false, fmt.Errorf("running git config: %w", err)
+		}
+		if err := cmdexec.Run(ctx, "git", "config", "--global", "user.signingKey", "key::"+line); err != nil {
+			slog.WarnContext(ctx, "running git config", "err", err)
+			return false, fmt.Errorf("running git config: %w", err)
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+func ensureLoginShell(ctx context.Context) error {
 	zshPath, err := runner.LookPath("zsh")
 	if err != nil {
-		logInfo("Skipping login shell change (zsh not found)")
-		return nil
+		logInfo(ctx, "Skipping login shell change (zsh not found)")
+		slog.WarnContext(ctx, "look up zsh", "err", err)
+		return fmt.Errorf("look up zsh: %w", err)
 	}
-	currentShell, currentErr := detectCurrentShell()
+	currentShell, currentErr := detectCurrentShell(ctx)
 	if currentErr != nil {
 		currentShell = "unknown"
 	}
-	logInfof("Current login shell: %s", currentShell)
-	logInfof("Target zsh path: %s", zshPath)
+	logInfof(ctx, "Current login shell: %s", currentShell)
+	logInfof(ctx, "Target zsh path: %s", zshPath)
 
 	isZsh := currentShell == zshPath
 	if !isZsh && strings.HasSuffix(filepath.Base(currentShell), "zsh") {
 		isZsh = true
 	}
 	if isZsh {
-		logInfo("Shell is already zsh")
+		logInfo(ctx, "Shell is already zsh")
 		return nil
 	}
 
 	if os.Getenv("GITHUB_ACTIONS") == "true" {
-		logInfo("Skipping shell change in CI")
+		logInfo(ctx, "Skipping shell change in CI")
 		return nil
 	}
-	if err := cmdexec.Run(context.Background(), "chsh", "-s", zshPath); err != nil {
-		slog.Warn("Failed to change login shell", "err", err)
-		installLogger.WarnWithErr("Failed to change login shell", err)
+	if err := cmdexec.Run(ctx, "chsh", "-s", zshPath); err != nil {
+		slog.WarnContext(ctx, "Failed to change login shell", "err", err)
+		installLogger.WarnContextWithErr(ctx, "Failed to change login shell", err)
+		slog.WarnContext(ctx, "change login shell", "err", err)
 		return fmt.Errorf("change login shell: %w", err)
 	}
-	logInfo("Login shell changed to zsh")
+	logInfo(ctx, "Login shell changed to zsh")
 	return nil
 }
 
-func detectCurrentShell() (string, error) {
+func detectCurrentShell(ctx context.Context) (string, error) {
 	if runtime.GOOS == "darwin" {
 		userInfo, err := user.Current()
 		if err != nil {
-			return "", err
+			slog.WarnContext(ctx, "getting current user", "err", err)
+			return "", fmt.Errorf("getting current user: %w", err)
 		}
-		output, err := cmdexec.OutputTrimmed(context.Background(), "dscl", ".", "-read", fmt.Sprintf("/Users/%s", userInfo.Username), "UserShell")
+		output, err := cmdexec.OutputTrimmed(ctx, "dscl", ".", "-read", "/Users/"+userInfo.Username, "UserShell")
 		if err != nil {
-			return "", err
+			slog.WarnContext(ctx, "running dscl", "err", err)
+			return "", fmt.Errorf("running dscl: %w", err)
 		}
-		for _, line := range strings.Split(strings.TrimSpace(output), "\n") {
+		for line := range strings.SplitSeq(strings.TrimSpace(output), "\n") {
 			line = strings.TrimSpace(line)
 			fields := strings.Fields(line)
 			if len(fields) == 2 && fields[0] == "UserShell:" {
@@ -241,9 +274,10 @@ func detectCurrentShell() (string, error) {
 		return "", nil
 	}
 
-	output, err := cmdexec.OutputTrimmed(context.Background(), "getent", "passwd", os.Getenv("USER"))
+	output, err := cmdexec.OutputTrimmed(ctx, "getent", "passwd", os.Getenv("USER"))
 	if err != nil {
-		return "", err
+		slog.WarnContext(ctx, "running getent", "err", err)
+		return "", fmt.Errorf("running getent: %w", err)
 	}
 	parts := strings.Split(strings.TrimSpace(output), ":")
 	if len(parts) < 7 {
@@ -252,30 +286,43 @@ func detectCurrentShell() (string, error) {
 	return parts[6], nil
 }
 
-func gitConfig(name string) (string, error) {
-	output, err := cmdexec.OutputTrimmed(context.Background(), "git", "config", "--global", name)
-	if err != nil {
-		return "", nil
+func promptAndSetGitConfig(ctx context.Context, useDefaults bool, skipMsg, prompt, key string) error {
+	if useDefaults {
+		logInfo(ctx, skipMsg)
+		return nil
 	}
-	return output, nil
+	input := readLine(ctx, prompt)
+	if input == "" {
+		return nil
+	}
+	if err := cmdexec.Run(ctx, "git", "config", "--global", key, input); err != nil {
+		slog.WarnContext(ctx, "running git config", "err", err)
+		return fmt.Errorf("running git config: %w", err)
+	}
+	return nil
 }
 
-func readLine(prompt string) string {
-	logInfo(prompt)
+func gitConfig(ctx context.Context, name string) string {
+	output, _ := cmdexec.OutputTrimmed(ctx, "git", "config", "--global", name)
+	return output
+}
+
+func readLine(ctx context.Context, prompt string) string {
+	logInfo(ctx, prompt)
 	reader := bufio.NewReader(os.Stdin)
 	line, _ := reader.ReadString('\n')
 	return strings.TrimSpace(line)
 }
 
-func logInfo(message string) {
+func logInfo(ctx context.Context, message string) {
 	if installLogger != nil {
-		installLogger.Info(message)
+		installLogger.InfoContext(ctx, message)
 	}
 }
 
-func logInfof(format string, args ...string) {
+func logInfof(ctx context.Context, format string, args ...string) {
 	if installLogger != nil {
-		installLogger.Info(formatString(format, args...))
+		installLogger.InfoContext(ctx, formatString(format, args...))
 	}
 }
 

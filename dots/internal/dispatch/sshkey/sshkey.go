@@ -1,7 +1,10 @@
+// Package sshkey implements SSH key loading for the dispatch worker.
 package sshkey
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -11,24 +14,27 @@ import (
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
-func Load(_ context.Context, dispatchLogger *telemetry.Logger) error {
+// Load loads the ed25519 SSH key into the macOS keychain if it is not already present.
+func Load(ctx context.Context, dispatchLogger *telemetry.Logger) error {
 	if runtime.GOOS != "darwin" {
 		return nil
 	}
-	output, err := cmdexec.OutputWithLogger(context.Background(), dispatchLogger, "/usr/bin/ssh-add", "-l")
+	output, err := cmdexec.OutputWithLogger(ctx, dispatchLogger, "/usr/bin/ssh-add", "-l")
 	if err == nil && strings.Contains(output, "id_ed25519") {
-		dispatchLogger.Info("ssh key already loaded")
+		dispatchLogger.InfoContext(ctx, "ssh key already loaded")
 		return nil
 	}
 	_, err = cmdexec.OutputWithLogger(
-		context.Background(),
+		ctx,
 		dispatchLogger,
 		"/usr/bin/ssh-add",
 		"--apple-use-keychain",
 		filepath.Join(os.Getenv("HOME"), ".ssh", "id_ed25519"),
 	)
-	if err == nil {
-		dispatchLogger.Info("loaded id_ed25519 into keychain")
+	if err != nil {
+		slog.WarnContext(ctx, "sshkey: Load: ssh-add failed", "err", err)
+		return fmt.Errorf("running ssh-add: %w", err)
 	}
-	return err
+	dispatchLogger.InfoContext(ctx, "loaded id_ed25519 into keychain")
+	return nil
 }

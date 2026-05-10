@@ -29,8 +29,6 @@ prefer lg lazygit
 # npm wrapper prefers pnpm implementation
 prefer npm pnpm
 
-prefer docker podman
-
 # ssh helper
 prefer sshrm ssh-keygen -R
 

@@ -1,3 +1,4 @@
+// Package rules implements management of Cursor rules files.
 package rules
 
 import (
@@ -10,6 +11,7 @@ import (
 	"goodkind.io/.dotfiles/internal/cursor/logging"
 )
 
+// ParseMdcContent strips YAML frontmatter from rawContent and returns the trimmed body.
 func ParseMdcContent(rawContent string) string {
 	if strings.HasPrefix(rawContent, "---") {
 		separatorIndex := strings.Index(rawContent[3:], "\n---")
@@ -20,6 +22,7 @@ func ParseMdcContent(rawContent string) string {
 	return strings.TrimSpace(rawContent)
 }
 
+// CollectRuleFiles gathers .mdc files from ruleDirectories, deduplicating by stem and sorting by name.
 func CollectRuleFiles(ruleDirectories []string) []string {
 	selectedByName := map[string]string{}
 
@@ -51,6 +54,7 @@ func CollectRuleFiles(ruleDirectories []string) []string {
 	return ordered
 }
 
+// ResolveRuleFile resolves ruleFile to its symlink target if it is a symbolic link.
 func ResolveRuleFile(ruleFile string) string {
 	info, err := os.Lstat(ruleFile)
 	if err != nil {
@@ -66,6 +70,7 @@ func ResolveRuleFile(ruleFile string) string {
 	return resolvedFile
 }
 
+// FormatRuleSource returns a display string for ruleFile, including the symlink target when applicable.
 func FormatRuleSource(ruleFile string) string {
 	info, err := os.Lstat(ruleFile)
 	if err != nil {
@@ -81,6 +86,7 @@ func FormatRuleSource(ruleFile string) string {
 	return ruleFile + " -> " + resolvedFile
 }
 
+// ValidateRuleDirectories returns an error when none of ruleDirectories exist on disk.
 func ValidateRuleDirectories(ruleDirectories []string) error {
 	existing := []string{}
 	statuses := []string{}
