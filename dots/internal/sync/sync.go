@@ -234,6 +234,11 @@ func runConfigSteps(options Options, dotfiles string, logger *telemetry.Logger, 
 	}); err != nil {
 		return err
 	}
+	if err := step("Syncing Gemini configuration", false, func(ctx context.Context) error {
+		return workspace.SyncGeminiConfig(ctx, dotfiles, logger)
+	}); err != nil {
+		return err
+	}
 	if err := step("Syncing Copilot configuration", false, func(ctx context.Context) error {
 		return workspace.SyncCopilotConfig(ctx, dotfiles, logger)
 	}); err != nil {

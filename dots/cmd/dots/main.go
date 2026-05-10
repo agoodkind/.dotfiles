@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 
-	agentsync "goodkind.io/.dotfiles/internal/agentsync"
 	cursorSync "goodkind.io/.dotfiles/internal/cursor/syncer"
 	dispatcher "goodkind.io/.dotfiles/internal/dispatch"
 	installer "goodkind.io/.dotfiles/internal/install"
@@ -26,7 +25,6 @@ const (
 	cmdSync               subcommand = "sync"
 	cmdDispatch           subcommand = "dispatch"
 	cmdPerf               subcommand = "perf"
-	cmdSyncAgentRepo      subcommand = "sync-agent-repo"
 	cmdRefreshShellCaches subcommand = "refresh-shell-caches"
 	cmdCursorSync         subcommand = "cursor-sync"
 	cmdInstall            subcommand = "install"
@@ -75,8 +73,6 @@ func run(args []string) int {
 		return runDispatch(args[1:])
 	case cmdPerf:
 		return runPerf(args[1:])
-	case cmdSyncAgentRepo:
-		return runSyncAgentRepo(args[1:])
 	case cmdRefreshShellCaches:
 		return runRefreshShellCaches(args[1:])
 	case cmdCursorSync:
@@ -163,14 +159,6 @@ func runPerf(args []string) int {
 	return 0
 }
 
-func runSyncAgentRepo(args []string) int {
-	if err := agentsync.Run(context.Background(), args...); err != nil {
-		logError("sync-agent-repo failed", err)
-		return 1
-	}
-	return 0
-}
-
 func runRefreshShellCaches(args []string) int {
 	for _, arg := range args {
 		if arg == "-h" || arg == "--help" {
@@ -228,7 +216,6 @@ func printUsage() {
 	logInfo("  dots sync [--repair] [--quick] [--skip-git] [--skip-network] [--skip-cursor-sync] [--dry-run] [--use-defaults]")
 	logInfo("  dots dispatch [worker...]")
 	logInfo("  dots perf [log|history|arm-zprof|rebuild-path-cache]")
-	logInfo("  dots sync-agent-repo [path]")
 	logInfo("  dots refresh-shell-caches")
 	logInfo("  dots cursor-sync")
 	logInfo("  dots install [--use-defaults] [--quick] [--skip-git] [--skip-network] [--repair]")

@@ -323,6 +323,22 @@ func SyncCodexConfig(ctx context.Context, dotfiles string, logger *telemetry.Log
 	return nil
 }
 
+// SyncGeminiConfig compiles and syncs Gemini configuration files.
+func SyncGeminiConfig(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
+	_ = ctx
+	_ = logger
+
+	source := compilation.ResolveAgentSource(dotfiles)
+	geminiDir := filepath.Join(os.Getenv("HOME"), ".gemini")
+
+	if err := compilation.RenderRulesAsInstructionDoc(source.Rules, filepath.Join(geminiDir, "GEMINI.md"), "Gemini Instructions"); err != nil {
+		slog.WarnContext(ctx, "workspace: rendering gemini instruction doc", "err", err)
+		return fmt.Errorf("rendering gemini instruction doc: %w", err)
+	}
+
+	return nil
+}
+
 // SyncCopilotConfig compiles and syncs GitHub Copilot configuration files.
 func SyncCopilotConfig(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
 	_ = ctx

@@ -104,6 +104,7 @@ func runUninstall(ctx context.Context, purgePackages bool) error {
 	removeCursorConfig(ctx, dotfiles)
 	removeClaudeConfig(ctx, dotfiles)
 	removeCodexConfig(ctx, dotfiles)
+	removeGeminiConfig(ctx)
 	removeCopilotConfig(ctx, dotfiles)
 	removeGitConfig(ctx, dotfiles)
 	removeCacheFiles()
@@ -219,6 +220,12 @@ func removeCodexConfig(ctx context.Context, dotfiles string) {
 	_ = removeManagedSkillDirs(filepath.Join(codexDir, "skills"), "cursor-command-")
 	_ = removeGeneratedFileIfManaged(filepath.Join(codexDir, "AGENTS.md"))
 	_ = removeGeneratedFileIfManaged(filepath.Join(codexDir, "rules", "dotfiles.rules"))
+}
+
+func removeGeminiConfig(ctx context.Context) {
+	logInfo(ctx, "Removing Gemini configuration...")
+	geminiDir := filepath.Join(os.Getenv("HOME"), ".gemini")
+	_ = removeGeneratedFileIfManaged(filepath.Join(geminiDir, "GEMINI.md"))
 }
 
 func removeCopilotConfig(ctx context.Context, dotfiles string) {
