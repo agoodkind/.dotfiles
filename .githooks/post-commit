@@ -6,5 +6,6 @@ DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 source "$DOTDOTFILES/dots/bootstrap-go.sh"
 
 run_dots_go_command refresh-shell-caches >/dev/null 2>&1 &
+run_dots_go_command sync --quick --skip-git >/dev/null 2>&1 &
 
 exit 0
