@@ -14,6 +14,8 @@ Make sure to mind the shell actively in use, as bash quoting does not work in zs
 
 Cross-system compatibility: Use `$EPOCHSECONDS` for Unix timestamps and zsh builtins or `printf` for date and file metadata formatting. This machine has both BSD and GNU variants of `stat` and `date` installed alongside each other (`gstat`, `gdate`), so prefer builtins that sidestep that ambiguity entirely.
 
+Bootstrap entrypoints must work on a fresh macOS or Debian/Ubuntu host before optional tools are installed. Do not require `rg`, system `go`, `shfmt`, `ast-grep`, Rust tools, Go-installed tools, or catalog-installed binaries in code that runs before package provisioning finishes.
+
 SSH remote commands: When passing a command to `ssh host <command>`, quote the entire remote command string in single quotes (e.g. `ssh host 'somecommand --flag=value[index]'`) so that the local zsh shell passes the argument verbatim without glob expansion.
 For anything more complex than a single command, write the logic to a temp file via `mktemp`, `scp` it to the host, execute it there, and clean up afterward.
 

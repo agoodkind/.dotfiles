@@ -218,3 +218,8 @@ does not fully replicate a login session.
     DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
     source "$DOTDOTFILES/bash/core/init.bash"
     ```
+8. **Fresh-host bootstrap**: Bootstrap entrypoints must work on a fresh macOS
+   or Debian/Ubuntu host before optional tools are installed. Do not require
+   `rg`, system `go`, `shfmt`, `ast-grep`, Rust tools, Go-installed tools, or
+   catalog-installed binaries in code that runs before package provisioning
+   finishes.

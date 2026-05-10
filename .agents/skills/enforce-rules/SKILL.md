@@ -7,13 +7,17 @@ description: Enforce style, epistemic framing, and emdash-free prose. Use when t
 
 ## Before Starting
 
-Read these two files in full before producing any output:
+Read these files in full before producing any output:
 
 1. **General rules**: [general.mdc](../../rules/general.mdc)
-2. **Redo command**: [redo.md](../../commands/redo.md)
-3. **Code rules**: [code.mdc](../../rules/code.mdc)
+2. **Code rules**: [code.mdc](../../rules/code.mdc)
+3. **Git rules**: [git.mdc](../../rules/git.mdc)
+4. **Python rules**: [python.mdc](../../rules/python.mdc)
+5. **Security rules**: [security.mdc](../../rules/security.mdc)
+6. **Shell rules**: [shell.mdc](../../rules/shell.mdc)
+7. **Redo command**: [redo.md](../../commands/redo.md)
 
-Follow every rule in both files for the duration of this task.
+Follow every rule file for the duration of this task. Use the redo command as the review standard for any regenerated response.
 
 ## Emdash Prohibition
 
@@ -49,13 +53,13 @@ If a sentence would naturally use an emdash, rewrite the sentence entirely so th
 
 When this skill is active, every piece of output must:
 
-1. Follow the general rules (accuracy, epistemic language, evidence-based framing, writing style).
+1. Follow every `.agents/rules` rule file that applies to the task.
 2. Be eligible for the redo command (no overconfident assertions, all claims qualified).
 3. Contain zero emdashes or en-dashes in any form.
 
 If you catch an emdash or en-dash in your own draft, rewrite the sentence before emitting it.
 
-Make sure you verify / substantiate all claims/investigations, you should state expliclity for every single claim. 
+Make sure you verify and substantiate all claims and investigations. State evidence explicitly for every claim.
 
 
 Make sure you carefully think about each code change made, logic through its execution flow and exactly how it will interact in the larger picture.
