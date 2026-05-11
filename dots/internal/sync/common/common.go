@@ -3,6 +3,7 @@ package common
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -13,8 +14,11 @@ import (
 
 	"goodkind.io/.dotfiles/internal/catalog"
 	"goodkind.io/.dotfiles/internal/cmdexec"
+	"goodkind.io/.dotfiles/internal/runner"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
+
+var errDebianPrivilegeUnavailable = errors.New("root or passwordless sudo is required for Debian package operations")
 
 // Warn logs message at warn level via logger, if logger is non-nil.
 func Warn(logger *telemetry.Logger, message string) {
@@ -121,12 +125,93 @@ func IsUbuntu() bool {
 	return strings.Contains(lower, "ubuntu") || strings.Contains(lower, "debian")
 }
 
+// IsUbuntuOnly reports whether the current OS is Linux and identifies specifically as Ubuntu (not Debian).
+// Use this instead of IsUbuntu when behaviour must be restricted to Ubuntu, e.g. adding Launchpad PPAs.
+func IsUbuntuOnly() bool {
+	if runtime.GOOS != "linux" {
+		return false
+	}
+	content, err := os.ReadFile("/etc/os-release")
+	if err != nil {
+		return false
+	}
+	lower := strings.ToLower(string(content))
+	return strings.Contains(lower, "id=ubuntu")
+}
+
 // HasSudoAccess reports whether the current user can run sudo without a password prompt.
 func HasSudoAccess(ctx context.Context, logger *telemetry.Logger) bool {
+	if !runner.HasCommand("sudo") {
+		return false
+	}
 	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "sudo", "-n", "true"); err == nil {
 		return true
 	}
 	return cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "sudo", "-v") == nil
+}
+
+// DebianPrivilegePrefix returns the command prefix required for Debian package operations.
+func DebianPrivilegePrefix(euid int, sudoAvailable bool, sudoUsable bool) ([]string, error) {
+	if euid == 0 {
+		return nil, nil
+	}
+	if sudoAvailable && sudoUsable {
+		return []string{"sudo", "-n"}, nil
+	}
+	return nil, errDebianPrivilegeUnavailable
+}
+
+// CurrentDebianPrivilegePrefix returns the command prefix for the current process user.
+func CurrentDebianPrivilegePrefix(ctx context.Context, logger *telemetry.Logger) ([]string, error) {
+	sudoAvailable := false
+	sudoUsable := false
+	if os.Geteuid() != 0 {
+		sudoAvailable = runner.HasCommand("sudo")
+		if sudoAvailable {
+			sudoUsable = HasSudoAccess(ctx, logger)
+		}
+	}
+	return DebianPrivilegePrefix(os.Geteuid(), sudoAvailable, sudoUsable)
+}
+
+// DebianPrivilegedCommand applies a Debian privilege prefix to a command.
+func DebianPrivilegedCommand(prefix []string, command string, args ...string) (string, []string) {
+	if len(prefix) == 0 {
+		return command, args
+	}
+	prefixedArgs := append([]string{}, prefix[1:]...)
+	prefixedArgs = append(prefixedArgs, command)
+	prefixedArgs = append(prefixedArgs, args...)
+	return prefix[0], prefixedArgs
+}
+
+// RunDebianPrivilegedCommand runs a command as root or through passwordless sudo.
+func RunDebianPrivilegedCommand(ctx context.Context, logger *telemetry.Logger, command string, args ...string) error {
+	prefix, err := CurrentDebianPrivilegePrefix(ctx, logger)
+	if err != nil {
+		return err
+	}
+	actualCommand, actualArgs := DebianPrivilegedCommand(prefix, command, args...)
+	if err := cmdexec.RunWithLogger(ctx, logger, actualCommand, actualArgs...); err != nil {
+		slog.ErrorContext(ctx, "running privileged command", "command", command, "err", err)
+		return fmt.Errorf("running privileged command %s: %w", command, err)
+	}
+	return nil
+}
+
+// OutputDebianPrivilegedCommand runs a command as root or through passwordless sudo and returns its output.
+func OutputDebianPrivilegedCommand(ctx context.Context, logger *telemetry.Logger, command string, args ...string) (string, error) {
+	prefix, err := CurrentDebianPrivilegePrefix(ctx, logger)
+	if err != nil {
+		return "", err
+	}
+	actualCommand, actualArgs := DebianPrivilegedCommand(prefix, command, args...)
+	out, err := cmdexec.OutputWithLogger(ctx, logger, actualCommand, actualArgs...)
+	if err != nil {
+		slog.ErrorContext(ctx, "running privileged command", "command", command, "err", err)
+		return "", fmt.Errorf("running privileged command %s: %w", command, err)
+	}
+	return out, nil
 }
 
 // VersionAtLeast reports whether the current dot-separated version string is greater than or equal to minimum.

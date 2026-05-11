@@ -332,6 +332,39 @@ func installMacPackages(ctx context.Context, logger *telemetry.Logger) error {
 	return nil
 }
 
+// installUbuntuPPAs adds third-party Launchpad PPAs on Ubuntu hosts before the main apt-get install batch.
+// This is a no-op on Debian (which has these packages natively) and on non-Ubuntu systems.
+// Failures are non-fatal: each PPA add is attempted independently and only a warning is logged on error.
+func installUbuntuPPAs(ctx context.Context, cfg *catalog.PackageConfig, logger *telemetry.Logger) {
+	if !common.IsUbuntuOnly() {
+		return
+	}
+	if len(cfg.UbuntuPPAs) == 0 {
+		return
+	}
+	// software-properties-common provides add-apt-repository.
+	if err := common.RunDebianPrivilegedCommand(ctx, logger, "apt-get", "install", "-y", "-qq", "software-properties-common"); err != nil {
+		slog.WarnContext(ctx, "installUbuntuPPAs: installing software-properties-common", "err", err)
+		common.WarnContext(ctx, logger, "  failed to install software-properties-common; skipping PPAs")
+		return
+	}
+	added := false
+	for _, ppa := range cfg.UbuntuPPAs {
+		common.InfoContextf(ctx, logger, "  adding PPA %s", ppa)
+		if err := common.RunDebianPrivilegedCommand(ctx, logger, "add-apt-repository", "-y", ppa); err != nil {
+			slog.WarnContext(ctx, "installUbuntuPPAs: add-apt-repository", "ppa", ppa, "err", err)
+			common.WarnContextf(ctx, logger, "  failed to add PPA %s", ppa)
+			continue
+		}
+		added = true
+	}
+	if added {
+		if err := common.RunDebianPrivilegedCommand(ctx, logger, "apt-get", "update", "-qq"); err != nil {
+			slog.WarnContext(ctx, "installUbuntuPPAs: apt-get update after PPAs", "err", err)
+		}
+	}
+}
+
 func installDebianPackages(ctx context.Context, logger *telemetry.Logger) error {
 	if !runner.HasCommand("apt-get") {
 		return nil
@@ -340,10 +373,12 @@ func installDebianPackages(ctx context.Context, logger *telemetry.Logger) error 
 	if cfg == nil {
 		return nil
 	}
-	if err := cmdexec.RunWithLogger(ctx, logger, "sudo", "apt-get", "update", "-qq"); err != nil {
+	if err := common.RunDebianPrivilegedCommand(ctx, logger, "apt-get", "update", "-qq"); err != nil {
 		slog.WarnContext(ctx, "running apt-get update", "err", err)
 		return fmt.Errorf("running apt-get update: %w", err)
 	}
+
+	installUbuntuPPAs(ctx, cfg, logger)
 
 	packages := make(map[string]struct{})
 	var aptPkgs []string
@@ -361,7 +396,7 @@ func installDebianPackages(ctx context.Context, logger *telemetry.Logger) error 
 	}
 	if len(aptPkgs) > 0 {
 		aptArgs := append([]string{"install", "-y", "-qq"}, aptPkgs...)
-		if err := cmdexec.RunWithLogger(ctx, logger, "sudo", aptArgs...); err != nil {
+		if err := common.RunDebianPrivilegedCommand(ctx, logger, "apt-get", aptArgs...); err != nil {
 			slog.WarnContext(ctx, "running apt-get install", "err", err)
 			return fmt.Errorf("running apt-get install: %w", err)
 		}

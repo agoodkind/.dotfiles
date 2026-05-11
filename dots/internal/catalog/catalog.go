@@ -15,6 +15,7 @@ import (
 type PackageConfig struct {
 	CommonPackages   []string          `toml:"common_packages"`
 	AptSpecific      []string          `toml:"apt_specific"`
+	UbuntuPPAs       []string          `toml:"ubuntu_ppas"`
 	SnapPackages     []string          `toml:"snap_packages"`
 	BrewSpecific     []string          `toml:"brew_specific"`
 	BrewCasks        map[string]string `toml:"brew_casks"`
@@ -109,6 +110,7 @@ func DefaultPackageConfig() *PackageConfig {
 		return &PackageConfig{
 			CommonPackages:   nil,
 			AptSpecific:      nil,
+			UbuntuPPAs:       nil,
 			SnapPackages:     nil,
 			BrewSpecific:     nil,
 			BrewCasks:        nil,
@@ -121,6 +123,7 @@ func DefaultPackageConfig() *PackageConfig {
 	duplicated := &PackageConfig{
 		CommonPackages:   append([]string{}, source.CommonPackages...),
 		AptSpecific:      append([]string{}, source.AptSpecific...),
+		UbuntuPPAs:       append([]string{}, source.UbuntuPPAs...),
 		SnapPackages:     append([]string{}, source.SnapPackages...),
 		BrewSpecific:     append([]string{}, source.BrewSpecific...),
 		CargoPackages:    append([]string{}, source.CargoPackages...),

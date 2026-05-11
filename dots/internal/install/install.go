@@ -95,9 +95,7 @@ func Run(ctx context.Context, args ...string) error {
 		slog.WarnContext(ctx, "running sync", "err", err)
 		return fmt.Errorf("running sync: %w", err)
 	}
-	if err := ensureLoginShell(ctx); err != nil {
-		return err
-	}
+	ensureLoginShell(ctx)
 	return nil
 }
 
@@ -215,12 +213,12 @@ func setSigningKeyFromAgent(ctx context.Context, sshAddOutput string) (bool, err
 	return false, nil
 }
 
-func ensureLoginShell(ctx context.Context) error {
+func ensureLoginShell(ctx context.Context) {
 	zshPath, err := runner.LookPath("zsh")
 	if err != nil {
 		logInfo(ctx, "Skipping login shell change (zsh not found)")
 		slog.WarnContext(ctx, "look up zsh", "err", err)
-		return fmt.Errorf("look up zsh: %w", err)
+		return
 	}
 	currentShell, currentErr := detectCurrentShell(ctx)
 	if currentErr != nil {
@@ -235,21 +233,20 @@ func ensureLoginShell(ctx context.Context) error {
 	}
 	if isZsh {
 		logInfo(ctx, "Shell is already zsh")
-		return nil
+		return
 	}
 
 	if os.Getenv("GITHUB_ACTIONS") == "true" {
 		logInfo(ctx, "Skipping shell change in CI")
-		return nil
+		return
 	}
 	if err := cmdexec.Run(ctx, "chsh", "-s", zshPath); err != nil {
 		slog.WarnContext(ctx, "Failed to change login shell", "err", err)
 		installLogger.WarnContextWithErr(ctx, "Failed to change login shell", err)
 		slog.WarnContext(ctx, "change login shell", "err", err)
-		return fmt.Errorf("change login shell: %w", err)
+		return
 	}
 	logInfo(ctx, "Login shell changed to zsh")
-	return nil
 }
 
 func detectCurrentShell(ctx context.Context) (string, error) {

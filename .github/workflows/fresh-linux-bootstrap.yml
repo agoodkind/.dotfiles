@@ -1,0 +1,30 @@
+name: Fresh Linux Bootstrap
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.image }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Bootstrap in ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["debian:trixie", "ubuntu:24.04"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: dots/go.mod
+
+      - name: Run fresh bootstrap smoke
+        working-directory: dots
+        run: go run ./cmd/fresh-linux-bootstrap-smoke --image "${{ matrix.image }}" --repo-root "${{ github.workspace }}"

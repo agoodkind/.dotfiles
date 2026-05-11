@@ -46,22 +46,14 @@ dots_binary_stale() {
         return 0
     fi
 
-    if ! check_command rg; then
-        return 0
-    fi
-
     local source_file
     while IFS= read -r source_file; do
         if [ "$source_file" -nt "$DOTS_BINARY" ]; then
             return 0
         fi
     done < <(
-        rg --files \
-            -g '*.go' \
-            -g '*.toml' \
-            -g '*.mod' \
-            -g '*.sum' \
-            "$DOTDOTFILES/dots"
+        find "$DOTDOTFILES/dots" -type f \
+            \( -name '*.go' -o -name '*.toml' -o -name '*.mod' -o -name '*.sum' \)
     )
 
     return 1
@@ -282,6 +274,11 @@ run_dots_binary() {
     done
 }
 
+build_dots_binary() {
+    echo "dots: building binary (first run or source changed)..." >&2
+    GOTOOLCHAIN=auto GO111MODULE=on GOWORK=off "$GO_BINARY" build -C "$DOTDOTFILES/dots" -o "$DOTS_BINARY" ./cmd/dots
+}
+
 ensure_dots_binary() {
     mkdir -p "$DOTS_BINARY_DIR"
     if [ -x "$DOTS_BINARY" ] && ! dots_binary_stale; then
@@ -299,16 +296,19 @@ ensure_dots_binary() {
     fi
 
     if ! check_command flock; then
-        GO111MODULE=on GOWORK=off "$GO_BINARY" build -C "$DOTDOTFILES/dots" -o "$DOTS_BINARY" ./cmd/dots
+        build_dots_binary
         return $?
     fi
 
     (
-        flock 9
+        if ! flock -n 9; then
+            echo "dots: waiting for binary build lock ($DOTS_BUILD_LOCK_FILE)..." >&2
+            flock 9
+        fi
         if [ -x "$DOTS_BINARY" ] && ! dots_binary_stale; then
             exit 0
         fi
-        GO111MODULE=on GOWORK=off "$GO_BINARY" build -C "$DOTDOTFILES/dots" -o "$DOTS_BINARY" ./cmd/dots
+        build_dots_binary
         exit $?
     ) 9>"$DOTS_BUILD_LOCK_FILE"
     return $?

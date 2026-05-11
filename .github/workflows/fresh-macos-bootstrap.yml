@@ -1,0 +1,30 @@
+name: Fresh macOS Bootstrap
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.os }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Bootstrap on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-26, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: dots/go.mod
+
+      - name: Run fresh bootstrap smoke
+        working-directory: dots
+        run: go run ./cmd/fresh-macos-bootstrap-smoke --repo-root "${{ github.workspace }}"

@@ -17,6 +17,7 @@ import (
 	"goodkind.io/.dotfiles/internal/cmdexec"
 	"goodkind.io/.dotfiles/internal/runner"
 	syncer "goodkind.io/.dotfiles/internal/sync"
+	"goodkind.io/.dotfiles/internal/sync/common"
 	"goodkind.io/.dotfiles/internal/sync/repository"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
@@ -240,23 +241,21 @@ func doAptUpgrade(ctx context.Context, dispatchLogger *telemetry.Logger) {
 	if !runner.HasCommand("apt-get") {
 		return
 	}
-	if _, err := cmdexec.OutputWithLogger(ctx, dispatchLogger, "sudo", "-n", "true"); err == nil {
-		_, _ = cmdexec.OutputWithLogger(ctx, dispatchLogger, "sudo", "-n", "apt-get", "update")
-		_, _ = cmdexec.OutputWithLogger(
-			ctx,
-			dispatchLogger,
-			"sudo",
-			"-n",
-			"env",
-			"DEBIAN_FRONTEND=noninteractive",
-			"apt-get",
-			"-y",
-			"-o",
-			"Dpkg::Options::=--force-confdef",
-			"-o",
-			"Dpkg::Options::=--force-confold",
-			"dist-upgrade",
-		)
-		_, _ = cmdexec.OutputWithLogger(ctx, dispatchLogger, "sudo", "-n", "apt-get", "-y", "autoremove")
+	if _, err := common.OutputDebianPrivilegedCommand(ctx, dispatchLogger, "apt-get", "update"); err != nil {
+		return
 	}
+	_, _ = common.OutputDebianPrivilegedCommand(
+		ctx,
+		dispatchLogger,
+		"env",
+		"DEBIAN_FRONTEND=noninteractive",
+		"apt-get",
+		"-y",
+		"-o",
+		"Dpkg::Options::=--force-confdef",
+		"-o",
+		"Dpkg::Options::=--force-confold",
+		"dist-upgrade",
+	)
+	_, _ = common.OutputDebianPrivilegedCommand(ctx, dispatchLogger, "apt-get", "-y", "autoremove")
 }

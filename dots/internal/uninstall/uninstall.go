@@ -16,6 +16,7 @@ import (
 	"goodkind.io/.dotfiles/internal/catalog"
 	"goodkind.io/.dotfiles/internal/cmdexec"
 	"goodkind.io/.dotfiles/internal/runner"
+	"goodkind.io/.dotfiles/internal/sync/common"
 	"goodkind.io/.dotfiles/internal/sync/compilation"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
@@ -386,9 +387,9 @@ func removeAptPackages(ctx context.Context, lists *packageLists) error {
 	if !promptYesNo(ctx, "Continue? (y/n) ") {
 		return nil
 	}
-	args := append([]string{"apt-get", "remove", "-y"}, toRemove...)
-	_ = cmdexec.Run(ctx, "sudo", args...)
-	_ = cmdexec.Run(ctx, "sudo", "apt-get", "autoremove", "-y")
+	args := append([]string{"remove", "-y"}, toRemove...)
+	_ = common.RunDebianPrivilegedCommand(ctx, uninstallLogger, "apt-get", args...)
+	_ = common.RunDebianPrivilegedCommand(ctx, uninstallLogger, "apt-get", "autoremove", "-y")
 	return nil
 }
 
@@ -411,7 +412,7 @@ func removeSnapPackages(ctx context.Context, lists *packageLists) error {
 		return nil
 	}
 	for _, pkg := range toRemove {
-		_ = cmdexec.Run(ctx, "sudo", "snap", "remove", pkg)
+		_ = common.RunDebianPrivilegedCommand(ctx, uninstallLogger, "snap", "remove", pkg)
 	}
 	return nil
 }
