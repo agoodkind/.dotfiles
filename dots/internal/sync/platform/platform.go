@@ -217,7 +217,7 @@ func installRustupIfNeeded(ctx context.Context, logger *telemetry.Logger) error 
 		return fmt.Errorf("downloading tool: %w", err)
 	}
 	defer os.Remove(inst)
-	if err := cmdexec.RunWithLogger(ctx, logger, "sh", inst, "-s", "--", "-y"); err != nil {
+	if err := cmdexec.RunWithLogger(ctx, logger, "sh", inst, "--", "-y"); err != nil {
 		slog.WarnContext(ctx, "running sh", "err", err)
 		return fmt.Errorf("running sh: %w", err)
 	}

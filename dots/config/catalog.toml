@@ -158,7 +158,7 @@ bin = "starship"
 repo = "starship/starship"
 install_method = "script"
 script_url = "https://starship.rs/install.sh"
-script_args = ["--", "--yes"]
+script_args = ["--yes"]
 
 [[tool]]
 id = "fastfetch"
