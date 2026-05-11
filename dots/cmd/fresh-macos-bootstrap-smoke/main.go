@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -13,7 +14,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"goodkind.io/.dotfiles/internal/freshsmoke"
@@ -155,8 +155,9 @@ func runLockSmoke(ctx context.Context, dotsBinaryDir string, lockFile string, re
 }
 
 // runWithTart is the local path: clones a macOS Tart VM, shares the repo and
-// the smoke binary via --dir, SSHes in, and runs --in-vm assertions inside a
-// truly pristine VM. Requires: brew install cirruslabs/cli/tart
+// the smoke binary via --dir, and runs --in-vm assertions using tart exec
+// (no SSH required; Cirrus Labs base images pre-install the Tart Guest Agent).
+// Requires: brew install cirruslabs/cli/tart
 func runWithTart(ctx context.Context, opts options) error {
 	repoRoot, err := resolveRepoRoot(opts.repoRoot)
 	if err != nil {
@@ -203,28 +204,20 @@ func runWithTart(ctx context.Context, opts options) error {
 	}
 	defer func() { _ = vmCmd.Process.Kill() }()
 
-	fmt.Printf("fresh-macos-bootstrap: waiting for VM %s to boot\n", vmName)
-	ip, err := tartIP(ctx, vmName)
-	if err != nil {
+	fmt.Printf("fresh-macos-bootstrap: waiting for VM %s Guest Agent\n", vmName)
+	if err := waitForTartExec(ctx, vmName); err != nil {
 		return err
 	}
-	fmt.Printf("fresh-macos-bootstrap: VM %s ready at %s\n", vmName, ip)
+	fmt.Printf("fresh-macos-bootstrap: VM %s ready, running smoke via tart exec\n", vmName)
 
 	smokePath := "/Volumes/My Shared Files/smoke/" + filepath.Base(selfPath)
 	repoInVM := "/Volumes/My Shared Files/workspace"
-	sshCmd := strings.Join([]string{
-		smokePath,
-		"--in-vm",
-		"--repo-root", "'" + repoInVM + "'",
-	}, " ")
-
 	if err := streamCommand(
 		ctx,
-		"ssh",
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "UserKnownHostsFile=/dev/null",
-		"admin@"+ip,
-		sshCmd,
+		"tart", "exec", vmName,
+		smokePath,
+		"--in-vm",
+		"--repo-root", repoInVM,
 	); err != nil {
 		return fmt.Errorf("smoke inside Tart VM: %w", err)
 	}
@@ -233,6 +226,57 @@ func runWithTart(ctx context.Context, opts options) error {
 
 // runInsideVM runs assertions from inside a Tart VM where the dotfiles repo
 // is mounted read-only (typically at /Volumes/My Shared Files/workspace).
+const vmSmokeRepoDir = "/tmp/dotfiles-smoke-repo"
+
+// cloneWorkspaceInVM copies the read-only VM workspace mount to a writable
+// path, scrubs stale in-flight git state from the developer's machine, and
+// redirects origin (and each submodule's origin) to the local copy so that
+// any git fetch stays on disk without needing network access or write
+// permission to the Tart shared-files mount.
+func cloneWorkspaceInVM(ctx context.Context, roMount string) error {
+	slog.InfoContext(ctx, "copying workspace to writable path", "src", roMount, "dest", vmSmokeRepoDir)
+	// rsync --safe-links skips symlinks that point outside the source tree,
+	// which handles .claude/ entries that symlink to absolute host paths.
+	// filepath.Clean normalises roMount so gosec G204 is satisfied.
+	rsSrc := filepath.Clean(roMount) + "/"
+	cmd := exec.CommandContext(ctx, "rsync", "-a", "--safe-links", rsSrc, vmSmokeRepoDir)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		slog.ErrorContext(ctx, "copying workspace", "err", err)
+		return fmt.Errorf("copying workspace: %w", err)
+	}
+	for _, name := range []string{"MERGE_HEAD", "MERGE_MSG", "CHERRY_PICK_HEAD", "REVERT_HEAD"} {
+		_ = os.Remove(filepath.Join(vmSmokeRepoDir, ".git", name))
+	}
+	if err := streamCommand(ctx, "git", "-C", vmSmokeRepoDir, "remote", "set-url", "origin", roMount); err != nil {
+		return err
+	}
+	libDir := filepath.Join(vmSmokeRepoDir, "lib")
+	entries, err := os.ReadDir(libDir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		slog.ErrorContext(ctx, "reading lib dir", "err", err)
+		return fmt.Errorf("reading lib dir: %w", err)
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		smDir := filepath.Join(libDir, entry.Name())
+		if _, statErr := os.Stat(filepath.Join(smDir, ".git")); statErr != nil {
+			continue
+		}
+		wsSmDir := filepath.Join(roMount, "lib", entry.Name())
+		if err := streamCommand(ctx, "git", "-C", smDir, "remote", "set-url", "origin", wsSmDir); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func runInsideVM(ctx context.Context, repoRoot string) error {
 	if repoRoot == "" {
 		repoRoot = "/Volumes/My Shared Files/workspace"
@@ -241,6 +285,10 @@ func runInsideVM(ctx context.Context, repoRoot string) error {
 		slog.ErrorContext(ctx, "asserting absent tools", "err", err)
 		return fmt.Errorf("asserting absent tools: %w", err)
 	}
+	if err := cloneWorkspaceInVM(ctx, repoRoot); err != nil {
+		return err
+	}
+	repoRoot = vmSmokeRepoDir
 
 	home, err := os.MkdirTemp("", "dotfiles-fresh-macos-*")
 	if err != nil {
@@ -285,14 +333,31 @@ func runInsideVM(ctx context.Context, repoRoot string) error {
 	return nil
 }
 
-func tartIP(ctx context.Context, vmName string) (string, error) {
-	cmd := exec.CommandContext(ctx, "tart", "ip", vmName, "--wait", "60")
-	out, err := cmd.Output()
-	if err != nil {
-		slog.ErrorContext(ctx, "getting Tart VM IP", "vm", vmName, "err", err)
-		return "", fmt.Errorf("getting Tart VM IP for %s: %w", vmName, err)
+// waitForTartExec polls "tart exec vmName true" until the Guest Agent responds
+// (meaning the VM has booted), or ctx is canceled, or 5 minutes elapse.
+// tart ip --wait returns immediately for freshly-cloned VMs before boot completes.
+func waitForTartExec(ctx context.Context, vmName string) error {
+	const pollInterval = 5 * time.Second
+	const maxWait = 5 * time.Minute
+	deadline := time.Now().Add(maxWait)
+	for {
+		cmd := exec.CommandContext(ctx, "tart", "exec", vmName, "true")
+		if err := cmd.Run(); err == nil {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			err := fmt.Errorf("tart Guest Agent in %s not ready after %v", vmName, maxWait)
+			slog.ErrorContext(ctx, "tart Guest Agent timeout", "vm", vmName, "err", err)
+			return err
+		}
+		select {
+		case <-ctx.Done():
+			err := fmt.Errorf("context canceled waiting for tart Guest Agent: %w", ctx.Err())
+			slog.ErrorContext(ctx, "context canceled waiting for tart Guest Agent", "vm", vmName, "err", err)
+			return err
+		case <-time.After(pollInterval):
+		}
 	}
-	return strings.TrimSpace(string(out)), nil
 }
 
 func streamCommand(ctx context.Context, command string, args ...string) error {

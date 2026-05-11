@@ -61,7 +61,7 @@ dots_binary_stale() {
 
 emit_warning_if_legacy_bash() {
     if [ -n "${BASH_VERSINFO-}" ]; then
-        if [ "${BASH_VERSINFO[0]}" -lt 3 ] || { [ "${BASH_VERSINFO[0]}" -eq 3 ] && [ "${BASH_VERSINFO[1]}" -lt 2; }; then
+        if [ "${BASH_VERSINFO[0]}" -lt 3 ] || { [ "${BASH_VERSINFO[0]}" -eq 3 ] && [ "${BASH_VERSINFO[1]}" -lt 2 ]; }; then
             echo "warning: unsupported bash ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}; continuing without unsupported features" >&2
             return
         fi
