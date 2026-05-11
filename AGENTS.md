@@ -11,14 +11,15 @@ is handled by the Go-based `dots` binary.
 
 ## Startup Flow
 
-1. `**.zshenv`** — Earliest user file. Starts timing, sets up the perf tree,
-  bypasses `/etc/zshrc` locale fork and `/etc/zprofile` path_helper by
-   caching their output.
-2. `**.zshrc**` — Sets `DOTDOTFILES`, sources `zshrc/incl.zsh`, then applies
-  theme, PATH, and aliases.
-3. `**zshrc/incl.zsh**` — Sources perf, plugins (zinit turbo), utils, commands,
-  integrations, then launches `dots dispatch` asynchronously via `_async`.
-  Displays queued notifications from the previous session.
+1. **`.zshenv`** is the earliest user file, and it starts timing, sets up
+   the perf tree, and bypasses the `/etc/zshrc` locale fork and the
+   `/etc/zprofile` path_helper by caching their output.
+2. **`.zshrc`** sets `DOTDOTFILES`, sources `zshrc/incl.zsh`, and then
+   applies theme, PATH, and aliases.
+3. **`zshrc/incl.zsh`** sources perf, plugins (zinit turbo), utils,
+   commands, and integrations, then launches `dots dispatch`
+   asynchronously via `_async`, and finally displays queued notifications
+   from the previous session.
 
 ### Performance Constraints
 
@@ -35,8 +36,8 @@ by latency impact.
 `dots dispatch` is launched by `_async` from `incl.zsh` on every
 interactive shell login. It acquires a `flock` on
 `~/.cache/dotfiles_dispatch.flock` so
-that only one dispatch runs at a time — opening many terminals simultaneously
-is safe because all but the first will exit immediately. The lock is released
+that only one dispatch runs at a time, which makes opening many terminals
+simultaneously safe because all but the first will exit immediately. The lock is released
 automatically by the kernel when the process exits for any reason, including
 SIGKILL. `~/.cache/dotfiles_dispatch.lock/` is a status-only directory created
 after the flock is acquired; `incl.zsh` checks for its existence to show the
@@ -58,7 +59,7 @@ It spawns workers in parallel and waits for all of them:
 ## Updater Flow
 
 The `updater` worker runs in the background on every login (concurrency is
-prevented by the dispatch lock — see Background Dispatch above):
+prevented by the dispatch lock, see Background Dispatch above):
 
 1. Check internet connectivity.
 2. Update the repo:
@@ -223,3 +224,16 @@ does not fully replicate a login session.
    `rg`, system `go`, `shfmt`, `ast-grep`, Rust tools, Go-installed tools, or
    catalog-installed binaries in code that runs before package provisioning
    finishes.
+9. **Writing style**: All prose in dotfiles documentation must hold to the
+   strictness enforced by agent-gate's `no-fused-thoughts` rule. Each
+   sentence should have a concrete subject, a concrete verb, and enough
+   context to sound natural when spoken aloud, and each new sentence should
+   add useful information in the same direction as the sentence before it
+   so the paragraph moves forward by accumulation. Length is not the test,
+   since a long sentence is correct when it carries one finished thought
+   whose clauses are joined by real connectors like "and", "so", "since",
+   commas, semicolons, colons, or parentheses, and a short stub sentence
+   is its own failure mode when the thought it carries is actually the
+   front half of a longer thought that needed its continuation. Em-dashes,
+   en-dashes, and the other typographic dash characters are banned in
+   prose and will be hard-blocked at PreToolUse by the daemon.

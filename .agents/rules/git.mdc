@@ -5,7 +5,7 @@ Commit message style applies to every commit, regardless of how it is triggered.
 ## Format
 
 - Single subject line, imperative mood, no trailing period
-- Start directly with a verb and subject -- no label, colon, or scope prefix before the message
+- The subject line should be the imperative verb followed by the change description, and not include any text before the verb
 - No multi-line format, no bullet lists, no body section
 
 ## Content
