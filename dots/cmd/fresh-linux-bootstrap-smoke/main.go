@@ -371,6 +371,14 @@ func cloneWorkspace(ctx context.Context) error {
 	if err := runStreamingCommand(ctx, "chown", "-R", "root:root", smokeRepoDir); err != nil {
 		return err
 	}
+	// Allow git to operate on any path regardless of ownership. Written to the
+	// system config (/etc/gitconfig) so it is read by every git subprocess even
+	// when HOME is overridden (global config at ~/... would not be found).
+	// This is necessary for `git fetch origin` where origin=/workspace, which
+	// is a read-only bind mount still owned by the CI runner UID (1001).
+	if err := runStreamingCommand(ctx, "git", "config", "--system", "--add", "safe.directory", "*"); err != nil {
+		return err
+	}
 	// Redirect origin to the local workspace so any git fetch stays on disk.
 	if err := runStreamingCommand(ctx, "git", "-C", smokeRepoDir, "remote", "set-url", "origin", "/workspace"); err != nil {
 		return err
