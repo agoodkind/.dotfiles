@@ -12,7 +12,6 @@ common_packages = [
     "duf",
     "eza",
     "fail2ban",
-    "fastfetch",
     "fd",
     "ffmpeg",
     "figlet",
@@ -53,7 +52,6 @@ common_packages = [
     "tealdeer",
     "thefuck",
     "tree",
-    "trippy",
     "tshark",
     "vim",
     "watch",
@@ -93,6 +91,7 @@ brew_specific = [
     "curlie",
     "doggo",
     "dust",
+    "fastfetch",
     "MisterTea/et/et",
     "fx",
     "gitui",
@@ -109,6 +108,7 @@ brew_specific = [
     "ssh-copy-id",
     "tokei",
     "tree-sitter",
+    "trippy",
     "wireguard-go",
     "wireguard-tools",
     "xq",
@@ -170,6 +170,17 @@ os_linux = "linux"
 arch_amd64 = "amd64"
 arch_arm64 = "aarch64"
 archive_ext = ".deb"
+
+[[tool]]
+id = "trippy"
+bin = "trip"
+repo = "fujiapple852/trippy"
+install_method = "github-release"
+platforms = ["linux"]
+os_linux = "unknown-linux-gnu"
+arch_amd64 = "x86_64"
+arch_arm64 = "aarch64"
+archive_ext = ".tar.gz"
 
 [[tool]]
 id = "procs"
