@@ -6,13 +6,12 @@ on:
   pull_request:
     branches: [main]
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.image }}
-  cancel-in-progress: true
-
 jobs:
   smoke:
     name: Bootstrap in ${{ matrix.image }}
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.image }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
