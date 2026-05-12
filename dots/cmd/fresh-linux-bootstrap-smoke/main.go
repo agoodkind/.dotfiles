@@ -123,7 +123,7 @@ func buildSmokeBinary(ctx context.Context) (string, error) {
 		outputPath,
 		"./cmd/fresh-linux-bootstrap-smoke",
 	)
-	cmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH="+containerGoArch())
+	cmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH="+containerGoArch(), "CGO_ENABLED=0")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
