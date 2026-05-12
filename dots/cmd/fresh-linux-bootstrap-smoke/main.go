@@ -364,13 +364,11 @@ func cloneWorkspace(ctx context.Context) error {
 	for _, name := range []string{"MERGE_HEAD", "MERGE_MSG", "CHERRY_PICK_HEAD", "REVERT_HEAD"} {
 		_ = os.Remove(filepath.Join(smokeRepoDir, ".git", name))
 	}
-	// Mark all directories as safe so git does not refuse to operate on the
-	// repo or any submodule when files are owned by a different UID (e.g. in
-	// CI the bind-mounted workspace is owned by the runner UID but the
-	// container runs as root, triggering git's dubious-ownership protection
-	// since 2.35.2). The wildcard '*' is safe here because this container is
-	// ephemeral and exists solely for this smoke test.
-	if err := runStreamingCommand(ctx, "git", "config", "--global", "--add", "safe.directory", "*"); err != nil {
+	// Fix ownership: cp -rp preserves the original owner (CI runner UID != 0),
+	// which causes git 2.35.2+ to reject the repo as "dubious ownership" when
+	// the container runs as root. Chowning to root eliminates the mismatch for
+	// the entire tree (repo root + submodule dirs) in one step.
+	if err := runStreamingCommand(ctx, "chown", "-R", "root:root", smokeRepoDir); err != nil {
 		return err
 	}
 	// Redirect origin to the local workspace so any git fetch stays on disk.
