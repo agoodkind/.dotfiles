@@ -1,0 +1,20 @@
+# Plain
+
+When the user types "plain" or "/plain", the last response likely used internal jargon (project-specific names, type names, package names, architectural labels) without first grounding what the system actually does in plain language.
+
+## Steps
+
+1. Identify every sentence in the last response that uses an internal label or technical term as its subject or object without a concrete plain-language gloss.
+2. Rewrite each affected explanation so that the first sentence describes what the system actually does in subject-verb terms a non-engineer would follow, the second sentence names the internal label if one exists ("we call this X"), and the rest connects the two.
+3. If a first-sentence draft cannot stand without an internal label, the explanation is not yet ready; rework it until it can.
+4. If the user passed an argument (`plain X` or `/plain X`), focus the rewrite on translating that specific term and leave the rest of the response alone unless it depends on the same jargon.
+5. Reproduce the full corrected response.
+
+## Critical Rules
+
+- Produce the corrected output only. No apology, no preface, no acknowledgment of the command.
+- Lead every non-trivial explanation with the concrete behavior. Internal labels come after.
+- A label may appear in the same sentence that introduces it only when that sentence also describes what the thing does.
+- Do not strip labels entirely; the goal is to ground them, not delete them. Labels are useful once anchored.
+- Preserve the meaning and technical claims of the original response. Only the phrasing changes.
+- If the user invokes this command again on the same response, the prior rewrite was not concrete enough. Use shorter sentences, more verbs describing motion or change, fewer noun phrases that hide behavior.
