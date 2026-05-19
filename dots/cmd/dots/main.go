@@ -38,7 +38,9 @@ const (
 var appLogger *telemetry.Logger
 
 func main() {
+	telemetry.ConfigureDefaultSlogFromEnv()
 	slog.InfoContext(context.Background(), "dots process started")
+	slog.DebugContext(context.Background(), "dots debug logging enabled")
 	os.Exit(run(os.Args[1:]))
 }
 
@@ -98,7 +100,7 @@ func runSync(args []string) int {
 	for _, arg := range args {
 		if arg == "-h" || arg == "--help" {
 			logInfo("Usage:")
-			logInfo("  dots sync [--repair] [--quick] [--skip-git] [--skip-network] [--skip-cursor-sync] [--dry-run] [--use-defaults]")
+			logInfo("  dots sync [--repair] [--quick] [--skip-git] [--skip-network] [--skip-cursor-sync] [--dry-run] [--use-defaults] [--strict]")
 			return 0
 		}
 	}
@@ -111,6 +113,7 @@ func runSync(args []string) int {
 	skipCursorSync := fs.Bool("skip-cursor-sync", false, "skip cursor rule syncing")
 	dryRun := fs.Bool("dry-run", false, "run through sync steps without applying changes")
 	useDefaults := fs.Bool("use-defaults", false, "use non-interactive installer defaults")
+	strictMode := fs.Bool("strict", false, "fail on non-critical sync step failures")
 	if err := fs.Parse(args); err != nil {
 		logWarn(err.Error())
 		printUsage()
@@ -125,6 +128,7 @@ func runSync(args []string) int {
 		SkipCursorSync: *skipCursorSync,
 		DryRun:         *dryRun,
 		UseDefaults:    *useDefaults,
+		StrictMode:     *strictMode,
 	}); err != nil {
 		logError("sync failed", err)
 		return 1
@@ -213,12 +217,12 @@ func runUninstall(args []string) int {
 
 func printUsage() {
 	logInfo("Usage:")
-	logInfo("  dots sync [--repair] [--quick] [--skip-git] [--skip-network] [--skip-cursor-sync] [--dry-run] [--use-defaults]")
+	logInfo("  dots sync [--repair] [--quick] [--skip-git] [--skip-network] [--skip-cursor-sync] [--dry-run] [--use-defaults] [--strict]")
 	logInfo("  dots dispatch [worker...]")
 	logInfo("  dots perf [log|history|arm-zprof|rebuild-path-cache]")
 	logInfo("  dots refresh-shell-caches")
 	logInfo("  dots cursor-sync")
-	logInfo("  dots install [--use-defaults] [--quick] [--skip-git] [--skip-network] [--repair]")
+	logInfo("  dots install [--use-defaults] [--quick] [--skip-git] [--skip-network] [--repair] [--strict]")
 	logInfo("  dots uninstall [--purge-packages]")
 	logInfo("  dots version")
 }

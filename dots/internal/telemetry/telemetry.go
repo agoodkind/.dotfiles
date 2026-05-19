@@ -25,6 +25,34 @@ const (
 	colorGray   = "\x1b[90m"
 )
 
+type environmentLogLevel string
+
+const (
+	environmentLogLevelDebug   environmentLogLevel = "debug"
+	environmentLogLevelWarn    environmentLogLevel = "warn"
+	environmentLogLevelWarning environmentLogLevel = "warning"
+	environmentLogLevelError   environmentLogLevel = "error"
+)
+
+// ConfigureDefaultSlogFromEnv configures package-level slog output for helper packages.
+func ConfigureDefaultSlogFromEnv() {
+	level := slog.LevelInfo
+	rawLevel := environmentLogLevel(strings.ToLower(strings.TrimSpace(os.Getenv("DOTFILES_LOG_LEVEL"))))
+	switch rawLevel {
+	case environmentLogLevelDebug:
+		level = slog.LevelDebug
+	case environmentLogLevelWarn, environmentLogLevelWarning:
+		level = slog.LevelWarn
+	case environmentLogLevelError:
+		level = slog.LevelError
+	}
+	handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level:     level,
+		AddSource: level == slog.LevelDebug,
+	})
+	slog.SetDefault(slog.New(handler))
+}
+
 // Logger provides structured logging to both a JSON log file and a TTY-aware stdout/stderr.
 type Logger struct {
 	mu         sync.Mutex

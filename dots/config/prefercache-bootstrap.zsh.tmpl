@@ -1,8 +1,13 @@
 export DOTDOTFILES={{printf "%q" .Dotfiles}}
 export DOTFILES_PREFER_REBUILD=1
-source "$DOTDOTFILES/zshrc/core/perf.zsh"
-source "$DOTDOTFILES/zshrc/core/utils.zsh"
+source "$DOTDOTFILES/zshrc/core/zsh-shims.zsh"
+
+function isinstalled() {
+    (($+commands[$1] != 0))
+}
+
 source "$DOTDOTFILES/zshrc/core/prefer.zsh"
 source "$DOTDOTFILES/zshrc/commands/editors.zsh"
 source "$DOTDOTFILES/zshrc/integrations/zoxide.zsh"
 source "$DOTDOTFILES/zshrc/commands/prefer-decls.zsh"
+true

@@ -52,6 +52,8 @@ type ToolDeclaration struct {
 	ArchARM64 string `toml:"arch_arm64"`
 	// CrateName is the crates.io crate name (used when InstallMethod is "cargo").
 	CrateName string `toml:"crate_name"`
+	// Version pins a tool when the latest upstream version is not compatible with the bootstrap toolchain.
+	Version string `toml:"version"`
 }
 
 // DispatchWorker represents a named background worker entry in the dispatch config.

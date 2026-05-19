@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"goodkind.io/.dotfiles/internal/freshsmoke"
@@ -25,10 +26,11 @@ const (
 )
 
 type options struct {
-	repoRoot string
-	tart     bool
-	image    string
-	inVM     bool
+	repoRoot        string
+	tart            bool
+	image           string
+	inVM            bool
+	githubTokenFile string
 }
 
 func main() {
@@ -45,7 +47,7 @@ func run() error {
 	opts := parseOptions()
 	switch {
 	case opts.inVM:
-		return runInsideVM(ctx, opts.repoRoot)
+		return runInsideVM(ctx, opts.repoRoot, opts.githubTokenFile)
 	case opts.tart:
 		return runWithTart(ctx, opts)
 	default:
@@ -59,6 +61,7 @@ func parseOptions() options {
 	flag.BoolVar(&opts.tart, "tart", false, "run inside a Tart macOS VM (requires tart CLI)")
 	flag.StringVar(&opts.image, "image", freshsmoke.GetenvDefault("DOTFILES_FRESH_MACOS_IMAGE", defaultTartImage), "Tart OCI image to clone")
 	flag.BoolVar(&opts.inVM, "in-vm", false, "run assertions inside the Tart VM (internal use)")
+	flag.StringVar(&opts.githubTokenFile, "github-token-file", "", "file containing a GitHub token for VM release downloads")
 	flag.Parse()
 	return opts
 }
@@ -84,6 +87,7 @@ func runDirect(ctx context.Context, repoRoot string) error {
 	env := append(os.Environ(),
 		"HOME="+home,
 		"DOTDOTFILES="+repoRoot,
+		"DOTFILES_LOG_LEVEL=debug",
 		"DOTS_BINARY_DIR="+dotsBinaryDir,
 		"DOTS_BUILD_LOCK_FILE="+lockFile,
 		"GO_LOCAL_ROOT="+filepath.Join(home, ".local", "go"),
@@ -94,15 +98,26 @@ func runDirect(ctx context.Context, repoRoot string) error {
 		// so bootstrap-go.sh must download Go and install.sh must install Homebrew.
 		"PATH=/usr/bin:/bin:/usr/sbin:/sbin",
 	)
+	env = appendGitHubTokenEnv(env, githubTokenFromEnv())
 
-	firstOutput, err := freshsmoke.RunInstall(ctx, repoRoot, env, defaultTimeout)
+	expectedPath := macSmokePath(home, freshsmoke.EnvValue(env, "PATH"))
+
+	firstOutput, err := freshsmoke.RunInstall(ctx, repoRoot, env, defaultTimeout, "--strict")
 	if err != nil {
 		slog.ErrorContext(ctx, "first install run", "err", err)
 		return fmt.Errorf("first install run: %w", err)
 	}
+	if err := freshsmoke.AssertStrictInstallOutput(firstOutput); err != nil {
+		slog.ErrorContext(ctx, "first install strict output", "err", err)
+		return fmt.Errorf("first install strict output: %w", err)
+	}
 	if err := freshsmoke.AssertBuildCount(firstOutput, 1); err != nil {
 		slog.ErrorContext(ctx, "first install build count", "err", err)
 		return fmt.Errorf("first install build count: %w", err)
+	}
+	if err := freshsmoke.AssertCommandsOnPath(expectedPath, "go", "rg", "zsh"); err != nil {
+		slog.ErrorContext(ctx, "first install commands", "err", err)
+		return fmt.Errorf("first install commands: %w", err)
 	}
 
 	if freshsmoke.HasCommandOnPath("flock", freshsmoke.EnvValue(env, "PATH")) {
@@ -111,10 +126,14 @@ func runDirect(ctx context.Context, repoRoot string) error {
 		}
 	}
 
-	secondOutput, err := freshsmoke.RunInstall(ctx, repoRoot, env, defaultTimeout)
+	secondOutput, err := freshsmoke.RunInstall(ctx, repoRoot, env, defaultTimeout, "--strict")
 	if err != nil {
 		slog.ErrorContext(ctx, "second install run", "err", err)
 		return fmt.Errorf("second install run: %w", err)
+	}
+	if err := freshsmoke.AssertStrictInstallOutput(secondOutput); err != nil {
+		slog.ErrorContext(ctx, "second install strict output", "err", err)
+		return fmt.Errorf("second install strict output: %w", err)
 	}
 	if err := freshsmoke.AssertBuildCount(secondOutput, 0); err != nil {
 		slog.ErrorContext(ctx, "second install build count", "err", err)
@@ -137,12 +156,16 @@ func runLockSmoke(ctx context.Context, dotsBinaryDir string, lockFile string, re
 		slog.ErrorContext(ctx, "holding build lock", "err", err)
 		return fmt.Errorf("holding build lock: %w", err)
 	}
-	lockOutput, err := freshsmoke.RunInstall(ctx, repoRoot, env, defaultTimeout)
+	lockOutput, err := freshsmoke.RunInstall(ctx, repoRoot, env, defaultTimeout, "--strict")
 	if err != nil {
 		slog.ErrorContext(ctx, "lock install run", "err", err)
 		return fmt.Errorf("lock install run: %w", err)
 	}
 	<-lockReleased
+	if err := freshsmoke.AssertStrictInstallOutput(lockOutput); err != nil {
+		slog.ErrorContext(ctx, "lock install strict output", "err", err)
+		return fmt.Errorf("lock install strict output: %w", err)
+	}
 	if err := freshsmoke.AssertContains(lockOutput, "dots: waiting for binary build lock"); err != nil {
 		slog.ErrorContext(ctx, "asserting lock wait message", "err", err)
 		return fmt.Errorf("asserting lock wait message: %w", err)
@@ -152,6 +175,17 @@ func runLockSmoke(ctx context.Context, dotsBinaryDir string, lockFile string, re
 		return fmt.Errorf("lock install build count: %w", err)
 	}
 	return nil
+}
+
+func macSmokePath(home string, basePath string) string {
+	return freshsmoke.PathWithEntries(
+		basePath,
+		"/opt/homebrew/bin",
+		"/usr/local/bin",
+		filepath.Join(home, ".local", "bin"),
+		filepath.Join(home, ".local", "go", "bin"),
+		filepath.Join(home, ".cargo", "bin"),
+	)
 }
 
 // runWithTart is the local path: clones a macOS Tart VM, shares the repo and
@@ -184,18 +218,37 @@ func runWithTart(ctx context.Context, opts options) error {
 		slog.ErrorContext(ctx, "resolving smoke binary path", "err", err)
 		return fmt.Errorf("resolving smoke binary path: %w", err)
 	}
+	tokenDir := ""
+	tokenPathInVM := ""
+	if token := githubTokenFromEnv(); token != "" {
+		tokenDir, err = os.MkdirTemp("", "dotfiles-smoke-secrets-*")
+		if err != nil {
+			slog.ErrorContext(ctx, "creating smoke secrets dir", "err", err)
+			return fmt.Errorf("creating smoke secrets dir: %w", err)
+		}
+		defer os.RemoveAll(tokenDir)
+		tokenPath := filepath.Join(tokenDir, "gh")
+		if err := os.WriteFile(tokenPath, []byte(token), 0o600); err != nil {
+			slog.ErrorContext(ctx, "writing GitHub token file", "err", err)
+			return fmt.Errorf("writing GitHub token file: %w", err)
+		}
+		tokenPathInVM = filepath.Join("/Volumes/My Shared Files", "smoke-auth", "gh")
+	}
 
 	// Start the VM in the background; tart run blocks until the VM shuts down.
 	// context.WithoutCancel creates a context that inherits values from ctx but
 	// cannot be canceled, so the VM process outlives the SSH session context.
 	vmCtx := context.WithoutCancel(ctx)
-	vmCmd := exec.CommandContext(
-		vmCtx,
-		"tart", "run", vmName,
+	runArgs := []string{
+		"run", vmName,
 		"--no-graphics",
-		"--dir=workspace:"+repoRoot+":ro",
-		"--dir=smoke:"+filepath.Dir(selfPath)+":ro",
-	)
+		"--dir=workspace:" + repoRoot + ":ro",
+		"--dir=smoke:" + filepath.Dir(selfPath) + ":ro",
+	}
+	if tokenDir != "" {
+		runArgs = append(runArgs, "--dir=smoke-auth:"+tokenDir+":ro")
+	}
+	vmCmd := exec.CommandContext(vmCtx, "tart", runArgs...)
 	vmCmd.Stdout = os.Stdout
 	vmCmd.Stderr = os.Stderr
 	if err := vmCmd.Start(); err != nil {
@@ -212,12 +265,13 @@ func runWithTart(ctx context.Context, opts options) error {
 
 	smokePath := "/Volumes/My Shared Files/smoke/" + filepath.Base(selfPath)
 	repoInVM := "/Volumes/My Shared Files/workspace"
+	execArgs := []string{"exec", vmName, smokePath, "--in-vm", "--repo-root", repoInVM}
+	if tokenPathInVM != "" {
+		execArgs = append(execArgs, "--github-token-file", tokenPathInVM)
+	}
 	if err := streamCommand(
 		ctx,
-		"tart", "exec", vmName,
-		smokePath,
-		"--in-vm",
-		"--repo-root", repoInVM,
+		"tart", execArgs...,
 	); err != nil {
 		return fmt.Errorf("smoke inside Tart VM: %w", err)
 	}
@@ -277,7 +331,7 @@ func cloneWorkspaceInVM(ctx context.Context, roMount string) error {
 	return nil
 }
 
-func runInsideVM(ctx context.Context, repoRoot string) error {
+func runInsideVM(ctx context.Context, repoRoot string, githubTokenFile string) error {
 	if repoRoot == "" {
 		repoRoot = "/Volumes/My Shared Files/workspace"
 	}
@@ -301,6 +355,7 @@ func runInsideVM(ctx context.Context, repoRoot string) error {
 	env := append(os.Environ(),
 		"HOME="+home,
 		"DOTDOTFILES="+repoRoot,
+		"DOTFILES_LOG_LEVEL=debug",
 		"DOTS_BINARY_DIR="+dotsBinaryDir,
 		"DOTS_BUILD_LOCK_FILE="+lockFile,
 		"GO_LOCAL_ROOT="+filepath.Join(home, ".local", "go"),
@@ -308,21 +363,41 @@ func runInsideVM(ctx context.Context, repoRoot string) error {
 		"GOCACHE="+filepath.Join(home, ".cache", "go-build"),
 		"PATH=/usr/bin:/bin:/usr/sbin:/sbin",
 	)
+	token, err := readGitHubTokenFile(githubTokenFile)
+	if err != nil {
+		slog.ErrorContext(ctx, "reading GitHub token file", "err", err)
+		return fmt.Errorf("reading GitHub token file: %w", err)
+	}
+	env = appendGitHubTokenEnv(env, token)
 
-	firstOutput, err := freshsmoke.RunInstall(ctx, repoRoot, env, defaultTimeout)
+	expectedPath := macSmokePath(home, freshsmoke.EnvValue(env, "PATH"))
+
+	firstOutput, err := freshsmoke.RunInstall(ctx, repoRoot, env, defaultTimeout, "--strict")
 	if err != nil {
 		slog.ErrorContext(ctx, "first install run", "err", err)
 		return fmt.Errorf("first install run: %w", err)
+	}
+	if err := freshsmoke.AssertStrictInstallOutput(firstOutput); err != nil {
+		slog.ErrorContext(ctx, "first install strict output", "err", err)
+		return fmt.Errorf("first install strict output: %w", err)
 	}
 	if err := freshsmoke.AssertBuildCount(firstOutput, 1); err != nil {
 		slog.ErrorContext(ctx, "first install build count", "err", err)
 		return fmt.Errorf("first install build count: %w", err)
 	}
+	if err := freshsmoke.AssertCommandsOnPath(expectedPath, "go", "rg", "zsh"); err != nil {
+		slog.ErrorContext(ctx, "first install commands", "err", err)
+		return fmt.Errorf("first install commands: %w", err)
+	}
 
-	secondOutput, err := freshsmoke.RunInstall(ctx, repoRoot, env, defaultTimeout)
+	secondOutput, err := freshsmoke.RunInstall(ctx, repoRoot, env, defaultTimeout, "--strict")
 	if err != nil {
 		slog.ErrorContext(ctx, "second install run", "err", err)
 		return fmt.Errorf("second install run: %w", err)
+	}
+	if err := freshsmoke.AssertStrictInstallOutput(secondOutput); err != nil {
+		slog.ErrorContext(ctx, "second install strict output", "err", err)
+		return fmt.Errorf("second install strict output: %w", err)
 	}
 	if err := freshsmoke.AssertBuildCount(secondOutput, 0); err != nil {
 		slog.ErrorContext(ctx, "second install build count", "err", err)
@@ -331,6 +406,33 @@ func runInsideVM(ctx context.Context, repoRoot string) error {
 
 	fmt.Println("fresh-macos-bootstrap: passed")
 	return nil
+}
+
+func githubTokenFromEnv() string {
+	token := strings.TrimSpace(os.Getenv("GITHUB_TOKEN"))
+	if token != "" {
+		return token
+	}
+	return strings.TrimSpace(os.Getenv("GH_TOKEN"))
+}
+
+func readGitHubTokenFile(path string) (string, error) {
+	if path == "" {
+		return "", nil
+	}
+	contents, err := os.ReadFile(filepath.Clean(path))
+	if err != nil {
+		slog.Warn("reading GitHub token file", "err", err)
+		return "", fmt.Errorf("reading GitHub token file %s: %w", path, err)
+	}
+	return strings.TrimSpace(string(contents)), nil
+}
+
+func appendGitHubTokenEnv(env []string, token string) []string {
+	if token == "" {
+		return env
+	}
+	return append(env, "GITHUB_TOKEN="+token)
 }
 
 // waitForTartExec polls "tart exec vmName true" until the Guest Agent responds

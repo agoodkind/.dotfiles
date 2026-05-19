@@ -26,4 +26,6 @@ jobs:
 
       - name: Run fresh bootstrap smoke
         working-directory: dots
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: go run ./cmd/fresh-macos-bootstrap-smoke --repo-root "${{ github.workspace }}"

@@ -34,10 +34,9 @@ const (
 
 // AgentSourcePaths holds resolved paths for the agent source directory tree.
 type AgentSourcePaths struct {
-	Root     string
-	Rules    string
-	Commands string
-	Skills   string
+	Root   string
+	Rules  string
+	Skills string
 }
 
 type agentRuleFrontmatter struct {
@@ -63,10 +62,9 @@ func ResolveAgentSource(dotfiles string) AgentSourcePaths {
 	}
 
 	return AgentSourcePaths{
-		Root:     root,
-		Rules:    filepath.Join(root, "rules"),
-		Commands: filepath.Join(root, "commands"),
-		Skills:   filepath.Join(root, "skills"),
+		Root:   root,
+		Rules:  filepath.Join(root, "rules"),
+		Skills: filepath.Join(root, "skills"),
 	}
 }
 
@@ -326,40 +324,6 @@ func RenderCopilotInstructionFiles(src string, dst string) error {
 	return removeMissingManagedFiles(dst, ".instructions.md", activeFiles)
 }
 
-// RenderCopilotPromptFiles renders .md command files from src as .prompt.md files in dst.
-func RenderCopilotPromptFiles(src string, dst string) error {
-	files, err := sortedFilesWithExt(src, ".md")
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(dst, 0o755); err != nil {
-		slog.Warn("compilation: render prompt files mkdir failed", "err", err)
-		return fmt.Errorf("creating directory %s: %w", dst, err)
-	}
-
-	activeFiles := make(map[string]struct{}, len(files))
-	for _, file := range files {
-		baseName := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
-		targetName := baseName + ".prompt.md"
-		activeFiles[targetName] = struct{}{}
-
-		content, readErr := os.ReadFile(file)
-		if readErr != nil {
-			slog.Warn("compilation: render prompt file read failed", "err", readErr)
-			return fmt.Errorf("reading file %s: %w", file, readErr)
-		}
-		rendered, renderErr := renderCopilotPrompt(baseName, string(content))
-		if renderErr != nil {
-			return renderErr
-		}
-		if err := writeFileIfChanged(filepath.Join(dst, targetName), []byte(rendered)); err != nil {
-			return err
-		}
-	}
-
-	return removeMissingManagedFiles(dst, ".prompt.md", activeFiles)
-}
-
 // RenderCodexRules concatenates .rules files from src into a single Codex rules file at dst.
 func RenderCodexRules(src string, dst string) error {
 	files, err := sortedFilesWithExt(src, ".rules")
@@ -387,74 +351,6 @@ func RenderCodexRules(src string, dst string) error {
 		builder.WriteString("\n")
 	}
 	return writeFileIfChanged(dst, []byte(builder.String()))
-}
-
-// SyncCommandFilesAsSkillDirs converts .md command files from src into skill directories under dst.
-func SyncCommandFilesAsSkillDirs(src string, dst string, managedPrefix string) error {
-	files, err := sortedFilesWithExt(src, ".md")
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(dst, 0o755); err != nil {
-		slog.Warn("compilation: SyncCommandFilesAsSkillDirs mkdir failed", "dst", dst, "err", err)
-		return fmt.Errorf("creating directory %s: %w", dst, err)
-	}
-
-	activeDirs := make(map[string]struct{}, len(files))
-	for _, file := range files {
-		baseName := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
-		dirName := managedPrefix + baseName
-		activeDirs[dirName] = struct{}{}
-
-		targetDir := filepath.Join(dst, dirName)
-		if err := os.MkdirAll(targetDir, 0o755); err != nil {
-			slog.Warn("compilation: SyncCommandFilesAsSkillDirs mkdir target failed", "targetDir", targetDir, "err", err)
-			return fmt.Errorf("creating directory %s: %w", targetDir, err)
-		}
-
-		content, readErr := os.ReadFile(file)
-		if readErr != nil {
-			slog.Warn("compilation: SyncCommandFilesAsSkillDirs read failed", "file", file, "err", readErr)
-			return fmt.Errorf("reading file %s: %w", file, readErr)
-		}
-		skillContent, renderErr := renderCommandAsSkill(baseName, string(content))
-		if renderErr != nil {
-			return renderErr
-		}
-		if err := writeFileIfChanged(filepath.Join(targetDir, "SKILL.md"), []byte(skillContent)); err != nil {
-			return err
-		}
-	}
-
-	return removeMissingManagedSkillDirs(dst, managedPrefix, activeDirs)
-}
-
-// SyncFilesToDir copies all files from src into dst as symlinks.
-func SyncFilesToDir(src string, dst string) error {
-	if _, err := os.Stat(src); err != nil && !os.IsNotExist(err) {
-		slog.Warn("compilation: SyncFilesToDir stat failed", "src", src, "err", err)
-		return fmt.Errorf("stat %s: %w", src, err)
-	}
-	if sameFile(src, dst) {
-		return nil
-	}
-	if err := os.MkdirAll(dst, 0o755); err != nil {
-		return fmt.Errorf("creating directory %s: %w", dst, err)
-	}
-	entries, err := os.ReadDir(src)
-	if err != nil && !os.IsNotExist(err) {
-		slog.Warn("compilation: SyncFilesToDir ReadDir failed", "src", src, "err", err)
-		return fmt.Errorf("read dir %s: %w", src, err)
-	}
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		if err := SyncFile(filepath.Join(src, entry.Name()), filepath.Join(dst, entry.Name())); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // SyncSkillDirs copies skill subdirectories from src into dst as symlinks.
@@ -547,24 +443,6 @@ func stripFrontmatter(content string) (string, error) {
 	return body, err
 }
 
-func renderCommandAsSkill(skillName string, body string) (string, error) {
-	trimmedBody := strings.TrimSpace(body)
-	description := fmt.Sprintf(
-		"Run the /%s command workflow from the dotfiles agent command library when the user explicitly asks for /%s or mentions this command by name.",
-		skillName,
-		skillName,
-	)
-	frontmatter, err := renderFrontmatter(frontmatterMetadata{
-		Name:        "cursor-command-" + skillName,
-		Description: description,
-		ApplyTo:     "",
-	})
-	if err != nil {
-		return "", err
-	}
-	return frontmatter + "\n" + GeneratedAgentHTMLMarker + "\n\n" + trimmedBody + "\n", nil
-}
-
 func renderCopilotInstruction(baseName string, frontmatter agentRuleFrontmatter, body string) (string, error) {
 	applyTo := strings.TrimSpace(frontmatter.Globs)
 	if applyTo == "" && frontmatter.AlwaysApply {
@@ -582,30 +460,6 @@ func renderCopilotInstruction(baseName string, frontmatter agentRuleFrontmatter,
 	renderedFrontmatter, err := renderFrontmatter(metadata)
 	if err != nil {
 		return "", err
-	}
-	return renderedFrontmatter + "\n" + GeneratedAgentHTMLMarker + "\n\n" + strings.TrimSpace(body) + "\n", nil
-}
-
-func renderCopilotPrompt(baseName string, content string) (string, error) {
-	frontmatter, body, err := parseFrontmatter(content)
-	if err != nil {
-		return "", err
-	}
-	description := strings.TrimSpace(frontmatter.Description)
-	if description == "" {
-		description = firstMarkdownHeading(body)
-	}
-	if description == "" {
-		description = fmt.Sprintf("Run the %s workflow.", baseName)
-	}
-
-	renderedFrontmatter, renderErr := renderFrontmatter(frontmatterMetadata{
-		Name:        baseName,
-		Description: description,
-		ApplyTo:     "",
-	})
-	if renderErr != nil {
-		return "", renderErr
 	}
 	return renderedFrontmatter + "\n" + GeneratedAgentHTMLMarker + "\n\n" + strings.TrimSpace(body) + "\n", nil
 }
@@ -629,17 +483,6 @@ func parseFrontmatter(content string) (agentRuleFrontmatter, string, error) {
 
 	bodyStart := 4 + frontmatterEnd + len(endMarker)
 	return values, content[bodyStart:], nil
-}
-
-func firstMarkdownHeading(content string) string {
-	for line := range strings.SplitSeq(content, "\n") {
-		trimmedLine := strings.TrimSpace(line)
-		if !strings.HasPrefix(trimmedLine, "#") {
-			continue
-		}
-		return strings.TrimSpace(strings.TrimLeft(trimmedLine, "#"))
-	}
-	return ""
 }
 
 func renderFrontmatter(metadata frontmatterMetadata) (string, error) {
@@ -669,30 +512,6 @@ func writeFileIfChanged(path string, content []byte) error {
 	if err := os.WriteFile(cleanPath, content, 0o600); err != nil {
 		slog.Warn("compilation: writeFileIfChanged write failed", "path", path, "err", err)
 		return fmt.Errorf("writing file %s: %w", path, err)
-	}
-	return nil
-}
-
-func removeMissingManagedSkillDirs(dst string, managedPrefix string, activeDirs map[string]struct{}) error {
-	slog.Info("compilation: removeMissingManagedSkillDirs")
-	entries, err := os.ReadDir(dst)
-	if err != nil && !os.IsNotExist(err) {
-		slog.Warn("compilation: removeMissingManagedSkillDirs ReadDir failed", "dst", dst, "err", err)
-		return fmt.Errorf("read dir %s: %w", dst, err)
-	}
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		if !strings.HasPrefix(entry.Name(), managedPrefix) {
-			continue
-		}
-		if _, ok := activeDirs[entry.Name()]; ok {
-			continue
-		}
-		if err := os.RemoveAll(filepath.Join(dst, entry.Name())); err != nil {
-			return fmt.Errorf("removing directory %s: %w", filepath.Join(dst, entry.Name()), err)
-		}
 	}
 	return nil
 }

@@ -9,7 +9,9 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -19,6 +21,7 @@ import (
 
 	"goodkind.io/.dotfiles/internal/catalog"
 	"goodkind.io/.dotfiles/internal/cmdexec"
+	"goodkind.io/.dotfiles/internal/runner"
 	"goodkind.io/.dotfiles/internal/sync/common"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
@@ -32,8 +35,8 @@ const (
 )
 
 // InstallCustomTools installs or updates the custom CLI tools defined in the catalog.
-func InstallCustomTools(ctx context.Context, _ string, logger *telemetry.Logger) error {
-	return runCustomTools(ctx, logger)
+func InstallCustomTools(ctx context.Context, _ string, strictMode bool, logger *telemetry.Logger) error {
+	return runCustomTools(ctx, strictMode, logger)
 }
 
 type githubRelease struct {
@@ -48,27 +51,32 @@ type crateResponse struct {
 	MaxVersion string `json:"max_version"`
 }
 
-func runCustomTools(ctx context.Context, logger *telemetry.Logger) error {
+func runCustomTools(ctx context.Context, strictMode bool, logger *telemetry.Logger) error {
 	entries := catalog.DefaultToolDeclarations()
 	failed := make([]string, 0)
 	for _, tool := range entries {
 		if tool.ID == "" || tool.Bin == "" {
 			continue
 		}
-		if err := installCustomTool(ctx, tool, logger); err != nil {
+		if err := installCustomTool(ctx, tool, strictMode, logger); err != nil {
 			failed = append(failed, tool.ID)
 			_ = telemetry.Notify("warn", "tool install/upgrade failed: "+tool.ID, getSyncLogPath())
-			logger.WarnContext(ctx, "  "+tool.ID+": failed")
+			common.WarnContextf(ctx, logger, "  %s: failed: %s", tool.ID, err.Error())
+			logger.WarnContextWithErr(ctx, "  "+tool.ID+": failed", err)
 		}
 	}
 	if len(failed) > 0 {
-		logger.WarnContext(ctx, "  custom tools completed with failures: "+strings.Join(failed, ", "))
+		message := "custom tools completed with failures: " + strings.Join(failed, ", ")
+		logger.WarnContext(ctx, "  "+message)
+		if strictMode {
+			return fmt.Errorf("%s", message)
+		}
 		return nil
 	}
 	return nil
 }
 
-func installCustomTool(ctx context.Context, tool catalog.ToolDeclaration, logger *telemetry.Logger) error {
+func installCustomTool(ctx context.Context, tool catalog.ToolDeclaration, strictMode bool, logger *telemetry.Logger) error {
 	if !isPlatformAllowed(tool) {
 		return nil
 	}
@@ -77,20 +85,31 @@ func installCustomTool(ctx context.Context, tool catalog.ToolDeclaration, logger
 		return nil
 	}
 	current := getCurrentToolVersion(ctx, tool.Bin, logger)
+	if strictMode && current != "" {
+		logger.InfoContext(ctx, "  "+tool.ID+" is installed ("+current+")")
+		return nil
+	}
+	if current == "" {
+		return runToolInstall(ctx, tool, strictMode, logger)
+	}
 	latest, err := resolveLatestVersion(ctx, tool)
 	if err != nil {
 		return err
 	}
-	if current != "" && latest != "" && shouldSkipToolUpgrade(current, latest) {
+	if latest != "" && shouldSkipToolUpgrade(current, latest) {
 		logger.InfoContext(ctx, "  "+tool.ID+" is up to date ("+current+")")
 		return nil
 	}
+	return runToolInstall(ctx, tool, strictMode, logger)
+}
+
+func runToolInstall(ctx context.Context, tool catalog.ToolDeclaration, strictMode bool, logger *telemetry.Logger) error {
 	logger.InfoContext(ctx, "  installing "+tool.ID)
 	switch installMethod(tool.InstallMethod) {
 	case installMethodScript:
 		return installToolFromScript(ctx, tool.ID, tool.ScriptURL, tool.ScriptArgs, logger)
 	case installMethodCargo:
-		return installToolViaCargo(ctx, tool, logger)
+		return installToolViaCargo(ctx, tool, strictMode, logger)
 	case installMethodGitHubRelease:
 		return installToolFromGitHubRelease(ctx, tool.ID, tool.Bin, tool.Repo, resolveOSTag(tool), resolveArchTag(tool), tool.ArchiveExt, logger)
 	default:
@@ -138,6 +157,9 @@ func getCurrentToolVersion(ctx context.Context, toolName string, logger *telemet
 }
 
 func resolveLatestVersion(ctx context.Context, tool catalog.ToolDeclaration) (string, error) {
+	if tool.Version != "" {
+		return tool.Version, nil
+	}
 	if tool.Repo != "" {
 		return getLatestGitHubVersion(ctx, tool.Repo)
 	}
@@ -147,11 +169,15 @@ func resolveLatestVersion(ctx context.Context, tool catalog.ToolDeclaration) (st
 	return "", nil
 }
 
-func installToolViaCargo(ctx context.Context, tool catalog.ToolDeclaration, logger *telemetry.Logger) error {
-	if os.Getenv("GITHUB_ACTIONS") == "true" {
+func installToolViaCargo(ctx context.Context, tool catalog.ToolDeclaration, strictMode bool, logger *telemetry.Logger) error {
+	if !strictMode && os.Getenv("GITHUB_ACTIONS") == "true" {
 		return nil
 	}
-	if err := cmdexec.RunWithLogger(ctx, logger, "cargo", "install", tool.CrateName, "--locked", "--force"); err != nil {
+	crateName := tool.CrateName
+	if tool.Version != "" {
+		crateName += "@" + tool.Version
+	}
+	if err := cmdexec.RunWithLogger(ctx, logger, "cargo", "install", crateName, "--locked", "--force"); err != nil {
 		slog.WarnContext(ctx, "tools: installToolViaCargo failed", "crate", tool.CrateName, "err", err)
 		return fmt.Errorf("running cargo install %s: %w", tool.CrateName, err)
 	}
@@ -166,12 +192,29 @@ func installToolFromScript(ctx context.Context, name, scriptURL string, args []s
 		return err
 	}
 	defer os.Remove(scriptPath)
-	cmdArgs := append([]string{scriptPath}, args...)
+	localBin := filepath.Join(os.Getenv("HOME"), ".local", "bin")
+	if err := os.MkdirAll(localBin, 0o755); err != nil {
+		slog.WarnContext(ctx, "tools: installToolFromScript mkdir local bin failed", "name", name, "err", err)
+		return fmt.Errorf("creating local bin for %s: %w", name, err)
+	}
+	expandedArgs := expandScriptArgs(args)
+	cmdArgs := append([]string{scriptPath}, expandedArgs...)
 	if err := cmdexec.RunWithLogger(ctx, logger, "sh", cmdArgs...); err != nil {
 		slog.WarnContext(ctx, "tools: installToolFromScript run failed", "name", name, "err", err)
 		return fmt.Errorf("running install script for %s: %w", name, err)
 	}
 	return nil
+}
+
+func expandScriptArgs(args []string) []string {
+	expandedArgs := make([]string, 0, len(args))
+	home := os.Getenv("HOME")
+	for _, arg := range args {
+		expandedArg := strings.ReplaceAll(arg, "${HOME}", home)
+		expandedArg = strings.ReplaceAll(expandedArg, "$HOME", home)
+		expandedArgs = append(expandedArgs, expandedArg)
+	}
+	return expandedArgs
 }
 
 func installToolFromGitHubRelease(ctx context.Context, name, bin, repo, osTag, archTag, ext string, logger *telemetry.Logger) error {
@@ -206,6 +249,7 @@ func fetchLatestRelease(ctx context.Context, repo string) (githubRelease, error)
 		return rel, fmt.Errorf("creating github request for %s: %w", repo, err)
 	}
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	req.Header.Set("User-Agent", "dots")
 	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
@@ -266,7 +310,13 @@ func installToolArtifact(ctx context.Context, logger *telemetry.Logger, tool str
 	slog.InfoContext(ctx, "tools: installToolArtifact")
 	switch {
 	case strings.HasSuffix(artifactPath, ".deb") || strings.HasSuffix(artifactPath, ".rpm"):
-		if err := cmdexec.RunWithLogger(ctx, logger, "sudo", "dpkg", "-i", artifactPath); err != nil {
+		command := "sudo"
+		args := []string{"dpkg", "-i", artifactPath}
+		if os.Geteuid() == 0 || !runnerHasSudo() {
+			command = "dpkg"
+			args = []string{"-i", artifactPath}
+		}
+		if err := cmdexec.RunWithLogger(ctx, logger, command, args...); err != nil {
 			slog.WarnContext(ctx, "tools: installToolArtifact dpkg failed", "artifact", filepath.Base(artifactPath), "err", err)
 			return fmt.Errorf("installing deb/rpm package %s: %w", filepath.Base(artifactPath), err)
 		}
@@ -352,25 +402,65 @@ func installFromDir(tool, dir string) error {
 		return fmt.Errorf("creating target directory: %w", err)
 	}
 	bin := filepath.Join(targetDir, tool)
-	found := ""
-	_ = filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if entry.IsDir() {
-			return nil
-		}
-		if entry.Name() == tool || strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name())) == tool {
-			found = path
-			return filepath.SkipDir
-		}
-		return nil
-	})
+	found, err := findArchiveToolBinary(dir, tool)
+	if err != nil {
+		return err
+	}
 	if found == "" {
 		slog.Warn("tools: installFromDir binary not found", "tool", tool)
 		return fmt.Errorf("binary %s not found in archive", tool)
 	}
 	return copyExecutable(found, bin)
+}
+
+func findArchiveToolBinary(dir string, tool string) (string, error) {
+	found, err := findArchiveEntry(dir, func(_ string, entry os.DirEntry) (bool, error) {
+		return entry.Name() == tool || strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name())) == tool, nil
+	})
+	if err != nil || found != "" {
+		return found, err
+	}
+	return findArchiveEntry(dir, func(path string, entry os.DirEntry) (bool, error) {
+		return isPrefixedExecutableArchiveEntry(path, entry, tool)
+	})
+}
+
+func findArchiveEntry(dir string, matches func(string, os.DirEntry) (bool, error)) (string, error) {
+	found := ""
+	err := filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			slog.Warn("tools: findArchiveEntry walk failed", "err", err)
+			return fmt.Errorf("walking archive directory: %w", err)
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		matched, matchErr := matches(path, entry)
+		if matchErr != nil {
+			return matchErr
+		}
+		if matched {
+			found = path
+			return filepath.SkipDir
+		}
+		return nil
+	})
+	if err != nil {
+		return found, fmt.Errorf("walking archive directory %s: %w", dir, err)
+	}
+	return found, nil
+}
+
+func isPrefixedExecutableArchiveEntry(path string, entry os.DirEntry, tool string) (bool, error) {
+	if !strings.HasPrefix(entry.Name(), tool+"_") && !strings.HasPrefix(entry.Name(), tool+"-") {
+		return false, nil
+	}
+	info, err := entry.Info()
+	if err != nil {
+		slog.Warn("tools: isPrefixedExecutableArchiveEntry info failed", "path", path, "err", err)
+		return false, fmt.Errorf("reading archive entry %s: %w", path, err)
+	}
+	return info.Mode()&0o111 != 0, nil
 }
 
 func copyExecutable(src, dst string) error {
@@ -424,7 +514,7 @@ func downloadToTempFile(ctx context.Context, fileURL string) (string, error) {
 		return "", fmt.Errorf("download failed for %s: %d %s", fileURL, response.StatusCode, strings.TrimSpace(string(body)))
 	}
 
-	tmp, err := os.CreateTemp("", "dots-*")
+	tmp, err := os.CreateTemp("", "dots-*"+artifactSuffix(fileURL))
 	if err != nil {
 		return "", fmt.Errorf("creating temp file: %w", err)
 	}
@@ -445,4 +535,22 @@ func downloadToTempFile(ctx context.Context, fileURL string) (string, error) {
 		return "", fmt.Errorf("setting permissions on temp file: %w", err)
 	}
 	return tmp.Name(), nil
+}
+
+func artifactSuffix(fileURL string) string {
+	parsedURL, err := url.Parse(fileURL)
+	if err != nil {
+		return ""
+	}
+	name := path.Base(parsedURL.Path)
+	for _, suffix := range []string{".tar.gz", ".tar.xz", ".deb", ".rpm", ".zip", ".gz"} {
+		if strings.HasSuffix(name, suffix) {
+			return suffix
+		}
+	}
+	return ""
+}
+
+func runnerHasSudo() bool {
+	return runner.HasCommand("sudo")
 }

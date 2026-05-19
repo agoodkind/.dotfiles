@@ -31,6 +31,7 @@ const (
 	flagQuick            installFlag = "--quick"
 	flagSkipGit          installFlag = "--skip-git"
 	flagSkipNetwork      installFlag = "--skip-network"
+	flagStrict           installFlag = "--strict"
 )
 
 // Run executes the dotfiles install workflow with the given arguments.
@@ -61,6 +62,7 @@ func Run(ctx context.Context, args ...string) error {
 		SkipCursorSync: false,
 		DryRun:         false,
 		UseDefaults:    false,
+		StrictMode:     false,
 	}
 
 	for _, arg := range args {
@@ -79,6 +81,8 @@ func Run(ctx context.Context, args ...string) error {
 			syncOpts.SkipGit = true
 		case flagSkipNetwork:
 			syncOpts.SkipNetwork = true
+		case flagStrict:
+			syncOpts.StrictMode = true
 		default:
 			return fmt.Errorf("unsupported install flag: %s", arg)
 		}
@@ -100,7 +104,7 @@ func Run(ctx context.Context, args ...string) error {
 }
 
 func printInstallUsage(ctx context.Context) {
-	logInfo(ctx, "Usage: dots install [--use-defaults] [--quick] [--skip-git] [--skip-network] [--repair]")
+	logInfo(ctx, "Usage: dots install [--use-defaults] [--quick] [--skip-git] [--skip-network] [--repair] [--strict]")
 }
 
 func createSocketDir() error {
@@ -273,8 +277,7 @@ func detectCurrentShell(ctx context.Context) (string, error) {
 
 	output, err := cmdexec.OutputTrimmed(ctx, "getent", "passwd", os.Getenv("USER"))
 	if err != nil {
-		slog.WarnContext(ctx, "running getent", "err", err)
-		return "", fmt.Errorf("running getent: %w", err)
+		return "", nil
 	}
 	parts := strings.Split(strings.TrimSpace(output), ":")
 	if len(parts) < 7 {

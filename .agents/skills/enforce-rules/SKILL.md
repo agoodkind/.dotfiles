@@ -15,7 +15,7 @@ Read these files in full before producing any output:
 4. **Python rules**: [python.mdc](../../rules/python.mdc)
 5. **Security rules**: [security.mdc](../../rules/security.mdc)
 6. **Shell rules**: [shell.mdc](../../rules/shell.mdc)
-7. **Redo command**: [redo.md](../../commands/redo.md)
+7. **Redo command**: [redo/SKILL.md](../redo/SKILL.md)
 
 Follow every rule file for the duration of this task. Use the redo command as the review standard for any regenerated response.
 

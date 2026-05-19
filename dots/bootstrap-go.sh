@@ -246,8 +246,14 @@ run_dots_go_command() {
         return 1
     fi
 
-    if run_dots_binary "$command" "$@"; then
-        return 0
+    if [ -x "$DOTS_BINARY" ] && ! dots_binary_stale; then
+        "$DOTS_BINARY" "$command" "$@"
+        return $?
+    fi
+
+    if ensure_dots_binary; then
+        "$DOTS_BINARY" "$command" "$@"
+        return $?
     fi
 
     if [ "$GO_BINARY" = "go" ] && ! check_command "$GO_BINARY"; then

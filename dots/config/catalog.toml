@@ -158,7 +158,7 @@ bin = "starship"
 repo = "starship/starship"
 install_method = "script"
 script_url = "https://starship.rs/install.sh"
-script_args = ["--yes"]
+script_args = ["--yes", "--bin-dir", "$HOME/.local/bin"]
 
 [[tool]]
 id = "fastfetch"
@@ -189,20 +189,17 @@ repo = "dalance/procs"
 install_method = "github-release"
 os_darwin = "mac"
 os_linux = "linux"
-arch_amd64 = "amd64"
+arch_amd64 = "x86_64"
 arch_arm64 = "aarch64"
 archive_ext = ".zip"
 
 [[tool]]
 id = "tokei"
 bin = "tokei"
-repo = "XAMPPRocky/tokei"
-install_method = "github-release"
-os_darwin = "apple-darwin"
-os_linux = "unknown-linux-gnu"
-arch_amd64 = "x86_64"
-arch_arm64 = "aarch64"
-archive_ext = ".tar.gz"
+repo = ""
+install_method = "cargo"
+crate_name = "tokei"
+version = "13.0.0"
 
 [[tool]]
 id = "tree-sitter"
@@ -244,7 +241,7 @@ repo = "kavehtehrani/cloudflare-speed-cli"
 install_method = "github-release"
 platforms = ["linux", "darwin"]
 os_darwin = "apple-darwin"
-os_linux = "linux"
+os_linux = "unknown-linux-musl"
 arch_amd64 = "x86_64"
 arch_arm64 = "aarch64"
 archive_ext = ".tar.xz"

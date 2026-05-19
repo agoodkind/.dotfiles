@@ -188,6 +188,15 @@ func pullImage(ctx context.Context, apiClient *client.Client, image string) erro
 }
 
 func createSmokeContainer(ctx context.Context, apiClient *client.Client, image string, repoRoot string) (string, error) {
+	containerEnv := []string{
+		"DOTDOTFILES=/workspace",
+		"DOTFILES_FRESH_LINUX_SMOKE_IN_CONTAINER=1",
+	}
+	for _, name := range []string{"GITHUB_TOKEN", "GH_TOKEN"} {
+		if value := os.Getenv(name); value != "" {
+			containerEnv = append(containerEnv, name+"="+value)
+		}
+	}
 	createResponse, err := apiClient.ContainerCreate(ctx, client.ContainerCreateOptions{
 		Image: image,
 		Config: &container.Config{
@@ -195,10 +204,7 @@ func createSmokeContainer(ctx context.Context, apiClient *client.Client, image s
 				"/tmp/fresh-linux-bootstrap-smoke",
 				"--container",
 			},
-			Env: []string{
-				"DOTDOTFILES=/workspace",
-				"DOTFILES_FRESH_LINUX_SMOKE_IN_CONTAINER=1",
-			},
+			Env:        containerEnv,
 			WorkingDir: "/workspace",
 			Labels: map[string]string{
 				smokeLabelKey: smokeLabel,
@@ -294,24 +300,27 @@ func attachStartAndWait(ctx context.Context, apiClient *client.Client, container
 	}
 
 	wait := apiClient.ContainerWait(ctx, containerID, client.ContainerWaitOptions{})
+	var waitErr error
 	select {
 	case err := <-wait.Error:
 		if err != nil {
 			slog.ErrorContext(ctx, "waiting for container", "err", err)
-			return fmt.Errorf("waiting for container: %w", err)
+			waitErr = fmt.Errorf("waiting for container: %w", err)
 		}
 	case result := <-wait.Result:
 		if result.StatusCode != 0 {
-			return fmt.Errorf("container exited with status %d", result.StatusCode)
+			waitErr = fmt.Errorf("container exited with status %d", result.StatusCode)
 		}
 	}
 
 	select {
 	case err := <-logsDone:
-		return err
+		if err != nil {
+			return err
+		}
 	case <-time.After(5 * time.Second):
-		return nil
 	}
+	return waitErr
 }
 
 func removeContainer(apiClient *client.Client, containerID string) {
@@ -347,7 +356,10 @@ func cleanupSmokeContainers(ctx context.Context, apiClient *client.Client) {
 // smokeRepoDir is the writable git clone of the read-only /workspace bind mount.
 // Cloning gives dots sync a writable .git/ for FETCH_HEAD and produces a clean
 // repo with no stale MERGE_HEAD artifacts from the developer's machine.
-const smokeRepoDir = "/tmp/dotfiles-smoke-repo"
+const (
+	smokeRepoDir   = "/tmp/dotfiles-smoke-repo"
+	smokeOriginDir = "/tmp/dotfiles-smoke-origin.git"
+)
 
 func cloneWorkspace(ctx context.Context) error {
 	slog.InfoContext(ctx, "copying workspace to writable path", "dest", smokeRepoDir)
@@ -371,19 +383,15 @@ func cloneWorkspace(ctx context.Context) error {
 	if err := runStreamingCommand(ctx, "chown", "-R", "root:root", smokeRepoDir); err != nil {
 		return err
 	}
-	// Allow git to operate on any path regardless of ownership. Written to the
-	// system config (/etc/gitconfig) so it is read by every git subprocess even
-	// when HOME is overridden (global config at ~/... would not be found).
-	// This is necessary for `git fetch origin` where origin=/workspace, which
-	// is a read-only bind mount still owned by the CI runner UID (1001).
-	if err := runStreamingCommand(ctx, "git", "config", "--system", "--add", "safe.directory", "*"); err != nil {
+	// Use a local bare origin owned by the container user so sync can exercise
+	// git fetch without relying on broad safe.directory overrides.
+	if err := runStreamingCommand(ctx, "git", "clone", "--bare", smokeRepoDir, smokeOriginDir); err != nil {
 		return err
 	}
-	// Redirect origin to the local workspace so any git fetch stays on disk.
-	if err := runStreamingCommand(ctx, "git", "-C", smokeRepoDir, "remote", "set-url", "origin", "/workspace"); err != nil {
+	if err := runStreamingCommand(ctx, "git", "-C", smokeRepoDir, "remote", "set-url", "origin", smokeOriginDir); err != nil {
 		return err
 	}
-	// Redirect each submodule's origin to its local workspace counterpart.
+	// Redirect each submodule's origin to a local bare counterpart.
 	libDir := filepath.Join(smokeRepoDir, "lib")
 	entries, err := os.ReadDir(libDir)
 	if err != nil {
@@ -401,8 +409,11 @@ func cloneWorkspace(ctx context.Context) error {
 		if _, statErr := os.Stat(filepath.Join(smDir, ".git")); statErr != nil {
 			continue
 		}
-		wsSmDir := filepath.Join("/workspace", "lib", entry.Name())
-		if err := runStreamingCommand(ctx, "git", "-C", smDir, "remote", "set-url", "origin", wsSmDir); err != nil {
+		originDir := filepath.Join("/tmp", "dotfiles-smoke-origin-"+entry.Name()+".git")
+		if err := runStreamingCommand(ctx, "git", "clone", "--bare", smDir, originDir); err != nil {
+			return err
+		}
+		if err := runStreamingCommand(ctx, "git", "-C", smDir, "remote", "set-url", "origin", originDir); err != nil {
 			return err
 		}
 	}
@@ -428,6 +439,7 @@ func runInsideContainer(ctx context.Context) error {
 	env := append(os.Environ(),
 		"HOME="+home,
 		"DOTDOTFILES="+smokeRepoDir,
+		"DOTFILES_LOG_LEVEL=debug",
 		"DOTS_BINARY_DIR="+dotsBinaryDirectory,
 		"DOTS_BUILD_LOCK_FILE="+lockFile,
 		"GO_LOCAL_ROOT="+filepath.Join(home, ".local", "go"),
@@ -441,14 +453,24 @@ func runInsideContainer(ctx context.Context) error {
 		return fmt.Errorf("creating smoke home: %w", err)
 	}
 
-	firstOutput, err := freshsmoke.RunInstall(ctx, smokeRepoDir, env, installTimeout)
+	expectedPath := linuxSmokePath(home, freshsmoke.EnvValue(env, "PATH"))
+
+	firstOutput, err := freshsmoke.RunInstall(ctx, smokeRepoDir, env, installTimeout, "--strict")
 	if err != nil {
 		slog.ErrorContext(ctx, "first install run", "err", err)
 		return fmt.Errorf("first install run: %w", err)
 	}
+	if err := freshsmoke.AssertStrictInstallOutput(firstOutput); err != nil {
+		slog.ErrorContext(ctx, "first install strict output", "err", err)
+		return fmt.Errorf("first install strict output: %w", err)
+	}
 	if err := freshsmoke.AssertBuildCount(firstOutput, 1); err != nil {
 		slog.ErrorContext(ctx, "first install build count", "err", err)
 		return fmt.Errorf("first install build count: %w", err)
+	}
+	if err := freshsmoke.AssertCommandsOnPath(expectedPath, "go", "rg", "zsh"); err != nil {
+		slog.ErrorContext(ctx, "first install commands", "err", err)
+		return fmt.Errorf("first install commands: %w", err)
 	}
 
 	if freshsmoke.HasCommandOnPath("flock", freshsmoke.EnvValue(env, "PATH")) {
@@ -457,10 +479,14 @@ func runInsideContainer(ctx context.Context) error {
 		}
 	}
 
-	secondOutput, err := freshsmoke.RunInstall(ctx, smokeRepoDir, env, installTimeout)
+	secondOutput, err := freshsmoke.RunInstall(ctx, smokeRepoDir, env, installTimeout, "--strict")
 	if err != nil {
 		slog.ErrorContext(ctx, "second install run", "err", err)
 		return fmt.Errorf("second install run: %w", err)
+	}
+	if err := freshsmoke.AssertStrictInstallOutput(secondOutput); err != nil {
+		slog.ErrorContext(ctx, "second install strict output", "err", err)
+		return fmt.Errorf("second install strict output: %w", err)
 	}
 	if err := freshsmoke.AssertBuildCount(secondOutput, 0); err != nil {
 		slog.ErrorContext(ctx, "second install build count", "err", err)
@@ -469,6 +495,15 @@ func runInsideContainer(ctx context.Context) error {
 
 	fmt.Println("fresh-linux-bootstrap: passed")
 	return nil
+}
+
+func linuxSmokePath(home string, basePath string) string {
+	return freshsmoke.PathWithEntries(
+		basePath,
+		filepath.Join(home, ".local", "bin"),
+		filepath.Join(home, ".local", "go", "bin"),
+		filepath.Join(home, ".cargo", "bin"),
+	)
 }
 
 func runLockSmoke(ctx context.Context, dotsBinaryDirectory string, lockFile string, env []string) error {
@@ -483,12 +518,16 @@ func runLockSmoke(ctx context.Context, dotsBinaryDirectory string, lockFile stri
 		slog.ErrorContext(ctx, "holding build lock", "err", err)
 		return fmt.Errorf("holding build lock: %w", err)
 	}
-	lockOutput, err := freshsmoke.RunInstall(ctx, smokeRepoDir, env, installTimeout)
+	lockOutput, err := freshsmoke.RunInstall(ctx, smokeRepoDir, env, installTimeout, "--strict")
 	if err != nil {
 		slog.ErrorContext(ctx, "lock install run", "err", err)
 		return fmt.Errorf("lock install run: %w", err)
 	}
 	<-lockReleased
+	if err := freshsmoke.AssertStrictInstallOutput(lockOutput); err != nil {
+		slog.ErrorContext(ctx, "lock install strict output", "err", err)
+		return fmt.Errorf("lock install strict output: %w", err)
+	}
 	if err := freshsmoke.AssertContains(lockOutput, "dots: waiting for binary build lock"); err != nil {
 		slog.ErrorContext(ctx, "asserting lock wait message", "err", err)
 		return fmt.Errorf("asserting lock wait message: %w", err)

@@ -50,6 +50,77 @@ func AssertBuildCount(output string, expectedCount int) error {
 	return nil
 }
 
+// AssertNoStrictWarnings returns an error if output contains sync warning markers.
+func AssertNoStrictWarnings(output string) error {
+	markers := []string{
+		"[WARN]",
+		"level=WARN",
+		"WARN:",
+		"sync step failed",
+		"non-critical failures",
+		"custom tools completed with failures",
+	}
+	for _, marker := range markers {
+		if strings.Contains(output, marker) {
+			return fmt.Errorf("strict smoke output contains warning marker %q\n%s", marker, output)
+		}
+	}
+	return nil
+}
+
+// AssertStrictInstallOutput verifies the common strict-smoke output contract.
+func AssertStrictInstallOutput(output string) error {
+	if err := AssertNoStrictWarnings(output); err != nil {
+		return err
+	}
+	if err := AssertContains(output, "dots debug logging enabled"); err != nil {
+		return err
+	}
+	return nil
+}
+
+// AssertCommandsOnPath returns an error if any command is absent from pathEnv.
+func AssertCommandsOnPath(pathEnv string, commands ...string) error {
+	missing := make([]string, 0)
+	for _, command := range commands {
+		if HasCommandOnPath(command, pathEnv) {
+			continue
+		}
+		missing = append(missing, command)
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("expected commands on PATH, missing: %s", strings.Join(missing, ", "))
+	}
+	return nil
+}
+
+// PathWithEntries appends entries to a PATH string while preserving order and uniqueness.
+func PathWithEntries(pathEnv string, entries ...string) string {
+	seen := make(map[string]struct{})
+	parts := make([]string, 0)
+	for part := range strings.SplitSeq(pathEnv, ":") {
+		if part == "" {
+			continue
+		}
+		if _, ok := seen[part]; ok {
+			continue
+		}
+		seen[part] = struct{}{}
+		parts = append(parts, part)
+	}
+	for _, entry := range entries {
+		if entry == "" {
+			continue
+		}
+		if _, ok := seen[entry]; ok {
+			continue
+		}
+		seen[entry] = struct{}{}
+		parts = append(parts, entry)
+	}
+	return strings.Join(parts, ":")
+}
+
 // HoldBuildLockFor holds an exclusive flock on lockFile for duration then
 // releases it asynchronously. Returns a channel that closes when released.
 func HoldBuildLockFor(lockFile string, duration time.Duration) (<-chan struct{}, error) {
@@ -94,13 +165,14 @@ func HoldBuildLockFor(lockFile string, duration time.Duration) (<-chan struct{},
 
 // RunInstall runs install.sh --use-defaults from repoRoot with the given env,
 // streaming output to [os.Stdout]/[os.Stderr] and returning the combined output.
-func RunInstall(ctx context.Context, repoRoot string, env []string, timeout time.Duration) (string, error) {
+func RunInstall(ctx context.Context, repoRoot string, env []string, timeout time.Duration, extraArgs ...string) (string, error) {
 	slog.InfoContext(ctx, "running install.sh", "repoRoot", repoRoot)
 	callCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	installScript := filepath.Join(repoRoot, "install.sh")
-	cmd := exec.CommandContext(callCtx, "bash", installScript, "--use-defaults")
+	args := append([]string{installScript, "--use-defaults"}, extraArgs...)
+	cmd := exec.CommandContext(callCtx, "bash", args...)
 	cmd.Env = env
 	var output bytes.Buffer
 	cmd.Stdout = io.MultiWriter(os.Stdout, &output)

@@ -40,6 +40,7 @@ bell-features = attention,title,border
 scrollback-limit = 107374182400000
 
 # Mouse
+cursor-click-to-move = false
 mouse-hide-while-typing = true
 mouse-scroll-multiplier = precision:2.5,discrete:6
 

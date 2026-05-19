@@ -219,10 +219,6 @@ func SyncCursorConfig(ctx context.Context, dotfiles string, logger *telemetry.Lo
 		return fmt.Errorf("ensuring cursor compatibility link: %w", err)
 	}
 
-	if err := compilation.SyncFilesToDir(source.Commands, filepath.Join(cursorDir, "commands")); err != nil {
-		slog.WarnContext(ctx, "workspace: syncing cursor commands", "err", err)
-		return fmt.Errorf("syncing cursor commands: %w", err)
-	}
 	if err := compilation.SyncSkillDirs(source.Skills, filepath.Join(cursorDir, "skills")); err != nil {
 		slog.WarnContext(ctx, "workspace: syncing cursor skills", "err", err)
 		return fmt.Errorf("syncing cursor skills: %w", err)
@@ -274,10 +270,6 @@ func SyncClaudeConfig(ctx context.Context, dotfiles string, logger *telemetry.Lo
 	claudeDir := filepath.Join(os.Getenv("HOME"), ".claude")
 	source := compilation.ResolveAgentSource(dotfiles)
 
-	if err := compilation.SyncFilesToDir(source.Commands, filepath.Join(claudeDir, "commands")); err != nil {
-		slog.WarnContext(ctx, "workspace: syncing claude commands", "err", err)
-		return fmt.Errorf("syncing claude commands: %w", err)
-	}
 	if err := compilation.SyncSkillDirs(source.Skills, filepath.Join(claudeDir, "skills")); err != nil {
 		slog.WarnContext(ctx, "workspace: syncing claude skills", "err", err)
 		return fmt.Errorf("syncing claude skills: %w", err)
@@ -304,12 +296,12 @@ func SyncCodexConfig(ctx context.Context, dotfiles string, logger *telemetry.Log
 	source := compilation.ResolveAgentSource(dotfiles)
 
 	if err := compilation.SyncSkillDirs(source.Skills, filepath.Join(agentsDir, "skills")); err != nil {
+		slog.WarnContext(ctx, "workspace: syncing agents skills", "err", err)
+		return fmt.Errorf("syncing agents skills: %w", err)
+	}
+	if err := compilation.SyncSkillDirs(source.Skills, filepath.Join(codexDir, "skills")); err != nil {
 		slog.WarnContext(ctx, "workspace: syncing codex skills", "err", err)
 		return fmt.Errorf("syncing codex skills: %w", err)
-	}
-	if err := compilation.SyncCommandFilesAsSkillDirs(source.Commands, filepath.Join(agentsDir, "skills"), "cursor-command-"); err != nil {
-		slog.WarnContext(ctx, "workspace: syncing codex commands as skill dirs", "err", err)
-		return fmt.Errorf("syncing codex commands as skill dirs: %w", err)
 	}
 	if err := compilation.RenderCodexRules(source.Rules, filepath.Join(codexDir, "rules", "dotfiles.rules")); err != nil {
 		slog.WarnContext(ctx, "workspace: rendering codex rules", "err", err)
@@ -358,10 +350,6 @@ func SyncCopilotConfig(ctx context.Context, dotfiles string, logger *telemetry.L
 	if err := compilation.RenderCopilotInstructionFiles(source.Rules, filepath.Join(githubDir, "instructions")); err != nil {
 		slog.WarnContext(ctx, "workspace: rendering copilot instruction files", "err", err)
 		return fmt.Errorf("rendering copilot instruction files: %w", err)
-	}
-	if err := compilation.RenderCopilotPromptFiles(source.Commands, filepath.Join(githubDir, "prompts")); err != nil {
-		slog.WarnContext(ctx, "workspace: rendering copilot prompt files", "err", err)
-		return fmt.Errorf("rendering copilot prompt files: %w", err)
 	}
 	if err := compilation.SyncSkillDirs(source.Skills, filepath.Join(githubDir, "skills")); err != nil {
 		slog.WarnContext(ctx, "workspace: syncing github skills", "err", err)
@@ -452,7 +440,9 @@ func UpdateZinitPlugins(ctx context.Context, dotfiles string, logger *telemetry.
 		logger,
 		"zsh",
 		"-c",
-		"source '$DOTDOTFILES/lib/zinit/zinit.zsh'; zinit self-update; zinit update --all --quiet",
+		`source "$1"; zinit self-update; zinit update --all --quiet`,
+		"zsh",
+		zinitPath,
 	); err != nil {
 		slog.WarnContext(ctx, "workspace: updating zinit plugins", "err", err)
 		return fmt.Errorf("updating zinit plugins: %w", err)

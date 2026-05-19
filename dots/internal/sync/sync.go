@@ -29,6 +29,7 @@ type Options struct {
 	SkipCursorSync bool
 	DryRun         bool
 	UseDefaults    bool
+	StrictMode     bool
 }
 
 var commandLogger *telemetry.Logger
@@ -84,6 +85,11 @@ func Run(ctx context.Context, options Options) error {
 				logger.ErrorContextWithErr(ctx, "FATAL: "+name, err)
 				notify("error", fmt.Sprintf("sync failed at %s: %v", name, err))
 				return err
+			}
+			if options.StrictMode {
+				logger.ErrorContextWithErr(ctx, "STRICT: "+name, err)
+				notify("error", fmt.Sprintf("strict sync failed at %s: %v", name, err))
+				return fmt.Errorf("strict sync failed at %s: %w", name, err)
 			}
 			logger.WarnContextWithErr(ctx, "WARN: "+name, err)
 			notify("warn", "sync step failed (continued): "+name)
@@ -263,6 +269,11 @@ func runConfigSteps(options Options, dotfiles string, logger *telemetry.Logger, 
 }
 
 func runUpdateSteps(options Options, dotfiles string, logger *telemetry.Logger, step syncStep) error {
+	if err := step("Running OS setup", false, func(ctx context.Context) error {
+		return platform.RunOSInstall(ctx, options.QuickMode, options.UseDefaults, options.StrictMode, logger)
+	}); err != nil {
+		return err
+	}
 	if err := step("Updating and compiling zinit plugins", false, func(ctx context.Context) error {
 		if options.QuickMode || options.SkipNetwork {
 			return nil
@@ -271,16 +282,11 @@ func runUpdateSteps(options Options, dotfiles string, logger *telemetry.Logger, 
 	}); err != nil {
 		return err
 	}
-	if err := step("Running OS setup", false, func(ctx context.Context) error {
-		return platform.RunOSInstall(ctx, options.QuickMode, options.UseDefaults, logger)
-	}); err != nil {
-		return err
-	}
 	if err := step("Installing custom tools", false, func(ctx context.Context) error {
 		if options.QuickMode {
 			return nil
 		}
-		return tools.InstallCustomTools(ctx, dotfiles, logger)
+		return tools.InstallCustomTools(ctx, dotfiles, options.StrictMode, logger)
 	}); err != nil {
 		return err
 	}

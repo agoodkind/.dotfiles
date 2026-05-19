@@ -132,7 +132,7 @@ func checkDotfilesGitHealth(ctx context.Context, dotfiles string, logger *teleme
 	if err != nil || strings.TrimSpace(branch) == "" {
 		return "detached HEAD"
 	}
-	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "rev-parse", "MERGE_HEAD"); err == nil {
+	if gitCommandSucceeds(ctx, dotfiles, "rev-parse", "-q", "--verify", "MERGE_HEAD") {
 		return "merge in progress"
 	}
 	if _, err := os.Stat(filepath.Clean(filepath.Join(dotfiles, ".git", "rebase-merge"))); err == nil {
@@ -172,18 +172,17 @@ func getRemoteStatus(ctx context.Context, dotfiles string, remoteRef string, log
 	if current == latest {
 		return "up-to-date"
 	}
-	if isMergeBaseAncestor(ctx, dotfiles, current, latest, logger) {
+	if isMergeBaseAncestor(ctx, dotfiles, current, latest) {
 		return "behind"
 	}
-	if isMergeBaseAncestor(ctx, dotfiles, latest, current, logger) {
+	if isMergeBaseAncestor(ctx, dotfiles, latest, current) {
 		return "up-to-date"
 	}
 	return "diverged"
 }
 
-func isMergeBaseAncestor(ctx context.Context, dotfiles string, ancestor string, descendant string, logger *telemetry.Logger) bool {
-	cmdErr := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "merge-base", "--is-ancestor", ancestor, descendant)
-	return cmdErr == nil
+func isMergeBaseAncestor(ctx context.Context, dotfiles string, ancestor string, descendant string) bool {
+	return gitCommandSucceeds(ctx, dotfiles, "merge-base", "--is-ancestor", ancestor, descendant)
 }
 
 func hasLocalChanges(ctx context.Context, dotfiles string, logger *telemetry.Logger) (bool, error) {
@@ -257,7 +256,7 @@ func syncDotfilesSubmodules(ctx context.Context, dotfiles string, logger *teleme
 
 	pointerDirty := false
 	for _, sub := range subs {
-		if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "diff", "--quiet", "--", sub); err != nil {
+		if !gitCommandSucceeds(ctx, dotfiles, "diff", "--quiet", "--", sub) {
 			pointerDirty = true
 			_ = cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "add", "--", sub)
 		}
@@ -280,11 +279,12 @@ func syncOneSubmodule(ctx context.Context, dotfiles string, subPath string, logg
 	branch, _ := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "config", "-f", filepath.Join(dotfiles, ".gitmodules"), "--get", "submodule."+subPath+".branch")
 	branch = strings.TrimSpace(branch)
 	if branch == "" {
-		if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "rev-parse", "origin/main"); err == nil {
+		switch {
+		case gitCommandSucceeds(ctx, subAbs, "rev-parse", "-q", "--verify", "origin/main"):
 			branch = "main"
-		} else if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "rev-parse", "origin/master"); err == nil {
+		case gitCommandSucceeds(ctx, subAbs, "rev-parse", "-q", "--verify", "origin/master"):
 			branch = "master"
-		} else {
+		default:
 			branch = "main"
 		}
 	}
@@ -295,6 +295,12 @@ func syncOneSubmodule(ctx context.Context, dotfiles string, subPath string, logg
 		logger.WarnContext(ctx, "  pull --rebase failed in "+subPath)
 	}
 	return nil
+}
+
+func gitCommandSucceeds(ctx context.Context, worktree string, args ...string) bool {
+	commandArgs := append([]string{"-C", worktree}, args...)
+	_, err := cmdexec.OutputWithLoggerAndEnv(ctx, nil, nil, "git", commandArgs...)
+	return err == nil
 }
 
 // LoadOverrides reads machine-specific override settings from the local environment.

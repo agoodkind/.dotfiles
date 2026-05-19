@@ -21,16 +21,17 @@ import (
 )
 
 // RunOSInstall runs the platform-specific package installation and setup steps.
-func RunOSInstall(ctx context.Context, quickMode bool, useDefaults bool, logger *telemetry.Logger) error {
+func RunOSInstall(ctx context.Context, quickMode bool, useDefaults bool, strictMode bool, logger *telemetry.Logger) error {
 	if quickMode {
 		return nil
 	}
+	ensureBootstrapPathEntries()
 
 	var osType string
 	if runtime.GOOS == "darwin" {
 		osType = "macOS"
 		common.InfoContextf(ctx, logger, "  Running %s setup", osType)
-		return runMacSetup(ctx, useDefaults, logger)
+		return runMacSetup(ctx, useDefaults, strictMode, logger)
 	} else if common.IsUbuntu() {
 		osType = "Debian/Ubuntu/Proxmox"
 		common.InfoContextf(ctx, logger, "  Running %s setup", osType)
@@ -40,7 +41,7 @@ func RunOSInstall(ctx context.Context, quickMode bool, useDefaults bool, logger 
 	return nil
 }
 
-func runMacSetup(ctx context.Context, useDefaults bool, logger *telemetry.Logger) error {
+func runMacSetup(ctx context.Context, useDefaults bool, strictMode bool, logger *telemetry.Logger) error {
 	_ = useDefaults
 	common.InfoContext(ctx, logger, "  running macOS bootstrap")
 	if err := ensureHomebrewInstalled(ctx, logger); err != nil {
@@ -52,7 +53,7 @@ func runMacSetup(ctx context.Context, useDefaults bool, logger *telemetry.Logger
 	if runner.HasCommand("brew") {
 		_ = cmdexec.RunWithLogger(ctx, logger, "brew", "cleanup")
 	}
-	if err := installMacPackages(ctx, logger); err != nil {
+	if err := installMacPackages(ctx, strictMode, logger); err != nil {
 		return err
 	}
 	if err := installRustupIfNeeded(ctx, logger); err != nil {
@@ -211,17 +212,69 @@ func installRustupIfNeeded(ctx context.Context, logger *telemetry.Logger) error 
 	if runner.HasCommand("rustup") {
 		return nil
 	}
+	if runner.HasCommand("cargo") && runner.HasCommand("rustc") {
+		return nil
+	}
 	inst, err := tools.DownloadToTempFile(ctx, logger, "https://sh.rustup.rs")
 	if err != nil {
 		slog.WarnContext(ctx, "downloading tool", "err", err)
 		return fmt.Errorf("downloading tool: %w", err)
 	}
 	defer os.Remove(inst)
-	if err := cmdexec.RunWithLogger(ctx, logger, "sh", inst, "--", "-y"); err != nil {
+	if err := cmdexec.RunWithLogger(ctx, logger, "sh", inst, "-y"); err != nil {
 		slog.WarnContext(ctx, "running sh", "err", err)
 		return fmt.Errorf("running sh: %w", err)
 	}
+	ensureBootstrapPathEntries()
 	return nil
+}
+
+func ensureBootstrapPathEntries() {
+	home := os.Getenv("HOME")
+	goLocalRoot := os.Getenv("GO_LOCAL_ROOT")
+	if goLocalRoot == "" && home != "" {
+		goLocalRoot = filepath.Join(home, ".local", "go")
+	}
+	entries := []string{
+		"/opt/homebrew/bin",
+		"/usr/local/bin",
+	}
+	if home != "" {
+		entries = append(entries, filepath.Join(home, ".local", "bin"))
+		entries = append(entries, filepath.Join(home, ".cargo", "bin"))
+	}
+	if goLocalRoot != "" {
+		entries = append(entries, filepath.Join(goLocalRoot, "bin"))
+	}
+	prependPathEntries(entries)
+}
+
+func prependPathEntries(entries []string) {
+	currentPath := os.Getenv("PATH")
+	seen := make(map[string]struct{})
+	for pathEntry := range strings.SplitSeq(currentPath, ":") {
+		if pathEntry == "" {
+			continue
+		}
+		seen[pathEntry] = struct{}{}
+	}
+	newEntries := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry == "" {
+			continue
+		}
+		if _, ok := seen[entry]; ok {
+			continue
+		}
+		seen[entry] = struct{}{}
+		newEntries = append(newEntries, entry)
+	}
+	if len(newEntries) == 0 {
+		return
+	}
+	updatedEntries := newEntries
+	updatedEntries = append(updatedEntries, strings.Split(currentPath, ":")...)
+	_ = os.Setenv("PATH", strings.Join(updatedEntries, ":"))
 }
 
 func installGoToolsIfNeeded(ctx context.Context, logger *telemetry.Logger) error {
@@ -285,7 +338,7 @@ func installCargoToolsIfNeeded(ctx context.Context, cfg *catalog.PackageConfig, 
 	return nil
 }
 
-func installMacPackages(ctx context.Context, logger *telemetry.Logger) error {
+func installMacPackages(ctx context.Context, strictMode bool, logger *telemetry.Logger) error {
 	if !runner.HasCommand("brew") {
 		return nil
 	}
@@ -295,12 +348,26 @@ func installMacPackages(ctx context.Context, logger *telemetry.Logger) error {
 	}
 	if err := cmdexec.RunWithLogger(ctx, logger, "brew", "update", "--quiet"); err != nil {
 		common.WarnContext(ctx, logger, "  brew update failed, continuing")
+		if strictMode {
+			slog.WarnContext(ctx, "running brew update", "err", err)
+			return fmt.Errorf("running brew update: %w", err)
+		}
 	}
+	if err := installMacFormulae(ctx, cfg, strictMode, logger); err != nil {
+		return err
+	}
+	return installMacCasks(ctx, cfg, strictMode, logger)
+}
+
+func installMacFormulae(ctx context.Context, cfg *catalog.PackageConfig, strictMode bool, logger *telemetry.Logger) error {
 	formulae := make(map[string]struct{})
 	var formulaList []string
 	for _, item := range append(cfg.CommonPackages, cfg.BrewSpecific...) {
 		name := brewPackageName(item)
 		if name == "" {
+			continue
+		}
+		if brewFormulaInstalled(ctx, name) {
 			continue
 		}
 		if _, ok := formulae[name]; ok {
@@ -313,23 +380,56 @@ func installMacPackages(ctx context.Context, logger *telemetry.Logger) error {
 		brewArgs := append([]string{"install"}, formulaList...)
 		if err := cmdexec.RunWithLogger(ctx, logger, "brew", brewArgs...); err != nil {
 			common.WarnContext(ctx, logger, "  brew formula install returned an error")
-		}
-	}
-	for cask := range cfg.BrewCasks {
-		app := cfg.BrewCasks[cask]
-		if app != "" {
-			if _, err := os.Stat(filepath.Join("/Applications", app)); err == nil {
-				continue
+			if strictMode {
+				slog.WarnContext(ctx, "running brew install", "err", err)
+				return fmt.Errorf("running brew install: %w", err)
 			}
-			if _, err := os.Stat(filepath.Clean(filepath.Join(os.Getenv("HOME"), "Applications", app))); err == nil {
-				continue
-			}
-		}
-		if err := cmdexec.RunWithLogger(ctx, logger, "brew", "install", "--cask", cask); err != nil {
-			common.WarnContextf(ctx, logger, "  failed to install cask %s", cask)
 		}
 	}
 	return nil
+}
+
+func installMacCasks(ctx context.Context, cfg *catalog.PackageConfig, strictMode bool, logger *telemetry.Logger) error {
+	for cask := range cfg.BrewCasks {
+		if !macCaskNeedsInstall(ctx, cask, cfg.BrewCasks[cask]) {
+			continue
+		}
+		if err := cmdexec.RunWithLogger(ctx, logger, "brew", "install", "--cask", cask); err != nil {
+			common.WarnContextf(ctx, logger, "  failed to install cask %s", cask)
+			if strictMode {
+				slog.WarnContext(ctx, "running brew cask install", "cask", cask, "err", err)
+				return fmt.Errorf("running brew cask install %s: %w", cask, err)
+			}
+		}
+	}
+	return nil
+}
+
+func macCaskNeedsInstall(ctx context.Context, cask string, app string) bool {
+	if brewCaskInstalled(ctx, cask) {
+		return false
+	}
+	if app == "" {
+		return true
+	}
+	if _, err := os.Stat(filepath.Join("/Applications", app)); err == nil {
+		return false
+	}
+	appPath := filepath.Clean(filepath.Join(os.Getenv("HOME"), "Applications", app))
+	if _, err := os.Stat(appPath); err == nil {
+		return false
+	}
+	return true
+}
+
+func brewFormulaInstalled(ctx context.Context, formula string) bool {
+	_, err := cmdexec.OutputWithLoggerAndEnv(ctx, nil, nil, "brew", "list", "--formula", formula)
+	return err == nil
+}
+
+func brewCaskInstalled(ctx context.Context, cask string) bool {
+	_, err := cmdexec.OutputWithLoggerAndEnv(ctx, nil, nil, "brew", "list", "--cask", cask)
+	return err == nil
 }
 
 // installUbuntuPPAs adds third-party Launchpad PPAs on Ubuntu hosts before the main apt-get install batch.

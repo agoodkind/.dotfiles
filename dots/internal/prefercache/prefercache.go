@@ -68,6 +68,9 @@ func shouldRebuildPreferCache(cachePath, marker string, sourceFiles []string, fo
 	if err != nil {
 		return true
 	}
+	if cacheInfo.Size() == 0 {
+		return true
+	}
 	for _, path := range sourceFiles {
 		info, err := os.Stat(path)
 		if err == nil && info.ModTime().After(cacheInfo.ModTime()) {
