@@ -1,15 +1,18 @@
 ---
-description: Prefer claude-context semantic search over native grep, ripgrep, and find for code discovery
+description: Use claude-context first for conceptual code discovery, but sanity-check index quality and fall back when results are coarse
 globs: "**/*"
 alwaysApply: true
 ---
 
-Code search: For any code search that is conceptual or discovery-oriented (questions like "where is X", "how does Y work", "show me the path that handles Z"), prefer the claude-context MCP `search_code` tool over native `grep`, `ripgrep`, `find`, or read-then-scan workflows. Native `grep` and `ripgrep` are still correct when the query is a literal string match (an exact error message, a specific symbol name, a regex with anchors), when every occurrence is needed rather than ranked candidates, when precise line numbers are required, when the repo is small enough to read directly, or when claude-context returns no useful results.
+Prefer claude-context `search_code` for conceptual repo-wide discovery, but do not use it blindly.
 
-Indexing prerequisite: claude-context only works against indexed codebases. If `search_code` returns a "not indexed" error, call `index_codebase` with the absolute repository root and `splitter: "ast"`, confirm progress with `get_indexing_status`, and retry the search once status is `completed`. Re-index only when the working tree has changed materially since the last index, since indexing the same repo cost real model compute on the local broker.
+Call `get_indexing_status` on the absolute repository root before relying on semantic results. If the status is "not indexed", stop immediately, ask the user whether to index the codebase, and wait for an explicit yes before calling `index_codebase`. Do not index without permission. If indexing is still running, treat search results as provisional.
 
-Tool arguments: Pass the absolute path to the repository root on every call. Phrase queries as natural-language descriptions of intent, not as literal regexes or symbol names (good: "where does the broker authenticate XPC peers"; bad: "authenticatePeer\\("). Use `extensionFilter` to constrain by file type when relevant. Leave `limit` at the default unless the top results miss the answer.
+Use `splitter: "ast"` by default when indexing. Do not use `splitter: "langchain"` unless user-approved diagnostic given.
 
-Subagents: When launching Task subagents, explore agents, or generalPurpose agents that need to read or search code, instruct them in their prompt to use claude-context `search_code` as the primary search tool and to fall back to native `grep` or `ripgrep` only for literal matches or when claude-context returns nothing useful. Include the absolute repository path in the prompt so the subagent does not have to infer it.
+For implementation questions, start with `extensionFilter` for the real source language and avoid docs unless the user is asking about docs. Treat hits in `README.md`, `AGENTS.md`, `*.pb.go`, `*.grpc.pb.go`, or other generated files as warning signs rather than answers.
 
-Result handling: Treat claude-context results as ranked candidates, not authoritative locations. Read the cited file regions with the Read tool to confirm semantics before acting on them, since the indexed chunks may be stale relative to the working tree if files have changed after the last index.
+Do one corrective pass when results are low-signal: tighten `extensionFilter`, raise `limit` if needed, and retry once. If the results are still dominated by docs or generated files, switch to native `grep`, `ripgrep`, or direct reads rather than repeatedly forcing claude-context.
+
+
+When launching subagents that need code discovery, tell them to follow this same policy and include the absolute repository path in the prompt.

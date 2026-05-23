@@ -1,50 +1,38 @@
 ---
 name: claude-context
-description: Use the claude-context MCP for semantic code search instead of native grep, ripgrep, or find, and instruct subagents to do the same. Use when the user explicitly asks for claude-context, semantic code search, or code-context, or mentions this skill by name.
+description: Use the claude-context MCP for semantic code discovery when the user explicitly asks for claude-context or semantic search. Sanity-check index quality first, prefer code-only extension filters for implementation questions, and fall back when results are docs or generated files.
+disable-model-invocation: true
 ---
 
 # Claude Context Search
 
-Prefer claude-context's semantic `search_code` over native `grep`, `ripgrep`, `find`, or read-then-scan workflows whenever the query is conceptual or discovery-oriented. Carry the same preference into every subagent launched during this task.
+Read the companion rule at [claude-context.mdc](../../rules/claude-context.mdc) before using this skill so the explicit workflow and the always-applied guidance stay aligned.
 
-## Companion Rule
-
-The persistent guidance for when to reach for claude-context versus native search lives in [claude-context.mdc](../../rules/claude-context.mdc). Read that rule before using this skill so the heuristics for "use claude-context" versus "use grep" stay in sync between this workflow and the always-applied rule.
-
-## When to Use claude-context
-
-- Conceptual or discovery queries: "where is X", "how does Y work", "what handles Z", "find the code that does W".
-- Unfamiliar codebases or wide cross-cutting questions.
-- Any time the answer depends on intent rather than a literal string match.
-
-## When to Stay With grep
-
-- Exact literal matches (an error message, a precise symbol, a regex with anchors).
-- Need every occurrence, not a ranked top-k.
-- Need exact line numbers and surrounding context.
-- Single file or small scope where reading directly is faster.
-- claude-context returned nothing useful and you have a literal fallback.
+Use claude-context for conceptual discovery across a repo. Use native `grep`, `ripgrep`, or direct file reads for exact literals, exact line references, exhaustive occurrence lists, or when semantic results stay low-signal after one corrective pass.
 
 ## Workflow
 
-1. Confirm the codebase is indexed before searching. Call `get_indexing_status` against the absolute repository root.
-2. If status is anything other than `completed`, call `index_codebase` with `path` set to the absolute repo root and `splitter: "ast"`. Poll `get_indexing_status` until `completed`. Skip this step if the index is already fresh.
-3. Phrase the query as a natural-language description of intent, not as a regex or symbol name.
-4. Call `search_code` with the absolute `path` and the natural-language `query`. Use `extensionFilter` when the search is restricted to specific file types. Keep `limit` at the default unless the top results miss the answer.
-5. Treat results as ranked candidates. Open the cited file regions with the Read tool before acting on them, since indexed chunks can lag the working tree.
-6. Fall back to native `grep` or `ripgrep` only for literal-string matches or when claude-context returns nothing useful.
+1. Call `get_indexing_status` on the absolute repository root before searching.
+2. If `get_indexing_status` returns "not indexed", stop immediately, ask the user whether to index the codebase, and wait for an explicit yes before calling `index_codebase`. Do not index without permission.
+3. If indexing is still in progress, treat results as provisional and wait for `completed` before trusting ranking.
+4. Look at the reported file and chunk counts. If the index is roughly one chunk per file, treat it as coarse and expect noisy whole-file matches.
+5. Phrase the query as natural-language intent.
+6. For implementation questions, start with `extensionFilter` for real source files such as `.go`, `.swift`, `.ts`, or `.py`. Do not search docs first unless the user is asking about docs.
+7. Read the first results skeptically. Hits in `README.md`, `AGENTS.md`, `*.pb.go`, `*.grpc.pb.go`, or other generated files are warning signs, not answers.
+8. If results are coarse, retry once with a tighter `extensionFilter` and a higher `limit`.
+9. If results are still dominated by docs or generated files, stop using semantic search for that question and switch to native search or direct reads.
+10. Reindex only when needed and only with user permission. Use `splitter: "ast"` by default. Use `splitter: "langchain"` only as a user-approved diagnostic, since it can still produce one-chunk-per-file indexes or reduce coverage.
+11. Treat returned chunks as candidates. Read the cited files before acting because the working tree can be newer than the index.
 
 ## Subagent Instructions
 
-When launching Task subagents (explore, generalPurpose, or shell), include this guidance verbatim in the subagent prompt:
+When launching Task subagents, include this guidance verbatim in the prompt after substituting the absolute repository root for `<path>`:
 
-> Use the claude-context MCP `search_code` tool against the absolute repository path `<path>` for any code discovery query. Phrase queries as natural-language intent. Fall back to native `grep` or `ripgrep` only for literal-string matches or when `search_code` returns nothing useful. Confirm the codebase is indexed via `get_indexing_status` before searching, and call `index_codebase` with `splitter: "ast"` if it is not.
-
-Always substitute `<path>` with the absolute repository root before sending the prompt so the subagent does not have to infer it.
+> Use the claude-context MCP `search_code` tool first for conceptual code discovery in `<path>`. Call `get_indexing_status` before searching. If the status is "not indexed", stop, ask the user for permission to index, and wait for an explicit yes before calling `index_codebase`. Do not index without permission. Do not trust rankings while indexing is still in progress. If the reported stats are roughly one chunk per file, treat the index as coarse. For implementation questions, start with `extensionFilter` for the source language. If the top hits are docs like `README.md` or generated files like `*.pb.go`, retry once with tighter filters and a higher `limit`, then fall back to native `grep` or `ripgrep` instead of repeatedly forcing semantic search. Use `splitter: "ast"` by default when reindexing, and use `splitter: "langchain"` only when the user explicitly wants that diagnostic.
 
 ## Tool Reference
 
-- `search_code(path, query, limit?, extensionFilter?)` returns ranked code chunks with file paths and rough line ranges.
-- `index_codebase(path, force?, splitter?)` builds or rebuilds the index. Use `splitter: "ast"` for code, `"langchain"` only when AST splitting is unavailable for the file type.
-- `get_indexing_status(path)` reports the current index state, percentage progress when actively indexing, and the last completion timestamp.
-- `clear_index(path)` removes the index. Only call when the user explicitly asks for a wipe, or when an index has become corrupted.
+- `search_code(path, query, limit?, extensionFilter?)` returns ranked chunks.
+- `get_indexing_status(path)` reports status and file or chunk counts.
+- `index_codebase(path, force?, splitter?)` rebuilds the index.
+- `clear_index(path)` removes the index and should only be used when the user explicitly wants a wipe or a splitter swap.
