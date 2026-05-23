@@ -64,7 +64,7 @@ if [[ -f "$_path_cache" && "$_path_cache" -nt /etc/paths.d ]]; then
 fi
 unset _path_cache
 
-export PATH="$HOME/.local/bin:$HOME/.local/bin/scripts:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.local/bin/scripts:$HOME/.cache/dots/bin:$PATH"
 
 if [[ -f "$HOME/.cargo/env" ]]; then
     source "$HOME/.cargo/env"
