@@ -22,6 +22,22 @@ import (
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
+// xdgDataDir returns the XDG_DATA_HOME directory, falling back to ~/.local/share.
+func xdgDataDir() string {
+	if v := os.Getenv("XDG_DATA_HOME"); v != "" {
+		return v
+	}
+	return filepath.Join(os.Getenv("HOME"), ".local", "share")
+}
+
+// xdgStateDir returns the XDG_STATE_HOME directory, falling back to ~/.local/state.
+func xdgStateDir() string {
+	if v := os.Getenv("XDG_STATE_HOME"); v != "" {
+		return v
+	}
+	return filepath.Join(os.Getenv("HOME"), ".local", "state")
+}
+
 // CleanupZinitCompletions removes dead symlinks from the zinit completions directory.
 func CleanupZinitCompletions(ctx context.Context, logger *telemetry.Logger) error {
 	slog.InfoContext(ctx, "workspace: CleanupZinitCompletions")
@@ -53,7 +69,7 @@ func CleanupZinitCompletions(ctx context.Context, logger *telemetry.Logger) erro
 func LinkDotfiles(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
 	slog.InfoContext(ctx, "workspace: LinkDotfiles")
 	homeDir := os.Getenv("HOME")
-	backupPath := filepath.Join(dotfiles, "backups", clock.Now().Format("20060102_150405"))
+	backupPath := filepath.Join(xdgDataDir(), "dots", "backups", clock.Now().Format("20060102_150405"))
 	source := filepath.Join(dotfiles, "home")
 	linked, skipped, backed := 0, 0, 0
 
@@ -77,11 +93,12 @@ func LinkDotfiles(ctx context.Context, dotfiles string, logger *telemetry.Logger
 		}
 
 		if _, err := os.Lstat(filepath.Clean(homeFile)); err == nil {
-			if err := os.MkdirAll(filepath.Dir(filepath.Join(backupPath, rel)), 0o755); err != nil {
-				slog.WarnContext(ctx, "workspace: creating backup directory", "err", err)
-				return fmt.Errorf("creating backup directory: %w", err)
-			}
-			if err := cmdexec.RunWithLogger(ctx, logger, "cp", "-HpR", homeFile, filepath.Join(backupPath, rel+".bak")); err == nil {
+			backupDest := filepath.Join(backupPath, rel+".bak")
+			if !strings.HasPrefix(filepath.Clean(backupDest), filepath.Clean(backupPath)) {
+				slog.WarnContext(ctx, "workspace: skipping backup, path traversal detected", "rel", rel)
+			} else if mkErr := os.MkdirAll(filepath.Dir(backupDest), 0o755); mkErr != nil {
+				slog.WarnContext(ctx, "workspace: creating backup directory, skipping backup", "err", mkErr)
+			} else if err := cmdexec.RunWithLogger(ctx, logger, "cp", "-HpR", homeFile, backupDest); err == nil {
 				backed++
 			}
 			_ = os.RemoveAll(filepath.Clean(homeFile))
@@ -475,10 +492,7 @@ func CleanupHomebrewRepair(ctx context.Context, logger *telemetry.Logger) error 
 // CleanupNeovimRepair removes stale Neovim plugin and swap file directories.
 func CleanupNeovimRepair(ctx context.Context, logger *telemetry.Logger) error {
 	slog.InfoContext(ctx, "workspace: CleanupNeovimRepair")
-	nvimData := filepath.Join(os.Getenv("XDG_DATA_HOME"), "nvim")
-	if os.Getenv("XDG_DATA_HOME") == "" {
-		nvimData = filepath.Join(os.Getenv("HOME"), ".local", "share", "nvim")
-	}
+	nvimData := filepath.Join(xdgDataDir(), "nvim")
 	lazyDir := filepath.Join(nvimData, "lazy")
 	if entries, err := os.ReadDir(lazyDir); err == nil {
 		for _, entry := range entries {
@@ -499,8 +513,8 @@ func CleanupNeovimRepair(ctx context.Context, logger *telemetry.Logger) error {
 	}
 
 	swapDirs := []string{
-		filepath.Join(os.Getenv("XDG_STATE_HOME"), "nvim", "swap"),
-		filepath.Join(os.Getenv("HOME"), ".local", "share", "nvim", "swap"),
+		filepath.Join(xdgStateDir(), "nvim", "swap"),
+		filepath.Join(xdgDataDir(), "nvim", "swap"),
 	}
 	for _, dir := range swapDirs {
 		files, err := filepath.Glob(filepath.Join(dir, "*.swp"))
