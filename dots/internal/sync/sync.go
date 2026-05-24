@@ -14,6 +14,9 @@ import (
 	"goodkind.io/.dotfiles/internal/runner"
 	"goodkind.io/.dotfiles/internal/sync/compilation"
 	"goodkind.io/.dotfiles/internal/sync/platform"
+	"goodkind.io/.dotfiles/internal/sync/platform/debian"
+	"goodkind.io/.dotfiles/internal/sync/platform/macos"
+	"goodkind.io/.dotfiles/internal/sync/platform/toolchain"
 	"goodkind.io/.dotfiles/internal/sync/repository"
 	"goodkind.io/.dotfiles/internal/sync/tools"
 	"goodkind.io/.dotfiles/internal/sync/workspace"
@@ -270,7 +273,23 @@ func runConfigSteps(options Options, dotfiles string, logger *telemetry.Logger, 
 
 func runUpdateSteps(options Options, dotfiles string, logger *telemetry.Logger, step syncStep) error {
 	if err := step("Running OS setup", false, func(ctx context.Context) error {
-		return platform.RunOSInstall(ctx, options.QuickMode, options.UseDefaults, options.StrictMode, logger)
+		if options.QuickMode {
+			return nil
+		}
+
+		hostSource := platform.NewRuntimeHostSource(platform.NewRealHostSourceDeps())
+		sharedToolchain := toolchain.New(toolchain.NewRealDeps())
+		installers := []platform.Installer{
+			macos.New(macos.NewRealDeps(), sharedToolchain),
+			debian.New(debian.NewRealDeps(), sharedToolchain),
+		}
+
+		return platform.RunInstall(ctx, hostSource, installers, platform.Request{
+			Host:        platform.Host{GOOS: "", Distribution: platform.DistributionUnknown},
+			Logger:      logger,
+			UseDefaults: options.UseDefaults,
+			StrictMode:  options.StrictMode,
+		})
 	}); err != nil {
 		return err
 	}

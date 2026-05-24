@@ -8,11 +8,9 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 
-	"goodkind.io/.dotfiles/internal/catalog"
 	"goodkind.io/.dotfiles/internal/cmdexec"
 	"goodkind.io/.dotfiles/internal/runner"
 	"goodkind.io/.dotfiles/internal/telemetry"
@@ -112,33 +110,6 @@ func IsWorkLaptop() bool {
 	return os.Getenv("WORK_DIR_PATH") != ""
 }
 
-// IsUbuntu reports whether the current OS is Linux and identifies as Ubuntu or Debian via /etc/os-release.
-func IsUbuntu() bool {
-	if runtime.GOOS != "linux" {
-		return false
-	}
-	content, err := os.ReadFile("/etc/os-release")
-	if err != nil {
-		return false
-	}
-	lower := strings.ToLower(string(content))
-	return strings.Contains(lower, "ubuntu") || strings.Contains(lower, "debian")
-}
-
-// IsUbuntuOnly reports whether the current OS is Linux and identifies specifically as Ubuntu (not Debian).
-// Use this instead of IsUbuntu when behaviour must be restricted to Ubuntu, e.g. adding Launchpad PPAs.
-func IsUbuntuOnly() bool {
-	if runtime.GOOS != "linux" {
-		return false
-	}
-	content, err := os.ReadFile("/etc/os-release")
-	if err != nil {
-		return false
-	}
-	lower := strings.ToLower(string(content))
-	return strings.Contains(lower, "id=ubuntu")
-}
-
 // HasSudoAccess reports whether the current user can run sudo without a password prompt.
 func HasSudoAccess(ctx context.Context, logger *telemetry.Logger) bool {
 	if !runner.HasCommand("sudo") {
@@ -236,9 +207,4 @@ func VersionAtLeast(current, minimum string) bool {
 		}
 	}
 	return true
-}
-
-// DefaultPackageConfig returns the default package configuration from the catalog.
-func DefaultPackageConfig() *catalog.PackageConfig {
-	return catalog.DefaultPackageConfig()
 }

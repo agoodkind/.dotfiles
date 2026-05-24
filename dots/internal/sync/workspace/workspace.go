@@ -462,7 +462,7 @@ printf "[zinit-plugins-dir: %s]\n" "$plugins_dir"
 
 func zinitMarkerValue(output string, marker string) (string, bool) {
 	prefix := "[" + marker + ": "
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		trimmedLine := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmedLine, prefix) && strings.HasSuffix(trimmedLine, "]") {
 			value := strings.TrimSuffix(strings.TrimPrefix(trimmedLine, prefix), "]")
@@ -499,6 +499,7 @@ func verifyZinitPlugins(ctx context.Context, pluginsDir string, logger *telemetr
 		return nil
 	}
 	if err != nil {
+		slog.WarnContext(ctx, "workspace: read zinit plugins dir", "dir", pluginsDir, "err", err)
 		return fmt.Errorf("reading zinit plugins dir %s: %w", pluginsDir, err)
 	}
 
@@ -515,6 +516,7 @@ func verifyZinitPlugins(ctx context.Context, pluginsDir string, logger *telemetr
 		pluginDir := filepath.Join(pluginsDir, pluginName)
 		isGitRepo, isDetached, err := zinitPluginGitState(pluginDir)
 		if err != nil {
+			slog.WarnContext(ctx, "workspace: check zinit plugin", "plugin", pluginName, "dir", pluginDir, "err", err)
 			return fmt.Errorf("checking zinit plugin %s: %w", pluginName, err)
 		}
 		if !isGitRepo {
@@ -542,6 +544,7 @@ func zinitPluginGitState(pluginDir string) (bool, bool, error) {
 
 	headContent, err := os.ReadFile(headPath)
 	if err != nil {
+		slog.Warn("workspace: read zinit HEAD", "path", headPath, "err", err)
 		return true, false, fmt.Errorf("reading git HEAD: %w", err)
 	}
 	headRef := strings.TrimSpace(string(headContent))
@@ -549,20 +552,28 @@ func zinitPluginGitState(pluginDir string) (bool, bool, error) {
 }
 
 func zinitPluginHeadPath(pluginDir string) (string, bool, error) {
-	gitPath := filepath.Join(pluginDir, ".git")
-	gitInfo, err := os.Stat(gitPath)
+	pluginRoot, err := os.OpenRoot(pluginDir)
+	if err != nil {
+		slog.Warn("workspace: open zinit plugin root", "dir", pluginDir, "err", err)
+		return "", false, fmt.Errorf("opening zinit plugin root %s: %w", pluginDir, err)
+	}
+	defer closeRootWithWarning(pluginRoot, pluginDir)
+
+	gitInfo, err := pluginRoot.Stat(".git")
 	if os.IsNotExist(err) {
 		return "", false, nil
 	}
 	if err != nil {
-		return "", false, err
+		slog.Warn("workspace: stat zinit .git", "dir", pluginDir, "err", err)
+		return "", false, fmt.Errorf("stat .git in %s: %w", pluginDir, err)
 	}
 	if gitInfo.IsDir() {
-		return filepath.Join(gitPath, "HEAD"), true, nil
+		return filepath.Join(pluginDir, ".git", "HEAD"), true, nil
 	}
 
-	gitFileContent, err := os.ReadFile(gitPath)
+	gitFileContent, err := pluginRoot.ReadFile(".git")
 	if err != nil {
+		slog.Warn("workspace: read zinit .git file", "dir", pluginDir, "err", err)
 		return "", true, fmt.Errorf("reading .git file: %w", err)
 	}
 	const gitDirPrefix = "gitdir: "
@@ -572,10 +583,25 @@ func zinitPluginHeadPath(pluginDir string) (string, bool, error) {
 	}
 
 	gitDir := strings.TrimSpace(strings.TrimPrefix(gitDirLine, gitDirPrefix))
-	if !filepath.IsAbs(gitDir) {
-		gitDir = filepath.Join(pluginDir, gitDir)
+	if filepath.IsAbs(gitDir) {
+		relativeGitDir, err := filepath.Rel(pluginDir, gitDir)
+		if err != nil {
+			slog.Warn("workspace: relativize gitdir", "dir", pluginDir, "gitdir", gitDir, "err", err)
+			return "", true, fmt.Errorf("relativizing .git file path: %w", err)
+		}
+		gitDir = relativeGitDir
 	}
-	return filepath.Join(filepath.Clean(gitDir), "HEAD"), true, nil
+	if !filepath.IsLocal(gitDir) {
+		slog.Warn("workspace: unsafe gitdir", "dir", pluginDir, "gitdir", gitDir)
+		return "", true, fmt.Errorf("unsafe .git file path")
+	}
+	return filepath.Join(pluginDir, filepath.Clean(gitDir), "HEAD"), true, nil
+}
+
+func closeRootWithWarning(root *os.Root, pluginDir string) {
+	if err := root.Close(); err != nil {
+		slog.Warn("workspace: close zinit plugin root", "dir", pluginDir, "err", err)
+	}
 }
 
 // UpdateZinitPlugins runs zinit self-update and updates all zinit plugins.
