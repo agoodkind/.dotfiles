@@ -1,27 +1,41 @@
 zmodload zsh/datetime
 START_TIME=$EPOCHREALTIME
 
-# Single source of truth for interactive-session detection.
+# Single source of truth for agent and interactive-session detection.
 # 1 = real human interactive TTY session; 0 = agent CLI or non-TTY shell.
 # Agents detected: CLAUDECODE (Claude Code), CURSOR_AGENT (Cursor),
 # CODEX_CI (OpenAI Codex), GEMINI_CLI (Gemini CLI).
-if [[ -o interactive && -t 0 \
-      && -z "$CLAUDECODE"  && -z "$CURSOR_AGENT" \
-      && -z "$CODEX_CI"    && -z "$GEMINI_CLI" ]]; then
-    typeset -gi DOTFILES_INTERACTIVE=1
-else
-    typeset -gi DOTFILES_INTERACTIVE=0
+typeset -gi DOTFILES_AGENT_SHELL=0 DOTFILES_INTERACTIVE=0
+typeset -ga DOTFILES_AGENT_ENV_VARS=(
+    CLAUDECODE
+    CURSOR_AGENT
+    CODEX_CI
+    GEMINI_CLI
+)
+
+for DOTFILES_AGENT_ENV_VAR in "${DOTFILES_AGENT_ENV_VARS[@]}"; do
+    if [[ -n "${(P)DOTFILES_AGENT_ENV_VAR}" ]]; then
+        DOTFILES_AGENT_SHELL=1
+        break
+    fi
+done
+unset DOTFILES_AGENT_ENV_VAR DOTFILES_AGENT_ENV_VARS
+
+if [[ -o interactive && -t 0 && "$DOTFILES_AGENT_SHELL" -eq 0 ]]; then
+    DOTFILES_INTERACTIVE=1
 fi
+export DOTFILES_AGENT_SHELL
 export DOTFILES_INTERACTIVE
 
 # Agent compatibility: keep shell metacharacters literal in non-interactive
 # agent shells. Skipped for interactive (zsh -i) so zshrc glob/history works.
-if [[ -n "$CLAUDECODE" || -n "$CURSOR_AGENT" || -n "$CODEX_CI" || -n "$GEMINI_CLI" ]] \
-   && [[ ! -o interactive ]]; then
-    setopt NO_GLOB
-    setopt NO_NOMATCH
-    unsetopt BANG_HIST
-    unsetopt HISTSUBSTPATTERN
+if [[ "$DOTFILES_AGENT_SHELL" -eq 1 ]]; then
+    if [[ ! -o interactive ]]; then
+        setopt NO_GLOB
+        setopt NO_NOMATCH
+        unsetopt BANG_HIST
+        unsetopt HISTSUBSTPATTERN
+    fi
 fi
 
 # On-demand zprof: `zsh_profile` touches ~/.zsh_profile_next to arm.
