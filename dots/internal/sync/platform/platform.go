@@ -412,14 +412,39 @@ func macCaskNeedsInstall(ctx context.Context, cask string, app string) bool {
 	if app == "" {
 		return true
 	}
-	if _, err := os.Stat(filepath.Join("/Applications", app)); err == nil {
-		return false
-	}
-	appPath := filepath.Clean(filepath.Join(os.Getenv("HOME"), "Applications", app))
-	if _, err := os.Stat(appPath); err == nil {
+	if macCaskAppExists(app, os.Getenv("HOME")) {
 		return false
 	}
 	return true
+}
+
+func macCaskAppExists(app string, home string) bool {
+	for _, appPath := range macCaskAppPaths(app, home) {
+		if _, err := os.Stat(appPath); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+func macCaskAppPaths(app string, home string) []string {
+	appNames := []string{app}
+	if !strings.HasSuffix(app, ".app") {
+		appNames = append(appNames, app+".app")
+	}
+
+	applicationsDirs := []string{"/Applications"}
+	if home != "" {
+		applicationsDirs = append(applicationsDirs, filepath.Join(home, "Applications"))
+	}
+
+	paths := make([]string, 0, len(appNames)*len(applicationsDirs))
+	for _, applicationsDir := range applicationsDirs {
+		for _, appName := range appNames {
+			paths = append(paths, filepath.Clean(filepath.Join(applicationsDir, appName)))
+		}
+	}
+	return paths
 }
 
 func brewFormulaInstalled(ctx context.Context, formula string) bool {

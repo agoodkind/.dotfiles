@@ -439,6 +439,145 @@ func CheckGitHooksPath(ctx context.Context, dotfiles string, logger *telemetry.L
 	return nil
 }
 
+const zinitUpdateScript = `
+source "$1"
+
+zinit self-update
+self_update_rc=$?
+printf "[zinit-self-update-exit: %d]\n" "$self_update_rc"
+
+zsh -c 'source "$1"; zinit update --all --quiet' zsh "$1"
+update_rc=$?
+printf "[zinit-update-exit: %d]\n" "$update_rc"
+
+zinit compile --all
+compile_rc=$?
+printf "[zinit-compile-exit: %d]\n" "$compile_rc"
+
+plugins_dir="${ZINIT[PLUGINS_DIR]:-$HOME/.local/share/zinit/plugins}"
+printf "[zinit-plugins-dir: %s]\n" "$plugins_dir"
+
+(( self_update_rc == 0 && compile_rc == 0 ))
+`
+
+func zinitMarkerValue(output string, marker string) (string, bool) {
+	prefix := "[" + marker + ": "
+	for _, line := range strings.Split(output, "\n") {
+		trimmedLine := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmedLine, prefix) && strings.HasSuffix(trimmedLine, "]") {
+			value := strings.TrimSuffix(strings.TrimPrefix(trimmedLine, prefix), "]")
+			return value, true
+		}
+	}
+	return "", false
+}
+
+func zinitUpdateExitFromOutput(output string) (int, bool) {
+	value, ok := zinitMarkerValue(output, "zinit-update-exit")
+	if !ok {
+		return 0, false
+	}
+	exitCode, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, false
+	}
+	return exitCode, true
+}
+
+func defaultZinitPluginsDir() string {
+	return filepath.Join(os.Getenv("HOME"), ".local", "share", "zinit", "plugins")
+}
+
+func verifyZinitPlugins(ctx context.Context, pluginsDir string, logger *telemetry.Logger) error {
+	if pluginsDir == "" {
+		pluginsDir = defaultZinitPluginsDir()
+	}
+
+	entries, err := os.ReadDir(pluginsDir)
+	if os.IsNotExist(err) {
+		common.InfoContext(ctx, logger, "  [zinit-verify: ok]")
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("reading zinit plugins dir %s: %w", pluginsDir, err)
+	}
+
+	verificationFailed := false
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		pluginName := entry.Name()
+		if pluginName == "custom" || pluginName == "_local---zinit" {
+			continue
+		}
+
+		pluginDir := filepath.Join(pluginsDir, pluginName)
+		isGitRepo, isDetached, err := zinitPluginGitState(pluginDir)
+		if err != nil {
+			return fmt.Errorf("checking zinit plugin %s: %w", pluginName, err)
+		}
+		if !isGitRepo {
+			common.InfoContextf(ctx, logger, "  [zinit-verify] %s: not a git repo", pluginName)
+			continue
+		}
+		if isDetached {
+			common.WarnContextf(ctx, logger, "  [zinit-verify] %s: detached HEAD", pluginName)
+			verificationFailed = true
+		}
+	}
+
+	if verificationFailed {
+		return fmt.Errorf("one or more zinit plugins are detached")
+	}
+	common.InfoContext(ctx, logger, "  [zinit-verify: ok]")
+	return nil
+}
+
+func zinitPluginGitState(pluginDir string) (bool, bool, error) {
+	headPath, ok, err := zinitPluginHeadPath(pluginDir)
+	if err != nil || !ok {
+		return ok, false, err
+	}
+
+	headContent, err := os.ReadFile(headPath)
+	if err != nil {
+		return true, false, fmt.Errorf("reading git HEAD: %w", err)
+	}
+	headRef := strings.TrimSpace(string(headContent))
+	return true, !strings.HasPrefix(headRef, "ref: "), nil
+}
+
+func zinitPluginHeadPath(pluginDir string) (string, bool, error) {
+	gitPath := filepath.Join(pluginDir, ".git")
+	gitInfo, err := os.Stat(gitPath)
+	if os.IsNotExist(err) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	if gitInfo.IsDir() {
+		return filepath.Join(gitPath, "HEAD"), true, nil
+	}
+
+	gitFileContent, err := os.ReadFile(gitPath)
+	if err != nil {
+		return "", true, fmt.Errorf("reading .git file: %w", err)
+	}
+	const gitDirPrefix = "gitdir: "
+	gitDirLine := strings.TrimSpace(string(gitFileContent))
+	if !strings.HasPrefix(gitDirLine, gitDirPrefix) {
+		return "", true, fmt.Errorf("invalid .git file")
+	}
+
+	gitDir := strings.TrimSpace(strings.TrimPrefix(gitDirLine, gitDirPrefix))
+	if !filepath.IsAbs(gitDir) {
+		gitDir = filepath.Join(pluginDir, gitDir)
+	}
+	return filepath.Join(filepath.Clean(gitDir), "HEAD"), true, nil
+}
+
 // UpdateZinitPlugins runs zinit self-update and updates all zinit plugins.
 func UpdateZinitPlugins(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
 	if !runner.HasCommand("zsh") {
@@ -452,17 +591,26 @@ func UpdateZinitPlugins(ctx context.Context, dotfiles string, logger *telemetry.
 		slog.WarnContext(ctx, "workspace: checking zinit.zsh", "err", err)
 		return fmt.Errorf("checking zinit.zsh: %w", err)
 	}
-	if err := cmdexec.RunWithLogger(
+	output, err := cmdexec.OutputWithLogger(
 		ctx,
 		logger,
 		"zsh",
 		"-c",
-		`source "$1"; zinit self-update; zinit update --all --quiet`,
+		zinitUpdateScript,
 		"zsh",
 		zinitPath,
-	); err != nil {
+	)
+	if err != nil {
 		slog.WarnContext(ctx, "workspace: updating zinit plugins", "err", err)
 		return fmt.Errorf("updating zinit plugins: %w", err)
+	}
+	pluginsDir, _ := zinitMarkerValue(output, "zinit-plugins-dir")
+	if err := verifyZinitPlugins(ctx, pluginsDir, logger); err != nil {
+		slog.WarnContext(ctx, "workspace: verifying zinit plugins", "err", err)
+		return fmt.Errorf("verifying zinit plugins: %w", err)
+	}
+	if updateExitCode, ok := zinitUpdateExitFromOutput(output); ok && updateExitCode != 0 {
+		common.InfoContext(ctx, logger, "  [zinit-update-status: ignored nonzero update exit after compile and verify]")
 	}
 	return nil
 }
