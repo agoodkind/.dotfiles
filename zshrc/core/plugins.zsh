@@ -20,6 +20,8 @@ function _ready_mark() {
 # Tier 1: runs on first keystroke (zle-line-init). Minimal set needed for
 # basic interactive use — zinit core, compinit, and autosuggestions.
 function _load_tier1() {
+    setopt local_options glob bare_glob_qual
+
     if ((_ZINIT_LOADED != 0)); then
         return 0
     fi
@@ -52,6 +54,8 @@ function _load_tier1() {
 # Tier 2: runs at next event loop pass after tier 1. Syntax highlighting and
 # fzf-tab. Things you won't need in the first ~100ms.
 function _load_tier2() {
+    setopt local_options glob bare_glob_qual
+
     _ready_mark 1 "tier 2" "sched +0"
 
     zinit light zdharma-continuum/fast-syntax-highlighting
@@ -85,6 +89,8 @@ function _load_tier2() {
 
 # Tier 3: extra completions and cleanup. Runs after tier 2.
 function _load_tier3() {
+    setopt local_options glob bare_glob_qual
+
     _ready_mark 1 "tier 3" "sched +0"
 
     zinit light zsh-users/zsh-completions

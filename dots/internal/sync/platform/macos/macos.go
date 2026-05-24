@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"goodkind.io/.dotfiles/internal/catalog"
@@ -22,7 +23,7 @@ import (
 
 type commandRunner interface {
 	RunWithLogger(ctx context.Context, logger *telemetry.Logger, command string, args ...string) error
-	OutputWithLoggerAndEnv(ctx context.Context, logger *telemetry.Logger, env []string, command string, args ...string) (string, error)
+	CommandSucceeds(ctx context.Context, command string, args ...string) bool
 }
 
 type commandLookup interface {
@@ -35,9 +36,9 @@ type downloader interface {
 
 type fileSystem interface {
 	MkdirAll(path string, perm os.FileMode) error
+	PathExists(path string) bool
 	ReadFile(path string) ([]byte, error)
 	Remove(path string) error
-	Stat(path string) (os.FileInfo, error)
 }
 
 type environment interface {
@@ -353,12 +354,7 @@ func (installer *Installer) macCaskNeedsInstall(ctx context.Context, cask string
 }
 
 func (installer *Installer) macCaskAppExists(app string, home string) bool {
-	for _, appPath := range installer.macCaskAppPaths(app, home) {
-		if _, err := installer.deps.Files.Stat(appPath); err == nil {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(installer.macCaskAppPaths(app, home), installer.deps.Files.PathExists)
 }
 
 func (installer *Installer) macCaskAppPaths(app string, home string) []string {
@@ -382,13 +378,11 @@ func (installer *Installer) macCaskAppPaths(app string, home string) []string {
 }
 
 func (installer *Installer) brewFormulaInstalled(ctx context.Context, formula string) bool {
-	_, err := installer.deps.Commands.OutputWithLoggerAndEnv(ctx, nil, nil, "brew", "list", "--formula", formula)
-	return err == nil
+	return installer.deps.Commands.CommandSucceeds(ctx, "brew", "list", "--formula", formula)
 }
 
 func (installer *Installer) brewCaskInstalled(ctx context.Context, cask string) bool {
-	_, err := installer.deps.Commands.OutputWithLoggerAndEnv(ctx, nil, nil, "brew", "list", "--cask", cask)
-	return err == nil
+	return installer.deps.Commands.CommandSucceeds(ctx, "brew", "list", "--cask", cask)
 }
 
 func brewPackageName(packageName string) string {
@@ -408,13 +402,9 @@ func (realDeps) RunWithLogger(ctx context.Context, logger *telemetry.Logger, com
 	return nil
 }
 
-func (realDeps) OutputWithLoggerAndEnv(ctx context.Context, logger *telemetry.Logger, env []string, command string, args ...string) (string, error) {
-	output, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, env, command, args...)
-	if err != nil {
-		slog.WarnContext(ctx, "platform/macos: output command", "command", command, "err", err)
-		return output, fmt.Errorf("output %s: %w", command, err)
-	}
-	return output, nil
+func (realDeps) CommandSucceeds(ctx context.Context, command string, args ...string) bool {
+	_, err := cmdexec.OutputWithLoggerAndEnv(ctx, nil, nil, command, args...)
+	return err == nil
 }
 
 func (realDeps) HasCommand(name string) bool {
@@ -438,6 +428,11 @@ func (realDeps) MkdirAll(path string, perm os.FileMode) error {
 	return nil
 }
 
+func (realDeps) PathExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
 func (realDeps) ReadFile(path string) ([]byte, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -454,15 +449,6 @@ func (realDeps) Remove(path string) error {
 		return fmt.Errorf("remove %s: %w", path, err)
 	}
 	return nil
-}
-
-func (realDeps) Stat(path string) (os.FileInfo, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		slog.Warn("platform/macos: stat file", "path", path, "err", err)
-		return nil, fmt.Errorf("stat %s: %w", path, err)
-	}
-	return info, nil
 }
 
 func (realDeps) Getenv(key string) string {

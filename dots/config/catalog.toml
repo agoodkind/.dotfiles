@@ -156,9 +156,13 @@ crate_name = "async-cmd"
 id = "starship"
 bin = "starship"
 repo = "starship/starship"
-install_method = "script"
-script_url = "https://starship.rs/install.sh"
-script_args = ["--yes", "--bin-dir", "$HOME/.local/bin"]
+install_method = "github-release"
+platforms = ["darwin", "linux"]
+archive_ext = ".tar.gz"
+os_darwin = "apple-darwin"
+os_linux = "unknown-linux-musl"
+arch_amd64 = "x86_64"
+arch_arm64 = "aarch64"
 
 [[tool]]
 id = "fastfetch"

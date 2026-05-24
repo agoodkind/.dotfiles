@@ -8,7 +8,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	"goodkind.io/.dotfiles/internal/catalog"
 	"goodkind.io/.dotfiles/internal/telemetry"
@@ -22,12 +21,7 @@ type commandCall struct {
 type fakeCommands struct {
 	runCalls []commandCall
 	runErrs  map[string]error
-	outputs  map[string]fakeOutput
-}
-
-type fakeOutput struct {
-	value string
-	err   error
+	succeeds map[string]bool
 }
 
 func (commands *fakeCommands) RunWithLogger(_ context.Context, _ *telemetry.Logger, command string, args ...string) error {
@@ -38,12 +32,8 @@ func (commands *fakeCommands) RunWithLogger(_ context.Context, _ *telemetry.Logg
 	return nil
 }
 
-func (commands *fakeCommands) OutputWithLoggerAndEnv(_ context.Context, _ *telemetry.Logger, _ []string, command string, args ...string) (string, error) {
-	output, ok := commands.outputs[commandKey(command, args...)]
-	if !ok {
-		return "", errors.New("missing output")
-	}
-	return output.value, output.err
+func (commands *fakeCommands) CommandSucceeds(_ context.Context, command string, args ...string) bool {
+	return commands.succeeds[commandKey(command, args...)]
 }
 
 type fakeLookup struct {
@@ -71,7 +61,7 @@ func (downloader *fakeDownloader) DownloadToTempFile(_ context.Context, _ *telem
 type fakeFiles struct {
 	readFiles   map[string][]byte
 	readErrs    map[string]error
-	statPaths   map[string]bool
+	existing    map[string]bool
 	removeCalls []string
 	mkdirCalls  []string
 }
@@ -97,23 +87,9 @@ func (files *fakeFiles) Remove(path string) error {
 	return nil
 }
 
-func (files *fakeFiles) Stat(path string) (os.FileInfo, error) {
-	if files.statPaths[path] {
-		return fakeFileInfo{name: filepath.Base(path)}, nil
-	}
-	return nil, os.ErrNotExist
+func (files *fakeFiles) PathExists(path string) bool {
+	return files.existing[path]
 }
-
-type fakeFileInfo struct {
-	name string
-}
-
-func (info fakeFileInfo) Name() string  { return info.name }
-func (fakeFileInfo) Size() int64        { return 0 }
-func (fakeFileInfo) Mode() os.FileMode  { return 0 }
-func (fakeFileInfo) ModTime() time.Time { return time.Time{} }
-func (fakeFileInfo) IsDir() bool        { return false }
-func (fakeFileInfo) Sys() any           { return nil }
 
 type fakeEnv struct {
 	values map[string]string
@@ -194,7 +170,7 @@ func TestMacCaskAppExistsFindsHomeAppBundle(t *testing.T) {
 	installer := &Installer{
 		deps: Deps{
 			Files: &fakeFiles{
-				statPaths: map[string]bool{appPath: true},
+				existing: map[string]bool{appPath: true},
 			},
 		},
 	}
