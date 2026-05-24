@@ -59,6 +59,9 @@ setopt auto_cd
 setopt auto_pushd
 setopt pushd_ignore_dups
 setopt pushd_silent
+if (($+functions[dotfiles_apply_paste_safe_shell_options])); then
+    dotfiles_apply_paste_safe_shell_options
+fi
 
 ###############################################################################
 # Profiling support ###########################################################

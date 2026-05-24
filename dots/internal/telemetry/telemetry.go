@@ -17,12 +17,13 @@ import (
 )
 
 const (
-	colorReset  = "\x1b[0m"
-	colorBlue   = "\x1b[34m"
-	colorGreen  = "\x1b[32m"
-	colorYellow = "\x1b[33m"
-	colorRed    = "\x1b[31m"
-	colorGray   = "\x1b[90m"
+	colorReset             = "\x1b[0m"
+	colorBlue              = "\x1b[34m"
+	colorGreen             = "\x1b[32m"
+	colorYellow            = "\x1b[33m"
+	colorRed               = "\x1b[31m"
+	colorGray              = "\x1b[90m"
+	displayTimestampFormat = "2006-01-02 15:04:05"
 )
 
 type environmentLogLevel string
@@ -233,7 +234,7 @@ func (l *Logger) log(
 		return
 	}
 
-	timestamp := clock.Now().Format("2006-01-02 15:04:05")
+	timestamp := clock.Now().Format(displayTimestampFormat)
 	attrs := []slog.Attr{
 		slog.String("stream", streamName(stream)),
 		slog.String("timestamp", timestamp),
@@ -367,14 +368,15 @@ func streamName(stream io.Writer) string {
 	return "other"
 }
 
-// Notify appends a notification entry to the dotfiles notification queue file.
+// Notify appends a timestamped notification entry to the dotfiles queue file.
 func Notify(level, message, logPath string) error {
 	notifyPath := filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "notifications")
 	if err := os.MkdirAll(filepath.Dir(filepath.Clean(notifyPath)), 0o755); err != nil {
 		slog.Error("telemetry: Notify: creating notification directory", "err", err)
 		return fmt.Errorf("creating notification directory: %w", err)
 	}
-	return appendLine(notifyPath, fmt.Sprintf("%s|%s|%s", level, logPath, message))
+	timestamp := clock.Now().Format(displayTimestampFormat)
+	return appendLine(notifyPath, fmt.Sprintf("%s|%s|%s|%s", timestamp, level, logPath, message))
 }
 
 func appendLine(path string, line string) error {

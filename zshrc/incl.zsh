@@ -27,6 +27,11 @@ _source "$DOTDOTFILES/zshrc/core/utils.zsh"
 # Agents (CLAUDECODE, CURSOR_AGENT, CODEX_CI, GEMINI_CLI) and non-TTY shells
 # skip plugins, aliases, completion, dispatch, and motd entirely.
 if ((!DOTFILES_INTERACTIVE)); then
+    if [[ "$DOTFILES_AGENT_SHELL" -eq 1 ]]; then
+        if (($+functions[dotfiles_apply_agent_shell_options])); then
+            dotfiles_apply_agent_shell_options
+        fi
+    fi
     return 0 2>/dev/null || true
 fi
 
@@ -64,15 +69,29 @@ if [[ -d ~/.cache/dotfiles_dispatch.lock ]]; then
 fi
 
 # Display all queued notifications from background processes, one per line.
-# Format on disk: level|logfile|message
+# Format on disk: timestamp|level|logfile|message
+# Legacy format without timestamp is still accepted.
 local _notify_file="$HOME/.cache/dotfiles/notifications"
 if [[ -f "$_notify_file" ]]; then
-    local _level _logfile _msg _line
+    local _created_at _level _logfile _msg _line
     while IFS= read -r _line; do
         _level="${_line%%|*}"
         _line="${_line#*|}"
+        case "$_level" in
+            success | info | warn | error)
+                _created_at=""
+                ;;
+            *)
+                _created_at="$_level"
+                _level="${_line%%|*}"
+                _line="${_line#*|}"
+                ;;
+        esac
         _logfile="${_line%%|*}"
         _msg="${_line#*|}"
+        if [[ -n "$_created_at" ]]; then
+            _msg="%F{242}${_created_at}%f ${_msg}"
+        fi
         case "$_level" in
             success) print -P "%F{green}✓ ${_msg}%f" ;;
             info) print -P "%F{blue}↻ ${_msg}%f" ;;

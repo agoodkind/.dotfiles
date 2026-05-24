@@ -27,14 +27,24 @@ fi
 export DOTFILES_AGENT_SHELL
 export DOTFILES_INTERACTIVE
 
-# Agent compatibility: keep shell metacharacters literal in non-interactive
-# agent shells. Skipped for interactive (zsh -i) so zshrc glob/history works.
+function dotfiles_apply_paste_safe_shell_options() {
+    setopt NO_GLOB
+    setopt NO_NOMATCH
+    unsetopt BANG_HIST
+    unsetopt HISTSUBSTPATTERN
+}
+
+function dotfiles_apply_agent_shell_options() {
+    dotfiles_apply_paste_safe_shell_options
+}
+
+# Agent compatibility: keep shell metacharacters literal in agent shells.
+# Non-interactive shells can apply this here. Interactive agent shells apply it
+# from .zshrc after startup code has had normal zsh glob behavior. Human
+# interactive shells apply the same paste-safe options at the end of .zshrc.
 if [[ "$DOTFILES_AGENT_SHELL" -eq 1 ]]; then
     if [[ ! -o interactive ]]; then
-        setopt NO_GLOB
-        setopt NO_NOMATCH
-        unsetopt BANG_HIST
-        unsetopt HISTSUBSTPATTERN
+        dotfiles_apply_agent_shell_options
     fi
 fi
 
