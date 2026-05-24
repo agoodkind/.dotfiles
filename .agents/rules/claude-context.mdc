@@ -1,5 +1,5 @@
 ---
-description: Use claude-context first for conceptual code discovery, but sanity-check index quality and fall back when results are coarse
+description: Use claude-context first for conceptual code discovery
 globs: "**/*"
 alwaysApply: true
 ---
