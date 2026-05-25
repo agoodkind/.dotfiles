@@ -21,7 +21,10 @@ func TestZinitDeferredLoadersWorkWithNoGlob(t *testing.T) {
 		{
 			directory: "zsh-users---zsh-autosuggestions",
 			file:      "zsh-autosuggestions.plugin.zsh",
-			body:      "function _zsh_autosuggest_start() { :; }\n",
+			body: `typeset -ga ZSH_AUTOSUGGEST_ACCEPT_WIDGETS=(forward-char end-of-line vi-forward-char)
+function _zsh_autosuggest_start() { :; }
+function _zsh_autosuggest_bind_widgets() { :; }
+`,
 		},
 		{
 			directory: "zdharma-continuum---fast-syntax-highlighting",
@@ -56,6 +59,29 @@ func TestZinitDeferredLoadersWorkWithNoGlob(t *testing.T) {
 		}
 	}
 
+	binDirectory := filepath.Join(t.TempDir(), "bin")
+	if err := os.MkdirAll(binDirectory, 0o755); err != nil {
+		t.Fatalf("creating fake bin directory: %v", err)
+	}
+	fzfPath := filepath.Join(binDirectory, "fzf")
+	fzfScript := `#!/usr/bin/env bash
+if [[ "$1" == "--zsh" ]]; then
+    cat <<'EOF'
+function fzf-completion() { :; }
+zle -N fzf-completion
+bindkey '^I' fzf-completion
+function fzf-tab-complete() { :; }
+zle -N fzf-tab-complete
+bindkey -M emacs '^I' fzf-tab-complete
+EOF
+    exit 0
+fi
+exit 1
+`
+	if err := os.WriteFile(fzfPath, []byte(fzfScript), 0o755); err != nil {
+		t.Fatalf("writing fake fzf binary: %v", err)
+	}
+
 	scriptPath := filepath.Join(t.TempDir(), "zinit-noglob-regression.zsh")
 	script := `
 zmodload zsh/datetime
@@ -81,16 +107,50 @@ function _require_function() {
     fi
 }
 
+function _require_value() {
+    local label=$1
+    local expected=$2
+    local actual=$3
+
+    if [[ "$actual" != "$expected" ]]; then
+        print -r -- "$label expected $expected but got $actual"
+        exit 1
+    fi
+}
+
+function _bound_widget() {
+    local keymap=$1
+    local binding
+
+    binding=$(builtin bindkey -M "$keymap" '^I')
+    print -r -- "${binding##* }"
+}
+
 setopt noglob no_nomatch
+bindkey -v
 source "$DOTDOTFILES/zshrc/core/plugins.zsh"
 
 _load_tier1
 _require_function _zsh_autosuggest_start
+if [[ -n ${ZSH_AUTOSUGGEST_ACCEPT_WIDGETS[(r)forward-char]} ]]; then
+    print -r -- "forward-char stayed in ZSH_AUTOSUGGEST_ACCEPT_WIDGETS"
+    exit 1
+fi
+if [[ -n ${ZSH_AUTOSUGGEST_ACCEPT_WIDGETS[(r)vi-forward-char]} ]]; then
+    print -r -- "vi-forward-char stayed in ZSH_AUTOSUGGEST_ACCEPT_WIDGETS"
+    exit 1
+fi
 
 _load_tier2
 _require_function _dotfiles_fast_syntax_loaded
 _require_function _dotfiles_fzf_tab_loaded
 _require_function _dotfiles_fzf_tab_source_loaded
+_require_value "main tab widget" "_dotfiles_tab_accept_or_complete" "$(_bound_widget main)"
+_require_value "emacs tab widget" "_dotfiles_tab_accept_or_complete" "$(_bound_widget emacs)"
+_require_value "viins tab widget" "_dotfiles_tab_accept_or_complete" "$(_bound_widget viins)"
+_require_value "main tab fallback" "fzf-completion" "${_DOTFILES_TAB_FALLBACK_WIDGETS[main]}"
+_require_value "emacs tab fallback" "fzf-tab-complete" "${_DOTFILES_TAB_FALLBACK_WIDGETS[emacs]}"
+_require_value "viins tab fallback" "fzf-completion" "${_DOTFILES_TAB_FALLBACK_WIDGETS[viins]}"
 
 _load_tier3
 _require_function _dotfiles_zsh_completions_loaded
@@ -112,6 +172,7 @@ print -r -- "zinit deferred loaders work with noglob"
 		"DOTDOTFILES="+repoRoot,
 		"HOME="+homeDirectory,
 		"LS_COLORS=",
+		"PATH="+binDirectory+string(os.PathListSeparator)+os.Getenv("PATH"),
 		"TERM=xterm-256color",
 	)
 	output, err := cmd.CombinedOutput()
