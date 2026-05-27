@@ -26,6 +26,9 @@ jobs:
         with:
           go-version-file: dots/go.mod
 
+      - name: Install Rust toolchain (needed for cargo-installed tools)
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Run fresh bootstrap smoke
         working-directory: dots
         env:
