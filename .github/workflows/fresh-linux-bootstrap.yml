@@ -18,11 +18,11 @@ jobs:
       matrix:
         image: ["debian:trixie", "ubuntu:24.04"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: dots/go.mod
 
