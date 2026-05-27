@@ -12,3 +12,26 @@ updates:
     open-pull-requests-limit: 3
     reviewers:
       - agoodkind
+
+  - package-ecosystem: gomod
+    directory: /dots
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      go-minor-patch:
+        update-types:
+          - minor
+          - patch
+    open-pull-requests-limit: 5
+    reviewers:
+      - agoodkind
+
+  - package-ecosystem: docker
+    directory: /lib/zinit/docker
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    reviewers:
+      - agoodkind
