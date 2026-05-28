@@ -90,6 +90,9 @@ unset _path_cache
 
 export PATH="$HOME/.local/bin:$HOME/.local/bin/scripts:$HOME/.cache/dots/bin:$PATH"
 
+# mise-managed tool shims (resolve per-project versions from mise.toml)
+export PATH="$HOME/.local/share/mise/shims:$PATH"
+
 if [[ -f "$HOME/.cargo/env" ]]; then
     source "$HOME/.cargo/env"
 fi
