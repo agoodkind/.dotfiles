@@ -178,9 +178,14 @@ func (installer *Installer) runMacDefaults(ctx context.Context, logger *telemetr
 		}
 	}
 
-	shotDir := filepath.Join(installer.deps.Env.Getenv("HOME"), "Library", "Mobile Documents", "com~apple~CloudDocs", "Screenshots")
-	if err := installer.deps.Files.MkdirAll(filepath.Clean(shotDir), 0o755); err == nil {
-		_ = installer.deps.Commands.RunWithLogger(ctx, logger, "defaults", "write", "com.apple.screencapture", "location", shotDir)
+	screenshotDir := catalog.DefaultMacConfig().ScreenshotDir
+	if screenshotDir != "" {
+		shotDir := os.Expand(screenshotDir, func(key string) string {
+			return installer.deps.Env.Getenv(key)
+		})
+		if err := installer.deps.Files.MkdirAll(filepath.Clean(shotDir), 0o755); err == nil {
+			_ = installer.deps.Commands.RunWithLogger(ctx, logger, "defaults", "write", "com.apple.screencapture", "location", shotDir)
+		}
 	}
 	_ = installer.deps.Commands.RunWithLogger(ctx, logger, "defaults", "write", "com.google.Chrome", "BuiltInDnsClientEnabled", "-bool", "false")
 	_ = installer.deps.Commands.RunWithLogger(ctx, logger, "killall", "Finder")
