@@ -11,6 +11,16 @@ GO_BOOTSTRAP_VERSION="${GO_BOOTSTRAP_VERSION:-}"
 DOTS_BINARY_DIR="${DOTS_BINARY_DIR:-$HOME/.cache/dots/bin}"
 DOTS_BINARY="${DOTS_BINARY:-$DOTS_BINARY_DIR/dots}"
 DOTS_BUILD_LOCK_FILE="${DOTS_BUILD_LOCK_FILE:-$DOTS_BINARY_DIR/.dots.build.lock}"
+# Sidecar recording the content hash of the sources the cached binary was built
+# from. Staleness compares against this instead of file mtimes, so git checkouts
+# and syncs that touch mtimes without changing content do not force a rebuild.
+DOTS_BUILD_HASH_FILE="${DOTS_BUILD_HASH_FILE:-$DOTS_BINARY_DIR/.dots.build.hash}"
+# Bound the wait for the build lock so a wedged build cannot pile up one blocked
+# login shell per connection (set to 0 to wait indefinitely, the legacy behavior).
+DOTS_BUILD_LOCK_WAIT_SECONDS="${DOTS_BUILD_LOCK_WAIT_SECONDS:-120}"
+# Bound the build itself so a hung toolchain download fails instead of hanging
+# forever while holding the lock (set to 0 to disable the timeout).
+DOTS_BUILD_TIMEOUT_SECONDS="${DOTS_BUILD_TIMEOUT_SECONDS:-600}"
 DEFAULT_GO_BOOTSTRAP_VERSION="go1.22.7"
 GO_DARWIN11_BOOTSTRAP_VERSION="${GO_DARWIN11_BOOTSTRAP_VERSION:-go1.24.13}"
 
@@ -41,11 +51,150 @@ check_command() {
     return 1
 }
 
+# required_go_version prints the version from the `go X.Y[.Z]` directive in
+# dots/go.mod (e.g. 1.26.3), or an empty string when it cannot be read.
+required_go_version() {
+    local gomod="$DOTDOTFILES/dots/go.mod"
+    if [ ! -f "$gomod" ]; then
+        echo ""
+        return
+    fi
+    sed -n 's/^go \([0-9][0-9.]*\).*/\1/p' "$gomod" | head -n 1
+}
+
+# current_go_version prints the numeric version (e.g. 1.22.7) reported by the
+# given go binary, or an empty string when it cannot be determined.
+current_go_version() {
+    local gobin="$1"
+    local raw=""
+    if [ -x "$gobin" ] || command -v "$gobin" >/dev/null 2>&1; then
+        raw="$("$gobin" version 2>/dev/null || true)"
+    fi
+    printf '%s\n' "$raw" | sed -n 's/.*go\([0-9][0-9.]*\).*/\1/p' | head -n 1
+}
+
+# go_version_ge returns 0 when HAVE >= WANT, comparing the first three numeric
+# fields. An empty WANT (unknown requirement) is always satisfied.
+go_version_ge() {
+    local have="$1"
+    local want="$2"
+    if [ -z "$want" ]; then
+        return 0
+    fi
+    if [ -z "$have" ]; then
+        return 1
+    fi
+    local IFS=.
+    # shellcheck disable=SC2206
+    local have_parts=($have)
+    # shellcheck disable=SC2206
+    local want_parts=($want)
+    local index=0
+    local have_field want_field
+    while [ "$index" -lt 3 ]; do
+        have_field="${have_parts[$index]:-0}"
+        want_field="${want_parts[$index]:-0}"
+        have_field="${have_field%%[!0-9]*}"
+        want_field="${want_field%%[!0-9]*}"
+        have_field="${have_field:-0}"
+        want_field="${want_field:-0}"
+        if [ "$have_field" -gt "$want_field" ]; then
+            return 0
+        fi
+        if [ "$have_field" -lt "$want_field" ]; then
+            return 1
+        fi
+        index=$((index + 1))
+    done
+    return 0
+}
+
+# dots_hash_tool prints a content-hashing command available on the host, or an
+# empty string. sha256sum ships with coreutils on Linux; shasum is present by
+# default on macOS. Both run on a fresh host before package provisioning.
+dots_hash_tool() {
+    if check_command sha256sum; then
+        echo "sha256sum"
+        return
+    fi
+    if check_command shasum; then
+        echo "shasum -a 256"
+        return
+    fi
+    echo ""
+}
+
+# dots_source_hash prints a content hash of the build-relevant dots sources
+# (path names plus file contents), or an empty string when no hash tool exists.
+# Hashing content rather than mtimes keeps the binary from rebuilding when git
+# operations touch files without changing them.
+dots_source_hash() {
+    local tool
+    tool="$(dots_hash_tool)"
+    if [ -z "$tool" ]; then
+        echo ""
+        return
+    fi
+    # shellcheck disable=SC2086
+    find "$DOTDOTFILES/dots" -type f \
+        \( -name '*.go' -o -name '*.toml' -o -name '*.mod' -o -name '*.sum' \) |
+        LC_ALL=C sort |
+        while IFS= read -r source_file; do
+            printf '%s\n' "$source_file"
+            cat "$source_file"
+        done | $tool | awk '{print $1}'
+}
+
+# write_build_hash records the current source hash next to the binary so the
+# next staleness check can compare against it.
+write_build_hash() {
+    local hash
+    hash="$(dots_source_hash)"
+    if [ -n "$hash" ]; then
+        printf '%s\n' "$hash" >"$DOTS_BUILD_HASH_FILE"
+    fi
+}
+
+# default_go_bootstrap_version prints the version to install when the go.dev
+# version list is unreachable. It tracks go.mod so an offline host still gets a
+# go that satisfies the module rather than the hardcoded legacy floor.
+default_go_bootstrap_version() {
+    local want
+    want="$(required_go_version)"
+    if [ -n "$want" ]; then
+        echo "go$want"
+        return
+    fi
+    echo "$DEFAULT_GO_BOOTSTRAP_VERSION"
+}
+
+# dots_go_toolchain prints "local" when the resolved go already satisfies
+# go.mod, so the build never reaches out to download a toolchain, or "auto"
+# when go cannot be upgraded that far (the macOS 11 cap) and a fetch is the only
+# option left.
+dots_go_toolchain() {
+    if go_version_ge "$(current_go_version "$GO_BINARY")" "$(required_go_version)"; then
+        echo "local"
+        return
+    fi
+    echo "auto"
+}
+
 dots_binary_stale() {
     if [ ! -x "$DOTS_BINARY" ]; then
         return 0
     fi
 
+    local current_hash
+    current_hash="$(dots_source_hash)"
+    if [ -n "$current_hash" ]; then
+        if [ -f "$DOTS_BUILD_HASH_FILE" ] && [ "$current_hash" = "$(cat "$DOTS_BUILD_HASH_FILE")" ]; then
+            return 1
+        fi
+        return 0
+    fi
+
+    # Fallback for hosts without a hash tool: compare source mtimes.
     local source_file
     while IFS= read -r source_file; do
         if [ "$source_file" -nt "$DOTS_BINARY" ]; then
@@ -100,7 +249,7 @@ fetch_go_version() {
     fi
 
     if ! require_tools mktemp sed; then
-        echo "$DEFAULT_GO_BOOTSTRAP_VERSION"
+        default_go_bootstrap_version
         return
     fi
 
@@ -137,7 +286,7 @@ fetch_go_version() {
         fi
     fi
 
-    echo "$DEFAULT_GO_BOOTSTRAP_VERSION"
+    default_go_bootstrap_version
 }
 
 go_system_arch() {
@@ -183,13 +332,26 @@ go_system_arch() {
 bootstrap_go() {
     emit_warning_if_legacy_bash
 
+    local want
+    want="$(required_go_version)"
+
+    # Prefer a system go, but only if it satisfies the version dots/go.mod needs.
+    # Reusing an older go is what left vault on 1.22.7 against a go 1.26 module,
+    # forcing GOTOOLCHAIN=auto to fetch a toolchain over the network on every build.
     if check_command "$GO_BINARY"; then
-        return
+        if go_version_ge "$(current_go_version "$GO_BINARY")" "$want"; then
+            return
+        fi
+        echo "dots: system go does not satisfy go.mod (need $want); upgrading" >&2
     fi
 
+    # Reuse a previously bootstrapped local go only when it still satisfies go.mod.
     if [ -x "$GO_LOCAL_BIN/go" ]; then
-        GO_BINARY="$GO_LOCAL_BIN/go"
-        return
+        if go_version_ge "$(current_go_version "$GO_LOCAL_BIN/go")" "$want"; then
+            GO_BINARY="$GO_LOCAL_BIN/go"
+            return
+        fi
+        echo "dots: cached go does not satisfy go.mod (need $want); re-downloading" >&2
     fi
 
     if ! require_tools mktemp tar; then
@@ -261,7 +423,7 @@ run_dots_go_command() {
         return 1
     fi
 
-    GO111MODULE=on GOWORK=off "$GO_BINARY" run -C "$DOTDOTFILES/dots" ./cmd/dots "$command" "$@"
+    GOTOOLCHAIN="$(dots_go_toolchain)" GO111MODULE=on GOWORK=off "$GO_BINARY" run -C "$DOTDOTFILES/dots" ./cmd/dots "$command" "$@"
 }
 
 run_dots_binary() {
@@ -282,7 +444,25 @@ run_dots_binary() {
 
 build_dots_binary() {
     echo "dots: building binary (first run or source changed)..." >&2
-    GOTOOLCHAIN=auto GO111MODULE=on GOWORK=off "$GO_BINARY" build -C "$DOTDOTFILES/dots" -o "$DOTS_BINARY" ./cmd/dots
+    local toolchain
+    toolchain="$(dots_go_toolchain)"
+
+    if [ "$DOTS_BUILD_TIMEOUT_SECONDS" -gt 0 ] && check_command timeout; then
+        if ! GOTOOLCHAIN="$toolchain" GO111MODULE=on GOWORK=off \
+            timeout "$DOTS_BUILD_TIMEOUT_SECONDS" \
+            "$GO_BINARY" build -C "$DOTDOTFILES/dots" -o "$DOTS_BINARY" ./cmd/dots; then
+            echo "dots: build failed or timed out after ${DOTS_BUILD_TIMEOUT_SECONDS}s" >&2
+            return 1
+        fi
+    else
+        if ! GOTOOLCHAIN="$toolchain" GO111MODULE=on GOWORK=off \
+            "$GO_BINARY" build -C "$DOTDOTFILES/dots" -o "$DOTS_BINARY" ./cmd/dots; then
+            echo "dots: build failed" >&2
+            return 1
+        fi
+    fi
+
+    write_build_hash
 }
 
 ensure_dots_binary() {
@@ -309,7 +489,14 @@ ensure_dots_binary() {
     (
         if ! flock -n 9; then
             echo "dots: waiting for binary build lock ($DOTS_BUILD_LOCK_FILE)..." >&2
-            flock 9
+            if [ "$DOTS_BUILD_LOCK_WAIT_SECONDS" -gt 0 ]; then
+                if ! flock -w "$DOTS_BUILD_LOCK_WAIT_SECONDS" 9; then
+                    echo "dots: timed out after ${DOTS_BUILD_LOCK_WAIT_SECONDS}s waiting for build lock; skipping build" >&2
+                    exit 1
+                fi
+            else
+                flock 9
+            fi
         fi
         if [ -x "$DOTS_BINARY" ] && ! dots_binary_stale; then
             exit 0
