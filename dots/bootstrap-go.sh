@@ -55,6 +55,37 @@ check_command() {
     return 1
 }
 
+# with_lock runs a command while holding an exclusive flock on LOCKFILE. It tries
+# non-blocking first, then waits up to WAIT_SECONDS (0 waits forever), and gives
+# up with status 75 rather than blocking a login shell indefinitely. When flock
+# is unavailable the command runs unlocked. This is the single primitive that
+# serializes every mutating bootstrap step (the Go install and the binary build)
+# so concurrent logins cannot race the same files.
+with_lock() {
+    local lockfile="$1"
+    local wait_seconds="$2"
+    shift 2
+    mkdir -p "$(dirname "$lockfile")"
+    if ! check_command flock; then
+        "$@"
+        return $?
+    fi
+    (
+        if ! flock -n 9; then
+            echo "dots: waiting for lock $lockfile..." >&2
+            if [ "$wait_seconds" -gt 0 ]; then
+                if ! flock -w "$wait_seconds" 9; then
+                    echo "dots: timed out after ${wait_seconds}s waiting for lock $lockfile; skipping" >&2
+                    exit 75
+                fi
+            else
+                flock 9
+            fi
+        fi
+        "$@"
+    ) 9>"$lockfile"
+}
+
 # required_go_version prints the version from the `go X.Y[.Z]` directive in
 # dots/go.mod (e.g. 1.26.3), or an empty string when it cannot be read.
 required_go_version() {
@@ -128,32 +159,48 @@ dots_hash_tool() {
     echo ""
 }
 
-# dots_source_hash prints a content hash of the build-relevant dots sources
-# (path names plus file contents), or an empty string when no hash tool exists.
-# Hashing content rather than mtimes keeps the binary from rebuilding when git
-# operations touch files without changing them.
-dots_source_hash() {
+# dots_build_input_hash prints a content hash of the files that actually compile
+# into the dots binary: this module's GoFiles and EmbedFiles as reported by
+# `go list -deps`, plus go.mod and go.sum. Test files and the runtime-read config
+# (catalog.toml) are excluded because go list does not report them as build
+# inputs, so editing a test or a config file never forces a rebuild. Prints an
+# empty string when go or a hash tool is unavailable, so the caller can fall back
+# to an mtime comparison.
+dots_build_input_hash() {
     local tool
     tool="$(dots_hash_tool)"
     if [ -z "$tool" ]; then
         echo ""
         return
     fi
+    if [ ! -x "$GO_BINARY" ] && ! check_command "$GO_BINARY"; then
+        echo ""
+        return
+    fi
+    local module="goodkind.io/.dotfiles"
+    local list_tmpl
+    list_tmpl='{{if .Module}}{{if eq .Module.Path "'"$module"'"}}{{$d:=.Dir}}{{range .GoFiles}}{{$d}}/{{.}}{{"\n"}}{{end}}{{range .EmbedFiles}}{{$d}}/{{.}}{{"\n"}}{{end}}{{end}}{{end}}'
     # shellcheck disable=SC2086
-    find "$DOTDOTFILES/dots" -type f \
-        \( -name '*.go' -o -name '*.toml' -o -name '*.mod' -o -name '*.sum' \) |
-        LC_ALL=C sort |
-        while IFS= read -r source_file; do
-            printf '%s\n' "$source_file"
-            cat "$source_file"
+    {
+        (
+            cd "$DOTDOTFILES/dots" 2>/dev/null || exit 0
+            GOTOOLCHAIN=local GO111MODULE=on GOWORK=off \
+                "$GO_BINARY" list -deps -f "$list_tmpl" ./cmd/dots 2>/dev/null || true
+        )
+        printf '%s\n%s\n' "$DOTDOTFILES/dots/go.mod" "$DOTDOTFILES/dots/go.sum"
+    } | LC_ALL=C sort -u |
+        while IFS= read -r input_file; do
+            [ -n "$input_file" ] || continue
+            printf '%s\n' "$input_file"
+            cat "$input_file" 2>/dev/null || true
         done | $tool | awk '{print $1}'
 }
 
-# write_build_hash records the current source hash next to the binary so the
-# next staleness check can compare against it.
+# write_build_hash records the build-input hash next to the binary so the next
+# staleness check can compare against it without rebuilding.
 write_build_hash() {
     local hash
-    hash="$(dots_source_hash)"
+    hash="$(dots_build_input_hash)"
     if [ -n "$hash" ]; then
         printf '%s\n' "$hash" >"$DOTS_BUILD_HASH_FILE"
     fi
@@ -190,7 +237,7 @@ dots_binary_stale() {
     fi
 
     local current_hash
-    current_hash="$(dots_source_hash)"
+    current_hash="$(dots_build_input_hash)"
     if [ -n "$current_hash" ]; then
         if [ -f "$DOTS_BUILD_HASH_FILE" ] && [ "$current_hash" = "$(cat "$DOTS_BUILD_HASH_FILE")" ]; then
             return 1
@@ -198,7 +245,9 @@ dots_binary_stale() {
         return 0
     fi
 
-    # Fallback for hosts without a hash tool: compare source mtimes.
+    # Fallback when go or a hash tool is unavailable: compare mtimes of the
+    # compiled sources, excluding test files and the runtime-read config so that
+    # a test edit or a config edit does not force a rebuild.
     local source_file
     while IFS= read -r source_file; do
         if [ "$source_file" -nt "$DOTS_BINARY" ]; then
@@ -206,7 +255,8 @@ dots_binary_stale() {
         fi
     done < <(
         find "$DOTDOTFILES/dots" -type f \
-            \( -name '*.go' -o -name '*.toml' -o -name '*.mod' -o -name '*.sum' \)
+            \( -name '*.go' -o -name '*.mod' -o -name '*.sum' -o -name '*.tmpl' \) \
+            ! -name '*_test.go'
     )
 
     return 1
@@ -338,29 +388,13 @@ go_system_arch() {
     esac
 }
 
-bootstrap_go() {
-    emit_warning_if_legacy_bash
-
-    local want
-    want="$(required_go_version)"
-
-    # Prefer a system go, but only if it satisfies the version dots/go.mod needs.
-    # Reusing an older go is what left vault on 1.22.7 against a go 1.26 module,
-    # forcing GOTOOLCHAIN=auto to fetch a toolchain over the network on every build.
-    if check_command "$GO_BINARY"; then
-        if go_version_ge "$(current_go_version "$GO_BINARY")" "$want"; then
-            return
-        fi
-        echo "dots: system go does not satisfy go.mod (need $want); upgrading" >&2
-    fi
-
-    # Reuse a previously bootstrapped local go only when it still satisfies go.mod.
-    if [ -x "$GO_LOCAL_BIN/go" ]; then
-        if go_version_ge "$(current_go_version "$GO_LOCAL_BIN/go")" "$want"; then
-            GO_BINARY="$GO_LOCAL_BIN/go"
-            return
-        fi
-        echo "dots: cached go does not satisfy go.mod (need $want); re-downloading" >&2
+# do_go_install downloads a Go that satisfies go.mod and installs it into
+# GO_LOCAL_ROOT. It is always run through with_lock so the rm -rf and extract
+# never overlap another login's install or build.
+do_go_install() {
+    # Another login may have installed a satisfying Go while we waited for the lock.
+    if [ -x "$GO_LOCAL_BIN/go" ] && go_version_ge "$(current_go_version "$GO_LOCAL_BIN/go")" "$(required_go_version)"; then
+        return 0
     fi
 
     if ! require_tools mktemp tar; then
@@ -404,6 +438,39 @@ bootstrap_go() {
 
     if [ ! -x "$GO_LOCAL_BIN/go" ]; then
         echo "go binary not found after bootstrap install" >&2
+        return 1
+    fi
+}
+
+bootstrap_go() {
+    emit_warning_if_legacy_bash
+
+    local want
+    want="$(required_go_version)"
+
+    # Prefer a system go, but only if it satisfies the version dots/go.mod needs.
+    # Reusing an older go is what left vault on 1.22.7 against a go 1.26 module,
+    # forcing GOTOOLCHAIN=auto to fetch a toolchain over the network on every build.
+    if check_command "$GO_BINARY"; then
+        if go_version_ge "$(current_go_version "$GO_BINARY")" "$want"; then
+            return
+        fi
+        echo "dots: system go does not satisfy go.mod (need $want); upgrading" >&2
+    fi
+
+    # Reuse a previously bootstrapped local go only when it still satisfies go.mod.
+    if [ -x "$GO_LOCAL_BIN/go" ]; then
+        if go_version_ge "$(current_go_version "$GO_LOCAL_BIN/go")" "$want"; then
+            GO_BINARY="$GO_LOCAL_BIN/go"
+            return
+        fi
+        echo "dots: cached go does not satisfy go.mod (need $want); re-downloading" >&2
+    fi
+
+    # Install under the shared lock so concurrent logins cannot race the rm -rf
+    # and re-extract of GO_LOCAL_ROOT, which on vault clobbered a freshly
+    # downloaded 1.26 back to the old 1.22 and broke the build.
+    if ! with_lock "$DOTS_BUILD_LOCK_FILE" "$DOTS_BUILD_LOCK_WAIT_SECONDS" do_go_install; then
         return 1
     fi
 
@@ -474,6 +541,16 @@ build_dots_binary() {
     write_build_hash
 }
 
+# locked_build re-checks staleness under the lock then builds. It runs inside
+# with_lock so a concurrent Go reinstall cannot delete the toolchain mid-build,
+# and a second login that lost the race skips rebuilding the up-to-date binary.
+locked_build() {
+    if [ -x "$DOTS_BINARY" ] && ! dots_binary_stale; then
+        return 0
+    fi
+    build_dots_binary
+}
+
 ensure_dots_binary() {
     mkdir -p "$DOTS_BINARY_DIR"
     if [ -x "$DOTS_BINARY" ] && ! dots_binary_stale; then
@@ -490,30 +567,7 @@ ensure_dots_binary() {
         return 1
     fi
 
-    if ! check_command flock; then
-        build_dots_binary
-        return $?
-    fi
-
-    (
-        if ! flock -n 9; then
-            echo "dots: waiting for binary build lock ($DOTS_BUILD_LOCK_FILE)..." >&2
-            if [ "$DOTS_BUILD_LOCK_WAIT_SECONDS" -gt 0 ]; then
-                if ! flock -w "$DOTS_BUILD_LOCK_WAIT_SECONDS" 9; then
-                    echo "dots: timed out after ${DOTS_BUILD_LOCK_WAIT_SECONDS}s waiting for build lock; skipping build" >&2
-                    exit 1
-                fi
-            else
-                flock 9
-            fi
-        fi
-        if [ -x "$DOTS_BINARY" ] && ! dots_binary_stale; then
-            exit 0
-        fi
-        build_dots_binary
-        exit $?
-    ) 9>"$DOTS_BUILD_LOCK_FILE"
-    return $?
+    with_lock "$DOTS_BUILD_LOCK_FILE" "$DOTS_BUILD_LOCK_WAIT_SECONDS" locked_build
 }
 
 bootstrap_and_run() {
