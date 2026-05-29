@@ -120,12 +120,6 @@ func runDirect(ctx context.Context, repoRoot string) error {
 		return fmt.Errorf("first install commands: %w", err)
 	}
 
-	if freshsmoke.HasCommandOnPath("flock", freshsmoke.EnvValue(env, "PATH")) {
-		if err := runLockSmoke(ctx, dotsBinaryDir, lockFile, repoRoot, env); err != nil {
-			return err
-		}
-	}
-
 	secondOutput, err := freshsmoke.RunInstall(ctx, repoRoot, env, defaultTimeout, "--strict")
 	if err != nil {
 		slog.ErrorContext(ctx, "second install run", "err", err)
@@ -140,39 +134,40 @@ func runDirect(ctx context.Context, repoRoot string) error {
 		return fmt.Errorf("second install build count: %w", err)
 	}
 
+	if err := runSharedScenarios(ctx, repoRoot, dotsBinaryDir, lockFile, env); err != nil {
+		return err
+	}
+
 	fmt.Println("fresh-macos-bootstrap: passed")
 	return nil
 }
 
-func runLockSmoke(ctx context.Context, dotsBinaryDir string, lockFile string, repoRoot string, env []string) error {
-	slog.InfoContext(ctx, "running lock smoke")
-	dotsBinary := filepath.Join(dotsBinaryDir, "dots")
-	if err := os.Remove(dotsBinary); err != nil {
-		slog.ErrorContext(ctx, "removing cached dots binary for lock smoke", "err", err)
-		return fmt.Errorf("removing cached dots binary for lock smoke: %w", err)
+// runSharedScenarios exercises the bootstrap issues hit in production, after the
+// baseline first and second install checks. Lock scenarios are skipped when
+// flock is unavailable, which is the default on macOS.
+func runSharedScenarios(ctx context.Context, repoRoot, dotsBinaryDir, lockFile string, env []string) error {
+	if err := freshsmoke.StalenessSmoke(ctx, repoRoot, "dots/config/catalog.toml", "dots/internal/util/path.go", env, defaultTimeout); err != nil {
+		slog.ErrorContext(ctx, "staleness smoke", "err", err)
+		return fmt.Errorf("staleness smoke: %w", err)
 	}
-	lockReleased, err := freshsmoke.HoldBuildLockFor(lockFile, 2*time.Second)
-	if err != nil {
-		slog.ErrorContext(ctx, "holding build lock", "err", err)
-		return fmt.Errorf("holding build lock: %w", err)
+	if freshsmoke.HasCommandOnPath("flock", freshsmoke.EnvValue(env, "PATH")) {
+		if err := freshsmoke.LockSmoke(ctx, repoRoot, dotsBinaryDir, lockFile, env, defaultTimeout); err != nil {
+			slog.ErrorContext(ctx, "lock smoke", "err", err)
+			return fmt.Errorf("lock smoke: %w", err)
+		}
+		if err := freshsmoke.LockTimeoutSmoke(ctx, repoRoot, dotsBinaryDir, lockFile, env, defaultTimeout); err != nil {
+			slog.ErrorContext(ctx, "lock-timeout smoke", "err", err)
+			return fmt.Errorf("lock-timeout smoke: %w", err)
+		}
+		if err := freshsmoke.InstallRaceSmoke(ctx, repoRoot, dotsBinaryDir, lockFile, env, defaultTimeout); err != nil {
+			slog.ErrorContext(ctx, "install-race smoke", "err", err)
+			return fmt.Errorf("install-race smoke: %w", err)
+		}
 	}
-	lockOutput, err := freshsmoke.RunInstall(ctx, repoRoot, env, defaultTimeout, "--strict")
-	if err != nil {
-		slog.ErrorContext(ctx, "lock install run", "err", err)
-		return fmt.Errorf("lock install run: %w", err)
-	}
-	<-lockReleased
-	if err := freshsmoke.AssertStrictInstallOutput(lockOutput); err != nil {
-		slog.ErrorContext(ctx, "lock install strict output", "err", err)
-		return fmt.Errorf("lock install strict output: %w", err)
-	}
-	if err := freshsmoke.AssertContains(lockOutput, "dots: waiting for binary build lock"); err != nil {
-		slog.ErrorContext(ctx, "asserting lock wait message", "err", err)
-		return fmt.Errorf("asserting lock wait message: %w", err)
-	}
-	if err := freshsmoke.AssertBuildCount(lockOutput, 1); err != nil {
-		slog.ErrorContext(ctx, "lock install build count", "err", err)
-		return fmt.Errorf("lock install build count: %w", err)
+	// Runs last: it replaces GO_LOCAL_ROOT's go to force a re-download.
+	if err := freshsmoke.StaleGoUpgradeSmoke(ctx, repoRoot, dotsBinaryDir, env, defaultTimeout); err != nil {
+		slog.ErrorContext(ctx, "stale-go upgrade smoke", "err", err)
+		return fmt.Errorf("stale-go upgrade smoke: %w", err)
 	}
 	return nil
 }
@@ -402,6 +397,10 @@ func runInsideVM(ctx context.Context, repoRoot string, githubTokenFile string) e
 	if err := freshsmoke.AssertBuildCount(secondOutput, 0); err != nil {
 		slog.ErrorContext(ctx, "second install build count", "err", err)
 		return fmt.Errorf("second install build count: %w", err)
+	}
+
+	if err := runSharedScenarios(ctx, repoRoot, dotsBinaryDir, lockFile, env); err != nil {
+		return err
 	}
 
 	fmt.Println("fresh-macos-bootstrap: passed")
