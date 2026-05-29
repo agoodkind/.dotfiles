@@ -21,6 +21,10 @@ DOTS_BUILD_LOCK_WAIT_SECONDS="${DOTS_BUILD_LOCK_WAIT_SECONDS:-120}"
 # Bound the build itself so a hung toolchain download fails instead of hanging
 # forever while holding the lock (set to 0 to disable the timeout).
 DOTS_BUILD_TIMEOUT_SECONDS="${DOTS_BUILD_TIMEOUT_SECONDS:-600}"
+# Bound the Go toolchain download so a host that cannot reach go.dev fails fast
+# in bootstrap_go instead of hanging a login shell on every connection.
+DOTS_DOWNLOAD_CONNECT_TIMEOUT="${DOTS_DOWNLOAD_CONNECT_TIMEOUT:-20}"
+DOTS_DOWNLOAD_MAX_TIME="${DOTS_DOWNLOAD_MAX_TIME:-600}"
 DEFAULT_GO_BOOTSTRAP_VERSION="go1.22.7"
 GO_DARWIN11_BOOTSTRAP_VERSION="${GO_DARWIN11_BOOTSTRAP_VERSION:-go1.24.13}"
 
@@ -222,13 +226,18 @@ download_file() {
     local destination="$2"
 
     if check_command curl; then
-        curl --location --silent --show-error --fail "$url" --output "$destination"
-        return 0
+        curl --location --silent --show-error --fail \
+            --connect-timeout "$DOTS_DOWNLOAD_CONNECT_TIMEOUT" \
+            --max-time "$DOTS_DOWNLOAD_MAX_TIME" \
+            "$url" --output "$destination"
+        return $?
     fi
 
     if check_command wget; then
-        wget --quiet --output-document "$destination" "$url"
-        return 0
+        wget --quiet --tries=2 \
+            --timeout="$DOTS_DOWNLOAD_CONNECT_TIMEOUT" \
+            --output-document "$destination" "$url"
+        return $?
     fi
 
     echo "missing curl or wget for bootstrap download" >&2
