@@ -1,0 +1,123 @@
+# Custom tool install declarations. Read at runtime by internal/catalog.
+[[tool]]
+id = "zoxide"
+bin = "zoxide"
+repo = "ajeetdsouza/zoxide"
+install_method = "script"
+script_url = "https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh"
+
+[[tool]]
+id = "async-cmd"
+bin = "async"
+repo = ""
+install_method = "cargo"
+crate_name = "async-cmd"
+
+[[tool]]
+id = "starship"
+bin = "starship"
+repo = "starship/starship"
+install_method = "github-release"
+platforms = ["darwin", "linux"]
+archive_ext = ".tar.gz"
+os_darwin = "apple-darwin"
+os_linux = "unknown-linux-musl"
+arch_amd64 = "x86_64"
+arch_arm64 = "aarch64"
+
+[[tool]]
+id = "fastfetch"
+bin = "fastfetch"
+repo = "fastfetch-cli/fastfetch"
+install_method = "github-release"
+platforms = ["linux"]
+os_linux = "linux"
+arch_amd64 = "amd64"
+arch_arm64 = "aarch64"
+archive_ext = ".deb"
+
+[[tool]]
+id = "trippy"
+bin = "trip"
+repo = "fujiapple852/trippy"
+install_method = "github-release"
+platforms = ["linux"]
+os_linux = "unknown-linux-gnu"
+arch_amd64 = "x86_64"
+arch_arm64 = "aarch64"
+archive_ext = ".tar.gz"
+
+[[tool]]
+id = "procs"
+bin = "procs"
+repo = "dalance/procs"
+install_method = "github-release"
+os_darwin = "mac"
+os_linux = "linux"
+arch_amd64 = "x86_64"
+arch_arm64 = "aarch64"
+archive_ext = ".zip"
+
+[[tool]]
+id = "tokei"
+bin = "tokei"
+repo = ""
+install_method = "cargo"
+crate_name = "tokei"
+version = "13.0.0"
+
+[[tool]]
+id = "tree-sitter"
+bin = "tree-sitter"
+repo = "tree-sitter/tree-sitter"
+install_method = "github-release"
+os_darwin = "macos"
+os_linux = "linux"
+arch_amd64 = "x64"
+arch_arm64 = "arm64"
+archive_ext = ".gz"
+
+[[tool]]
+id = "fzf"
+bin = "fzf"
+repo = "junegunn/fzf"
+install_method = "github-release"
+os_darwin = "darwin"
+os_linux = "linux"
+arch_amd64 = "amd64"
+arch_arm64 = "arm64"
+archive_ext = ".tar.gz"
+
+[[tool]]
+id = "xh"
+bin = "xh"
+repo = "ducaale/xh"
+install_method = "github-release"
+os_darwin = "apple-darwin"
+os_linux = "unknown-linux-musl"
+arch_amd64 = "x86_64"
+arch_arm64 = "aarch64"
+archive_ext = ".tar.gz"
+
+[[tool]]
+id = "cloudflare-speed-cli"
+bin = "cloudflare-speed-cli"
+repo = "kavehtehrani/cloudflare-speed-cli"
+install_method = "github-release"
+platforms = ["linux", "darwin"]
+os_darwin = "apple-darwin"
+os_linux = "unknown-linux-musl"
+arch_amd64 = "x86_64"
+arch_arm64 = "aarch64"
+archive_ext = ".tar.xz"
+
+[[tool]]
+id = "yq"
+bin = "yq"
+repo = "mikefarah/yq"
+install_method = "github-release"
+platforms = ["linux"]
+os_linux = "linux"
+arch_amd64 = "amd64"
+arch_arm64 = "arm64"
+archive_ext = ".tar.gz"

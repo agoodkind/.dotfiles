@@ -3,6 +3,7 @@ package catalog
 
 import (
 	"fmt"
+	"log/slog"
 	"maps"
 	"os"
 	"path/filepath"
@@ -88,11 +89,17 @@ type PreferCacheConfig struct {
 	SourceFiles    []string `toml:"source_files"`
 }
 
+// MacConfig holds macOS defaults applied during OS setup.
+type MacConfig struct {
+	ScreenshotDir string `toml:"screenshot_dir"`
+}
+
 type catalogDocument struct {
 	Packages    PackageConfig     `toml:"packages"`
 	Tools       []ToolDeclaration `toml:"tool"`
 	Dispatch    DispatchConfig    `toml:"dispatch"`
 	MacPatch    MacPatchConfig    `toml:"mac_patch"`
+	Macos       MacConfig         `toml:"macos"`
 	PreferCache PreferCacheConfig `toml:"prefer_cache"`
 }
 
@@ -159,18 +166,12 @@ func DefaultDispatchConfig() *DispatchConfig {
 	defer mu.RUnlock()
 	if errLoad != nil {
 		return &DispatchConfig{
-			StatusDir:          "$HOME/.cache/dotfiles_dispatch.lock",
-			LockFile:           "$HOME/.cache/dotfiles_dispatch.flock",
-			LogPath:            "$HOME/.cache/dotfiles_dispatch.log",
-			WeeklyUpdateHours:  168,
-			WeeklyUpdateMarker: "$HOME/.cache/dotfiles_weekly_update",
-			Workers: []DispatchWorker{
-				{Name: "updater", Enabled: true},
-				{Name: "prefer-cache-rebuild", Enabled: true},
-				{Name: "path-cache-rebuild", Enabled: true},
-				{Name: "zwc-recompile", Enabled: true},
-				{Name: "ssh-key-load-mac", Enabled: true},
-			},
+			Workers:            nil,
+			StatusDir:          "",
+			LockFile:           "",
+			LogPath:            "",
+			WeeklyUpdateHours:  0,
+			WeeklyUpdateMarker: "",
 		}
 	}
 	source := cached.Dispatch
@@ -193,11 +194,11 @@ func DefaultMacPatchConfig() *MacPatchConfig {
 	defer mu.RUnlock()
 	if errLoad != nil {
 		return &MacPatchConfig{
-			Enabled:      true,
-			Sentinel:     "# DOTFILES_PERF_PATCH_V4",
-			ZProfilePath: "/etc/zprofile",
-			ZshrcPath:    "/etc/zshrc",
-			PatchScript:  "$DOTDOTFILES/bash/setup/platform/patch-etc-zsh.bash",
+			Enabled:      false,
+			Sentinel:     "",
+			ZProfilePath: "",
+			ZshrcPath:    "",
+			PatchScript:  "",
 		}
 	}
 	source := cached.MacPatch
@@ -210,6 +211,17 @@ func DefaultMacPatchConfig() *MacPatchConfig {
 	}
 }
 
+// DefaultMacConfig returns the macOS config from the catalog, or a zero-value config on load error.
+func DefaultMacConfig() *MacConfig {
+	loadCatalog()
+	mu.RLock()
+	defer mu.RUnlock()
+	if errLoad != nil {
+		return &MacConfig{ScreenshotDir: ""}
+	}
+	return &MacConfig{ScreenshotDir: cached.Macos.ScreenshotDir}
+}
+
 // DefaultPreferCacheConfig returns the prefer-cache config from the catalog, or a built-in default on load error.
 func DefaultPreferCacheConfig() *PreferCacheConfig {
 	loadCatalog()
@@ -217,14 +229,9 @@ func DefaultPreferCacheConfig() *PreferCacheConfig {
 	defer mu.RUnlock()
 	if errLoad != nil {
 		return &PreferCacheConfig{
-			CacheFile:      "$HOME/.cache/zsh_prefer_aliases.zsh",
-			InvalidateFile: "$HOME/.cache/zsh_prefer_invalidate",
-			SourceFiles: []string{
-				"$DOTDOTFILES/zshrc/core/prefer.zsh",
-				"$DOTDOTFILES/zshrc/commands/prefer-decls.zsh",
-				"$DOTDOTFILES/zshrc/commands/editors.zsh",
-				"$DOTDOTFILES/zshrc/integrations/zoxide.zsh",
-			},
+			CacheFile:      "",
+			InvalidateFile: "",
+			SourceFiles:    nil,
 		}
 	}
 	source := cached.PreferCache
@@ -239,30 +246,56 @@ func DefaultPreferCacheConfig() *PreferCacheConfig {
 
 func loadCatalog() {
 	loadOnce.Do(func() {
-		catalogPath := resolveCatalogPath()
-		data, err := os.ReadFile(catalogPath)
-		if err != nil {
-			errLoad = fmt.Errorf("read catalog file: %w", err)
-			return
+		dir := resolveConfigDir()
+		var merged catalogDocument
+		sections := []struct {
+			file  string
+			apply func(target *catalogDocument, parsed catalogDocument)
+		}{
+			{"packages.toml", func(target *catalogDocument, parsed catalogDocument) { target.Packages = parsed.Packages }},
+			{"tools.toml", func(target *catalogDocument, parsed catalogDocument) { target.Tools = parsed.Tools }},
+			{"dispatch.toml", func(target *catalogDocument, parsed catalogDocument) {
+				target.Dispatch = parsed.Dispatch
+				target.PreferCache = parsed.PreferCache
+			}},
+			{"platform-macos.toml", func(target *catalogDocument, parsed catalogDocument) {
+				target.MacPatch = parsed.MacPatch
+				target.Macos = parsed.Macos
+			}},
 		}
-		var doc catalogDocument
-		if err := toml.Unmarshal(data, &doc); err != nil {
-			errLoad = fmt.Errorf("parse catalog file: %w", err)
-			return
+		for _, section := range sections {
+			path := filepath.Join(dir, section.file)
+			data, err := os.ReadFile(filepath.Clean(path))
+			if err != nil {
+				slog.Error("catalog: reading config file", "path", path, "err", err)
+				errLoad = fmt.Errorf("read config file %s: %w", section.file, err)
+				return
+			}
+			var parsed catalogDocument
+			if err := toml.Unmarshal(data, &parsed); err != nil {
+				slog.Error("catalog: parsing config file", "path", path, "err", err)
+				errLoad = fmt.Errorf("parse config file %s: %w", section.file, err)
+				return
+			}
+			section.apply(&merged, parsed)
 		}
 		mu.Lock()
-		cached = doc
+		cached = merged
 		errLoad = nil
 		mu.Unlock()
 	})
 }
 
-func resolveCatalogPath() string {
-	if explicit := os.Getenv("DOTFILES_CATALOG_PATH"); explicit != "" {
+// resolveConfigDir returns the directory holding the split config TOMLs,
+// honoring DOTFILES_CONFIG_DIR, then $DOTDOTFILES/config, then ~/.dotfiles/config.
+// The config is committed alongside the code, so it is always present; a missing
+// file surfaces as a logged load error rather than a silent fallback.
+func resolveConfigDir() string {
+	if explicit := os.Getenv("DOTFILES_CONFIG_DIR"); explicit != "" {
 		return explicit
 	}
 	if dotfiles := os.Getenv("DOTDOTFILES"); dotfiles != "" {
-		return filepath.Join(dotfiles, "dots", "config", "catalog.toml")
+		return filepath.Join(dotfiles, "config")
 	}
-	return filepath.Join(os.Getenv("HOME"), ".dotfiles", "dots", "config", "catalog.toml")
+	return filepath.Join(os.Getenv("HOME"), ".dotfiles", "config")
 }

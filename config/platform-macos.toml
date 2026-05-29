@@ -1,0 +1,14 @@
+# macOS-specific config. Read at runtime by internal/catalog.
+
+# The /etc/zsh perf patch.
+[mac_patch]
+enabled = true
+sentinel = "# DOTFILES_PERF_PATCH_V4"
+zprofile_path = "/etc/zprofile"
+zshrc_path = "/etc/zshrc"
+patch_script = "$DOTDOTFILES/bash/setup/platform/patch-etc-zsh.bash"
+
+# macOS defaults applied during OS setup. screenshot_dir was previously
+# hardcoded in internal/sync/platform/macos.
+[macos]
+screenshot_dir = "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Screenshots"

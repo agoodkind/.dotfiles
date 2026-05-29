@@ -1,0 +1,140 @@
+# Package lists per package manager. Read at runtime by internal/catalog.
+[packages]
+common_packages = [
+    "ack",
+    "ansible",
+    "ansible-lint",
+    "aria2",
+    "bat",
+    "bash",
+    "btop",
+    "coreutils",
+    "curl",
+    "duf",
+    "eza",
+    "fail2ban",
+    "fd",
+    "ffmpeg",
+    "figlet",
+    "fping",
+    "fzf",
+    "gh",
+    "git",
+    "git-delta",
+    "git-lfs",
+    "gping",
+    "grc",
+    "grep",
+    "htop",
+    "hyperfine",
+    "imagemagick",
+    "ipv6calc",
+    "jq",
+    "less",
+    "mosh",
+    "most",
+    "moreutils",
+    "msmtp",
+    "ncdu",
+    "openssh",
+    "pandoc",
+    "pigz",
+    "pv",
+    "python3",
+    "rename",
+    "rg",
+    "rsync",
+    "ruby",
+    "screen",
+    "sd",
+    "sipcalc",
+    "smartmontools",
+    "sshuttle",
+    "tealdeer",
+    "thefuck",
+    "tree",
+    "tshark",
+    "vim",
+    "watch",
+    "wget",
+    "zoxide",
+    "zsh",
+]
+
+apt_specific = [
+    "ack-grep",
+    "gpg",
+    "ipcalc-ng",
+    "ipcalc",
+    "locales",
+    "msmtp-mta",
+    "net-tools",
+    "nodejs",
+    "openssh-client",
+    "openssh-server",
+    "parted",
+    "rbenv",
+    "rsyslog",
+    "sudo",
+    "speedtest-cli",
+    "ufw",
+    "wireguard",
+]
+
+ubuntu_ppas = ["ppa:zhangsongcui3371/fastfetch", "ppa:fujiapple/trippy"]
+
+snap_packages = ["neovim", "fx"]
+
+brew_specific = [
+    "ast-grep",
+    "bandwhich",
+    "bottom",
+    "curlie",
+    "doggo",
+    "dust",
+    "fastfetch",
+    "MisterTea/et/et",
+    "fx",
+    "gitui",
+    "glow",
+    "lazygit",
+    "mdless",
+    "mitmproxy",
+    "navi",
+    "node",
+    "nvim",
+    "pnpm",
+    "procs",
+    "ripgrep-all",
+    "ssh-copy-id",
+    "tokei",
+    "tree-sitter",
+    "trippy",
+    "wireguard-go",
+    "wireguard-tools",
+    "xq",
+    "yq",
+]
+
+cargo_packages = []
+
+[packages.brew_casks]
+"1password" = "1Password"
+"1password-cli" = ""
+"ghostty" = "Ghostty"
+"keycastr" = "KeyCastr"
+"visual-studio-code" = "Visual Studio Code"
+"google-chrome" = "Google Chrome"
+"font-jetbrains-mono-nerd-font" = ""
+"font-jetbrains-mono" = ""
+"cyberduck" = "Cyberduck"
+"utm" = "UTM"
+"vlc" = "VLC"
+"stats" = "Stats"
+"xcodes-app" = "Xcodes"
+"pingplotter" = "PingPlotter"
+
+[packages.go_packages]
+lazygit = "github.com/jesseduffield/lazygit@latest"
+
+[packages.cargo_git_packages]

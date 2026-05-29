@@ -1,0 +1,24 @@
+# Background dispatch and prefer-cache config. Read at runtime by internal/catalog.
+[dispatch]
+workers = [
+    { name = "updater", enabled = true },
+    { name = "prefer-cache-rebuild", enabled = true },
+    { name = "path-cache-rebuild", enabled = true },
+    { name = "zwc-recompile", enabled = true },
+    { name = "ssh-key-load-mac", enabled = true },
+]
+status_dir = "$HOME/.cache/dotfiles_dispatch.lock"
+lock_file = "$HOME/.cache/dotfiles_dispatch.flock"
+log_path = "$HOME/.cache/dotfiles_dispatch.log"
+weekly_update_hours = 168
+weekly_update_marker = "$HOME/.cache/dotfiles_weekly_update"
+
+[prefer_cache]
+cache_file = "$HOME/.cache/zsh_prefer_aliases.zsh"
+invalidate_file = "$HOME/.cache/zsh_prefer_invalidate"
+source_files = [
+    "$DOTDOTFILES/zshrc/core/prefer.zsh",
+    "$DOTDOTFILES/zshrc/commands/prefer-decls.zsh",
+    "$DOTDOTFILES/zshrc/commands/editors.zsh",
+    "$DOTDOTFILES/zshrc/integrations/zoxide.zsh",
+]
