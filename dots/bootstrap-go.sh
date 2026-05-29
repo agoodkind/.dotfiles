@@ -4,11 +4,18 @@ set -u
 set -o pipefail
 
 DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
+# Load shell-side bootstrap config (Go versions, timeouts) that must be available
+# before Go exists, so it cannot live in the Go-read TOML catalog. Each value is
+# still defaulted below, so a missing file is harmless.
+if [ -f "$DOTDOTFILES/config/bootstrap.env" ]; then
+    # shellcheck disable=SC1090,SC1091
+    . "$DOTDOTFILES/config/bootstrap.env"
+fi
 GO_BINARY="${GO_BINARY:-go}"
 GO_LOCAL_ROOT="${GO_LOCAL_ROOT:-$HOME/.local/go}"
 GO_LOCAL_BIN="${GO_LOCAL_ROOT}/bin"
 GO_BOOTSTRAP_VERSION="${GO_BOOTSTRAP_VERSION:-}"
-DOTS_BINARY_DIR="${DOTS_BINARY_DIR:-$HOME/.cache/dots/bin}"
+DOTS_BINARY_DIR="${DOTS_BINARY_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/dots/bin}"
 DOTS_BINARY="${DOTS_BINARY:-$DOTS_BINARY_DIR/dots}"
 DOTS_BUILD_LOCK_FILE="${DOTS_BUILD_LOCK_FILE:-$DOTS_BINARY_DIR/.dots.build.lock}"
 # Sidecar recording the content hash of the sources the cached binary was built
@@ -25,7 +32,7 @@ DOTS_BUILD_TIMEOUT_SECONDS="${DOTS_BUILD_TIMEOUT_SECONDS:-600}"
 # in bootstrap_go instead of hanging a login shell on every connection.
 DOTS_DOWNLOAD_CONNECT_TIMEOUT="${DOTS_DOWNLOAD_CONNECT_TIMEOUT:-20}"
 DOTS_DOWNLOAD_MAX_TIME="${DOTS_DOWNLOAD_MAX_TIME:-600}"
-DEFAULT_GO_BOOTSTRAP_VERSION="go1.22.7"
+DEFAULT_GO_BOOTSTRAP_VERSION="${DEFAULT_GO_BOOTSTRAP_VERSION:-go1.22.7}"
 GO_DARWIN11_BOOTSTRAP_VERSION="${GO_DARWIN11_BOOTSTRAP_VERSION:-go1.24.13}"
 
 require_tools() {
