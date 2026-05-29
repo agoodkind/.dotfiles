@@ -28,10 +28,24 @@ const (
 	lockTimeoutWaitSeconds = 3
 	lockTimeoutElapsedCap  = 15 * time.Second
 
-	// staleGoStub reports a version below any modern go.mod floor. Only the
-	// numeric version is parsed, so the OS/arch suffix is irrelevant and the
-	// same stub serves both platforms.
-	staleGoStub = "#!/bin/sh\necho \"go version go1.22.7\"\n"
+	// staleGoStub simulates a real old go that auto-switches toolchains: under
+	// the default GOTOOLCHAIN it reports the new version (as a too-old go does
+	// when `go version` runs in a module requiring a newer toolchain and silently
+	// switches), and only under GOTOOLCHAIN=local does it report its true old
+	// version. It cannot build. This makes the stale-go and install-race scenarios
+	// fail unless the version probe pins GOTOOLCHAIN=local, which is the bug that
+	// reused vault's go1.22.7 while believing it was 1.26.3.
+	staleGoStub = "#!/bin/sh\n" +
+		"if [ \"$1\" = version ]; then\n" +
+		"  if [ \"$GOTOOLCHAIN\" = local ]; then\n" +
+		"    echo \"go version go1.22.7 linux/amd64\"\n" +
+		"  else\n" +
+		"    echo \"go version go1.26.3 linux/amd64\"\n" +
+		"  fi\n" +
+		"  exit 0\n" +
+		"fi\n" +
+		"echo \"stale go stub cannot build\" >&2\n" +
+		"exit 1\n"
 )
 
 // removeCachedBinary deletes the cached dots binary so the next install must
