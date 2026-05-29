@@ -539,7 +539,7 @@ func runLockSmoke(ctx context.Context, dotsBinaryDirectory string, lockFile stri
 		slog.ErrorContext(ctx, "lock install strict output", "err", err)
 		return fmt.Errorf("lock install strict output: %w", err)
 	}
-	if err := freshsmoke.AssertContains(lockOutput, "dots: waiting for binary build lock"); err != nil {
+	if err := freshsmoke.AssertContains(lockOutput, "dots: waiting for lock"); err != nil {
 		slog.ErrorContext(ctx, "asserting lock wait message", "err", err)
 		return fmt.Errorf("asserting lock wait message: %w", err)
 	}
@@ -588,7 +588,7 @@ func runLockTimeoutSmoke(ctx context.Context, dotsBinaryDirectory string, lockFi
 		slog.ErrorContext(ctx, "lock-timeout install run", "err", runErr)
 		return fmt.Errorf("lock-timeout install run: %w", runErr)
 	}
-	if err := freshsmoke.AssertContains(lockOutput, "waiting for build lock"); err != nil {
+	if err := freshsmoke.AssertContains(lockOutput, "waiting for lock"); err != nil {
 		return fmt.Errorf("lock-timeout wait message: %w", err)
 	}
 	if err := freshsmoke.AssertContains(lockOutput, "timed out"); err != nil {
