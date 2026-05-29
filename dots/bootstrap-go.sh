@@ -97,13 +97,17 @@ required_go_version() {
     sed -n 's/^go \([0-9][0-9.]*\).*/\1/p' "$gomod" | head -n 1
 }
 
-# current_go_version prints the numeric version (e.g. 1.22.7) reported by the
-# given go binary, or an empty string when it cannot be determined.
+# current_go_version prints the numeric version (e.g. 1.22.7) of the given go
+# binary itself, or an empty string when it cannot be determined. GOTOOLCHAIN
+# is forced to local: without it, running `go version` from inside a module
+# whose go.mod requires a newer toolchain makes go silently switch to and report
+# that downloaded toolchain's version instead of its own, which fooled the reuse
+# check into keeping an old go that then failed the GOTOOLCHAIN=local build.
 current_go_version() {
     local gobin="$1"
     local raw=""
     if [ -x "$gobin" ] || command -v "$gobin" >/dev/null 2>&1; then
-        raw="$("$gobin" version 2>/dev/null || true)"
+        raw="$(GOTOOLCHAIN=local "$gobin" version 2>/dev/null || true)"
     fi
     printf '%s\n' "$raw" | sed -n 's/.*go\([0-9][0-9.]*\).*/\1/p' | head -n 1
 }
