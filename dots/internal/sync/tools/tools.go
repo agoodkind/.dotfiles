@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -241,6 +242,29 @@ func installToolFromGitHubRelease(ctx context.Context, name, bin, repo, osTag, a
 	return installToolArtifact(ctx, logger, bin, localPath)
 }
 
+// githubToken returns a token for authenticating GitHub API requests, checking
+// GITHUB_TOKEN, then GH_TOKEN, then the gh CLI's stored credential. Without one
+// the releases API rate-limits unauthenticated requests, which is what made tool
+// installs fail on hosts whose dispatch shell never exported a token.
+func githubToken(ctx context.Context) string {
+	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		return token
+	}
+	if token := os.Getenv("GH_TOKEN"); token != "" {
+		return token
+	}
+	if _, err := exec.LookPath("gh"); err != nil {
+		slog.DebugContext(ctx, "github token: no GITHUB_TOKEN/GH_TOKEN and gh not on PATH; requests will be unauthenticated")
+		return ""
+	}
+	out, err := exec.CommandContext(ctx, "gh", "auth", "token").Output()
+	if err != nil {
+		slog.DebugContext(ctx, "github token: gh auth token failed; requests will be unauthenticated", "err", err)
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
 func fetchLatestRelease(ctx context.Context, repo string) (githubRelease, error) {
 	var rel githubRelease
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.github.com/repos/"+repo+"/releases/latest", nil)
@@ -250,7 +274,7 @@ func fetchLatestRelease(ctx context.Context, repo string) (githubRelease, error)
 	}
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 	req.Header.Set("User-Agent", "dots")
-	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+	if token := githubToken(ctx); token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	client := &http.Client{Timeout: 120 * time.Second}
