@@ -494,7 +494,7 @@ func runInsideContainer(ctx context.Context) error {
 		return fmt.Errorf("second install build count: %w", err)
 	}
 
-	if err := freshsmoke.StalenessSmoke(ctx, smokeRepoDir, "dots/config/catalog.toml", "dots/internal/util/path.go", env, installTimeout); err != nil {
+	if err := freshsmoke.StalenessSmoke(ctx, smokeRepoDir, "config/dispatch.toml", "dots/internal/util/path.go", env, installTimeout); err != nil {
 		return fmt.Errorf("staleness smoke: %w", err)
 	}
 

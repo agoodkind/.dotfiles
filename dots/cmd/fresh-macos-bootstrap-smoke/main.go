@@ -146,7 +146,7 @@ func runDirect(ctx context.Context, repoRoot string) error {
 // baseline first and second install checks. Lock scenarios are skipped when
 // flock is unavailable, which is the default on macOS.
 func runSharedScenarios(ctx context.Context, repoRoot, dotsBinaryDir, lockFile string, env []string) error {
-	if err := freshsmoke.StalenessSmoke(ctx, repoRoot, "dots/config/catalog.toml", "dots/internal/util/path.go", env, defaultTimeout); err != nil {
+	if err := freshsmoke.StalenessSmoke(ctx, repoRoot, "config/dispatch.toml", "dots/internal/util/path.go", env, defaultTimeout); err != nil {
 		slog.ErrorContext(ctx, "staleness smoke", "err", err)
 		return fmt.Errorf("staleness smoke: %w", err)
 	}
