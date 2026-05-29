@@ -178,7 +178,7 @@ func (installer *Installer) runMacDefaults(ctx context.Context, logger *telemetr
 		}
 	}
 
-	shotDir := filepath.Join(installer.deps.Env.Getenv("HOME"), "Documents", "Screenshots")
+	shotDir := filepath.Join(installer.deps.Env.Getenv("HOME"), "Library", "Mobile Documents", "com~apple~CloudDocs", "Screenshots")
 	if err := installer.deps.Files.MkdirAll(filepath.Clean(shotDir), 0o755); err == nil {
 		_ = installer.deps.Commands.RunWithLogger(ctx, logger, "defaults", "write", "com.apple.screencapture", "location", shotDir)
 	}
