@@ -7,15 +7,15 @@ workers = [
     { name = "zwc-recompile", enabled = true },
     { name = "ssh-key-load-mac", enabled = true },
 ]
-status_dir = "$HOME/.cache/dotfiles_dispatch.lock"
-lock_file = "$HOME/.cache/dotfiles_dispatch.flock"
-log_path = "$HOME/.cache/dotfiles_dispatch.log"
+status_dir = "${XDG_CACHE_HOME}/dotfiles_dispatch.lock"
+lock_file = "${XDG_CACHE_HOME}/dotfiles_dispatch.flock"
+log_path = "${XDG_CACHE_HOME}/dotfiles_dispatch.log"
 weekly_update_hours = 168
-weekly_update_marker = "$HOME/.cache/dotfiles_weekly_update"
+weekly_update_marker = "${XDG_CACHE_HOME}/dotfiles_weekly_update"
 
 [prefer_cache]
-cache_file = "$HOME/.cache/zsh_prefer_aliases.zsh"
-invalidate_file = "$HOME/.cache/zsh_prefer_invalidate"
+cache_file = "${XDG_CACHE_HOME}/zsh_prefer_aliases.zsh"
+invalidate_file = "${XDG_CACHE_HOME}/zsh_prefer_invalidate"
 source_files = [
     "$DOTDOTFILES/zshrc/core/prefer.zsh",
     "$DOTDOTFILES/zshrc/commands/prefer-decls.zsh",
