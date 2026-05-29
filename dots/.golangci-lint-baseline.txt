@@ -1,4 +1,4 @@
-# golangci-lint: generated_at=2026-05-10T16:23:39Z
+# golangci-lint: generated_at=2026-05-29T06:31:56Z
 internal/sync/compilation/compilation.go:669:24: G703: Path traversal via taint analysis (gosec)	# golangci-lint:first_added=2026-05-05T02:39:16Z last_seen=2026-05-10T16:23:39Z
 internal/sync/tools/tools.go:409:24: G703: Path traversal via taint analysis (gosec)	# golangci-lint:first_added=2026-05-05T02:39:16Z last_seen=2026-05-10T16:23:39Z
 internal/telemetry/telemetry.go:356:13: G706: Log injection via taint analysis (gosec)	# golangci-lint:first_added=2026-05-10T07:17:19Z last_seen=2026-05-10T16:23:39Z
