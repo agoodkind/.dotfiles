@@ -493,6 +493,17 @@ func runInsideContainer(ctx context.Context) error {
 		return fmt.Errorf("second install build count: %w", err)
 	}
 
+	if freshsmoke.HasCommandOnPath("flock", freshsmoke.EnvValue(env, "PATH")) {
+		if err := runLockTimeoutSmoke(ctx, dotsBinaryDirectory, lockFile, env); err != nil {
+			return err
+		}
+	}
+
+	// Runs last: it replaces GO_LOCAL_ROOT's go to force a re-download.
+	if err := runStaleGoUpgradeSmoke(ctx, dotsBinaryDirectory, env); err != nil {
+		return err
+	}
+
 	fmt.Println("fresh-linux-bootstrap: passed")
 	return nil
 }
@@ -535,6 +546,103 @@ func runLockSmoke(ctx context.Context, dotsBinaryDirectory string, lockFile stri
 	if err := freshsmoke.AssertBuildCount(lockOutput, 1); err != nil {
 		slog.ErrorContext(ctx, "lock install build count", "err", err)
 		return fmt.Errorf("lock install build count: %w", err)
+	}
+	return nil
+}
+
+// lockTimeoutHold is how long the lock-timeout smoke holds the build lock, and
+// lockTimeoutWaitSeconds is the bounded wait passed to the install. The install
+// must give up near the wait rather than block for the full hold; the elapsed
+// budget leaves room for the go-run fallback to recompile from a warm cache.
+const (
+	lockTimeoutHold        = 20 * time.Second
+	lockTimeoutWaitSeconds = 3
+	lockTimeoutElapsedCap  = 15 * time.Second
+)
+
+// runLockTimeoutSmoke holds the build lock past the bounded wait and asserts the
+// install gives up quickly instead of blocking. Before the bounded wait existed,
+// a wedged build held this lock and every contending login blocked indefinitely,
+// piling up stuck processes. Against that prior behavior this scenario blocks for
+// the full hold and fails the elapsed-time assertion.
+func runLockTimeoutSmoke(ctx context.Context, dotsBinaryDirectory string, lockFile string, env []string) error {
+	slog.InfoContext(ctx, "running lock-timeout smoke")
+	if err := os.Remove(filepath.Join(dotsBinaryDirectory, "dots")); err != nil && !errors.Is(err, os.ErrNotExist) {
+		slog.ErrorContext(ctx, "removing cached dots binary for lock-timeout smoke", "err", err)
+		return fmt.Errorf("removing cached dots binary for lock-timeout smoke: %w", err)
+	}
+	lockReleased, err := freshsmoke.HoldBuildLockFor(lockFile, lockTimeoutHold)
+	if err != nil {
+		slog.ErrorContext(ctx, "holding build lock", "err", err)
+		return fmt.Errorf("holding build lock: %w", err)
+	}
+	waitEnv := append(append([]string{}, env...), fmt.Sprintf("DOTS_BUILD_LOCK_WAIT_SECONDS=%d", lockTimeoutWaitSeconds))
+	start := time.Now()
+	lockOutput, runErr := freshsmoke.RunInstall(ctx, smokeRepoDir, waitEnv, installTimeout, "--strict")
+	elapsed := time.Since(start)
+	<-lockReleased
+	if elapsed > lockTimeoutElapsedCap {
+		return fmt.Errorf("install blocked %s on a held build lock; expected to give up near %ds", elapsed, lockTimeoutWaitSeconds)
+	}
+	if runErr != nil {
+		slog.ErrorContext(ctx, "lock-timeout install run", "err", runErr)
+		return fmt.Errorf("lock-timeout install run: %w", runErr)
+	}
+	if err := freshsmoke.AssertContains(lockOutput, "waiting for build lock"); err != nil {
+		return fmt.Errorf("lock-timeout wait message: %w", err)
+	}
+	if err := freshsmoke.AssertContains(lockOutput, "timed out"); err != nil {
+		return fmt.Errorf("lock-timeout give-up message: %w", err)
+	}
+	if err := freshsmoke.AssertBuildCount(lockOutput, 0); err != nil {
+		return fmt.Errorf("lock-timeout build count: %w", err)
+	}
+	return nil
+}
+
+// runStaleGoUpgradeSmoke seeds a too-old go in GO_LOCAL_ROOT and asserts the
+// bootstrap re-downloads a go that satisfies go.mod instead of reusing the stale
+// one. This reproduces the host state that wedged vault: an old go left from an
+// earlier bootstrap against a go.mod whose required version has since advanced.
+// Against the prior bootstrap the stale go is reused and the build fails, so the
+// install run errors here.
+func runStaleGoUpgradeSmoke(ctx context.Context, dotsBinaryDirectory string, env []string) error {
+	slog.InfoContext(ctx, "running stale-go upgrade smoke")
+	goLocalRoot := freshsmoke.EnvValue(env, "GO_LOCAL_ROOT")
+	if goLocalRoot == "" {
+		return fmt.Errorf("GO_LOCAL_ROOT missing from smoke env")
+	}
+	goBinary := filepath.Join(goLocalRoot, "bin", "go")
+	staleStub := "#!/bin/sh\necho \"go version go1.22.7 linux/amd64\"\n"
+	if err := os.WriteFile(goBinary, []byte(staleStub), 0o600); err != nil {
+		slog.ErrorContext(ctx, "writing stale go stub", "err", err)
+		return fmt.Errorf("writing stale go stub: %w", err)
+	}
+	// The stub stands in for a real go binary, so it must be executable. This
+	// mirrors the WriteFile-then-Chmod pattern used for downloaded tools in
+	// internal/sync/tools, which keeps the WriteFile mode within gosec G306.
+	if err := os.Chmod(goBinary, 0o755); err != nil {
+		slog.ErrorContext(ctx, "making stale go stub executable", "err", err)
+		return fmt.Errorf("making stale go stub executable: %w", err)
+	}
+	if err := os.Remove(filepath.Join(dotsBinaryDirectory, "dots")); err != nil && !errors.Is(err, os.ErrNotExist) {
+		slog.ErrorContext(ctx, "removing cached dots binary for stale-go smoke", "err", err)
+		return fmt.Errorf("removing cached dots binary for stale-go smoke: %w", err)
+	}
+
+	upgradeOutput, err := freshsmoke.RunInstall(ctx, smokeRepoDir, env, installTimeout, "--strict")
+	if err != nil {
+		slog.ErrorContext(ctx, "stale-go upgrade install run", "err", err)
+		return fmt.Errorf("stale-go upgrade install run: %w", err)
+	}
+	if err := freshsmoke.AssertContains(upgradeOutput, "does not satisfy go.mod"); err != nil {
+		return fmt.Errorf("stale-go upgrade message: %w", err)
+	}
+	if err := freshsmoke.AssertBuildCount(upgradeOutput, 1); err != nil {
+		return fmt.Errorf("stale-go upgrade build count: %w", err)
+	}
+	if err := freshsmoke.AssertStrictInstallOutput(upgradeOutput); err != nil {
+		return fmt.Errorf("stale-go upgrade strict output: %w", err)
 	}
 	return nil
 }
