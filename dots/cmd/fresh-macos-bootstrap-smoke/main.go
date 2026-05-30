@@ -93,6 +93,13 @@ func runDirect(ctx context.Context, repoRoot string) error {
 		"GO_LOCAL_ROOT="+filepath.Join(home, ".local", "go"),
 		"GOMODCACHE="+filepath.Join(home, "go", "pkg", "mod"),
 		"GOCACHE="+filepath.Join(home, ".cache", "go-build"),
+		// Point Rust's homes at the smoke HOME so the sync bootstraps its own
+		// rustup with a default toolchain, like a fresh host. Without this the
+		// smoke inherits the CI runner's CARGO_HOME (a rustup proxy whose default
+		// toolchain lives under the real home), and cargo cannot resolve a
+		// toolchain under the temp HOME. Last value wins in exec env dedup.
+		"CARGO_HOME="+filepath.Join(home, ".cargo"),
+		"RUSTUP_HOME="+filepath.Join(home, ".rustup"),
 		// /usr/bin and /bin cover curl, tar, sw_vers, mktemp on macOS.
 		// /opt/homebrew/bin and /usr/local/go/bin are intentionally excluded
 		// so bootstrap-go.sh must download Go and install.sh must install Homebrew.
@@ -356,6 +363,10 @@ func runInsideVM(ctx context.Context, repoRoot string, githubTokenFile string) e
 		"GO_LOCAL_ROOT="+filepath.Join(home, ".local", "go"),
 		"GOMODCACHE="+filepath.Join(home, "go", "pkg", "mod"),
 		"GOCACHE="+filepath.Join(home, ".cache", "go-build"),
+		// See runDirect: keep Rust's homes under the smoke HOME so cargo resolves
+		// a toolchain the sync bootstraps itself rather than the runner's proxy.
+		"CARGO_HOME="+filepath.Join(home, ".cargo"),
+		"RUSTUP_HOME="+filepath.Join(home, ".rustup"),
 		"PATH=/usr/bin:/bin:/usr/sbin:/sbin",
 	)
 	token, err := readGitHubTokenFile(githubTokenFile)
