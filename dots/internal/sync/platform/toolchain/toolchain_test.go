@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"goodkind.io/.dotfiles/internal/catalog"
+	"goodkind.io/.dotfiles/internal/sync/tools"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
@@ -168,10 +169,13 @@ func TestInstallGoToolsIfNeededSkipsInstalledAndParsesCargoGitFeatures(t *testin
 		t.Fatalf("InstallGoToolsIfNeeded() returned error: %v", err)
 	}
 
+	// installCargoToolsIfNeeded resolves cargo through tools.CargoExecutable, so
+	// the expected command name is whatever that resolver returns on this host.
+	cargo := tools.CargoExecutable()
 	wantCalls := []toolchainCommandCall{
 		{command: "go", args: []string{"install", "example.com/missing@latest"}},
-		{command: "cargo", args: []string{"install", "cargo-missing"}},
-		{command: "cargo", args: []string{"install", "--git", "https://example.com/repo", "--features", "feat-a,feat-b"}},
+		{command: cargo, args: []string{"install", "cargo-missing"}},
+		{command: cargo, args: []string{"install", "--git", "https://example.com/repo", "--features", "feat-a,feat-b"}},
 	}
 	if !reflect.DeepEqual(commands.calls, wantCalls) {
 		t.Fatalf("command calls = %#v, want %#v", commands.calls, wantCalls)

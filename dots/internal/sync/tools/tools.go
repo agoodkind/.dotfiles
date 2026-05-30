@@ -178,11 +178,58 @@ func installToolViaCargo(ctx context.Context, tool catalog.ToolDeclaration, stri
 	if tool.Version != "" {
 		crateName += "@" + tool.Version
 	}
-	if err := cmdexec.RunWithLogger(ctx, logger, "cargo", "install", crateName, "--locked", "--force"); err != nil {
+	if err := cmdexec.RunWithLogger(ctx, logger, CargoExecutable(), "install", crateName, "--locked", "--force"); err != nil {
 		slog.WarnContext(ctx, "tools: installToolViaCargo failed", "crate", tool.CrateName, "err", err)
 		return fmt.Errorf("running cargo install %s: %w", tool.CrateName, err)
 	}
 	return nil
+}
+
+// CargoExecutable resolves the cargo binary to a concrete path so installs work
+// even when ~/.cargo/bin is not yet on PATH within this process. The rust
+// bootstrap, and CI's rust-toolchain action, installs cargo under $CARGO_HOME or
+// $HOME/.cargo, which the restricted bootstrap PATH does not include, so a bare
+// "cargo" lookup misses it (this is what failed the macOS smoke: CARGO_HOME held
+// the real binary while the smoke ran under a temp HOME and a system-only PATH).
+// This mirrors how the Go bootstrap resolves GO_BINARY to an absolute path.
+// Resolution order: PATH, then $CARGO_HOME/bin, then $HOME/.cargo/bin, then the
+// bare name as a last resort.
+func CargoExecutable() string {
+	if resolved, err := exec.LookPath("cargo"); err == nil {
+		return resolved
+	}
+	for _, dir := range cargoBinDirs() {
+		candidate := filepath.Join(dir, "cargo")
+		if isExecutableFile(candidate) {
+			return candidate
+		}
+	}
+	return "cargo"
+}
+
+// CargoAvailable reports whether cargo can be resolved on PATH or at the
+// canonical $CARGO_HOME / $HOME/.cargo install location.
+func CargoAvailable() bool {
+	return CargoExecutable() != "cargo"
+}
+
+func cargoBinDirs() []string {
+	dirs := make([]string, 0, 2)
+	if cargoHome := os.Getenv("CARGO_HOME"); cargoHome != "" {
+		dirs = append(dirs, filepath.Join(cargoHome, "bin"))
+	}
+	if home := os.Getenv("HOME"); home != "" {
+		dirs = append(dirs, filepath.Join(home, ".cargo", "bin"))
+	}
+	return dirs
+}
+
+func isExecutableFile(candidate string) bool {
+	info, err := os.Stat(filepath.Clean(candidate))
+	if err != nil {
+		return false
+	}
+	return !info.IsDir() && info.Mode()&0o111 != 0
 }
 
 func installToolFromScript(ctx context.Context, name, scriptURL string, args []string, logger *telemetry.Logger) error {

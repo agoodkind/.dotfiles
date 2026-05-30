@@ -183,18 +183,22 @@ func (installer *Installer) prependPathEntries(entries []string) {
 }
 
 func (installer *Installer) installCargoToolsIfNeeded(ctx context.Context, cfg *catalog.PackageConfig, logger *telemetry.Logger) error {
-	if !installer.deps.Lookup.HasCommand("cargo") {
+	// The injected lookup keeps tests deterministic; tools.CargoAvailable adds the
+	// real-host case where cargo sits at $CARGO_HOME/$HOME/.cargo off PATH so the
+	// rust bootstrap's freshly installed cargo is not silently skipped.
+	if !installer.deps.Lookup.HasCommand("cargo") && !tools.CargoAvailable() {
 		return nil
 	}
 	if len(cfg.CargoPackages) == 0 {
 		return nil
 	}
 
+	cargo := tools.CargoExecutable()
 	for _, tool := range cfg.CargoPackages {
 		if installer.deps.Lookup.HasCommand(tool) {
 			continue
 		}
-		if err := installer.deps.Commands.RunWithLogger(ctx, logger, "cargo", "install", tool); err != nil {
+		if err := installer.deps.Commands.RunWithLogger(ctx, logger, cargo, "install", tool); err != nil {
 			slog.WarnContext(ctx, "running cargo install", "err", err)
 			return fmt.Errorf("running cargo install: %w", err)
 		}
@@ -212,7 +216,7 @@ func (installer *Installer) installCargoToolsIfNeeded(ctx context.Context, cfg *
 				args = append(args, "--features", features)
 			}
 		}
-		if err := installer.deps.Commands.RunWithLogger(ctx, logger, "cargo", args...); err != nil {
+		if err := installer.deps.Commands.RunWithLogger(ctx, logger, cargo, args...); err != nil {
 			slog.WarnContext(ctx, "running cargo install", "err", err)
 			return fmt.Errorf("running cargo install: %w", err)
 		}
