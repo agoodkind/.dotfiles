@@ -73,6 +73,14 @@ type commandCall struct {
 	args    []string
 }
 
+type fakePPAChecker struct {
+	publishes map[string]bool
+}
+
+func (checker fakePPAChecker) PublishesForCurrentRelease(_ context.Context, ppa string) bool {
+	return checker.publishes[ppa]
+}
+
 func TestAptPackageNameMappings(t *testing.T) {
 	t.Parallel()
 
@@ -101,6 +109,7 @@ func TestInstallUbuntuPPAsRunsExpectedCommands(t *testing.T) {
 	installer := &Installer{
 		deps: Deps{
 			Privileged: privileged,
+			PPAChecker: fakePPAChecker{publishes: map[string]bool{"ppa:example/test": true}},
 		},
 	}
 
@@ -118,6 +127,57 @@ func TestInstallUbuntuPPAsRunsExpectedCommands(t *testing.T) {
 	}
 	if !reflect.DeepEqual(privileged.calls, want) {
 		t.Fatalf("privileged calls = %#v, want %#v", privileged.calls, want)
+	}
+}
+
+func TestInstallUbuntuPPAsSkipsUnpublishedPPA(t *testing.T) {
+	t.Parallel()
+
+	privileged := &fakePrivilegedRunner{}
+	installer := &Installer{
+		deps: Deps{
+			Privileged: privileged,
+			PPAChecker: fakePPAChecker{publishes: map[string]bool{"ppa:has/release": true}},
+		},
+	}
+
+	installer.installUbuntuPPAs(context.Background(), platform.Host{
+		GOOS:         platform.GOOSLinux,
+		Distribution: platform.DistributionUbuntu,
+	}, &catalog.PackageConfig{
+		UbuntuPPAs: []string{"ppa:has/release", "ppa:no/release"},
+	}, nil)
+
+	want := []commandCall{
+		{command: "apt-get", args: []string{"install", "-y", "-qq", "software-properties-common"}},
+		{command: "add-apt-repository", args: []string{"-y", "ppa:has/release"}},
+		{command: "apt-get", args: []string{"update", "-qq"}},
+	}
+	if !reflect.DeepEqual(privileged.calls, want) {
+		t.Fatalf("privileged calls = %#v, want %#v (unpublished PPA must be skipped without poisoning apt)", privileged.calls, want)
+	}
+}
+
+func TestParsePPAOwnerName(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		input     string
+		wantOwner string
+		wantName  string
+		wantOK    bool
+	}{
+		{input: "ppa:fujiapple/trippy", wantOwner: "fujiapple", wantName: "trippy", wantOK: true},
+		{input: "zhangsongcui3371/fastfetch", wantOwner: "zhangsongcui3371", wantName: "fastfetch", wantOK: true},
+		{input: "ppa:noslash", wantOwner: "", wantName: "", wantOK: false},
+		{input: "ppa:/missing-owner", wantOwner: "", wantName: "", wantOK: false},
+		{input: "ppa:owner/", wantOwner: "", wantName: "", wantOK: false},
+	}
+	for _, test := range tests {
+		owner, name, ok := parsePPAOwnerName(test.input)
+		if owner != test.wantOwner || name != test.wantName || ok != test.wantOK {
+			t.Fatalf("parsePPAOwnerName(%q) = (%q, %q, %v), want (%q, %q, %v)", test.input, owner, name, ok, test.wantOwner, test.wantName, test.wantOK)
+		}
 	}
 }
 

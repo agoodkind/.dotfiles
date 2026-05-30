@@ -5,8 +5,11 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"os"
 	"slices"
 	"strings"
+	"time"
 
 	"goodkind.io/.dotfiles/internal/catalog"
 	"goodkind.io/.dotfiles/internal/cmdexec"
@@ -16,6 +19,8 @@ import (
 	"goodkind.io/.dotfiles/internal/sync/platform/toolchain"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
+
+const ppaReleaseProbeTimeout = 15 * time.Second
 
 type commandRunner interface {
 	RunWithLogger(ctx context.Context, logger *telemetry.Logger, command string, args ...string) error
@@ -34,12 +39,22 @@ type privilegedRunner interface {
 	Run(ctx context.Context, logger *telemetry.Logger, command string, args ...string) error
 }
 
+// ppaPublishChecker reports whether a launchpad PPA publishes packages for the
+// running Ubuntu release. A freshly released Ubuntu (e.g. 26.04 "resolute")
+// often runs weeks ahead of third-party PPAs, so adding a PPA that has no
+// Release file for the current codename would poison every later apt-get with a
+// 404. Probing first lets the bootstrap skip those PPAs cleanly.
+type ppaPublishChecker interface {
+	PublishesForCurrentRelease(ctx context.Context, ppa string) bool
+}
+
 // Deps holds the Debian installer dependencies.
 type Deps struct {
 	Commands   commandRunner
 	Lookup     commandLookup
 	Catalog    catalogProvider
 	Privileged privilegedRunner
+	PPAChecker ppaPublishChecker
 }
 
 // Installer applies Debian-family sync steps.
@@ -64,6 +79,7 @@ func NewRealDeps() Deps {
 		Lookup:     productionDeps,
 		Catalog:    productionDeps,
 		Privileged: productionDeps,
+		PPAChecker: productionDeps,
 	}
 }
 
@@ -118,6 +134,10 @@ func (installer *Installer) installUbuntuPPAs(ctx context.Context, host platform
 
 	added := false
 	for _, ppa := range cfg.UbuntuPPAs {
+		if installer.deps.PPAChecker != nil && !installer.deps.PPAChecker.PublishesForCurrentRelease(ctx, ppa) {
+			common.InfoContextf(ctx, logger, "  skipping PPA %s: no release published for this Ubuntu version", ppa)
+			continue
+		}
 		common.InfoContextf(ctx, logger, "  adding PPA %s", ppa)
 		if err := installer.deps.Privileged.Run(ctx, logger, "add-apt-repository", "-y", ppa); err != nil {
 			slog.WarnContext(ctx, "installUbuntuPPAs: add-apt-repository", "ppa", ppa, "err", err)
@@ -132,6 +152,67 @@ func (installer *Installer) installUbuntuPPAs(ctx context.Context, host platform
 			slog.WarnContext(ctx, "installUbuntuPPAs: apt-get update after PPAs", "err", err)
 		}
 	}
+}
+
+// ppaPublishesForCurrentRelease reports whether a launchpad PPA publishes a
+// Release file for the running Ubuntu codename. It treats only an explicit
+// not-found as unpublished; a missing codename or any transient probe error
+// resolves to true so a flaky network never drops an otherwise-valid PPA.
+func ppaPublishesForCurrentRelease(ctx context.Context, ppa string) bool {
+	owner, name, ok := parsePPAOwnerName(ppa)
+	if !ok {
+		slog.DebugContext(ctx, "debian: PPA is not in ppa:owner/name form; adding without a release probe", "ppa", ppa)
+		return true
+	}
+	codename := ubuntuReleaseCodename()
+	if codename == "" {
+		slog.DebugContext(ctx, "debian: no Ubuntu codename found; adding PPA without a release probe", "ppa", ppa)
+		return true
+	}
+	releaseURL := fmt.Sprintf("https://ppa.launchpadcontent.net/%s/%s/ubuntu/dists/%s/Release", owner, name, codename)
+	request, err := http.NewRequestWithContext(ctx, http.MethodHead, releaseURL, nil)
+	if err != nil {
+		slog.DebugContext(ctx, "debian: building PPA release probe failed; adding PPA anyway", "ppa", ppa, "err", err)
+		return true
+	}
+	client := &http.Client{Timeout: ppaReleaseProbeTimeout}
+	response, err := client.Do(request)
+	if err != nil {
+		slog.DebugContext(ctx, "debian: PPA release probe request failed; adding PPA anyway", "ppa", ppa, "err", err)
+		return true
+	}
+	defer response.Body.Close()
+	published := response.StatusCode != http.StatusNotFound && response.StatusCode != http.StatusGone
+	slog.DebugContext(ctx, "debian: probed PPA release", "ppa", ppa, "codename", codename, "status", response.StatusCode, "published", published)
+	return published
+}
+
+// parsePPAOwnerName splits a "ppa:owner/name" reference into its owner and name.
+func parsePPAOwnerName(ppa string) (string, string, bool) {
+	trimmed := strings.TrimPrefix(ppa, "ppa:")
+	owner, name, found := strings.Cut(trimmed, "/")
+	if !found || owner == "" || name == "" {
+		return "", "", false
+	}
+	return owner, name, true
+}
+
+// ubuntuReleaseCodename reads VERSION_CODENAME from /etc/os-release (e.g. "noble"
+// for 24.04, "resolute" for 26.04), returning "" when it cannot be determined.
+func ubuntuReleaseCodename() string {
+	data, err := os.ReadFile("/etc/os-release")
+	if err != nil {
+		slog.Debug("debian: reading /etc/os-release failed", "err", err)
+		return ""
+	}
+	for line := range strings.SplitSeq(string(data), "\n") {
+		value, ok := strings.CutPrefix(line, "VERSION_CODENAME=")
+		if !ok {
+			continue
+		}
+		return strings.Trim(strings.TrimSpace(value), `"`)
+	}
+	return ""
 }
 
 func (installer *Installer) installDebianPackages(ctx context.Context, host platform.Host, logger *telemetry.Logger) error {
@@ -291,4 +372,8 @@ func (realDeps) Run(ctx context.Context, logger *telemetry.Logger, command strin
 		return fmt.Errorf("run privileged %s: %w", command, err)
 	}
 	return nil
+}
+
+func (realDeps) PublishesForCurrentRelease(ctx context.Context, ppa string) bool {
+	return ppaPublishesForCurrentRelease(ctx, ppa)
 }
