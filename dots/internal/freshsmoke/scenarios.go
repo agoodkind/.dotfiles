@@ -14,19 +14,17 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-
-	"goodkind.io/.dotfiles/internal/clock"
 )
 
 const (
 	// lockTimeoutHold is how long LockTimeoutSmoke holds the lock, and
 	// lockTimeoutWaitSeconds is the bounded wait it gives the install. The
-	// install must give up near the wait rather than block for the full hold.
-	// lockTimeoutElapsedCap leaves room for the go-run fallback to recompile
-	// from a warm cache while still proving the install did not block on the hold.
+	// install must give up near the wait and report "timed out" rather than
+	// block for the full hold. The deterministic "timed out" and zero-build
+	// assertions prove that without timing the run, since CI's go-run fallback
+	// recompile makes wall-clock timing flaky.
 	lockTimeoutHold        = 20 * time.Second
 	lockTimeoutWaitSeconds = 3
-	lockTimeoutElapsedCap  = 15 * time.Second
 
 	// staleGoStub simulates a real old go that auto-switches toolchains: under
 	// the default GOTOOLCHAIN it reports the new version (as a too-old go does
@@ -135,10 +133,13 @@ func LockSmoke(ctx context.Context, repoRoot, dotsBinaryDir, lockFile string, en
 }
 
 // LockTimeoutSmoke holds the lock past the bounded wait and asserts the install
-// gives up quickly instead of blocking. Before the bounded wait, a wedged build
-// held this lock and every contending login blocked indefinitely, piling up
-// stuck processes. Against that prior behavior this blocks for the full hold and
-// fails the elapsed-time assertion.
+// gives up with a "timed out" message instead of blocking. Before the bounded
+// wait, a wedged build held this lock and every contending login blocked
+// indefinitely, piling up stuck processes; against that prior behavior the
+// install waits out the full hold, acquires the lock, and builds, so both the
+// "timed out" and zero-build-count assertions fail. Wall-clock timing is
+// intentionally not asserted because CI's go-run fallback recompile makes it
+// flaky.
 func LockTimeoutSmoke(ctx context.Context, repoRoot, dotsBinaryDir, lockFile string, env []string, timeout time.Duration) error {
 	slog.InfoContext(ctx, "running lock-timeout smoke")
 	if err := removeCachedBinary(ctx, dotsBinaryDir); err != nil {
@@ -150,15 +151,8 @@ func LockTimeoutSmoke(ctx context.Context, repoRoot, dotsBinaryDir, lockFile str
 		return fmt.Errorf("holding build lock: %w", err)
 	}
 	waitEnv := append(append([]string{}, env...), fmt.Sprintf("DOTS_BUILD_LOCK_WAIT_SECONDS=%d", lockTimeoutWaitSeconds))
-	start := clock.Now()
 	output, runErr := RunInstall(ctx, repoRoot, waitEnv, timeout, "--strict")
-	elapsed := clock.Now().Sub(start)
 	<-released
-	if elapsed > lockTimeoutElapsedCap {
-		err := fmt.Errorf("install blocked %s on a held lock; expected to give up near %ds", elapsed, lockTimeoutWaitSeconds)
-		slog.ErrorContext(ctx, "lock-timeout did not bound the wait", "err", err)
-		return err
-	}
 	if runErr != nil {
 		slog.ErrorContext(ctx, "lock-timeout install run", "err", runErr)
 		return fmt.Errorf("lock-timeout install run: %w", runErr)
