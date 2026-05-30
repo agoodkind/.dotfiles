@@ -36,7 +36,10 @@ smoke-linux-debian:
 smoke-linux-ubuntu:
 	go run ./cmd/fresh-linux-bootstrap-smoke --image ubuntu:24.04 --repo-root $(REPO_ROOT)
 
-smoke-linux: smoke-linux-debian smoke-linux-ubuntu
+smoke-linux-ubuntu-2604:
+	go run ./cmd/fresh-linux-bootstrap-smoke --image ubuntu:26.04 --repo-root $(REPO_ROOT)
+
+smoke-linux: smoke-linux-debian smoke-linux-ubuntu smoke-linux-ubuntu-2604
 
 # macOS smokes run inside Tart VMs (requires: brew install cirruslabs/cli/tart).
 # These are safe for developer machines; CI runners use the binary directly.
@@ -51,5 +54,5 @@ smoke-macos: smoke-macos-tahoe smoke-macos-sequoia
 # smoke runs all 4 targets.
 smoke: smoke-linux smoke-macos
 
-.PHONY: smoke smoke-linux smoke-linux-debian smoke-linux-ubuntu \
+.PHONY: smoke smoke-linux smoke-linux-debian smoke-linux-ubuntu smoke-linux-ubuntu-2604 \
         smoke-macos smoke-macos-tahoe smoke-macos-sequoia
