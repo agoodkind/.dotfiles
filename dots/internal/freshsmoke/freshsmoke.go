@@ -163,6 +163,23 @@ func HoldBuildLockFor(lockFile string, duration time.Duration) (<-chan struct{},
 	return released, nil
 }
 
+// liveStream forwards smoke output to a live stream (stdout or stderr) while
+// swallowing that stream's write errors. Go's exec closes the child's output
+// pipe read-end if the copy goroutine's Write returns an error, which then kills
+// the child (and any subprocess sharing the pipe) with SIGPIPE, surfacing as
+// exit status 141. CI log collectors can transiently close the smoke's stdout,
+// so swallowing the live stream's errors keeps the pipe drained, leaves the
+// captured buffer the assertions read intact, and lets the child run to
+// completion.
+type liveStream struct {
+	stream io.Writer
+}
+
+func (s liveStream) Write(payload []byte) (int, error) {
+	_, _ = s.stream.Write(payload)
+	return len(payload), nil
+}
+
 // RunInstall runs install.sh --use-defaults from repoRoot with the given env,
 // streaming output to [os.Stdout]/[os.Stderr] and returning the combined output.
 func RunInstall(ctx context.Context, repoRoot string, env []string, timeout time.Duration, extraArgs ...string) (string, error) {
@@ -175,8 +192,8 @@ func RunInstall(ctx context.Context, repoRoot string, env []string, timeout time
 	cmd := exec.CommandContext(callCtx, "bash", args...)
 	cmd.Env = env
 	var output bytes.Buffer
-	cmd.Stdout = io.MultiWriter(os.Stdout, &output)
-	cmd.Stderr = io.MultiWriter(os.Stderr, &output)
+	cmd.Stdout = io.MultiWriter(liveStream{os.Stdout}, &output)
+	cmd.Stderr = io.MultiWriter(liveStream{os.Stderr}, &output)
 
 	err := cmd.Run()
 	text := output.String()
