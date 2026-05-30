@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -180,6 +181,33 @@ func (s liveStream) Write(payload []byte) (int, error) {
 	return len(payload), nil
 }
 
+// syncBuffer is a [bytes.Buffer] safe for concurrent writes. os/exec runs one
+// copy goroutine per captured stream, so a single [bytes.Buffer] shared by Stdout
+// and Stderr is written from two goroutines at once. [bytes.Buffer] is not safe
+// for concurrent use, and the race can return a short write; [io.MultiWriter]
+// then reports [io.ErrShortWrite], [io.Copy] stops, and os/exec closes the
+// child's pipe, killing it with SIGPIPE (exit 141 / "signal: broken pipe").
+// Serializing writes removes that race.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(payload []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	// bytes.Buffer.Write never returns a non-nil error, so the discarded error
+	// keeps this a clean io.Writer without a spurious wrap.
+	written, _ := b.buf.Write(payload)
+	return written, nil
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
 // RunInstall runs install.sh --use-defaults from repoRoot with the given env,
 // streaming output to [os.Stdout]/[os.Stderr] and returning the combined output.
 func RunInstall(ctx context.Context, repoRoot string, env []string, timeout time.Duration, extraArgs ...string) (string, error) {
@@ -191,7 +219,7 @@ func RunInstall(ctx context.Context, repoRoot string, env []string, timeout time
 	args := append([]string{installScript, "--use-defaults"}, extraArgs...)
 	cmd := exec.CommandContext(callCtx, "bash", args...)
 	cmd.Env = env
-	var output bytes.Buffer
+	var output syncBuffer
 	cmd.Stdout = io.MultiWriter(liveStream{os.Stdout}, &output)
 	cmd.Stderr = io.MultiWriter(liveStream{os.Stderr}, &output)
 
