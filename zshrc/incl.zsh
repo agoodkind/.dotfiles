@@ -13,6 +13,8 @@ if [[ -d "$HOME/Sites/swift-makefile" ]]; then
     export SWIFT_MK_DEV_DIR="$HOME/Sites/swift-makefile"
 fi
 
+export ANTHROPIC_BASE_URL=http://localhost:11434
+
 # shellcheck shell=bash
 source "$DOTDOTFILES/zshrc/core/perf.zsh"
 
