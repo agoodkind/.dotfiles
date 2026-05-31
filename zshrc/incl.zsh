@@ -15,6 +15,36 @@ fi
 
 export ANTHROPIC_BASE_URL=http://localhost:48723
 
+# Capture Codex and Claude CLI traffic through the local clyde MITM proxy via
+# HTTPS_PROXY plus the clyde CA, leaving each tool's auth and config untouched.
+# No-op when the clyde MITM CA is absent.
+_clyde_mitm_ca="$HOME/.local/state/clyde/mitm/ca/clyde-mitm-ca.crt"
+
+codex() {
+    if [[ ! -f "$_clyde_mitm_ca" ]]; then
+        command codex "$@"
+        return
+    fi
+    HTTPS_PROXY="http://localhost:48729" \
+        HTTP_PROXY="http://localhost:48729" \
+        ALL_PROXY="http://localhost:48729" \
+        CODEX_CA_CERTIFICATE="$_clyde_mitm_ca" \
+        command codex "$@"
+}
+
+claude() {
+    if [[ ! -f "$_clyde_mitm_ca" ]]; then
+        command claude "$@"
+        return
+    fi
+    HTTPS_PROXY="http://localhost:48728" \
+        HTTP_PROXY="http://localhost:48728" \
+        ALL_PROXY="http://localhost:48728" \
+        NO_PROXY="localhost,127.0.0.1,::1" \
+        NODE_EXTRA_CA_CERTS="$_clyde_mitm_ca" \
+        command claude "$@"
+}
+
 # shellcheck shell=bash
 source "$DOTDOTFILES/zshrc/core/perf.zsh"
 
