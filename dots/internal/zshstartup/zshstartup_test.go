@@ -21,15 +21,15 @@ func TestZinitDeferredLoadersWorkWithNoGlob(t *testing.T) {
 		{
 			directory: "zsh-users---zsh-autosuggestions",
 			file:      "zsh-autosuggestions.plugin.zsh",
-			body: `typeset -ga ZSH_AUTOSUGGEST_ACCEPT_WIDGETS=(forward-char end-of-line vi-forward-char)
+			body: `(( ! ${+ZSH_AUTOSUGGEST_ACCEPT_WIDGETS} )) && typeset -ga ZSH_AUTOSUGGEST_ACCEPT_WIDGETS=(forward-char end-of-line vi-forward-char vi-end-of-line vi-add-eol)
 function _zsh_autosuggest_start() { :; }
 function _zsh_autosuggest_bind_widgets() { :; }
 `,
 		},
 		{
-			directory: "zdharma-continuum---fast-syntax-highlighting",
-			file:      "fast-syntax-highlighting.plugin.zsh",
-			body:      "function _dotfiles_fast_syntax_loaded() { :; }\n",
+			directory: "zsh-users---zsh-syntax-highlighting",
+			file:      "zsh-syntax-highlighting.plugin.zsh",
+			body:      "function _dotfiles_zsh_syntax_loaded() { :; }\n",
 		},
 		{
 			directory: "Aloxaf---fzf-tab",
@@ -142,15 +142,11 @@ if [[ -n ${ZSH_AUTOSUGGEST_ACCEPT_WIDGETS[(r)vi-forward-char]} ]]; then
 fi
 
 _load_tier2
-_require_function _dotfiles_fast_syntax_loaded
+_require_function _dotfiles_zsh_syntax_loaded
 _require_function _dotfiles_fzf_tab_loaded
 _require_function _dotfiles_fzf_tab_source_loaded
-_require_value "main tab widget" "_dotfiles_tab_accept_or_complete" "$(_bound_widget main)"
 _require_value "emacs tab widget" "_dotfiles_tab_accept_or_complete" "$(_bound_widget emacs)"
 _require_value "viins tab widget" "_dotfiles_tab_accept_or_complete" "$(_bound_widget viins)"
-_require_value "main tab fallback" "fzf-completion" "${_DOTFILES_TAB_FALLBACK_WIDGETS[main]}"
-_require_value "emacs tab fallback" "fzf-tab-complete" "${_DOTFILES_TAB_FALLBACK_WIDGETS[emacs]}"
-_require_value "viins tab fallback" "fzf-completion" "${_DOTFILES_TAB_FALLBACK_WIDGETS[viins]}"
 
 _load_tier3
 _require_function _dotfiles_zsh_completions_loaded

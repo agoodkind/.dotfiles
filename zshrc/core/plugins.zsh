@@ -8,56 +8,18 @@ typeset -gA ZINIT
 ZINIT[OPTIMIZE_OUT_DISK_ACCESSES]=1
 
 typeset -ga _PERF_TREE_DEFERRED=()
-typeset -ga _DOTFILES_TAB_KEYMAPS=(main emacs viins)
-typeset -gA _DOTFILES_TAB_FALLBACK_WIDGETS=()
 
-function _dotfiles_capture_tab_fallback_widget() {
-    local keymap=$1
-    local current_binding=''
-    local current_widget=''
-
-    current_binding=$(builtin bindkey -M "$keymap" '^I') || current_binding=''
-    current_widget="${${current_binding##* }:-expand-or-complete}"
-    if [[ "$current_widget" == "_dotfiles_tab_accept_or_complete" ]]; then
-        if [[ "$keymap" == main ]]; then
-            current_widget="${_DOTFILES_TAB_FALLBACK_WIDGETS[$keymap]}"
-        else
-            current_widget="${_DOTFILES_TAB_FALLBACK_WIDGETS[main]:-${_DOTFILES_TAB_FALLBACK_WIDGETS[$keymap]}}"
-        fi
-    fi
-    if [[ -z "$current_widget" ]]; then
-        current_widget=expand-or-complete
-    fi
-
-    _DOTFILES_TAB_FALLBACK_WIDGETS[$keymap]=$current_widget
-}
-
-function _dotfiles_rebind_tab_accept_widget() {
-    local keymap
-
-    for keymap in "${_DOTFILES_TAB_KEYMAPS[@]}"; do
-        _dotfiles_capture_tab_fallback_widget "$keymap"
-        builtin bindkey -M "$keymap" '^I' _dotfiles_tab_accept_or_complete
-    done
-}
-
+# Tab: accept the zsh-autosuggestion if one is showing, otherwise call the
+# fzf-tab completion menu. POSTDISPLAY is set by zsh-autosuggestions to the
+# grayed-out suggestion text. The widget and bindkey lines are installed in
+# tier 2, after fzf-tab has registered fzf-tab-complete.
 function _dotfiles_tab_accept_or_complete() {
-    local active_keymap=${KEYMAP:-main}
-    local fallback_widget=${_DOTFILES_TAB_FALLBACK_WIDGETS[$active_keymap]:-${_DOTFILES_TAB_FALLBACK_WIDGETS[main]:-expand-or-complete}}
-
     if [[ -n "$POSTDISPLAY" ]]; then
-        if builtin zle -l autosuggest-accept >/dev/null 2>&1; then
-            zle autosuggest-accept
-            return 0
-        fi
+        zle autosuggest-accept
+    else
+        zle fzf-tab-complete
     fi
-    if [[ -z "$fallback_widget" || "$fallback_widget" == "_dotfiles_tab_accept_or_complete" ]]; then
-        fallback_widget=expand-or-complete
-    fi
-
-    zle "$fallback_widget"
 }
-zle -N _dotfiles_tab_accept_or_complete
 
 function _ready_mark() {
     local mark_depth=$1 mark_label=$2 mark_tag=${3:-}
@@ -93,14 +55,11 @@ function _load_tier1() {
     zicdreplay
     _ready_mark 2 compinit
 
+    # Drop forward-char and vi-forward-char from the accept-widget list BEFORE
+    # the plugin loads, so its single bind pass picks up the trimmed list.
+    typeset -ga ZSH_AUTOSUGGEST_ACCEPT_WIDGETS=(end-of-line vi-end-of-line vi-add-eol)
     zinit light zsh-users/zsh-autosuggestions
     _zsh_autosuggest_start
-    ZSH_AUTOSUGGEST_ACCEPT_WIDGETS=(${ZSH_AUTOSUGGEST_ACCEPT_WIDGETS:#forward-char})
-    ZSH_AUTOSUGGEST_ACCEPT_WIDGETS=(${ZSH_AUTOSUGGEST_ACCEPT_WIDGETS:#vi-forward-char})
-    if ((${+functions[_zsh_autosuggest_bind_widgets]} != 0)); then
-        _zsh_autosuggest_bind_widgets
-    fi
-    _dotfiles_rebind_tab_accept_widget
     _ready_mark 2 autosuggestions
 
     _PROFILE_TIMES[_time_to_ready_t1]=$(((EPOCHREALTIME - START_TIME) * 1000))
@@ -114,7 +73,7 @@ function _load_tier2() {
 
     _ready_mark 1 "tier 2" "sched +0"
 
-    zinit light zdharma-continuum/fast-syntax-highlighting
+    zinit light zsh-users/zsh-syntax-highlighting
     _ready_mark 2 syntax-hl
 
     zinit light Aloxaf/fzf-tab
@@ -122,7 +81,10 @@ function _load_tier2() {
     if (($+commands[fzf] != 0)); then
         source <(fzf --zsh)
     fi
-    _dotfiles_rebind_tab_accept_widget
+    # Install the Tab widget after fzf-tab has registered fzf-tab-complete.
+    zle -N _dotfiles_tab_accept_or_complete
+    bindkey -M emacs '^I' _dotfiles_tab_accept_or_complete
+    bindkey -M viins '^I' _dotfiles_tab_accept_or_complete
     _ready_mark 2 fzf-tab
 
     # shellcheck disable=SC2016
