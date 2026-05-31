@@ -236,7 +236,7 @@ func SyncCursorConfig(ctx context.Context, dotfiles string, logger *telemetry.Lo
 		return fmt.Errorf("ensuring cursor compatibility link: %w", err)
 	}
 
-	if err := compilation.SyncSkillDirs(source.Skills, filepath.Join(cursorDir, "skills")); err != nil {
+	if err := compilation.RenderSkillDirs(source.Skills, filepath.Join(cursorDir, "skills"), compilation.SkillRefMDC); err != nil {
 		slog.WarnContext(ctx, "workspace: syncing cursor skills", "err", err)
 		return fmt.Errorf("syncing cursor skills: %w", err)
 	}
@@ -287,7 +287,7 @@ func SyncClaudeConfig(ctx context.Context, dotfiles string, logger *telemetry.Lo
 	claudeDir := filepath.Join(os.Getenv("HOME"), ".claude")
 	source := compilation.ResolveAgentSource(dotfiles)
 
-	if err := compilation.SyncSkillDirs(source.Skills, filepath.Join(claudeDir, "skills")); err != nil {
+	if err := compilation.RenderSkillDirs(source.Skills, filepath.Join(claudeDir, "skills"), compilation.SkillRefMD); err != nil {
 		slog.WarnContext(ctx, "workspace: syncing claude skills", "err", err)
 		return fmt.Errorf("syncing claude skills: %w", err)
 	}
@@ -312,11 +312,15 @@ func SyncCodexConfig(ctx context.Context, dotfiles string, logger *telemetry.Log
 	agentsDir := filepath.Join(homeDir, ".agents")
 	source := compilation.ResolveAgentSource(dotfiles)
 
-	if err := compilation.SyncSkillDirs(source.Skills, filepath.Join(agentsDir, "skills")); err != nil {
+	if err := compilation.SyncRulesFromDir(source.Rules, filepath.Join(agentsDir, "rules")); err != nil {
+		slog.WarnContext(ctx, "workspace: syncing agents rules", "err", err)
+		return fmt.Errorf("syncing agents rules: %w", err)
+	}
+	if err := compilation.RenderSkillDirs(source.Skills, filepath.Join(agentsDir, "skills"), compilation.SkillRefMDC); err != nil {
 		slog.WarnContext(ctx, "workspace: syncing agents skills", "err", err)
 		return fmt.Errorf("syncing agents skills: %w", err)
 	}
-	if err := compilation.SyncSkillDirs(source.Skills, filepath.Join(codexDir, "skills")); err != nil {
+	if err := compilation.RenderSkillDirs(source.Skills, filepath.Join(codexDir, "skills"), compilation.SkillRefCodexDoc); err != nil {
 		slog.WarnContext(ctx, "workspace: syncing codex skills", "err", err)
 		return fmt.Errorf("syncing codex skills: %w", err)
 	}
@@ -348,31 +352,23 @@ func SyncGeminiConfig(ctx context.Context, dotfiles string, logger *telemetry.Lo
 	return nil
 }
 
-// SyncCopilotConfig compiles and syncs GitHub Copilot configuration files.
+// SyncCopilotConfig compiles and syncs GitHub Copilot configuration files into the global ~/.copilot directory.
 func SyncCopilotConfig(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
 	_ = ctx
 	_ = logger
 
 	source := compilation.ResolveAgentSource(dotfiles)
-	githubDir := filepath.Join(dotfiles, ".github")
+	copilotDir := filepath.Join(os.Getenv("HOME"), ".copilot")
 
-	if err := compilation.RenderRulesAsInstructionDoc(source.Rules, filepath.Join(dotfiles, "AGENTS.md"), "Agent Instructions"); err != nil {
-		slog.WarnContext(ctx, "workspace: rendering AGENTS.md", "err", err)
-		return fmt.Errorf("rendering AGENTS.md: %w", err)
-	}
-	if err := compilation.RenderRulesAsInstructionDoc(source.Rules, filepath.Join(githubDir, "copilot-instructions.md"), "Copilot Instructions"); err != nil {
+	if err := compilation.RenderRulesAsInstructionDoc(source.Rules, filepath.Join(copilotDir, "copilot-instructions.md"), "Copilot Instructions"); err != nil {
 		slog.WarnContext(ctx, "workspace: rendering copilot instructions", "err", err)
 		return fmt.Errorf("rendering copilot instructions: %w", err)
 	}
-	if err := compilation.RenderCopilotInstructionFiles(source.Rules, filepath.Join(githubDir, "instructions")); err != nil {
+	if err := compilation.RenderCopilotInstructionFiles(source.Rules, filepath.Join(copilotDir, "instructions")); err != nil {
 		slog.WarnContext(ctx, "workspace: rendering copilot instruction files", "err", err)
 		return fmt.Errorf("rendering copilot instruction files: %w", err)
 	}
-	if err := compilation.SyncSkillDirs(source.Skills, filepath.Join(githubDir, "skills")); err != nil {
-		slog.WarnContext(ctx, "workspace: syncing github skills", "err", err)
-		return fmt.Errorf("syncing github skills: %w", err)
-	}
-	if err := compilation.SyncSkillDirs(source.Skills, filepath.Join(os.Getenv("HOME"), ".copilot", "skills")); err != nil {
+	if err := compilation.RenderSkillDirs(source.Skills, filepath.Join(copilotDir, "skills"), compilation.SkillRefInstructions); err != nil {
 		slog.WarnContext(ctx, "workspace: syncing copilot skills", "err", err)
 		return fmt.Errorf("syncing copilot skills: %w", err)
 	}

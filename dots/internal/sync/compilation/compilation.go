@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -353,39 +354,201 @@ func RenderCodexRules(src string, dst string) error {
 	return writeFileIfChanged(dst, []byte(builder.String()))
 }
 
-// SyncSkillDirs copies skill subdirectories from src into dst as symlinks.
-func SyncSkillDirs(src string, dst string) error {
-	slog.Info("compilation: SyncSkillDirs")
-	if _, err := os.Stat(src); err != nil && !os.IsNotExist(err) {
-		slog.Warn("compilation: SyncSkillDirs stat failed", "src", src, "err", err)
+// SkillRefStyle describes how a provider's skill files reference rule documents.
+type SkillRefStyle struct {
+	// RulesRelDir is the relative directory from a skill directory to the rule files.
+	RulesRelDir string
+	// RuleExt is the rule file extension including the leading dot.
+	RuleExt string
+	// SingleDocAnchor links rule references to one instruction document using a section anchor.
+	SingleDocAnchor bool
+	// DocRelPath is the relative path to the single instruction document when SingleDocAnchor is true.
+	DocRelPath string
+}
+
+var (
+	// SkillRefMDC links rule references to sibling .mdc rule files (Cursor and the .agents mirror).
+	SkillRefMDC = SkillRefStyle{RulesRelDir: "../../rules", RuleExt: ".mdc", SingleDocAnchor: false, DocRelPath: ""}
+	// SkillRefMD links rule references to sibling .md rule files (Claude).
+	SkillRefMD = SkillRefStyle{RulesRelDir: "../../rules", RuleExt: ".md", SingleDocAnchor: false, DocRelPath: ""}
+	// SkillRefInstructions links rule references to Copilot .instructions.md files.
+	SkillRefInstructions = SkillRefStyle{RulesRelDir: "../../instructions", RuleExt: ".instructions.md", SingleDocAnchor: false, DocRelPath: ""}
+	// SkillRefCodexDoc links rule references to sections of the Codex AGENTS.md document.
+	SkillRefCodexDoc = SkillRefStyle{RulesRelDir: "", RuleExt: "", SingleDocAnchor: true, DocRelPath: "../../AGENTS.md"}
+)
+
+var (
+	skillRulesPattern = regexp.MustCompile(`\{\{\s*rules\s*\}\}`)
+	skillRulePattern  = regexp.MustCompile(`\{\{\s*rule\s+"([^"]+)"\s*\}\}`)
+)
+
+// RenderSkillDirs renders skill directories from src into dst, expanding rule-reference tokens for refStyle.
+func RenderSkillDirs(src string, dst string, refStyle SkillRefStyle) error {
+	slog.Info("compilation: RenderSkillDirs")
+	if _, err := os.Stat(src); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		slog.Warn("compilation: RenderSkillDirs stat failed", "src", src, "err", err)
 		return fmt.Errorf("stat %s: %w", src, err)
-	}
-	if sameFile(src, dst) {
-		return nil
 	}
 	if err := os.MkdirAll(dst, 0o755); err != nil {
 		return fmt.Errorf("creating directory %s: %w", dst, err)
 	}
+	ruleNames, err := ruleBaseNames(filepath.Join(filepath.Dir(src), "rules"))
+	if err != nil {
+		return err
+	}
 	entries, err := os.ReadDir(src)
-	if err != nil && !os.IsNotExist(err) {
-		slog.Warn("compilation: SyncSkillDirs ReadDir failed", "src", src, "err", err)
+	if err != nil {
+		slog.Warn("compilation: RenderSkillDirs ReadDir failed", "src", src, "err", err)
 		return fmt.Errorf("read dir %s: %w", src, err)
 	}
+	activeSkills := make(map[string]struct{}, len(entries))
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}
+		activeSkills[entry.Name()] = struct{}{}
 		source := filepath.Join(src, entry.Name())
 		target := filepath.Join(dst, entry.Name())
-		if sameFile(source, target) && !isSymlink(target) {
+		if isSymlink(target) {
+			_ = os.Remove(target)
+		}
+		if err := renderSkillDir(source, target, refStyle, ruleNames); err != nil {
+			return err
+		}
+	}
+	return removeMissingManagedSkillDirs(dst, activeSkills)
+}
+
+func renderSkillDir(src string, dst string, refStyle SkillRefStyle, ruleNames []string) error {
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		slog.Warn("compilation: renderSkillDir ReadDir failed", "src", src, "err", err)
+		return fmt.Errorf("read dir %s: %w", src, err)
+	}
+	if err := os.MkdirAll(dst, 0o755); err != nil {
+		return fmt.Errorf("creating directory %s: %w", dst, err)
+	}
+	for _, entry := range entries {
+		source := filepath.Join(src, entry.Name())
+		target := filepath.Join(dst, entry.Name())
+		if entry.IsDir() {
+			if err := renderSkillDir(source, target, refStyle, ruleNames); err != nil {
+				return err
+			}
 			continue
 		}
-		if common.IsSymlinkTo(target, source) {
+		content, readErr := os.ReadFile(source)
+		if readErr != nil {
+			slog.Warn("compilation: renderSkillDir read failed", "path", source, "err", readErr)
+			return fmt.Errorf("reading file %s: %w", source, readErr)
+		}
+		output := content
+		if entry.Name() == "SKILL.md" {
+			output = []byte(renderSkillTemplate(string(content), refStyle, ruleNames))
+		}
+		if isSymlink(target) {
+			_ = os.Remove(target)
+		}
+		if err := writeFileIfChanged(target, output); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func renderSkillTemplate(content string, refStyle SkillRefStyle, ruleNames []string) string {
+	rendered := skillRulesPattern.ReplaceAllStringFunc(content, func(string) string {
+		return renderRulesList(refStyle, ruleNames)
+	})
+	rendered = skillRulePattern.ReplaceAllStringFunc(rendered, func(match string) string {
+		groups := skillRulePattern.FindStringSubmatch(match)
+		return renderRuleLink(refStyle, groups[1])
+	})
+	return injectSkillMarker(rendered)
+}
+
+func renderRuleLink(refStyle SkillRefStyle, name string) string {
+	if refStyle.SingleDocAnchor {
+		return fmt.Sprintf("[%s](%s#%s)", name, refStyle.DocRelPath, name)
+	}
+	fileName := name + refStyle.RuleExt
+	return fmt.Sprintf("[%s](%s/%s)", fileName, refStyle.RulesRelDir, fileName)
+}
+
+func renderRulesList(refStyle SkillRefStyle, ruleNames []string) string {
+	var builder strings.Builder
+	for index, name := range ruleNames {
+		if index > 0 {
+			builder.WriteString("\n")
+		}
+		builder.WriteString("- ")
+		builder.WriteString(renderRuleLink(refStyle, name))
+	}
+	return builder.String()
+}
+
+func injectSkillMarker(content string) string {
+	if HasGeneratedMarker(content) {
+		return content
+	}
+	if strings.HasPrefix(content, "---\n") {
+		endMarker := "\n---\n"
+		frontmatterEnd := strings.Index(content[4:], endMarker)
+		if frontmatterEnd != -1 {
+			cut := 4 + frontmatterEnd + len(endMarker)
+			return content[:cut] + "\n" + GeneratedAgentHTMLMarker + "\n" + content[cut:]
+		}
+	}
+	return GeneratedAgentHTMLMarker + "\n\n" + content
+}
+
+func ruleBaseNames(rulesDir string) ([]string, error) {
+	files, err := sortedFilesWithExt(rulesDir, ".mdc")
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(files))
+	for _, file := range files {
+		names = append(names, strings.TrimSuffix(filepath.Base(file), filepath.Ext(file)))
+	}
+	return names, nil
+}
+
+func removeMissingManagedSkillDirs(dst string, activeSkills map[string]struct{}) error {
+	slog.Info("compilation: removeMissingManagedSkillDirs")
+	entries, err := os.ReadDir(dst)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		slog.Warn("compilation: removeMissingManagedSkillDirs ReadDir failed", "dst", dst, "err", err)
+		return fmt.Errorf("read dir %s: %w", dst, err)
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if _, ok := activeSkills[name]; ok {
 			continue
 		}
-		_ = os.Remove(target)
-		if err := os.Symlink(source, target); err != nil {
-			return fmt.Errorf("creating symlink %s: %w", target, err)
+		path := filepath.Join(dst, name)
+		if isSymlink(path) {
+			_ = os.Remove(path)
+			continue
+		}
+		if !entry.IsDir() {
+			continue
+		}
+		skillContent, readErr := os.ReadFile(filepath.Join(path, "SKILL.md"))
+		if readErr != nil {
+			continue
+		}
+		if !HasGeneratedMarker(string(skillContent)) {
+			continue
+		}
+		if err := os.RemoveAll(path); err != nil {
+			return fmt.Errorf("removing directory %s: %w", path, err)
 		}
 	}
 	return nil
