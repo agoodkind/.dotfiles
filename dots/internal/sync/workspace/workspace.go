@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -22,7 +21,6 @@ import (
 	"goodkind.io/.dotfiles/internal/cursor/syncer"
 	"goodkind.io/.dotfiles/internal/runner"
 	"goodkind.io/.dotfiles/internal/sync/common"
-	"goodkind.io/.dotfiles/internal/sync/compilation"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
@@ -230,42 +228,6 @@ func UpdateAuthorizedKeys(ctx context.Context, skipNetwork bool, logger *telemet
 	return nil
 }
 
-// SyncCursorConfig compiles and syncs Cursor editor configuration files.
-func SyncCursorConfig(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
-	cursorDir := filepath.Join(os.Getenv("HOME"), ".cursor")
-	source := compilation.ResolveAgentSource(dotfiles)
-
-	if err := compilation.EnsureCursorCompatibilityLink(dotfiles); err != nil {
-		slog.WarnContext(ctx, "workspace: ensuring cursor compatibility link", "err", err)
-		return fmt.Errorf("ensuring cursor compatibility link: %w", err)
-	}
-
-	if err := compilation.RenderSkillDirs(source.Skills, filepath.Join(cursorDir, "skills"), compilation.SkillRefMDC); err != nil {
-		slog.WarnContext(ctx, "workspace: syncing cursor skills", "err", err)
-		return fmt.Errorf("syncing cursor skills: %w", err)
-	}
-	if err := compilation.SyncRulesFromDir(source.Rules, filepath.Join(cursorDir, "rules")); err != nil {
-		slog.WarnContext(ctx, "workspace: syncing cursor rules", "err", err)
-		return fmt.Errorf("syncing cursor rules: %w", err)
-	}
-
-	if extra := os.Getenv("CURSOR_EXTRA_RULE_DIRS"); extra != "" {
-		extraDirs := strings.Split(extra, ":")
-		sort.Strings(extraDirs)
-		for _, dir := range extraDirs {
-			dir = strings.TrimSpace(dir)
-			if dir == "" {
-				continue
-			}
-			if err := compilation.SyncRulesFromDir(dir, filepath.Join(cursorDir, "rules")); err != nil {
-				slog.WarnContext(ctx, "workspace: syncing extra cursor rules from", "err", err)
-				return fmt.Errorf("syncing extra cursor rules from %s: %w", dir, err)
-			}
-		}
-	}
-	return nil
-}
-
 // SyncCursorUserRules syncs user rules to the Cursor editor on macOS.
 func SyncCursorUserRules(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
 	if runtime.GOOS != "darwin" {
@@ -282,99 +244,6 @@ func SyncCursorUserRules(ctx context.Context, dotfiles string, logger *telemetry
 	if err := syncer.Run(); err != nil {
 		slog.WarnContext(ctx, "workspace: running cursor syncer", "err", err)
 		return fmt.Errorf("running cursor syncer: %w", err)
-	}
-	return nil
-}
-
-// SyncClaudeConfig compiles and syncs Claude AI configuration files.
-func SyncClaudeConfig(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
-	claudeDir := filepath.Join(os.Getenv("HOME"), ".claude")
-	source := compilation.ResolveAgentSource(dotfiles)
-
-	if err := compilation.RenderSkillDirs(source.Skills, filepath.Join(claudeDir, "skills"), compilation.SkillRefMD); err != nil {
-		slog.WarnContext(ctx, "workspace: syncing claude skills", "err", err)
-		return fmt.Errorf("syncing claude skills: %w", err)
-	}
-	if err := compilation.SyncRulesFromDirAsMd(source.Rules, filepath.Join(claudeDir, "rules")); err != nil {
-		slog.WarnContext(ctx, "workspace: syncing claude rules", "err", err)
-		return fmt.Errorf("syncing claude rules: %w", err)
-	}
-	if err := compilation.RenderRulesAsInstructionDoc(source.Rules, filepath.Join(claudeDir, "CLAUDE.md"), "Claude Memory"); err != nil {
-		slog.WarnContext(ctx, "workspace: rendering claude instruction doc", "err", err)
-		return fmt.Errorf("rendering claude instruction doc: %w", err)
-	}
-	return nil
-}
-
-// SyncCodexConfig compiles and syncs Codex configuration files.
-func SyncCodexConfig(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
-	_ = ctx
-	_ = logger
-
-	homeDir := os.Getenv("HOME")
-	codexDir := filepath.Join(homeDir, ".codex")
-	agentsDir := filepath.Join(homeDir, ".agents")
-	source := compilation.ResolveAgentSource(dotfiles)
-
-	if err := compilation.SyncRulesFromDir(source.Rules, filepath.Join(agentsDir, "rules")); err != nil {
-		slog.WarnContext(ctx, "workspace: syncing agents rules", "err", err)
-		return fmt.Errorf("syncing agents rules: %w", err)
-	}
-	if err := compilation.RenderSkillDirs(source.Skills, filepath.Join(agentsDir, "skills"), compilation.SkillRefMDC); err != nil {
-		slog.WarnContext(ctx, "workspace: syncing agents skills", "err", err)
-		return fmt.Errorf("syncing agents skills: %w", err)
-	}
-	if err := compilation.RenderSkillDirs(source.Skills, filepath.Join(codexDir, "skills"), compilation.SkillRefCodexDoc); err != nil {
-		slog.WarnContext(ctx, "workspace: syncing codex skills", "err", err)
-		return fmt.Errorf("syncing codex skills: %w", err)
-	}
-	if err := compilation.RenderCodexRules(source.Rules, filepath.Join(codexDir, "rules", "dotfiles.rules")); err != nil {
-		slog.WarnContext(ctx, "workspace: rendering codex rules", "err", err)
-		return fmt.Errorf("rendering codex rules: %w", err)
-	}
-	if err := compilation.RenderRulesAsInstructionDoc(source.Rules, filepath.Join(codexDir, "AGENTS.md"), "Codex Instructions"); err != nil {
-		slog.WarnContext(ctx, "workspace: rendering codex instruction doc", "err", err)
-		return fmt.Errorf("rendering codex instruction doc: %w", err)
-	}
-
-	return nil
-}
-
-// SyncGeminiConfig compiles and syncs Gemini configuration files.
-func SyncGeminiConfig(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
-	_ = ctx
-	_ = logger
-
-	source := compilation.ResolveAgentSource(dotfiles)
-	geminiDir := filepath.Join(os.Getenv("HOME"), ".gemini")
-
-	if err := compilation.RenderRulesAsInstructionDoc(source.Rules, filepath.Join(geminiDir, "GEMINI.md"), "Gemini Instructions"); err != nil {
-		slog.WarnContext(ctx, "workspace: rendering gemini instruction doc", "err", err)
-		return fmt.Errorf("rendering gemini instruction doc: %w", err)
-	}
-
-	return nil
-}
-
-// SyncCopilotConfig compiles and syncs GitHub Copilot configuration files into the global ~/.copilot directory.
-func SyncCopilotConfig(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
-	_ = ctx
-	_ = logger
-
-	source := compilation.ResolveAgentSource(dotfiles)
-	copilotDir := filepath.Join(os.Getenv("HOME"), ".copilot")
-
-	if err := compilation.RenderRulesAsInstructionDoc(source.Rules, filepath.Join(copilotDir, "copilot-instructions.md"), "Copilot Instructions"); err != nil {
-		slog.WarnContext(ctx, "workspace: rendering copilot instructions", "err", err)
-		return fmt.Errorf("rendering copilot instructions: %w", err)
-	}
-	if err := compilation.RenderCopilotInstructionFiles(source.Rules, filepath.Join(copilotDir, "instructions")); err != nil {
-		slog.WarnContext(ctx, "workspace: rendering copilot instruction files", "err", err)
-		return fmt.Errorf("rendering copilot instruction files: %w", err)
-	}
-	if err := compilation.RenderSkillDirs(source.Skills, filepath.Join(copilotDir, "skills"), compilation.SkillRefInstructions); err != nil {
-		slog.WarnContext(ctx, "workspace: syncing copilot skills", "err", err)
-		return fmt.Errorf("syncing copilot skills: %w", err)
 	}
 	return nil
 }

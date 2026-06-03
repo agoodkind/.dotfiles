@@ -26,9 +26,9 @@ func loadRuleDirectories() []string {
 	if rawDefaultRuleDir == "" {
 		home, homeErr := os.UserHomeDir()
 		if homeErr != nil {
-			rawDefaultRuleDir = ".dotfiles/.agents/rules"
+			rawDefaultRuleDir = ".cursor/rules"
 		} else {
-			rawDefaultRuleDir = filepath.Join(home, ".dotfiles/.agents/rules")
+			rawDefaultRuleDir = filepath.Join(home, ".cursor/rules")
 		}
 	}
 

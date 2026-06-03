@@ -1,0 +1,114 @@
+# Declarative agent-corpus fan-out.
+#
+# Each [[output]] writes one artifact from corpus/ to a user-wide destination.
+# The dots sync engine loads this file, joins each dest onto $HOME, skips rows
+# whose optional os does not match the running OS, and dispatches on kind.
+#
+# kind values:
+#   skills                rendered skill directories (needs ref_style)
+#   rule-files            each rule written as a marker-stamped file (needs rule_ext)
+#   instruction-doc       all rules concatenated into one document (needs title)
+#   per-file-instructions each rule rendered as a .instructions.md file
+#   codex-rules           all rules concatenated into the Codex .rules format
+#
+# ref_style values (skills only): mdc | md | instructions | codex-doc
+#
+# VSCode Copilot and Claude Desktop need no rows here. They read the canonical
+# directories below by default: VSCode scans ~/.copilot/instructions, ~/.claude/rules,
+# ~/.copilot/skills, ~/.claude/skills, ~/.agents/skills, and ~/.claude/CLAUDE.md;
+# Claude Desktop shares ~/.claude with Claude Code.
+
+# Claude Code (and Claude Desktop)
+[[output]]
+provider  = "claude"
+kind      = "skills"
+dest      = ".claude/skills"
+ref_style = "md"
+
+[[output]]
+provider = "claude"
+kind     = "rule-files"
+dest     = ".claude/rules"
+rule_ext = ".md"
+
+[[output]]
+provider = "claude"
+kind     = "instruction-doc"
+dest     = ".claude/CLAUDE.md"
+title    = "Claude Memory"
+
+# Cursor
+[[output]]
+provider  = "cursor"
+kind      = "skills"
+dest      = ".cursor/skills"
+ref_style = "mdc"
+
+[[output]]
+provider = "cursor"
+kind     = "rule-files"
+dest     = ".cursor/rules"
+rule_ext = ".mdc"
+
+# Shared cross-agent directory (read by Zed, VSCode, and Codex)
+[[output]]
+provider  = "agents"
+kind      = "skills"
+dest      = ".agents/skills"
+ref_style = "mdc"
+
+[[output]]
+provider = "agents"
+kind     = "rule-files"
+dest     = ".agents/rules"
+rule_ext = ".mdc"
+
+# Codex
+[[output]]
+provider  = "codex"
+kind      = "skills"
+dest      = ".codex/skills"
+ref_style = "codex-doc"
+
+[[output]]
+provider = "codex"
+kind     = "codex-rules"
+dest     = ".codex/rules/dotfiles.rules"
+
+[[output]]
+provider = "codex"
+kind     = "instruction-doc"
+dest     = ".codex/AGENTS.md"
+title    = "Codex Instructions"
+
+# Gemini
+[[output]]
+provider = "gemini"
+kind     = "instruction-doc"
+dest     = ".gemini/GEMINI.md"
+title    = "Gemini Instructions"
+
+# GitHub Copilot
+[[output]]
+provider = "copilot"
+kind     = "instruction-doc"
+dest     = ".copilot/copilot-instructions.md"
+title    = "Copilot Instructions"
+
+[[output]]
+provider = "copilot"
+kind     = "per-file-instructions"
+dest     = ".copilot/instructions"
+
+[[output]]
+provider  = "copilot"
+kind      = "skills"
+dest      = ".copilot/skills"
+ref_style = "instructions"
+
+# Zed (first-party agent reads user-global rules from this doc)
+[[output]]
+provider = "zed"
+kind     = "instruction-doc"
+dest     = ".config/zed/AGENTS.md"
+title    = "Zed Instructions"

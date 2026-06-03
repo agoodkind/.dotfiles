@@ -1,0 +1,34 @@
+---
+name: reorient
+description: Run the /reorient command workflow from the dotfiles agent command library when the user explicitly asks for /reorient or mentions this command by name. Use after /compact to rebuild dropped detail from the recorded conversation and the codebase, then resume the work.
+---
+
+# Reorient
+
+`/compact` replaces the live conversation with a summary. The summary keeps the shape of the work and drops the detail: exact file paths, prior decisions, tool results, and the step that was in progress. `/reorient` rebuilds that detail from two sources that still hold it in full, the recorded conversation transcript and the codebase, states where the work stands, and continues from the next concrete step.
+
+Run this skill when the user types "reorient" or "/reorient". An argument (`/reorient <topic>`) names the thread to focus the conversation search on. Without an argument, focus on the most recent task in the current session.
+
+## Output standard
+
+Read [plain/SKILL.md](../plain/SKILL.md) in full and apply it to every line this skill produces. In short: the first sentence of each explanation states what the system does in plain subject and verb terms, an internal label appears only after the sentence that names what it does, every line reads correctly offline with each reference defined inline, and the output carries load-bearing content once with no preface, no duplication, and no editorial.
+
+Read [enforce-rules/SKILL.md](../enforce-rules/SKILL.md) in full and apply it for the duration of the task. Output contains zero em dashes and zero en dashes in any form.
+
+## Steps
+
+1. Recover the prior conversation through clyde, the local server that indexes Claude and Codex conversation transcripts and exposes them as MCP tools. Call `clyde_list_conversations` to find the current session identifier. Call `clyde_search_conversation` with the topic to locate the task thread; it returns a `result_id`. Call `clyde_get_context` around the matches to read the exact decisions, file paths, and in-flight step, and call `clyde_analyze_results` with the `result_id` when the matches need a focused summary. Treat the compaction summary as an index into this transcript, not as the source of truth.
+
+2. Discover code through claude-context, the local server that indexes the repository for semantic search and exposes it as MCP tools, rather than through grep. Follow {{.Rule "claude-context"}} in full: check `get_indexing_status` on the absolute repository root first, ask the user before indexing and wait for an explicit yes, prefer `search_code` with `extensionFilter` set to the source language, and fall back to `grep` or `ripgrep` only after one corrective pass still returns documentation or generated files.
+
+3. State the reorientation brief: the task, what is done, what is in flight, the exact files and symbols in play, and the next concrete step. Each line stands on its own when read offline.
+
+4. Resume the work from the next concrete step.
+
+## Critical rules
+
+- Produce the brief and the continued work only. No apology, no preface, no acknowledgment of the command.
+- Recover every fact from the transcript and the code. Do not reconstruct facts from the compaction summary.
+- Semantic search through claude-context precedes grep for conceptual discovery, under {{.Rule "claude-context"}}.
+- Every line of output reads correctly offline, with each ticket, symbol, path, and reference defined inline.
+- State how the work stands today. Do not narrate the compaction or what the context held before it.

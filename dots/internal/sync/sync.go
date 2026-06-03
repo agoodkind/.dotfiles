@@ -13,6 +13,7 @@ import (
 
 	"goodkind.io/.dotfiles/internal/runner"
 	"goodkind.io/.dotfiles/internal/sync/compilation"
+	"goodkind.io/.dotfiles/internal/sync/corpus"
 	"goodkind.io/.dotfiles/internal/sync/platform"
 	"goodkind.io/.dotfiles/internal/sync/platform/debian"
 	"goodkind.io/.dotfiles/internal/sync/platform/macos"
@@ -216,12 +217,8 @@ func runLinkSteps(options Options, dotfiles string, logger *telemetry.Logger, st
 }
 
 func runConfigSteps(options Options, dotfiles string, logger *telemetry.Logger, step syncStep) error {
-	if err := step("Syncing Cursor configuration", false, func(ctx context.Context) error {
-		if options.SkipCursorSync {
-			logger.InfoContext(ctx, "  skipping cursor config sync")
-			return nil
-		}
-		return workspace.SyncCursorConfig(ctx, dotfiles, logger)
+	if err := step("Syncing agent corpus", false, func(ctx context.Context) error {
+		return corpus.Sync(ctx, dotfiles, logger)
 	}); err != nil {
 		return err
 	}
@@ -231,26 +228,6 @@ func runConfigSteps(options Options, dotfiles string, logger *telemetry.Logger, 
 			return nil
 		}
 		return workspace.SyncCursorUserRules(ctx, dotfiles, logger)
-	}); err != nil {
-		return err
-	}
-	if err := step("Syncing Claude configuration", false, func(ctx context.Context) error {
-		return workspace.SyncClaudeConfig(ctx, dotfiles, logger)
-	}); err != nil {
-		return err
-	}
-	if err := step("Syncing Codex configuration", false, func(ctx context.Context) error {
-		return workspace.SyncCodexConfig(ctx, dotfiles, logger)
-	}); err != nil {
-		return err
-	}
-	if err := step("Syncing Gemini configuration", false, func(ctx context.Context) error {
-		return workspace.SyncGeminiConfig(ctx, dotfiles, logger)
-	}); err != nil {
-		return err
-	}
-	if err := step("Syncing Copilot configuration", false, func(ctx context.Context) error {
-		return workspace.SyncCopilotConfig(ctx, dotfiles, logger)
 	}); err != nil {
 		return err
 	}

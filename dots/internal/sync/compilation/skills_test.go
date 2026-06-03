@@ -24,8 +24,8 @@ func setupAgentSource(t *testing.T) (skillsDir string) {
 	writeTestFile(t, filepath.Join(rulesDir, "general.mdc"), "---\ndescription: g\n---\ngeneral body\n")
 	writeTestFile(t, filepath.Join(rulesDir, "code.mdc"), "---\ndescription: c\n---\ncode body\n")
 	skillsDir = filepath.Join(root, "skills")
-	skillBody := "---\nname: enforce-rules\ndescription: d\n---\n\nRead:\n\n{{rules}}\n\nOne: {{rule \"code\"}}\n"
-	writeTestFile(t, filepath.Join(skillsDir, "enforce-rules", "SKILL.md"), skillBody)
+	skillBody := "---\nname: enforce-rules\ndescription: d\n---\n\nRead:\n\n{{.Rules}}\n\nOne: {{.Rule \"code\"}}\n"
+	writeTestFile(t, filepath.Join(skillsDir, "enforce-rules", "SKILL.md.tmpl"), skillBody)
 	return skillsDir
 }
 
@@ -174,12 +174,12 @@ func TestRenderSkillDirsReplacesSymlinkedSkillDir(t *testing.T) {
 		t.Errorf("rendered skill still contains unexpanded token:\n%s", string(rendered))
 	}
 
-	source, err := os.ReadFile(filepath.Join(src, "enforce-rules", "SKILL.md"))
+	source, err := os.ReadFile(filepath.Join(src, "enforce-rules", "SKILL.md.tmpl"))
 	if err != nil {
 		t.Fatalf("reading source skill: %v", err)
 	}
-	if !strings.Contains(string(source), "{{rules}}") {
-		t.Errorf("source skill template was modified, expected {{rules}} token to remain:\n%s", string(source))
+	if !strings.Contains(string(source), "{{.Rules}}") {
+		t.Errorf("source skill template was modified, expected {{.Rules}} token to remain:\n%s", string(source))
 	}
 }
 
@@ -191,7 +191,7 @@ func TestRenderSkillDirsReplacesSymlinkTarget(t *testing.T) {
 		t.Fatalf("creating skill dir: %v", err)
 	}
 	link := filepath.Join(dst, "enforce-rules", "SKILL.md")
-	if err := os.Symlink(filepath.Join(src, "enforce-rules", "SKILL.md"), link); err != nil {
+	if err := os.Symlink(filepath.Join(src, "enforce-rules", "SKILL.md.tmpl"), link); err != nil {
 		t.Fatalf("creating symlink: %v", err)
 	}
 
@@ -212,5 +212,43 @@ func TestRenderSkillDirsReplacesSymlinkTarget(t *testing.T) {
 	}
 	if !HasGeneratedMarker(string(rendered)) {
 		t.Errorf("expected rendered skill to carry generated marker:\n%s", string(rendered))
+	}
+}
+
+func TestRenderSkillDirsTemplateParseError(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "rules", "code.mdc"), "---\ndescription: c\n---\ncode body\n")
+	skillsDir := filepath.Join(root, "skills")
+	writeTestFile(t, filepath.Join(skillsDir, "broken", "SKILL.md.tmpl"), "---\nname: broken\n---\n\n{{.Rule \"code\"\n")
+
+	dst := filepath.Join(t.TempDir(), "skills")
+	if err := RenderSkillDirs(skillsDir, dst, SkillRefMDC); err == nil {
+		t.Fatalf("expected a parse error for the malformed template, got nil")
+	}
+}
+
+func TestRenderRuleFiles(t *testing.T) {
+	srcRoot := t.TempDir()
+	writeTestFile(t, filepath.Join(srcRoot, "general.mdc"), "---\ndescription: g\n---\ngeneral body\n")
+	writeTestFile(t, filepath.Join(srcRoot, "code.mdc"), "---\ndescription: c\n---\ncode body\n")
+
+	dst := filepath.Join(t.TempDir(), "rules")
+	stale := filepath.Join(dst, "old.mdc")
+	writeTestFile(t, stale, GeneratedAgentHTMLMarker+"\nstale\n")
+
+	if err := RenderRuleFiles(srcRoot, dst, ".mdc"); err != nil {
+		t.Fatalf("RenderRuleFiles: %v", err)
+	}
+	for _, name := range []string{"general.mdc", "code.mdc"} {
+		got, err := os.ReadFile(filepath.Join(dst, name))
+		if err != nil {
+			t.Fatalf("reading %s: %v", name, err)
+		}
+		if !HasGeneratedMarker(string(got)) {
+			t.Errorf("rule file %s missing generated marker:\n%s", name, string(got))
+		}
+	}
+	if _, err := os.Stat(stale); !os.IsNotExist(err) {
+		t.Errorf("expected stale managed rule file to be pruned, stat err: %v", err)
 	}
 }

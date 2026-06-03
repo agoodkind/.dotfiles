@@ -4,7 +4,7 @@ package constants
 // APIBase and the following constants define Cursor API endpoints, authentication headers, and protobuf field identifiers.
 const (
 	APIBase             = "https://api2.cursor.sh/aiserver.v1.AiService"
-	DefaultRulesDir     = ".dotfiles/.agents/rules"
+	DefaultRulesDir     = ".cursor/rules"
 	DefaultWorkspaceURL = "https://github.com/agoodkind/.dotfiles"
 	MaxParallelWorkers  = 10
 

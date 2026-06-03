@@ -21,11 +21,6 @@ mypy_cache/
 # Machine-local email identity overrides (may contain work-specific paths)
 git-global-hooks/email-rules.local
 
-# Generated agent configuration fan-out - source of truth lives in .agents/
-/.cursor
-/.claude/
-/.github/copilot-instructions.md
-/.github/instructions/
-/.github/prompts/
-/.github/skills/
-/.codex/rules/dotfiles.rules
+# Agent corpus source of truth lives in corpus/. The fan-out is rendered only
+# under $HOME (~/.claude, ~/.cursor, ~/.codex, ~/.agents, ~/.copilot, ~/.gemini,
+# ~/.config/zed), never repo-local, so no repo-local agent dirs are generated.
