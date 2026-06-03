@@ -5,9 +5,15 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
+
+	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
 func TestZinitUpdateScriptKeepsUpdateExitNonfatal(t *testing.T) {
@@ -27,6 +33,104 @@ func TestZinitUpdateScriptKeepsUpdateExitNonfatal(t *testing.T) {
 
 	if strings.Contains(zinitUpdateScript, "&& update_rc == 0") {
 		t.Fatal("zinitUpdateScript treats zinit update's unreliable exit code as fatal")
+	}
+}
+
+func TestParseBrewPermissionDeniedPaths(t *testing.T) {
+	output := strings.Join([]string{
+		"==> Running `brew cleanup`...",
+		"Removing: /Users/x/Library/Caches/Homebrew/foo... (1KB)",
+		"Error: Permission denied @ apply2files - /opt/homebrew/lib/python3.14/site-packages/__pycache__/typing_extensions.cpython-314.pyc",
+		"Error: Permission denied @ rb_sysopen - /opt/homebrew/var/log/keep",
+		"Error: Permission denied @ apply2files - /opt/homebrew/lib/python3.14/site-packages/__pycache__/typing_extensions.cpython-314.pyc",
+	}, "\n")
+	got := parseBrewPermissionDeniedPaths(output)
+	want := []string{
+		"/opt/homebrew/lib/python3.14/site-packages/__pycache__/typing_extensions.cpython-314.pyc",
+		"/opt/homebrew/var/log/keep",
+	}
+	if len(got) != len(want) {
+		t.Fatalf("parsed %d paths, want %d: %#v", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("path %d = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+// TestRestoreOwnershipChainsRepairsChainOnly exercises the real sudo-backed
+// repair end to end. It makes a nested cache dir and file root-owned, then
+// asserts the repair restores that broken chain to the current user, reports
+// the two repaired paths, and leaves a sibling file untouched. It is gated
+// because it requires passwordless sudo and mutates ownership.
+func TestRestoreOwnershipChainsRepairsChainOnly(t *testing.T) {
+	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
+		t.Skip("requires unix chown semantics")
+	}
+	if os.Getenv("DOTFILES_RUN_REAL_SUDO_TEST") != "1" {
+		t.Skip("set DOTFILES_RUN_REAL_SUDO_TEST=1 to run the sudo-backed ownership repair test")
+	}
+	if _, err := exec.LookPath("sudo"); err != nil {
+		t.Skip("sudo is not available")
+	}
+	current, err := user.Current()
+	if err != nil {
+		t.Fatalf("resolving current user: %v", err)
+	}
+	uid, err := strconv.Atoi(current.Uid)
+	if err != nil {
+		t.Fatalf("parsing current uid %q: %v", current.Uid, err)
+	}
+
+	root := t.TempDir()
+	sibling := filepath.Join(root, "sibling.txt")
+	if err := os.WriteFile(sibling, []byte("keep"), 0o644); err != nil {
+		t.Fatalf("writing sibling: %v", err)
+	}
+	cacheDir := filepath.Join(root, "site-packages", "__pycache__")
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		t.Fatalf("creating cache dir: %v", err)
+	}
+	target := filepath.Join(cacheDir, "mod.pyc")
+	if err := os.WriteFile(target, []byte("orphan"), 0o644); err != nil {
+		t.Fatalf("writing target: %v", err)
+	}
+	if output, err := exec.Command("sudo", "-n", "chown", "-R", "root", cacheDir).CombinedOutput(); err != nil {
+		t.Skipf("cannot chown to root without a password prompt: %v\n%s", err, output)
+	}
+
+	logPath := filepath.Join(t.TempDir(), "repair.log")
+	logger, err := telemetry.NewLogger(logPath)
+	if err != nil {
+		t.Fatalf("creating logger: %v", err)
+	}
+	defer logger.Close()
+
+	count, err := restoreOwnershipChains(context.Background(), logger, []string{target})
+	if err != nil {
+		t.Fatalf("restoreOwnershipChains returned error: %v", err)
+	}
+	if count != 2 {
+		t.Fatalf("restored %d paths, want 2 (the file and its __pycache__ ancestor)", count)
+	}
+
+	for _, repaired := range []string{target, cacheDir} {
+		info, err := os.Stat(repaired)
+		if err != nil {
+			t.Fatalf("stat %s after repair: %v", repaired, err)
+		}
+		if int(info.Sys().(*syscall.Stat_t).Uid) != uid {
+			t.Fatalf("%s uid = %d after repair, want %d", repaired, info.Sys().(*syscall.Stat_t).Uid, uid)
+		}
+	}
+
+	info, err := os.Stat(sibling)
+	if err != nil {
+		t.Fatalf("stat sibling: %v", err)
+	}
+	if int(info.Sys().(*syscall.Stat_t).Uid) != uid {
+		t.Fatal("sibling ownership changed; repair touched a path outside the broken chain")
 	}
 }
 
