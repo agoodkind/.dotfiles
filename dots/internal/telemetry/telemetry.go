@@ -14,6 +14,7 @@ import (
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 	"goodkind.io/.dotfiles/internal/clock"
+	"goodkind.io/gklog/correlation"
 )
 
 const (
@@ -84,12 +85,13 @@ func NewLogger(logPath string) (*Logger, error) {
 		Level:     slog.LevelDebug,
 		AddSource: true,
 	})
+	correlatedHandler := correlation.SlogHandler(fileHandler, correlation.HandlerOptions{})
 
 	return &Logger{
 		mu:          sync.Mutex{},
 		filePath:    logPath,
 		logFile:     logFile,
-		slogLogger:  slog.New(fileHandler),
+		slogLogger:  slog.New(correlatedHandler),
 		stdout:      os.Stdout,
 		stderr:      os.Stderr,
 		interactive: isTTY(os.Stdout),
@@ -368,15 +370,32 @@ func streamName(stream io.Writer) string {
 	return "other"
 }
 
-// Notify appends a timestamped notification entry to the dotfiles queue file.
-func Notify(level, message, logPath string) error {
+// WithRun returns a child of ctx carrying a per-run correlation identity (a
+// trace id and span id), minting one when ctx does not already carry it. Every
+// record logged with the returned context then carries trace_id and span_id,
+// and RunID exposes the durable id for the notification banner.
+func WithRun(ctx context.Context) context.Context {
+	runCtx, _ := correlation.Ensure(ctx, "")
+	return runCtx
+}
+
+// RunID returns the durable correlation id (the trace id) carried by ctx, or
+// the empty string when ctx carries no run identity.
+func RunID(ctx context.Context) string {
+	return string(correlation.FromContext(ctx).TraceID)
+}
+
+// Notify appends a notification entry for the shell to render on the next
+// prompt. The on-disk format is timestamp|level|logPath|runID|message; runID is
+// the durable correlation id so a reader can grep the run's lines in logPath.
+func Notify(level, message, logPath, runID string) error {
 	notifyPath := filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "notifications")
 	if err := os.MkdirAll(filepath.Dir(filepath.Clean(notifyPath)), 0o755); err != nil {
 		slog.Error("telemetry: Notify: creating notification directory", "err", err)
 		return fmt.Errorf("creating notification directory: %w", err)
 	}
 	timestamp := clock.Now().Format(displayTimestampFormat)
-	return appendLine(notifyPath, fmt.Sprintf("%s|%s|%s|%s", timestamp, level, logPath, message))
+	return appendLine(notifyPath, fmt.Sprintf("%s|%s|%s|%s|%s", timestamp, level, logPath, runID, message))
 }
 
 func appendLine(path string, line string) error {

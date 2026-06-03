@@ -101,11 +101,11 @@ if [[ -d ~/.cache/dotfiles_dispatch.lock ]]; then
 fi
 
 # Display all queued notifications from background processes, one per line.
-# Format on disk: timestamp|level|logfile|message
-# Legacy format without timestamp is still accepted.
+# Format on disk: timestamp|level|logfile|runid|message
+# Legacy formats without a runid or timestamp are still accepted.
 local _notify_file="$HOME/.cache/dotfiles/notifications"
 if [[ -f "$_notify_file" ]]; then
-    local _created_at _level _logfile _msg _line
+    local _created_at _level _logfile _runid _idtag _msg _line
     while IFS= read -r _line; do
         _level="${_line%%|*}"
         _line="${_line#*|}"
@@ -120,9 +120,17 @@ if [[ -f "$_notify_file" ]]; then
                 ;;
         esac
         _logfile="${_line%%|*}"
+        _line="${_line#*|}"
+        _runid="${_line%%|*}"
         _msg="${_line#*|}"
+        _idtag=""
+        if [[ -n "$_runid" ]]; then
+            _idtag="%F{242}[#${_runid[1,12]}]%f "
+        fi
         if [[ -n "$_created_at" ]]; then
-            _msg="%F{242}${_created_at}%f ${_msg}"
+            _msg="%F{242}${_created_at}%f ${_idtag}${_msg}"
+        else
+            _msg="${_idtag}${_msg}"
         fi
         case "$_level" in
             success) print -P "%F{green}✓ ${_msg}%f" ;;

@@ -32,8 +32,9 @@ func Run(
 	notifyLogPath string,
 	dispatchLogger *telemetry.Logger,
 ) error {
+	ctx = telemetry.WithRun(ctx)
 	notifyf := func(level string, message string) {
-		if err := telemetry.Notify(level, message, notifyLogPath); err != nil {
+		if err := telemetry.Notify(level, message, notifyLogPath, telemetry.RunID(ctx)); err != nil {
 			dispatchLogger.WarnContextWithErr(ctx, "notification write failed", err)
 		}
 	}

@@ -40,6 +40,7 @@ var commandLogger *telemetry.Logger
 // Run executes the full dotfiles sync pipeline with the given options.
 func Run(ctx context.Context, options Options) error {
 	dotfiles := resolveDotfilesEnv()
+	ctx = telemetry.WithRun(ctx)
 
 	logger, logPath, err := openSyncLogger()
 	if err != nil {
@@ -55,7 +56,7 @@ func Run(ctx context.Context, options Options) error {
 	_ = os.Setenv("DOTFILES_LOG", logPath)
 
 	notify := func(level string, message string) {
-		if err := telemetry.Notify(level, message, logPath); err != nil {
+		if err := telemetry.Notify(level, message, logPath, telemetry.RunID(ctx)); err != nil {
 			logger.WarnContextWithErr(ctx, "notification write failed", err)
 		}
 		if level == "warn" || level == "error" {
