@@ -1,18 +1,18 @@
 ---
-description: Use claude-context first for conceptual code discovery
+description: Use the semantic MCP server first for conceptual code discovery
 globs: "**/*"
 alwaysApply: true
 ---
 
-Prefer claude-context `search_code` for conceptual repo-wide discovery, but do not use it blindly.
+Prefer the semantic MCP server's `search_code` for conceptual repo-wide discovery, but do not use it blindly.
 
 Call `get_indexing_status` on the absolute repository root before relying on semantic results. If the status is "not indexed", stop immediately, ask the user whether to index the codebase, and wait for an explicit yes before calling `index_codebase`. Do not index without permission. If indexing is still running, treat search results as provisional.
 
-Use `splitter: "ast"` by default when indexing. Do not use `splitter: "langchain"` unless user-approved diagnostic given.
+Use `splitter: "ast"` by default when indexing. Do not use `splitter: "langchain"` unless a user-approved diagnostic is given.
 
 For implementation questions, start with `extensionFilter` for the real source language and avoid docs unless the user is asking about docs. Treat hits in `README.md`, `AGENTS.md`, `*.pb.go`, `*.grpc.pb.go`, or other generated files as warning signs rather than answers.
 
-Do one corrective pass when results are low-signal: tighten `extensionFilter`, raise `limit` if needed, and retry once. If the results are still dominated by docs or generated files, switch to native `grep`, `ripgrep`, or direct reads rather than repeatedly forcing claude-context.
+Do one corrective pass when results are low-signal: tighten `extensionFilter`, raise `limit` if needed, and retry once. If the results are still dominated by docs or generated files, switch to native `grep`, `ripgrep`, or direct reads rather than repeatedly forcing the semantic server.
 
 
 When launching subagents that need code discovery, tell them to follow this same policy and include the absolute repository path in the prompt.

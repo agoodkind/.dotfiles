@@ -19,7 +19,7 @@ Read [enforce-rules/SKILL.md](../enforce-rules/SKILL.md) in full and apply it fo
 
 1. Recover the prior conversation through clyde, the local server that indexes Claude and Codex conversation transcripts and exposes them as MCP tools. Call `clyde_list_conversations` to find the current session identifier. Call `clyde_search_conversation` with the topic to locate the task thread; it returns a `result_id`. Call `clyde_get_context` around the matches to read the exact decisions, file paths, and in-flight step, and call `clyde_analyze_results` with the `result_id` when the matches need a focused summary. Treat the compaction summary as an index into this transcript, not as the source of truth.
 
-2. Discover code through claude-context, the local server that indexes the repository for semantic search and exposes it as MCP tools, rather than through grep. Follow {{.Rule "claude-context"}} in full: check `get_indexing_status` on the absolute repository root first, ask the user before indexing and wait for an explicit yes, prefer `search_code` with `extensionFilter` set to the source language, and fall back to `grep` or `ripgrep` only after one corrective pass still returns documentation or generated files.
+2. Discover code through the semantic MCP server, the local server that indexes the repository for semantic code search and exposes it as MCP tools, rather than through grep. Follow {{.Rule "semantic"}} in full: check `get_indexing_status` on the absolute repository root first, ask the user before indexing and wait for an explicit yes, prefer `search_code` with `extensionFilter` set to the source language, and fall back to `grep` or `ripgrep` only after one corrective pass still returns documentation or generated files.
 
 3. State the reorientation brief: the task, what is done, what is in flight, the exact files and symbols in play, and the next concrete step. Each line stands on its own when read offline.
 
@@ -29,6 +29,6 @@ Read [enforce-rules/SKILL.md](../enforce-rules/SKILL.md) in full and apply it fo
 
 - Produce the brief and the continued work only. No apology, no preface, no acknowledgment of the command.
 - Recover every fact from the transcript and the code. Do not reconstruct facts from the compaction summary.
-- Semantic search through claude-context precedes grep for conceptual discovery, under {{.Rule "claude-context"}}.
+- Semantic search through the semantic MCP server precedes grep for conceptual discovery, under {{.Rule "semantic"}}.
 - Every line of output reads correctly offline, with each ticket, symbol, path, and reference defined inline.
 - State how the work stands today. Do not narrate the compaction or what the context held before it.
