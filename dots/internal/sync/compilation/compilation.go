@@ -162,7 +162,7 @@ func RebuildZcompdump(ctx context.Context, dotfiles string, logger *telemetry.Lo
 		return nil
 	}
 	fpath := filepath.Join(dotfiles, "zshrc", "completions")
-	zcompdump := "~/.zcompdump"
+	zcompdump := filepath.Join(os.Getenv("HOME"), ".zcompdump")
 	autoloadCmd := fmt.Sprintf("fpath=(\"%s\" $fpath)\nautoload -Uz compinit\n", fpath)
 	if err := cmdexec.RunWithLogger(ctx, logger, "zsh", "-c", autoloadCmd+"compinit -d "+zcompdump+"\nzcompile "+zcompdump+"\n"); err != nil {
 		slog.ErrorContext(ctx, "rebuild zsh completions", "err", err)
