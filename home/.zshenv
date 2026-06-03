@@ -27,6 +27,19 @@ fi
 export DOTFILES_AGENT_SHELL
 export DOTFILES_INTERACTIVE
 
+# Agent tool shells inherit HTTP(S)_PROXY/ALL_PROXY from the clyde-wrapped parent
+# CLI: the codex()/claude() wrappers in zshrc/incl.zsh set those vars as a
+# one-shot prefix so the CLI's own egress is captured by the clyde MITM proxy.
+# The vars then live in the CLI process env and every shell the agent spawns
+# inherits them, so an unrelated curl/speedtest/network probe silently routes
+# through the proxy. The parent CLI is a Node/Rust binary that never sources this
+# file, so clearing the vars here scrubs only the agent's subprocess shells and
+# leaves the CLI's own capture intact. CA-trust vars are left alone since they
+# only add a trusted root and never reroute traffic.
+if [[ "$DOTFILES_AGENT_SHELL" -eq 1 ]]; then
+    unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy
+fi
+
 function dotfiles_apply_paste_safe_shell_options() {
     setopt NO_GLOB
     setopt NO_NOMATCH
