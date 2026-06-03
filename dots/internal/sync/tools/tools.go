@@ -49,7 +49,9 @@ type githubRelease struct {
 }
 
 type crateResponse struct {
-	MaxVersion string `json:"max_version"`
+	Crate struct {
+		MaxVersion string `json:"max_version"`
+	} `json:"crate"`
 }
 
 func runCustomTools(ctx context.Context, strictMode bool, logger *telemetry.Logger) error {
@@ -61,7 +63,7 @@ func runCustomTools(ctx context.Context, strictMode bool, logger *telemetry.Logg
 		}
 		if err := installCustomTool(ctx, tool, strictMode, logger); err != nil {
 			failed = append(failed, tool.ID)
-			_ = telemetry.Notify("warn", "tool install/upgrade failed: "+tool.ID, getSyncLogPath())
+			_ = telemetry.Notify("warn", "tool install/upgrade failed: "+tool.ID, getSyncLogPath(), telemetry.RunID(ctx))
 			common.WarnContextf(ctx, logger, "  %s: failed: %s", tool.ID, err.Error())
 			logger.WarnContextWithErr(ctx, "  "+tool.ID+": failed", err)
 		}
@@ -355,6 +357,7 @@ func getLatestCrateVersion(ctx context.Context, crateName string) (string, error
 		slog.ErrorContext(ctx, "creating crates request", "crate", crateName, "err", err)
 		return "", fmt.Errorf("creating crates request for %s: %w", crateName, err)
 	}
+	req.Header.Set("User-Agent", "dots (+https://goodkind.io/dots)")
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("executing crates request for %s: %w", crateName, err)
@@ -368,7 +371,7 @@ func getLatestCrateVersion(ctx context.Context, crateName string) (string, error
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		return "", fmt.Errorf("decoding crates response for %s: %w", crateName, err)
 	}
-	return normalizeSemver(payload.MaxVersion), nil
+	return normalizeSemver(payload.Crate.MaxVersion), nil
 }
 
 func normalizeSemver(value string) string {
