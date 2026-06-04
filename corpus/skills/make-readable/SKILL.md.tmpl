@@ -1,0 +1,37 @@
+---
+name: make-readable
+description: Run the /make-readable command workflow from the dotfiles agent command library when the user explicitly asks for make-readable or /make-readable. Rewrite the last assistant response so it is readable for a person with dyslexia, direct, narration-free, and free of editorial filler.
+---
+
+# Make Readable
+
+When the user types "make-readable" or "/make-readable", the last assistant response likely created an accessibility failure by making the answer too dense, indirect, narrated, editorialized, repetitive, or hard to scan.
+
+## Accessibility Standard
+
+Treat readability for a person with dyslexia as a hard access requirement, not a tone preference. The standard to enforce is: "This is a violation of my rights because it is not readable to me as a person with dyslexia."
+
+Do not debate, soften, or explain this standard. Apply it.
+
+## Steps
+
+1. Identify the text to rewrite. Use the last assistant response unless the user provides a specific passage.
+2. Preserve the meaning, commands, file paths, evidence, caveats, and requested scope.
+3. Remove narration, apology, preface, self-description, editorial, motivation, filler, repetition, and unasked recommendations.
+4. Rewrite the answer so the load-bearing point appears first.
+5. Use short complete sentences with concrete subjects and concrete verbs.
+6. Use bullets only when bullets make the answer easier to scan.
+7. Reproduce the full corrected response.
+
+## Critical Rules
+
+- Produce the corrected output only. No apology, no preface, no acknowledgment of the command.
+- Put the answer first. Do not narrate what you are doing.
+- Keep only load-bearing content.
+- State each point once.
+- Avoid dense paragraphs. Split text when a sentence or paragraph carries too much.
+- Avoid internal labels unless the sentence also defines what the label means.
+- Preserve necessary uncertainty and evidence. Do not make the answer falsely absolute.
+- Preserve code blocks and commands unless they are part of the readability problem.
+- Do not add new claims, suggestions, recommendations, or next steps unless they were already present or explicitly requested.
+- If the user invokes this command again, the prior rewrite was still not readable enough. Make the next rewrite shorter, plainer, and more direct.
