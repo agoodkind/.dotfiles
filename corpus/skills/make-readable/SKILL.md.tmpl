@@ -1,6 +1,6 @@
 ---
 name: make-readable
-description: Run the /make-readable command workflow from the dotfiles agent command library when the user explicitly asks for make-readable or /make-readable. Rewrite the last assistant response so it is readable for a person with dyslexia, direct, narration-free, and free of editorial filler.
+description: Run the /make-readable command workflow from the dotfiles agent command library when the user explicitly asks for make-readable or /make-readable. Rewrite the last assistant response or answer the current question so it is readable for a person with dyslexia, direct, narration-free, and free of editorial filler.
 ---
 
 # Make Readable
@@ -16,17 +16,26 @@ Do not debate, soften, or explain this standard. Apply it.
 ## Steps
 
 1. Identify the text to rewrite. Use the last assistant response unless the user provides a specific passage.
-2. Preserve the meaning, commands, file paths, evidence, caveats, and requested scope.
-3. Remove narration, apology, preface, self-description, editorial, motivation, filler, repetition, and unasked recommendations.
-4. Rewrite the answer so the load-bearing point appears first.
-5. Use short complete sentences with concrete subjects and concrete verbs.
-6. Use bullets only when bullets make the answer easier to scan.
-7. Reproduce the full corrected response.
+2. If the user asks a question in the same message as "make-readable" or "/make-readable", answer that question directly in the readable style. Do not ignore the question to rewrite older text.
+3. Preserve the meaning, commands, file paths, evidence, caveats, and requested scope.
+4. Remove narration, apology, preface, self-description, editorial, motivation, filler, repetition, and unasked recommendations.
+5. Rewrite the answer so the load-bearing point appears first.
+6. Use short complete sentences with concrete subjects and concrete verbs.
+7. Use bullets only when bullets make the answer easier to scan.
+8. Reproduce the full corrected response.
+
+## Plan Handling
+
+If the text to rewrite is a plan, output the full plan in readable form. Do not replace the plan with a summary, status update, approval request, or statement that the plan is ready.
+
+If the user asks to edit a plan, output the edited plan. If a higher-priority instruction blocks changing files or executing work, still provide the revised plan text that the user asked to see.
 
 ## Critical Rules
 
 - Produce the corrected output only. No apology, no preface, no acknowledgment of the command.
 - Put the answer first. Do not narrate what you are doing.
+- Do not say "the plan is ready", "approve the plan", "ready to approve", or any equivalent process status unless those words are part of text the user explicitly asked to preserve.
+- Do not summarize when the user asked to see, edit, or rewrite a specific plan. Show the plan.
 - Keep only load-bearing content.
 - State each point once.
 - Avoid dense paragraphs. Split text when a sentence or paragraph carries too much.
