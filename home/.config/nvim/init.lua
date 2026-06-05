@@ -92,8 +92,14 @@ require("lazy").setup({
             end,
         },
         {
-            'powerman/vim-plugin-AnsiEsc',
+            'm00qek/baleia.nvim',
             lazy = false,
+            config = function()
+                vim.g.baleia = require('baleia').setup({})
+                vim.api.nvim_create_user_command('BaleiaColorize', function()
+                    vim.g.baleia.once(vim.api.nvim_get_current_buf())
+                end, { bang = true })
+            end,
         }
     },
     -- Configure any other settings here. See the documentation for more details.
@@ -195,23 +201,26 @@ vim.api.nvim_create_autocmd('FileType', {
 -- =============================================================================
 -- Pager Mode: ANSI Escape Code Processing
 -- =============================================================================
--- Process ANSI escape codes when nvim is used as a pager (reading from stdin)
+-- baleia parses the piped ANSI codes once, strips them, and applies highlights.
 vim.api.nvim_create_autocmd('StdinReadPost', {
     pattern = '*',
-    callback = function()
-        vim.defer_fn(function()
-            if pcall(vim.cmd, 'AnsiEsc') then
-                -- Successfully processed ANSI codes
-            else
-                -- Try loading plugin if not available
-                local ok, lazy = pcall(require, 'lazy')
-                if ok then
-                    lazy.load({ plugins = { 'powerman/vim-plugin-AnsiEsc' } })
-                    vim.defer_fn(function()
-                        pcall(vim.cmd, 'AnsiEsc')
-                    end, 200)
-                end
+    callback = function(ev)
+        local buf = ev.buf
+        local first = vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1] or ''
+        if not first:match('\27%[') then
+            return
+        end
+        if not vim.g.baleia then
+            return
+        end
+        local was_modifiable = vim.bo[buf].modifiable
+        vim.bo[buf].modifiable = true
+        vim.g.baleia.once(buf)
+        vim.schedule(function()
+            if vim.api.nvim_buf_is_valid(buf) then
+                vim.bo[buf].modified = false
+                vim.bo[buf].modifiable = was_modifiable
             end
-        end, 50)
+        end)
     end,
 })
