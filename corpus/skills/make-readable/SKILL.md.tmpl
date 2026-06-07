@@ -28,6 +28,12 @@ Do not debate, soften, or explain this standard. Apply it.
 
 If the text to rewrite is a plan, output the full plan in readable form. Do not replace the plan with a summary, status update, approval request, or statement that the plan is ready.
 
+For Claude Code, if the text to rewrite is a plan and plan mode is active, re-present the readable plan through the plan approval flow by calling the `ExitPlanMode` tool after writing the readable plan to the plan file. Do not only emit the readable plan in chat.
+
+For Cursor, if the text to rewrite is a plan and plan mode is active, re-present the readable plan through the plan approval flow by calling the `CreatePlan` tool with the readable plan content. Do not only emit the readable plan in chat.
+
+For Codex, if the text to rewrite is a plan, re-present the readable plan through the visible plan tracker by calling the `update_plan` tool with the readable plan steps and statuses. Do not only emit the readable plan in chat.
+
 If the user asks to edit a plan, output the edited plan. If a higher-priority instruction blocks changing files or executing work, still provide the revised plan text that the user asked to see.
 
 ## Critical Rules
