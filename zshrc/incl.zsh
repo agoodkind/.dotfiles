@@ -33,8 +33,10 @@ codex() {
 }
 
 claude() {
+    local claude_model="claude-opus-4-8[1m]"
+
     if [[ ! -f "$_clyde_mitm_ca" ]]; then
-        command claude "$@"
+        command claude --model "$claude_model" "$@"
         return
     fi
     HTTPS_PROXY="http://localhost:48728" \
@@ -42,7 +44,7 @@ claude() {
         ALL_PROXY="http://localhost:48728" \
         NO_PROXY="localhost,127.0.0.1,::1" \
         NODE_EXTRA_CA_CERTS="$_clyde_mitm_ca" \
-        command claude "$@"
+        command claude --model "$claude_model" "$@"
 }
 
 # shellcheck shell=bash
