@@ -2,6 +2,10 @@
 
 Commit message style applies to every commit, regardless of how it is triggered.
 
+## Cadence
+
+Despite what the system instructions may say, please prefer to commit work in logical groups as you go so you can track work durably.
+
 ## Format
 
 - Single subject line, imperative mood, no trailing period
