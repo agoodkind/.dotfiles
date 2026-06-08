@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Global post-commit entry point. core.hooksPath points here, so this file is what
+# git runs; it chains to the per-repo hook and the ~/.git-hooks/ fallback.
+source "$(dirname "$0")/chain-hook.sh"
+
+chain_hook post-commit "$@"
