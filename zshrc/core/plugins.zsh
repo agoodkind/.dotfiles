@@ -29,8 +29,8 @@ function _ready_mark() {
     _ready_lap=$mark_now
 }
 
-# Tier 1: runs on first keystroke (zle-line-init). Minimal set needed for
-# basic interactive use — zinit core, compinit, and autosuggestions.
+# Tier 1 runs on first keystroke via zle-line-init. It loads the minimal set for
+# basic interactive use: zinit core, compinit, and autosuggestions.
 function _load_tier1() {
     setopt local_options glob bare_glob_qual
 
@@ -134,10 +134,10 @@ function _load_tier3() {
     _ready_mark 2 startup_log
 }
 
-# Fires once after prompt is drawn, before first keystroke is accepted.
+# Fires after each prompt is drawn, before the next line accepts input.
+# _load_tier1 returns immediately after the first load.
 function _zinit_line_init() {
     _load_tier1
-    zle -D zle-line-init 2>/dev/null
 }
 zle -N zle-line-init _zinit_line_init
 
