@@ -1,188 +1,254 @@
 ---
 name: pr
-description: Run the /pr command workflow from the dotfiles agent command library when the user explicitly asks for /pr or mentions this command by name.
+description: Create or revise a pull request.
 ---
 
 # Create Or Revise Pull Request
 
-Analyze the branch changes and the current conversation context, then create, revise, or reword a pull request using the GitHub CLI. Write the PR the way you want the PR to read: clear, specific, and easy for a reviewer to follow.
+Use this workflow when the user asks to create, update, reword, or review a pull request description. Follow the steps in order. Do not skip the existing-PR check unless the user explicitly asks for a drafting-only exercise.
 
-## Critical Rules
+## Step 1: Check Existing PR State
 
-- **Check Existing PR First**: ALWAYS run `gh pr view --json body,title` before creating or updating a PR
-- **Preserve User Content**: If a PR already exists, keep the useful existing title and body content and only improve it
-- **Use Context To Choose The Action**: Determine from the user's request whether they want a new PR, a reworded existing PR, a title-only edit, a body-only edit, or a full rewrite
-- **Draft Mode Required**: ALWAYS use `--draft` with `gh pr create`
-- **Classify PR Type**: Determine whether the branch is a bug fix or a feature/iteration before writing
-- **Confirm Before Writing To GitHub**: Before running `gh pr create` or `gh pr edit`, show the proposed title/body in chat and ask for explicit confirmation
-- **Report Failures Clearly**: If PR creation or update fails, report the error and stop immediately
-- **Protect copy-paste output from chat rendering**: When output is meant to be copied into another system, wrap it in a single outer four-backtick fence so Cursor does not mangle tables, pipes, brackets, ASCII diagrams, IPv6 literals, or inner triple-backtick code blocks
+Run:
 
-## Branch Naming Convention
+```bash
+gh pr view --json body,title,url,state,mergedAt,number
+```
 
-Branches should follow `username/TICKET-NUMBER/descriptive-name`, using slash-separated segments.
+You are working from the current branch. Choose exactly one path for that branch:
 
-Example:
+- If no existing PR is associated with the branch, prepare a new draft PR for the branch.
+- If an existing PR is associated with the branch and `state` is `MERGED` or `mergedAt` is non-empty, say that the branch's existing PR is already merged, treat it as historical context, and do not edit it. If the user asked to create a PR for the current branch, continue toward a new draft PR for the branch.
+- If an existing PR is associated with the branch and it is open, stop before drafting or editing unless the user clearly asked to update that existing PR.
+- If the user clearly asked to update, reword, tighten, revise, or improve the open PR, preserve useful existing title/body content and update only what the user asked to change.
+- Before modifying an open PR, read the full existing title and body and save them to a backup file in a temporary directory.
+- If the branch has an open PR and the user did not clearly ask to update it, ask whether they want to update the existing open PR or create a new PR for the current branch.
 
-- ✅ `agoodkind/AG-10677/fix-silver-shimmer`
+## Step 2: Read The Branch
 
-## Title Rules
+Find the target branch from the workspace or repository context. Prefer the remote-tracking ref, such as `origin/main`.
 
-- **Direct Statement**: Write a natural, specific title that states what changed
-- **Body Carries Context**: Put ticket references and other supporting context in the body, usually in `### Summary`
-- **Specific Language**: Name the behavior, code path, or surface area that changed
+Run:
 
-## PR Type Classification
+```bash
+git fetch origin
+git log origin/main..HEAD --oneline
+git diff origin/main...HEAD
+```
 
-Before writing the description, classify the PR:
+If the target branch is not `origin/main`, substitute the correct remote-tracking ref everywhere.
 
-**Bug Fix PR**: Something was broken and this fixes it:
+Find the ticket number from the branch name first, then commit messages. Branches usually look like `username/TICKET-12345/descriptive-name`, but ticket prefixes vary by team. If no ticket is available, surface that to the user and keep drafting the body.
 
-- Users/devs experienced unexpected behavior
-- Error states, crashes, incorrect data
-- Regressions from previous changes
+Classify the change as one of:
 
-**Feature/Iteration PR**: Adding or extending functionality:
+- New feature
+- Bug fix
+- Follow-up or maintenance
 
-- New capabilities that didn't exist before
-- Implementing spec'd behavior (even if prior code was scaffolded)
-- Enhancements to existing features
+## Step 3: Read Review Context
 
-## Description Structure
+Before drafting, read the reviewer-relevant context that is available from the branch, existing PR body, user message, ticket links, Slack links, Glean when available, design docs, dependency PRs, dashboards, and artifacts.
 
-### For Bug Fix PRs
+Use that context to answer:
 
-Flow: Observable problem → Root cause → What the PR does to fix it
+- Why is this change needed now?
+- What behavior, workflow, data contract, or operational state changes for users, consumers, reviewers, or downstream systems?
+- Which linked sources are review inputs versus prep-only sources?
 
-1. Start with the observable problem or symptom (what users/devs saw)
-2. Explain what was actually wrong in the code at a high level, with reviewer context
-3. Describe what this PR does to fix it, focusing on the _nature_ of the fix at a high level
+If linked context is unavailable, do not invent motivation. Draft from the branch facts and ask for the missing context when the reason for the change is material to reviewing it.
 
-### For Feature/Iteration PRs
+## Step 4: Draft The Title
 
-Flow: Context/motivation → What it adds → Implementation approach
+Use this title format:
 
-1. Start with context: what capability is being added and why it's needed
-2. Describe what the PR implements as a capability being added or extended
-3. Summarize the approach at a high level: how it works conceptually
-4. Note dependencies or follow-up work if relevant
+```text
+[TICKET-12345] Direct statement of what changed
+```
 
-**Key difference**: Feature PRs describe the capability being built, the behavior being added, and the shape of the implementation. If prior code returned empty arrays as a placeholder, describe this work as the feature that now fills in that path.
+Rules:
 
-**Reviewer context**: Describe what happens, how data flows, and what the user or system sees. Give the reviewer the context that the diff alone cannot supply.
-
-**Section roles**: Give each section one clear job. Use `## What` for the behavior or capability change, `## Why` for the reviewer context or motivation, and `## How` for the implementation path, ownership boundary, and any important systems that stay unchanged.
-
-**Section length**: In most PRs, `## What`, `## Why`, and `## How` each fit in one short paragraph. Add a second short paragraph only when the reviewer needs more context.
-
-**How section**: Lead with the path you chose. Name the owning system first, explain how the flow works at the system level, and call out important systems or paths that remain unchanged when that boundary matters.
-
-**Optional sections**: Add sections like `## Backward compatibility` or `## Testing` when they carry distinct reviewer context of their own.
-
-**Tone**: Keep the writing readable, concrete, and easy to skim. Use prose in the PR body and let each section carry one clear idea forward.
-
-## Code References (applies to BOTH title and description)
-
-- Use single backticks for the small set of symbols, classes, files, endpoints, or flow IDs that materially help a reviewer orient.
-- Let prose carry the explanation around those anchors.
-- Use fenced code blocks only when a short snippet materially clarifies the behavior or interface being described.
-
-## PR Media
-
-If the PR description includes screenshots, videos, or before/after comparisons, apply the `pr-media` skill.
-
-## Steps
-
-1. **Check for existing PR**: Run `gh pr view --json body,title` to see if a PR already exists for this branch
-    - If a PR exists, read its current title and description. Preserve user content when updating.
-    - If no PR exists, proceed with creating a new one
-2. **Choose the action from context**:
-    - If the user asked to create a PR, prepare a new PR
-    - If the user asked to reword, revise, tighten, expand, or otherwise improve the PR, update the existing PR instead of creating a new one
-    - If the user only mentioned the title or only mentioned the body, limit the edit to that scope unless the surrounding context clearly calls for more
-    - If the requested action is ambiguous, ask a clarifying question before drafting
-3. Check for ticket number in this order:
-    - First check current branch name (e.g. `agoodkind/AG-12345/fix-bug` → `AG-12345`)
-    - Then check commit messages for ticket references
-    - When no ticket appears in the branch name or commits, continue with the PR body as-is
-4. Run `git log main..HEAD --oneline` to see commits on the branch
-5. Run `git diff main...HEAD` to analyze all changes
-6. **Classify PR type** using the guidance above
-7. Craft a concise PR title using the title rules above
-8. Write the PR body using the description structure above
-    - If a ticket exists, include it in a short `### Summary` block near the top of the description: `Ticket: https://ag.atlassian.net/browse/AG-12345`
-    - Infer the correct Atlassian subdomain from context or company; omit the ticket line if no ticket exists
-9. If screenshots, videos, or before/after images are involved, apply the `pr-media` skill
-10. **Show the proposed change and confirm**:
-    - Present the proposed title and body in chat inside outer four-backtick fences
-    - State whether you plan to create a new PR or edit the existing PR
-    - Ask for explicit confirmation before making the GitHub change
-11. Execute the command only after confirmation:
-    - If creating a new PR: `gh pr create --draft --title '<title>' --body "<description>"` (use `required_permissions: ["network"]`)
-    - If editing title and body: `gh pr edit --title '<title>' --body "<description>"` (use `required_permissions: ["network"]`)
-    - If editing title only: `gh pr edit --title '<title>'`
-    - If editing body only: `gh pr edit --body "<description>"`
-    - **Title quoting**: Always use single quotes for `--title` so backticks pass through literally, for example:
-
-        ```sh
-        gh pr create --draft --title 'Permit `status` in `AchAccountController`' --body "<description>"
-        ```
-
-12. After the PR is created or updated, follow the output format below.
-
-OUTPUT FORMAT:
-
-Use the example below as the stylistic reference for the PR title and body, and as the default level of detail for an ordinary PR.
-
-After the PR change succeeds, output a short Slack message for the code review channel inside a single outer four-backtick fence. Write it as a human one-liner that briefly says what the branch changes, fixes, or rewords and ends with the PR URL on the same line.
+- Start with the ticket in square brackets when a ticket exists.
+- Use `[NO TICKET]` only when no ticket is available and the user accepts that.
+- State what changed, not why it matters.
+- Keep the title specific to the behavior, surface area, or system.
+- Use backticks only around code symbols. Leave plain prose unwrapped.
 
 Examples:
 
-- "follow-up for dual-stack captive portal auth and clean up the login path https://..."
-- "Fix duplicate silver entries by resetting list state https://..."
-- "Extend payment validation to handle zero amounts https://..."
+- `[ST-11267] Add plaid relink URL for server-driven relink`
+- `[ST-11193] Fix consent screen freeze in ExternalAccountLinking`
+- `[NO TICKET] Expand dependabot auto-merge for dev dependencies`
 
-Then output the PR URL on a new line inside its own outer four-backtick fence for easy copying:
+## Step 5: Draft The Body
 
-```text
-https://....
-```
+Write for a lightly technical reviewer who may have no prior context. The reviewer should understand the behavioral or qualitative change in one pass.
 
-Then output the PR URL again on its own line with no markdown formatting:
-
-https://....
-
-If you show any PR body text in chat for review or confirmation, wrap that text in a single outer four-backtick fence as well.
-
-EXAMPLE:
-
-Title: "Attach source fields to sample report tasks"
+Use this structure as a starting point, then adjust it to fit the change:
 
 ```markdown
 ### Summary
 
-Ticket: https://....
-Slack thread: http://....
+Ticket: https://chime.atlassian.net/browse/TICKET-12345
 
-## What
-
-This attaches source metadata to sample report tasks in `example-app`.
-
-Each task now carries the initiating actor, request source, and a stable label so downstream systems can trace who started it and where it came from.
+One short paragraph that explains what changes and why it matters in plain language.
 
 ## Why
 
-Support needs enough context to trace scheduled sample tasks without digging through application logs or guessing which caller kicked off the work.
+One short paragraph that explains the review-critical reason for the change when that reason is not obvious from the diff.
 
-The existing task flow stays in place, so this change only adds metadata around the work rather than changing how the underlying report is produced.
+## Change
 
-## How
-
-This writes the metadata in `example-app` when the sample task is enqueued, and it keeps the worker contract unchanged for existing consumers.
-
-The worker reads the extra fields if they are present, includes them in structured logs, and ignores them when older callers do not send them.
-
-## Backward compatibility
-
-Older callers can keep sending the current payload, and existing workers continue processing sample tasks without any version gate or protocol change.
+One or two short paragraphs that explain what changed and why the new behavior follows from the change.
 ```
+
+Adjust section names and order when that makes the PR easier to scan. Useful alternatives are `Problem`, `Fix`, `Impact`, `Rollout`, and `Demo`. Use the fewest sections that make the review clear.
+
+Use section boundaries to separate different jobs. `### Summary` should orient the reviewer to the change. Motivation or background should be separate when it is load-bearing or too large to fit naturally in the summary. Mechanics should be separate when they would make the summary dense.
+
+Writing rules:
+
+- Write PR prose as if it must pass review against Apple Human Interface Guidelines writing guidance: use simple plain language, fit the reviewer's context, write for accessibility, avoid jargon unless it is necessary, and leave no ambiguous claims.
+- Write every sentence as if Apple Marketing will critically review it for clarity, precision, restraint, and polish.
+- Prioritize readability as defined by the `make-readable` skill: put the load-bearing point first, use short complete sentences with concrete subjects and verbs, and remove narration, filler, repetition, and unasked recommendations.
+- Leave out every non-load-bearing detail. If a detail does not help the reviewer understand, verify, or safely ship the change, cut it.
+- Reject bloviating. `Bloviate` means to write verbosely and windily, so remove pompous, inflated, self-important, or low-substance prose.
+- Keep each paragraph readable, avoid densely packed formatting. Optimize for quick scanning of the PR description from a distance.
+- Prefer everyday product or system nouns before code names, especially in the first explanation.
+- Explain the behavioral or qualitative change first, then add code anchors only where they help reviewers orient.
+- Explain why the change exists, not only what changed. If linked context says the old path is being retired, a new system is becoming the source of truth, or an event/API is now the official contract, include that reason.
+- Prefer prose shaped like "this changes behavior X because of Y" over dense implementation detail.
+- Include only details that help the reviewer understand, verify, or safely ship the PR.
+- Do not narrate literal code changes, the PR description provides high-level context for the change, and the PR diff carries the code change.
+- Do not add irrelevant adjacent context just because it is available.
+- Include a `## Testing` section only when actual material verification was run. Material verification includes meaningful commands, simulator checks, deployed checks, screenshots or videos, smoke tests, and other concrete evidence. If you are unsure whether the evidence is material, ask before adding `## Testing`. DO NOT ADD non-material checks like "lints passed", "rg found x", or anything that isn't directly related to the behavior of the change itself.
+- Do not mention unavailable test output, unrun tests, or missing verification unless it materially changes review risk.
+- Keep implementation detail at the system level, not line-by-line.
+
+Link and Markdown rules:
+
+- Include links that help the reviewer understand or review the PR, including tickets, design docs, dashboards, artifacts, stacked PRs, dependency PRs, and related historical PRs when they are actually relevant.
+- Label non-obvious links by review purpose, such as `Stacked on`, `Depends on`, `Dashboard`, `Artifact`, or `Related`.
+- Do not include prep-only sources or sample inputs used only to draft the body.
+- Write linked ticket text as `[ST-11414](https://chime.atlassian.net/browse/ST-11414)`, not as a backticked link.
+- Do not combine backticks and hyperlinks. If text is hyperlinked, leave the link text plain because many Markdown renderers break backticked link text.
+- Use backticks around unlinked symbols, classes, files, endpoints, flow IDs, metrics, and other code-like anchors.
+
+Media rules:
+
+- If screenshots, videos, or before/after comparisons belong in the PR body, apply the `pr-media` skill.
+- Use a before/after table when the visual change is easier to review side by side.
+
+## Examples
+
+Use these as drafting patterns, not as fixed templates.
+
+### Context-Driven Why
+
+```markdown
+Title: [TICKET-12345] Publish account update events
+
+
+
+Ticket: https://chime.atlassian.net/browse/TICKET-12345
+Depends on: https://github.com/example-org/example-repo/pull/123
+Slack: https://chime.enterprise.slack.com/archives/...
+
+### Summary
+
+This change is to make bank-account-service service start publishing an update event when an existing account record changes.
+
+## Why
+
+According to the replication deprecation [announcement](https://chime.enterprise.slack.com/archives/...), consumers are encouraged move away from direct table replication. 
+
+Instead, events are now the official integration path, and should be used as a source of truth instead of reading replicated tables.
+
+## Change
+
+The account model now builds and publishes the update event and the publish path is wired into every service path that change account state.
+
+The event includes the reason for the update, the changed fields, the previous account snapshot, and the current account snapshot.
+```
+
+### No Noisy Testing Section
+
+```markdown
+Title: [NO TICKET] Update PR skill workflow for existing PR state
+
+### Summary
+
+This change reorganizes the `pr` skill into a strict step-by-step workflow.
+
+Agents now choose the right path before drafting or editing a PR.
+
+## Change
+
+The workflow now separates branch reading, title drafting, body drafting, confirmation, GitHub writes, and final output.
+
+Open-PR handling is explicit, so agents ask before editing an existing open PR unless the user clearly asked for that update.
+```
+
+Do not add `## Testing` in examples like this unless material verification actually ran or the branch adds specific test coverage.
+
+### Linked Text
+
+Prefer:
+
+```markdown
+Depends on: https://github.com/1debit/chime-schemas/pull/13566
+Ticket: [ST-11414](https://chime.atlassian.net/browse/ST-11414)
+```
+
+Avoid:
+
+```markdown
+Ticket: [`ST-11414`](https://chime.atlassian.net/browse/ST-11414)
+```
+
+## Step 6: Show The Draft And Get Confirmation
+
+Before creating or editing a PR, show:
+
+- The action you plan to take: create a new draft PR, edit an existing non-merged PR, edit title only, edit body only, or full rewrite.
+- The proposed title.
+- The proposed body.
+
+Put the proposed title and body inside one outer four-backtick fence so it copies cleanly.
+
+Do not add operational preamble, command logs, branch-analysis narration, or commentary about why the GitHub write has not happened yet. If a detail blocks the draft from being usable, state that blocker in one sentence after the fenced draft.
+
+Ask for explicit confirmation before running any GitHub write command.
+
+## Step 7: Write To GitHub After Confirmation
+
+Use the narrowest command that matches the confirmed action:
+
+```bash
+gh pr create --draft --title '<title>' --body '<description>'
+gh pr edit --title '<title>' --body '<description>'
+gh pr edit --title '<title>'
+gh pr edit --body '<description>'
+```
+
+If creation or update fails, report the error and stop.
+
+## Step 8: Return The Final Output
+
+After the GitHub change succeeds, return exactly this shape:
+
+**1. Slack message** is a human one-liner for the code review channel. It must start with a capital letter and end with the PR URL. Use single backticks around unlinked symbols and code-like terms.
+
+`````
+Fix duplicate `silver` entries by resetting `list_state` https://github.com/...
+`````
+
+**2. PR URL** is the bare URL on its own line inside a four-backtick fence:
+
+````
+https://github.com/...
+````
+
+**3. PR URL again** is the bare URL on its own line with no fence and no Markdown:
+
+https://github.com/...
