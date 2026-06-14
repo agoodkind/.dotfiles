@@ -13,9 +13,9 @@
 #
 # ref_style values (skills only): mdc | md | instructions | codex-doc
 #
-# VSCode Copilot and Claude Desktop need no rows here. They read the canonical
-# directories below by default: VSCode scans ~/.copilot/instructions, ~/.claude/rules,
-# ~/.copilot/skills, ~/.claude/skills, ~/.agents/skills, and ~/.claude/CLAUDE.md;
+# Codex, VSCode Copilot, and Cursor read shared skills from ~/.agents/skills.
+# Claude Code and Claude Desktop read skills from ~/.claude/skills.
+# VSCode also reads ~/.copilot/instructions, ~/.claude/rules, and ~/.agents/skills.
 # Claude Desktop shares ~/.claude with Claude Code.
 
 # Claude Code (and Claude Desktop)
@@ -39,12 +39,6 @@ title    = "Claude Memory"
 
 # Cursor
 [[output]]
-provider  = "cursor"
-kind      = "skills"
-dest      = ".cursor/skills"
-ref_style = "mdc"
-
-[[output]]
 provider = "cursor"
 kind     = "rule-files"
 dest     = ".cursor/rules"
@@ -64,12 +58,6 @@ dest     = ".agents/rules"
 rule_ext = ".mdc"
 
 # Codex
-[[output]]
-provider  = "codex"
-kind      = "skills"
-dest      = ".codex/skills"
-ref_style = "codex-doc"
-
 [[output]]
 provider = "codex"
 kind     = "codex-rules"
@@ -99,12 +87,6 @@ title    = "Copilot Instructions"
 provider = "copilot"
 kind     = "per-file-instructions"
 dest     = ".copilot/instructions"
-
-[[output]]
-provider  = "copilot"
-kind      = "skills"
-dest      = ".copilot/skills"
-ref_style = "instructions"
 
 # Zed (first-party agent reads user-global rules from this doc)
 [[output]]
