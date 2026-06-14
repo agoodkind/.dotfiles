@@ -69,7 +69,6 @@ Use this title format:
 Rules:
 
 - Start with the ticket in square brackets when a ticket exists.
-- Use `[NO TICKET]` only when no ticket is available and the user accepts that.
 - State what changed, not why it matters.
 - Keep the title specific to the behavior, surface area, or system.
 - Use backticks only around code symbols. Leave plain prose unwrapped.
@@ -78,7 +77,7 @@ Examples:
 
 - `[ST-11267] Add plaid relink URL for server-driven relink`
 - `[ST-11193] Fix consent screen freeze in ExternalAccountLinking`
-- `[NO TICKET] Expand dependabot auto-merge for dev dependencies`
+- `Expand dependabot auto-merge for dev dependencies` // (no ticket)
 
 ## Step 5: Draft The Body
 
@@ -160,7 +159,7 @@ This change is to make bank-account-service service start publishing an update e
 
 ## Why
 
-According to the replication deprecation [announcement](https://chime.enterprise.slack.com/archives/...), consumers are encouraged move away from direct table replication. 
+According to the replication deprecation [announcement](https://chime.enterprise.slack.com/archives/...), consumers are encouraged move away from direct table replication.
 
 Instead, events are now the official integration path, and should be used as a source of truth instead of reading replicated tables.
 
