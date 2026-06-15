@@ -88,7 +88,7 @@ Use this structure as a starting point, then adjust it to fit the change:
 ```markdown
 ### Summary
 
-Ticket: https://chime.atlassian.net/browse/TICKET-12345
+Ticket: https://agency.ticketing.net/browse/TICKET-12345
 
 One short paragraph that explains what changes and why it matters in plain language.
 
@@ -129,7 +129,6 @@ Link and Markdown rules:
 - Include links that help the reviewer understand or review the PR, including tickets, design docs, dashboards, artifacts, stacked PRs, dependency PRs, and related historical PRs when they are actually relevant.
 - Label non-obvious links by review purpose, such as `Stacked on`, `Depends on`, `Dashboard`, `Artifact`, or `Related`.
 - Do not include prep-only sources or sample inputs used only to draft the body.
-- Write linked ticket text as `[ST-11414](https://chime.atlassian.net/browse/ST-11414)`, not as a backticked link.
 - Do not combine backticks and hyperlinks. If text is hyperlinked, leave the link text plain because many Markdown renderers break backticked link text.
 - Use backticks around unlinked symbols, classes, files, endpoints, flow IDs, metrics, and other code-like anchors.
 
@@ -149,9 +148,7 @@ Title: [TICKET-12345] Publish account update events
 
 
 
-Ticket: https://chime.atlassian.net/browse/TICKET-12345
 Depends on: https://github.com/example-org/example-repo/pull/123
-Slack: https://chime.enterprise.slack.com/archives/...
 
 ### Summary
 
@@ -159,7 +156,7 @@ This change is to make bank-account-service service start publishing an update e
 
 ## Why
 
-According to the replication deprecation [announcement](https://chime.enterprise.slack.com/archives/...), consumers are encouraged move away from direct table replication.
+According to the replication deprecation [announcement](https://enterprise.slack.com/archives/...), consumers are encouraged move away from direct table replication.
 
 Instead, events are now the official integration path, and should be used as a source of truth instead of reading replicated tables.
 
@@ -195,14 +192,14 @@ Do not add `## Testing` in examples like this unless material verification actua
 Prefer:
 
 ```markdown
-Depends on: https://github.com/1debit/chime-schemas/pull/13566
-Ticket: [ST-11414](https://chime.atlassian.net/browse/ST-11414)
+Depends on: https://github.com/agency/repository/pull/13566
+Ticket: [AGENCY-11414](https://agency.ticket.net/browse/AGENCY-11414)
 ```
 
 Avoid:
 
 ```markdown
-Ticket: [`ST-11414`](https://chime.atlassian.net/browse/ST-11414)
+Ticket: [`AGENCY-11414`](https://agency.ticket.net/browse/AGENCY-11414)
 ```
 
 ## Step 6: Show The Draft And Get Confirmation
