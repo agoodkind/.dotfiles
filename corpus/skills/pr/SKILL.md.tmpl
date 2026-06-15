@@ -120,7 +120,8 @@ Writing rules:
 - Include only details that help the reviewer understand, verify, or safely ship the PR.
 - Do not narrate literal code changes, the PR description provides high-level context for the change, and the PR diff carries the code change.
 - Do not add irrelevant adjacent context just because it is available.
-- Include a `## Testing` section only when actual material verification was run. Material verification includes meaningful commands, simulator checks, deployed checks, screenshots or videos, smoke tests, and other concrete evidence. If you are unsure whether the evidence is material, ask before adding `## Testing`. DO NOT ADD non-material checks like "lints passed", "rg found x", or anything that isn't directly related to the behavior of the change itself.
+- Include a `## Testing` section only when actual material verification was run. Material verification includes meaningful commands, simulator checks, deployed checks, screenshots or videos, smoke tests, and other concrete evidence. If you are unsure whether the evidence is material, ask before adding `## Testing`.
+- Do not add non-material checks like "lints passed", "rg found x", or anything that isn't directly related to the behavior of the change itself.
 - Do not mention unavailable test output, unrun tests, or missing verification unless it materially changes review risk.
 - Keep implementation detail at the system level, not line-by-line.
 
