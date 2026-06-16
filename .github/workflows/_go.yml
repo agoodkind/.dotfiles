@@ -12,6 +12,8 @@ jobs:
         working-directory: dots
     steps:
       - uses: actions/checkout@v6
+        with:
+          submodules: recursive
       - uses: actions/setup-go@v6
         with:
           go-version-file: dots/go.mod
@@ -30,6 +32,8 @@ jobs:
         working-directory: dots
     steps:
       - uses: actions/checkout@v6
+        with:
+          submodules: recursive
       - uses: actions/setup-go@v6
         with:
           go-version-file: dots/go.mod
@@ -44,6 +48,8 @@ jobs:
         working-directory: dots
     steps:
       - uses: actions/checkout@v6
+        with:
+          submodules: recursive
       - uses: actions/setup-go@v6
         with:
           go-version-file: dots/go.mod
@@ -57,6 +63,8 @@ jobs:
         working-directory: dots
     steps:
       - uses: actions/checkout@v6
+        with:
+          submodules: recursive
       - uses: actions/setup-go@v6
         with:
           go-version-file: dots/go.mod
