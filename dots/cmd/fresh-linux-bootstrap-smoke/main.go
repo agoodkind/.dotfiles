@@ -428,6 +428,10 @@ func runInsideContainer(ctx context.Context) error {
 	if err := cloneWorkspace(ctx); err != nil {
 		return err
 	}
+	if err := freshsmoke.AssertSmokeSubmodulesPresent(smokeRepoDir); err != nil {
+		slog.ErrorContext(ctx, "checking smoke submodules", "err", err)
+		return fmt.Errorf("checking smoke submodules: %w", err)
+	}
 	if err := freshsmoke.AssertAbsent("rg", "go", "shfmt", "ast-grep"); err != nil {
 		slog.ErrorContext(ctx, "asserting absent tools", "err", err)
 		return fmt.Errorf("asserting absent tools: %w", err)

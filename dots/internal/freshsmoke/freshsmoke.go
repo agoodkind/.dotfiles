@@ -17,6 +17,8 @@ import (
 	"time"
 )
 
+var requiredSmokeSubmodules = []string{"lib/zinit", "lib/zsh-defer"}
+
 // HasCommand reports whether command is findable via [exec.LookPath].
 func HasCommand(command string) bool {
 	_, err := exec.LookPath(command)
@@ -91,6 +93,32 @@ func AssertCommandsOnPath(pathEnv string, commands ...string) error {
 	}
 	if len(missing) > 0 {
 		return fmt.Errorf("expected commands on PATH, missing: %s", strings.Join(missing, ", "))
+	}
+	return nil
+}
+
+// AssertSmokeSubmodulesPresent verifies that the snapshot under test includes
+// checked-out submodules. Smoke installs pass --skip-git, so install.sh will not
+// initialize submodules for the snapshot.
+func AssertSmokeSubmodulesPresent(repoRoot string) error {
+	missing := make([]string, 0)
+	for _, submodule := range requiredSmokeSubmodules {
+		gitPath := filepath.Join(repoRoot, submodule, ".git")
+		if _, err := os.Stat(gitPath); err == nil {
+			continue
+		} else if errors.Is(err, os.ErrNotExist) {
+			missing = append(missing, submodule)
+			continue
+		} else {
+			slog.Error("checking smoke submodule", "submodule", submodule, "err", err)
+			return fmt.Errorf("checking smoke submodule %s: %w", submodule, err)
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf(
+			"fresh smoke requires checked out submodules: %s; run git submodule update --init --recursive before smoke",
+			strings.Join(missing, ", "),
+		)
 	}
 	return nil
 }
@@ -208,15 +236,22 @@ func (b *syncBuffer) String() string {
 	return b.buf.String()
 }
 
-// RunInstall runs install.sh --use-defaults from repoRoot with the given env,
-// streaming output to [os.Stdout]/[os.Stderr] and returning the combined output.
+func installArgs(installScript string, extraArgs ...string) []string {
+	args := []string{installScript, "--use-defaults", "--skip-git"}
+	args = append(args, extraArgs...)
+	return args
+}
+
+// RunInstall runs install.sh --use-defaults --skip-git from repoRoot with the
+// given env, streaming output to [os.Stdout]/[os.Stderr] and returning the
+// combined output.
 func RunInstall(ctx context.Context, repoRoot string, env []string, timeout time.Duration, extraArgs ...string) (string, error) {
 	slog.InfoContext(ctx, "running install.sh", "repoRoot", repoRoot)
 	callCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	installScript := filepath.Join(repoRoot, "install.sh")
-	args := append([]string{installScript, "--use-defaults"}, extraArgs...)
+	args := installArgs(installScript, extraArgs...)
 	cmd := exec.CommandContext(callCtx, "bash", args...)
 	cmd.Env = env
 	var output syncBuffer
