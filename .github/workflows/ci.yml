@@ -15,6 +15,12 @@ permissions:
 
 jobs:
   go:
-    uses: ./.github/workflows/_go.yml
+    uses: agoodkind/go-makefile/.github/workflows/_ci.yml@main
     permissions:
       contents: read
+      id-token: write
+    with:
+      apt_packages: zsh
+      go_version_file: dots/go.mod
+      submodules: recursive
+      working_directory: dots
