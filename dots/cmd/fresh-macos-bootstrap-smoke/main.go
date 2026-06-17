@@ -75,6 +75,10 @@ func runDirect(ctx context.Context, repoRoot string) error {
 	if err != nil {
 		return err
 	}
+	if err := freshsmoke.AssertSmokeSubmodulesPresent(repoRoot); err != nil {
+		slog.ErrorContext(ctx, "checking smoke submodules", "err", err)
+		return fmt.Errorf("checking smoke submodules: %w", err)
+	}
 	home, err := os.MkdirTemp("", "dotfiles-fresh-macos-*")
 	if err != nil {
 		slog.ErrorContext(ctx, "creating smoke home", "err", err)
@@ -338,6 +342,10 @@ func runInsideVM(ctx context.Context, repoRoot string, githubTokenFile string) e
 		return err
 	}
 	repoRoot = vmSmokeRepoDir
+	if err := freshsmoke.AssertSmokeSubmodulesPresent(repoRoot); err != nil {
+		slog.ErrorContext(ctx, "checking smoke submodules", "err", err)
+		return fmt.Errorf("checking smoke submodules: %w", err)
+	}
 
 	home, err := os.MkdirTemp("", "dotfiles-fresh-macos-*")
 	if err != nil {
