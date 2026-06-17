@@ -3,8 +3,9 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
-      day: monday
+      interval: cron
+      cronjob: 0 6 * * *
+      timezone: America/Los_Angeles
     groups:
       actions:
         patterns:
@@ -12,12 +13,12 @@ updates:
     open-pull-requests-limit: 3
     reviewers:
       - agoodkind
-
   - package-ecosystem: gomod
     directory: /dots
     schedule:
-      interval: weekly
-      day: monday
+      interval: cron
+      cronjob: 0 6 * * *
+      timezone: America/Los_Angeles
     groups:
       go-minor-patch:
         update-types:
