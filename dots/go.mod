@@ -5,8 +5,8 @@ go 1.26.4
 require (
 	charm.land/bubbles/v2 v2.1.0
 	charm.land/bubbletea/v2 v2.0.7
-	github.com/moby/moby/api v1.54.2
-	github.com/moby/moby/client v0.4.1
+	github.com/moby/moby/api v1.55.0
+	github.com/moby/moby/client v0.5.0
 	github.com/pelletier/go-toml/v2 v2.4.0
 	goodkind.io/gklog v0.4.4
 	gopkg.in/yaml.v3 v3.0.1
