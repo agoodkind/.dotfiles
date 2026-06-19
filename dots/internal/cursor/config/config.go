@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"goodkind.io/.dotfiles/internal/cursor/constants"
 	"goodkind.io/.dotfiles/internal/cursor/models"
 )
 
@@ -12,7 +13,7 @@ import (
 func BuildSyncConfig() models.SyncConfig {
 	workspaceURL := os.Getenv("DEFAULT_RULE_URL")
 	if workspaceURL == "" {
-		workspaceURL = "https://github.com/agoodkind/.dotfiles"
+		workspaceURL = constants.DefaultWorkspaceURL
 	}
 
 	home, homeErr := os.UserHomeDir()
@@ -22,7 +23,7 @@ func BuildSyncConfig() models.SyncConfig {
 
 	return models.SyncConfig{
 		CursorDB:     filepath.Join(home, "Library/Application Support/Cursor/User/globalStorage/state.vscdb"),
-		APIBase:      "https://api2.cursor.sh/aiserver.v1.AiService",
+		APIBase:      constants.APIBase,
 		WorkspaceURL: workspaceURL,
 	}
 }

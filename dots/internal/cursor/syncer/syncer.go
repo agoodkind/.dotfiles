@@ -80,13 +80,13 @@ func SyncRules(rules []compilation.RenderedRule) int {
 	}
 	logging.Info("Authentication successful")
 
-	logging.Info("Clearing existing cloud rules...")
-	cursorapi.DeleteAllRules(token, cfg.APIBase)
-
 	if len(rules) == 0 {
 		logging.Info("No corpus rules to upload")
 		return 0
 	}
+
+	logging.Info("Clearing existing cloud rules...")
+	cursorapi.DeleteAllRules(token, cfg.APIBase)
 
 	logging.Info(fmt.Sprintf("Uploading %d rule(s) to cloud...", len(rules)))
 	attempted, succeeded, failed, uploadedTitles, failedUploads := doUploadRules(token, cfg.APIBase, cfg.WorkspaceURL, rules)

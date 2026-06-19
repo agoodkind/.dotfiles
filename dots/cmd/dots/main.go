@@ -4,7 +4,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -192,7 +191,13 @@ func runCursorSync(args []string) int {
 			}
 		}
 	}
-	rules, err := renderCursorRules()
+	dotfiles := os.Getenv("DOTDOTFILES")
+	if dotfiles == "" {
+		dotfiles = filepath.Join(os.Getenv("HOME"), ".dotfiles")
+	}
+	source := compilation.ResolveCorpusSource(dotfiles)
+	style := compilation.RuleRenderStyle{SkillsRelDir: "../skills"}
+	rules, err := compilation.RenderRulesForUpload(source.Rules, style)
 	if err != nil {
 		logError("rendering corpus rules for cursor upload", err)
 		return 1
@@ -202,21 +207,6 @@ func runCursorSync(args []string) int {
 		return 1
 	}
 	return 0
-}
-
-func renderCursorRules() ([]compilation.RenderedRule, error) {
-	dotfiles := os.Getenv("DOTDOTFILES")
-	if dotfiles == "" {
-		dotfiles = filepath.Join(os.Getenv("HOME"), ".dotfiles")
-	}
-	source := compilation.ResolveCorpusSource(dotfiles)
-	style := compilation.RuleRenderStyle{SkillsRelDir: "../skills"}
-	rules, err := compilation.RenderRulesForUpload(source.Rules, style)
-	if err != nil {
-		slog.Error("dots: rendering corpus rules for cursor upload", "err", err)
-		return nil, fmt.Errorf("rendering corpus rules for cursor upload: %w", err)
-	}
-	return rules, nil
 }
 
 func runInstall(args []string) int {
