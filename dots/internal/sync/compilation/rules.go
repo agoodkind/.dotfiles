@@ -61,25 +61,26 @@ type copilotRuleFrontmatter struct {
 // ParseRuleSource reads neutral corpus rule metadata and body from file content.
 func ParseRuleSource(content string) (RuleSource, error) {
 	if !strings.HasPrefix(content, "---\n") {
-		return RuleSource{Body: content}, nil
+		return emptyRuleSource(content), nil
 	}
 	endMarker := "\n---\n"
 	frontmatterEnd := strings.Index(content[4:], endMarker)
 	if frontmatterEnd == -1 {
-		return RuleSource{Body: content}, nil
+		return emptyRuleSource(content), nil
 	}
 
 	var raw ruleSourceYAML
 	rawFrontmatter := content[4 : 4+frontmatterEnd]
 	if err := yaml.Unmarshal([]byte(rawFrontmatter), &raw); err != nil {
 		slog.Warn("compilation: ParseRuleSource yaml failed", "err", err)
-		return RuleSource{}, fmt.Errorf("parsing rule source front matter: %w", err)
+		return RuleSource{Description: "", AppliesTo: nil, Always: false, Body: ""}, fmt.Errorf("parsing rule source front matter: %w", err)
 	}
 
 	bodyStart := 4 + frontmatterEnd + len(endMarker)
 	rule := RuleSource{
 		Description: strings.TrimSpace(raw.Description),
 		AppliesTo:   append([]string(nil), raw.AppliesTo...),
+		Always:      false,
 		Body:        content[bodyStart:],
 	}
 	if raw.Always != nil {
@@ -91,6 +92,10 @@ func ParseRuleSource(content string) (RuleSource, error) {
 		rule.AppliesTo = splitGlobs(raw.Globs)
 	}
 	return rule, nil
+}
+
+func emptyRuleSource(body string) RuleSource {
+	return RuleSource{Description: "", AppliesTo: nil, Always: false, Body: body}
 }
 
 func splitGlobs(value string) []string {
@@ -196,7 +201,7 @@ func (r RuleSource) RenderCopilot(name string) (string, error) {
 	return renderedFrontmatter + "\n" + GeneratedAgentHTMLMarker + "\n\n" + body + "\n", nil
 }
 
-func marshalFrontmatter(metadata any) (string, error) {
+func marshalFrontmatter[T cursorRuleFrontmatter | claudeRuleFrontmatter | copilotRuleFrontmatter](metadata T) (string, error) {
 	content, err := yaml.Marshal(metadata)
 	if err != nil {
 		slog.Warn("compilation: marshalFrontmatter yaml failed", "err", err)
