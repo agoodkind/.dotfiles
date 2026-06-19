@@ -17,7 +17,6 @@ import (
 	"goodkind.io/.dotfiles/internal/runner"
 	"goodkind.io/.dotfiles/internal/sync/common"
 	"goodkind.io/.dotfiles/internal/telemetry"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -34,18 +33,6 @@ type CorpusPaths struct {
 	Root   string
 	Rules  string
 	Skills string
-}
-
-type agentRuleFrontmatter struct {
-	Description string `yaml:"description,omitempty"`
-	Globs       string `yaml:"globs,omitempty"`
-	AlwaysApply bool   `yaml:"alwaysApply,omitempty"`
-}
-
-type frontmatterMetadata struct {
-	Name        string `yaml:"name,omitempty"`
-	Description string `yaml:"description,omitempty"`
-	ApplyTo     string `yaml:"applyTo,omitempty"`
 }
 
 // ResolveCorpusSource returns the CorpusPaths for the given dotfiles root.
@@ -154,7 +141,7 @@ type RuleRenderStyle struct {
 
 // RenderRuleFiles writes each .mdc rule file from src into dst as a marker-stamped
 // generated file with the given extension (for example ".mdc" or ".md").
-func RenderRuleFiles(src string, dst string, ext string, style RuleRenderStyle) error {
+func RenderRuleFiles(src string, dst string, ext string, format RuleTargetFormat, style RuleRenderStyle) error {
 	files, err := sortedFilesWithExt(src, ".mdc")
 	if err != nil {
 		return err
@@ -173,7 +160,16 @@ func RenderRuleFiles(src string, dst string, ext string, style RuleRenderStyle) 
 			slog.Warn("compilation: RenderRuleFiles read failed", "file", file, "err", readErr)
 			return fmt.Errorf("reading file %s: %w", file, readErr)
 		}
-		rendered, renderErr := renderRuleTemplate(string(content), style, filepath.Base(file))
+		rule, parseErr := ParseRuleSource(string(content))
+		if parseErr != nil {
+			return parseErr
+		}
+		renderedBody, renderErr := renderRuleTemplate(strings.TrimSpace(rule.Body), style, filepath.Base(file))
+		if renderErr != nil {
+			return renderErr
+		}
+		rule.Body = renderedBody
+		rendered, renderErr := rule.RenderForTarget(format)
 		if renderErr != nil {
 			return renderErr
 		}
@@ -263,11 +259,11 @@ func RenderRulesAsInstructionDoc(src string, dst string, title string, style Rul
 			slog.Warn("compilation: RenderRulesAsInstructionDoc read failed", "file", file, "err", readErr)
 			return fmt.Errorf("reading file %s: %w", file, readErr)
 		}
-		body, stripErr := stripFrontmatter(string(content))
-		if stripErr != nil {
-			return stripErr
+		rule, parseErr := ParseRuleSource(string(content))
+		if parseErr != nil {
+			return parseErr
 		}
-		rendered, renderErr := renderRuleTemplate(strings.TrimSpace(body), style, filepath.Base(file))
+		rendered, renderErr := renderRuleTemplate(strings.TrimSpace(rule.Body), style, filepath.Base(file))
 		if renderErr != nil {
 			return renderErr
 		}
@@ -300,15 +296,16 @@ func RenderCopilotInstructionFiles(src string, dst string, style RuleRenderStyle
 			slog.Warn("compilation: RenderCopilotInstructionFiles read failed", "file", file, "err", readErr)
 			return fmt.Errorf("reading file %s: %w", file, readErr)
 		}
-		frontmatter, body, parseErr := parseFrontmatter(string(content))
+		rule, parseErr := ParseRuleSource(string(content))
 		if parseErr != nil {
 			return parseErr
 		}
-		renderedBody, renderErr := renderRuleTemplate(strings.TrimSpace(body), style, filepath.Base(file))
+		renderedBody, renderErr := renderRuleTemplate(strings.TrimSpace(rule.Body), style, filepath.Base(file))
 		if renderErr != nil {
 			return renderErr
 		}
-		rendered, renderErr := renderCopilotInstruction(baseName, frontmatter, renderedBody)
+		rule.Body = renderedBody
+		rendered, renderErr := rule.RenderCopilot(baseName)
 		if renderErr != nil {
 			return renderErr
 		}
@@ -587,62 +584,6 @@ func sortedFilesWithExt(src string, ext string) ([]string, error) {
 	}
 	sort.Strings(files)
 	return files, nil
-}
-
-func stripFrontmatter(content string) (string, error) {
-	_, body, err := parseFrontmatter(content)
-	return body, err
-}
-
-func renderCopilotInstruction(baseName string, frontmatter agentRuleFrontmatter, body string) (string, error) {
-	applyTo := strings.TrimSpace(frontmatter.Globs)
-	if applyTo == "" && frontmatter.AlwaysApply {
-		applyTo = "**/*"
-	}
-
-	metadata := frontmatterMetadata{
-		Name:        baseName,
-		Description: "",
-		ApplyTo:     applyTo,
-	}
-	if description := strings.TrimSpace(frontmatter.Description); description != "" {
-		metadata.Description = description
-	}
-	renderedFrontmatter, err := renderFrontmatter(metadata)
-	if err != nil {
-		return "", err
-	}
-	return renderedFrontmatter + "\n" + GeneratedAgentHTMLMarker + "\n\n" + strings.TrimSpace(body) + "\n", nil
-}
-
-func parseFrontmatter(content string) (agentRuleFrontmatter, string, error) {
-	var values agentRuleFrontmatter
-	if !strings.HasPrefix(content, "---\n") {
-		return values, content, nil
-	}
-	endMarker := "\n---\n"
-	frontmatterEnd := strings.Index(content[4:], endMarker)
-	if frontmatterEnd == -1 {
-		return values, content, nil
-	}
-
-	rawFrontmatter := content[4 : 4+frontmatterEnd]
-	if err := yaml.Unmarshal([]byte(rawFrontmatter), &values); err != nil {
-		slog.Warn("compilation: parseFrontmatter yaml failed", "err", err)
-		return values, content, fmt.Errorf("parsing frontmatter: %w", err)
-	}
-
-	bodyStart := 4 + frontmatterEnd + len(endMarker)
-	return values, content[bodyStart:], nil
-}
-
-func renderFrontmatter(metadata frontmatterMetadata) (string, error) {
-	content, err := yaml.Marshal(metadata)
-	if err != nil {
-		slog.Warn("compilation: renderFrontmatter yaml failed", "err", err)
-		return "", fmt.Errorf("marshaling frontmatter: %w", err)
-	}
-	return "---\n" + string(content) + "---\n", nil
 }
 
 func writeFileIfChanged(path string, content []byte) error {

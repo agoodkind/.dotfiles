@@ -269,7 +269,7 @@ func TestRenderRuleFiles(t *testing.T) {
 	stale := filepath.Join(dst, "old.mdc")
 	writeTestFile(t, stale, GeneratedAgentHTMLMarker+"\nstale\n")
 
-	if err := RenderRuleFiles(srcRoot, dst, ".mdc", RuleRenderStyle{}); err != nil {
+	if err := RenderRuleFiles(srcRoot, dst, ".mdc", RuleTargetCursor, RuleRenderStyle{}); err != nil {
 		t.Fatalf("RenderRuleFiles: %v", err)
 	}
 	for _, name := range []string{"general.mdc", "code.mdc"} {

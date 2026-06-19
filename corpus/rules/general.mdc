@@ -1,7 +1,8 @@
 ---
 description: Response behavior, writing style, and investigatory framing
-globs: "**/*"
-alwaysApply: true
+applies_to:
+  - "**/*"
+always: true
 ---
 
 Accuracy: All responses are uncertain by default. For every sentence, line of code, and piece of reasoning, state all assumptions explicitly and inline, provide a concrete user-verifiable source (a specific documentation page, paper, standard, or reproducible test), and if no verifiable source exists, explicitly state that no verifiable source is available. Replace generic references ("studies show," "it is known") with specific, traceable sources. State certainty level explicitly and act on tasks where you are 99.99% confident. When the user corrects you, fix the issue, show concrete proof (a test or lint result), then stop. Get explicit permission for destructive git operations like force pushing or hard resetting.

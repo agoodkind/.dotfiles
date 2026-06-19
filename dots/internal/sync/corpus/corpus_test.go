@@ -48,8 +48,8 @@ func TestLoadManifest(t *testing.T) {
 
 func TestSyncRendersAndGatesByOS(t *testing.T) {
 	dotfiles := t.TempDir()
-	writeFile(t, filepath.Join(dotfiles, "corpus", "rules", "code.mdc"), "---\ndescription: c\n---\ncode body\n")
-	writeFile(t, filepath.Join(dotfiles, "corpus", "rules", "writing.mdc"), "---\ndescription: w\n---\nSkill: {{.Skill \"make-readable\"}}\n")
+	writeFile(t, filepath.Join(dotfiles, "corpus", "rules", "code.mdc"), "---\ndescription: c\napplies_to:\n  - \"*.go\"\nalways: false\n---\ncode body\n")
+	writeFile(t, filepath.Join(dotfiles, "corpus", "rules", "writing.mdc"), "---\ndescription: w\napplies_to:\n  - \"*.md\"\nalways: false\n---\nSkill: {{.Skill \"make-readable\"}}\n")
 	writeFile(t, filepath.Join(dotfiles, "corpus", "skills", "enforce-rules", "SKILL.md.tmpl"), "---\nname: enforce-rules\n---\n\nOne: {{.Rule \"code\"}}\n")
 	writeFile(t, filepath.Join(dotfiles, "corpus", "skills", "make-readable", "SKILL.md.tmpl"), "---\nname: make-readable\n---\n")
 	writeFile(t, filepath.Join(dotfiles, "corpus", ManifestName),
@@ -91,5 +91,48 @@ func TestSyncRendersAndGatesByOS(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(home, ".never", "NEVER.md")); !os.IsNotExist(err) {
 		t.Errorf("expected os-gated output to be skipped, stat err: %v", err)
+	}
+}
+
+func TestSyncRendersProviderFrontmatter(t *testing.T) {
+	dotfiles := t.TempDir()
+	writeFile(t, filepath.Join(dotfiles, "corpus", "rules", "writing.mdc"),
+		"---\ndescription: Writing rules\napplies_to:\n  - \"*.md\"\nalways: false\n---\n\nBody text\n")
+	writeFile(t, filepath.Join(dotfiles, "corpus", ManifestName),
+		"[[output]]\nprovider=\"cursor\"\nkind=\"rule-files\"\ndest=\".cursor/rules\"\nrule_ext=\".mdc\"\n\n"+
+			"[[output]]\nprovider=\"claude\"\nkind=\"rule-files\"\ndest=\".claude/rules\"\nrule_ext=\".md\"\n\n"+
+			"[[output]]\nprovider=\"copilot\"\nkind=\"per-file-instructions\"\ndest=\".copilot/instructions\"\n")
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	if err := Sync(context.Background(), dotfiles, nil); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+
+	cursorRule, err := os.ReadFile(filepath.Join(home, ".cursor", "rules", "writing.mdc"))
+	if err != nil {
+		t.Fatalf("reading cursor rule: %v", err)
+	}
+	if !strings.Contains(string(cursorRule), "globs: '*.md'") {
+		t.Errorf("cursor rule missing globs front matter:\n%s", string(cursorRule))
+	}
+
+	claudeRule, err := os.ReadFile(filepath.Join(home, ".claude", "rules", "writing.md"))
+	if err != nil {
+		t.Fatalf("reading claude rule: %v", err)
+	}
+	if !strings.Contains(string(claudeRule), "paths:") || !strings.Contains(string(claudeRule), "'*.md'") {
+		t.Errorf("claude rule missing paths front matter:\n%s", string(claudeRule))
+	}
+
+	copilotRule, err := os.ReadFile(filepath.Join(home, ".copilot", "instructions", "writing.instructions.md"))
+	if err != nil {
+		t.Fatalf("reading copilot instruction: %v", err)
+	}
+	for _, want := range []string{"name: writing", "description: Writing rules", "applyTo: '*.md'"} {
+		if !strings.Contains(string(copilotRule), want) {
+			t.Errorf("copilot instruction missing %q:\n%s", want, string(copilotRule))
+		}
 	}
 }
