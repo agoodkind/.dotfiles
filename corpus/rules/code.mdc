@@ -1,7 +1,16 @@
 ---
 description: Code style conventions for JavaScript, TypeScript, Ruby, and Shell
-globs: "*.js,*.jsx,*.ts,*.tsx,*.rb,*.sh,*.zsh,*.bash,*.go"
-alwaysApply: false
+applies_to:
+  - "*.js"
+  - "*.jsx"
+  - "*.ts"
+  - "*.tsx"
+  - "*.rb"
+  - "*.sh"
+  - "*.zsh"
+  - "*.bash"
+  - "*.go"
+always: false
 ---
 
 JavaScript/TypeScript: Use function definitions for top-level functions, not arrow functions (e.g. `function handleClick(event: FullyQualifiedType) { ... }`). All JSDoc must include types exhaustively.

@@ -128,7 +128,12 @@ func renderOutput(source compilation.CorpusPaths, output Output, home string, de
 		if ruleStyleErr != nil {
 			return ruleStyleErr
 		}
-		err = compilation.RenderRuleFiles(source.Rules, dest, output.RuleExt, ruleStyle)
+		format, formatErr := compilation.RuleTargetFormatFromExt(output.RuleExt)
+		if formatErr != nil {
+			slog.Error("corpus: unsupported rule_ext", "provider", output.Provider, "rule_ext", output.RuleExt, "err", formatErr)
+			return fmt.Errorf("unsupported rule_ext %q for %s: %w", output.RuleExt, output.Provider, formatErr)
+		}
+		err = compilation.RenderRuleFiles(source.Rules, dest, output.RuleExt, format, ruleStyle)
 	case KindInstructionDoc:
 		if output.Title == "" {
 			return fmt.Errorf("instruction-doc output for %s requires title", output.Provider)
