@@ -18,12 +18,19 @@ const (
 	RuleTargetClaude RuleTargetFormat = "claude"
 )
 
+type ruleFileExt string
+
+const (
+	ruleFileExtMD  ruleFileExt = ".md"
+	ruleFileExtMDC ruleFileExt = ".mdc"
+)
+
 // RuleTargetFormatFromExt maps a rule file extension to the target harness format.
 func RuleTargetFormatFromExt(ext string) (RuleTargetFormat, error) {
-	switch ext {
-	case ".md":
+	switch ruleFileExt(ext) {
+	case ruleFileExtMD:
 		return RuleTargetClaude, nil
-	case ".mdc":
+	case ruleFileExtMDC:
 		return RuleTargetCursor, nil
 	default:
 		return "", fmt.Errorf("unsupported rule_ext %q", ext)

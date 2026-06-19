@@ -130,7 +130,8 @@ func renderOutput(source compilation.CorpusPaths, output Output, home string, de
 		}
 		format, formatErr := compilation.RuleTargetFormatFromExt(output.RuleExt)
 		if formatErr != nil {
-			return formatErr
+			slog.Error("corpus: unsupported rule_ext", "provider", output.Provider, "rule_ext", output.RuleExt, "err", formatErr)
+			return fmt.Errorf("unsupported rule_ext %q for %s: %w", output.RuleExt, output.Provider, formatErr)
 		}
 		err = compilation.RenderRuleFiles(source.Rules, dest, output.RuleExt, format, ruleStyle)
 	case KindInstructionDoc:
