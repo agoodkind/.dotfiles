@@ -1,0 +1,145 @@
+---
+description: Technical documentation writing rules for scannable, plain, neutral prose
+globs: "*.md,*.mdc,*.txt"
+alwaysApply: false
+---
+
+# Technical documentation writing
+
+Help reviewers find the answer quickly.
+
+## Overview
+
+Good technical documentation feels light, precise, and easy to scan. This rule provides the model for plain language and accessibility and style guide for restrained, polished wording.
+
+A useful document includes only details that help readers understand, verify, or ship safely.
+
+## Write for review
+
+Prose for review should be clear enough for a critical Apple Marketing review.
+
+- The first sentence gives the load-bearing point.
+- Each paragraph gives the reviewer one idea to evaluate.
+- The prose fits the reviewer's context.
+- Accessible writing keeps wording simple and concrete.
+- Jargon belongs only when the reviewer needs it.
+- The wording stays clear, precise, restrained, and polished.
+- Each claim gives the reviewer enough context to verify it.
+- Ambiguous claims should become concrete behavior.
+
+## Structure the page
+
+A clear page or pull request (PR) description starts with the result.
+
+- The title names the task, topic, or change.
+- The summary sentence states the behavior or qualitative result.
+- The `Overview` section gives only the context needed to start.
+- Each later section answers one reviewer question.
+- Each task heading starts with an action verb.
+- Numbered steps describe ordered work.
+- Notes appear beside the step they clarify.
+
+## Keep detail load bearing
+
+A detail belongs when it helps the reviewer understand, verify, or ship safely.
+
+- Nonessential context stays out of the document.
+- Unasked recommendations stay out of review prose.
+- Repeated detail creates drift and should become a link or disappear.
+- Adjacent context belongs only when it changes risk or review.
+- Implementation detail stays at the system level.
+- The prose explains behavior before naming code.
+- Prose should not narrate literal code.
+- Code anchors appear only when they help the reader orient.
+- The code carries line-level detail.
+
+## Order information
+
+The most useful information belongs before supporting detail.
+
+- The first sentence gives the answer.
+- Later sentences add limits, examples, and exceptions.
+- Everyday product or system nouns introduce a concept before code names.
+- Behavioral or qualitative context comes before implementation detail.
+- The prose explains why behavior exists when the reason affects review.
+- The pattern `This behavior changes X because Y.` keeps cause and effect visible.
+
+## Write plain sentences
+
+Clear sentences can stand alone.
+
+- Each sentence has a concrete subject and a concrete verb.
+- Each sentence stays under 20 words when that preserves meaning.
+- Separate ideas work better as separate sentences.
+- Verbose, inflated, or low-substance prose should become shorter or disappear.
+- The {{.Skill "make-readable"}} rule helps remove dense or repetitive prose.
+- The {{.Skill "plain"}} rule helps define unexplained labels before use.
+- The {{.Skill "remove-emdashes"}} rule helps split interrupted sentences into separate thoughts.
+
+## Write direct instructions
+
+Direct instructions tell the reader what to do and what will happen.
+
+- Active voice works best for most instructions.
+- The word `you` can address the reader directly.
+- The word `your` works when the reader owns the object.
+- Imperative mood keeps steps direct.
+- Irreversible results belong before the action.
+- Externally visible results belong before the action.
+
+## Choose precise words
+
+Plain words and specific verbs make instructions easier to follow.
+
+- The word `use` is clearer than `utilize`.
+- The word `to` is clearer than `in order to`.
+- The word `after` is clearer than `subsequent to`.
+- Verbs such as `configure`, `delete`, `export`, and `authenticate` work well when they fit.
+- A more specific verb works better than `manage`.
+- A more specific verb works better than `process`.
+
+## Preserve exact terms
+
+System names should match the product or code.
+
+- UI element names match the interface exactly.
+- Configuration key names match the source exactly.
+- Code parameter names match the source exactly.
+- Capitalization matches the source exactly.
+- Formatting matches the source exactly.
+- Acronyms are spelled out on first use unless they are universal.
+
+## Use action language
+
+One interaction type should use one action verb.
+
+- The verb `select` fits menus.
+- The verb `click` fits desktop pointers.
+- The verb `tap` fits touch screens.
+- The verb `run` fits command lines.
+- The verb `execute` fits command lines.
+
+## Write helpful errors
+
+Helpful errors explain the cause before the cure.
+
+1. State what went wrong.
+2. State how to fix it.
+
+Neutral error text helps the reader recover.
+
+- Error text states system status calmly.
+- Error text keeps blame out of the message.
+- Error text avoids alarmist language such as `Fatal Error!`.
+- Error codes appear with a plain solution.
+
+## Use durable links
+
+Links work best when another local source is the stable home for the detail.
+
+- Link text stays free of backticks.
+- Local sources carry load-bearing details when possible.
+- Stable local files are better than copied detail.
+- Repeated detail creates drift.
+- Current behavior matters more than history.
+- Historical notes appear only when current work requires them.

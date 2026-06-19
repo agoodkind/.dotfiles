@@ -146,9 +146,15 @@ func CreateHushLogin(ctx context.Context, _ *telemetry.Logger) error {
 	return nil
 }
 
+// RuleRenderStyle describes how generated rule files reference generated skills.
+type RuleRenderStyle struct {
+	// SkillsRelDir is the relative directory from the rendered rule location to generated skill directories.
+	SkillsRelDir string
+}
+
 // RenderRuleFiles writes each .mdc rule file from src into dst as a marker-stamped
 // generated file with the given extension (for example ".mdc" or ".md").
-func RenderRuleFiles(src string, dst string, ext string) error {
+func RenderRuleFiles(src string, dst string, ext string, style RuleRenderStyle) error {
 	files, err := sortedFilesWithExt(src, ".mdc")
 	if err != nil {
 		return err
@@ -167,19 +173,67 @@ func RenderRuleFiles(src string, dst string, ext string) error {
 			slog.Warn("compilation: RenderRuleFiles read failed", "file", file, "err", readErr)
 			return fmt.Errorf("reading file %s: %w", file, readErr)
 		}
+		rendered, renderErr := renderRuleTemplate(string(content), style, filepath.Base(file))
+		if renderErr != nil {
+			return renderErr
+		}
 		target := filepath.Join(dst, targetName)
 		if isSymlink(target) {
 			_ = os.Remove(target)
 		}
-		if err := writeFileIfChanged(target, []byte(injectSkillMarker(string(content)))); err != nil {
+		if err := writeFileIfChanged(target, []byte(injectSkillMarker(rendered))); err != nil {
 			return err
 		}
 	}
 	return removeMissingManagedFiles(dst, ext, activeFiles)
 }
 
+// ruleTemplateData exposes skill reference helpers to a rule template as the
+// "{{.Skill \"name\"}}" method for the active RuleRenderStyle.
+type ruleTemplateData struct {
+	style   RuleRenderStyle
+	execErr *error
+}
+
+// Skill renders a single skill link for the active style.
+func (d ruleTemplateData) Skill(name string) string {
+	if d.style.SkillsRelDir == "" {
+		if d.execErr != nil {
+			*d.execErr = fmt.Errorf("skill link %q requires skill_dest in manifest", name)
+		}
+		return ""
+	}
+	return renderSkillLink(d.style, name)
+}
+
+func renderRuleTemplate(content string, style RuleRenderStyle, name string) (string, error) {
+	if !strings.Contains(content, "{{") {
+		return content, nil
+	}
+	var execErr error
+	parsed, err := template.New(name).Parse(content)
+	if err != nil {
+		slog.Warn("compilation: renderRuleTemplate parse failed", "name", name, "err", err)
+		return "", fmt.Errorf("parsing rule template %s: %w", name, err)
+	}
+	buf := bytes.NewBuffer(nil)
+	if err := parsed.Execute(buf, ruleTemplateData{style: style, execErr: &execErr}); err != nil {
+		slog.Warn("compilation: renderRuleTemplate execute failed", "name", name, "err", err)
+		return "", fmt.Errorf("executing rule template %s: %w", name, err)
+	}
+	if execErr != nil {
+		return "", execErr
+	}
+	return buf.String(), nil
+}
+
+func renderSkillLink(style RuleRenderStyle, name string) string {
+	skillPath := filepath.ToSlash(filepath.Join(style.SkillsRelDir, name, "SKILL.md"))
+	return fmt.Sprintf("[%s](%s)", name, skillPath)
+}
+
 // RenderRulesAsInstructionDoc concatenates .mdc rule files from src into a single markdown document at dst.
-func RenderRulesAsInstructionDoc(src string, dst string, title string) error {
+func RenderRulesAsInstructionDoc(src string, dst string, title string, style RuleRenderStyle) error {
 	files, err := sortedFilesWithExt(src, ".mdc")
 	if err != nil {
 		return err
@@ -213,8 +267,11 @@ func RenderRulesAsInstructionDoc(src string, dst string, title string) error {
 		if stripErr != nil {
 			return stripErr
 		}
-		body = strings.TrimSpace(body)
-		builder.WriteString(body)
+		rendered, renderErr := renderRuleTemplate(strings.TrimSpace(body), style, filepath.Base(file))
+		if renderErr != nil {
+			return renderErr
+		}
+		builder.WriteString(rendered)
 		builder.WriteString("\n")
 	}
 
@@ -222,7 +279,7 @@ func RenderRulesAsInstructionDoc(src string, dst string, title string) error {
 }
 
 // RenderCopilotInstructionFiles renders .mdc rule files from src as .instructions.md files in dst.
-func RenderCopilotInstructionFiles(src string, dst string) error {
+func RenderCopilotInstructionFiles(src string, dst string, style RuleRenderStyle) error {
 	files, err := sortedFilesWithExt(src, ".mdc")
 	if err != nil {
 		return err
@@ -247,7 +304,11 @@ func RenderCopilotInstructionFiles(src string, dst string) error {
 		if parseErr != nil {
 			return parseErr
 		}
-		rendered, renderErr := renderCopilotInstruction(baseName, frontmatter, body)
+		renderedBody, renderErr := renderRuleTemplate(strings.TrimSpace(body), style, filepath.Base(file))
+		if renderErr != nil {
+			return renderErr
+		}
+		rendered, renderErr := renderCopilotInstruction(baseName, frontmatter, renderedBody)
 		if renderErr != nil {
 			return renderErr
 		}

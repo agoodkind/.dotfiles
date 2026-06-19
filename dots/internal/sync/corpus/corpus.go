@@ -53,13 +53,14 @@ const (
 
 // Output is one declarative fan-out artifact.
 type Output struct {
-	Provider string       `toml:"provider"`
-	Kind     OutputKind   `toml:"kind"`
-	Dest     string       `toml:"dest"`
-	RefStyle RefStyleName `toml:"ref_style"`
-	RuleExt  string       `toml:"rule_ext"`
-	Title    string       `toml:"title"`
-	OS       string       `toml:"os"`
+	Provider  string       `toml:"provider"`
+	Kind      OutputKind   `toml:"kind"`
+	Dest      string       `toml:"dest"`
+	RefStyle  RefStyleName `toml:"ref_style"`
+	RuleExt   string       `toml:"rule_ext"`
+	SkillDest string       `toml:"skill_dest"`
+	Title     string       `toml:"title"`
+	OS        string       `toml:"os"`
 }
 
 // Manifest is the parsed targets.toml.
@@ -103,14 +104,14 @@ func Sync(ctx context.Context, dotfiles string, logger *telemetry.Logger) error 
 			continue
 		}
 		dest := filepath.Join(home, output.Dest)
-		if err := renderOutput(source, output, dest); err != nil {
+		if err := renderOutput(source, output, home, dest); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func renderOutput(source compilation.CorpusPaths, output Output, dest string) error {
+func renderOutput(source compilation.CorpusPaths, output Output, home string, dest string) error {
 	var err error
 	switch output.Kind {
 	case KindSkills:
@@ -123,14 +124,26 @@ func renderOutput(source compilation.CorpusPaths, output Output, dest string) er
 		if output.RuleExt == "" {
 			return fmt.Errorf("rule-files output for %s requires rule_ext", output.Provider)
 		}
-		err = compilation.RenderRuleFiles(source.Rules, dest, output.RuleExt)
+		ruleStyle, ruleStyleErr := resolveRuleRenderStyle(output, home, dest)
+		if ruleStyleErr != nil {
+			return ruleStyleErr
+		}
+		err = compilation.RenderRuleFiles(source.Rules, dest, output.RuleExt, ruleStyle)
 	case KindInstructionDoc:
 		if output.Title == "" {
 			return fmt.Errorf("instruction-doc output for %s requires title", output.Provider)
 		}
-		err = compilation.RenderRulesAsInstructionDoc(source.Rules, dest, output.Title)
+		ruleStyle, ruleStyleErr := resolveRuleRenderStyle(output, home, dest)
+		if ruleStyleErr != nil {
+			return ruleStyleErr
+		}
+		err = compilation.RenderRulesAsInstructionDoc(source.Rules, dest, output.Title, ruleStyle)
 	case KindPerFileInstructions:
-		err = compilation.RenderCopilotInstructionFiles(source.Rules, dest)
+		ruleStyle, ruleStyleErr := resolveRuleRenderStyle(output, home, dest)
+		if ruleStyleErr != nil {
+			return ruleStyleErr
+		}
+		err = compilation.RenderCopilotInstructionFiles(source.Rules, dest, ruleStyle)
 	case KindCodexRules:
 		err = compilation.RenderCodexRules(source.Rules, dest)
 	default:
@@ -141,6 +154,29 @@ func renderOutput(source compilation.CorpusPaths, output Output, dest string) er
 		return fmt.Errorf("rendering %s %s into %s: %w", output.Provider, output.Kind, dest, err)
 	}
 	return nil
+}
+
+func resolveRuleRenderStyle(output Output, home string, dest string) (compilation.RuleRenderStyle, error) {
+	emptyStyle := compilation.RuleRenderStyle{SkillsRelDir: ""}
+	if output.SkillDest == "" {
+		return emptyStyle, nil
+	}
+	var linkBase string
+	switch output.Kind {
+	case KindRuleFiles, KindPerFileInstructions:
+		linkBase = dest
+	case KindInstructionDoc:
+		linkBase = filepath.Dir(dest)
+	case KindSkills, KindCodexRules:
+		return emptyStyle, nil
+	}
+	skillRoot := filepath.Join(home, output.SkillDest)
+	skillsRelDir, err := filepath.Rel(linkBase, skillRoot)
+	if err != nil {
+		slog.Error("corpus: computing skill link path", "provider", output.Provider, "err", err)
+		return emptyStyle, fmt.Errorf("computing skill link path for %s: %w", output.Provider, err)
+	}
+	return compilation.RuleRenderStyle{SkillsRelDir: filepath.ToSlash(skillsRelDir)}, nil
 }
 
 func resolveRefStyle(name RefStyleName) (compilation.SkillRefStyle, error) {

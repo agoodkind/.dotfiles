@@ -227,6 +227,39 @@ func TestRenderSkillDirsTemplateParseError(t *testing.T) {
 	}
 }
 
+func TestRenderRuleTemplateSkillLink(t *testing.T) {
+	style := RuleRenderStyle{SkillsRelDir: "../skills"}
+	got, err := renderRuleTemplate("See {{.Skill \"make-readable\"}} for help.", style, "writing.mdc")
+	if err != nil {
+		t.Fatalf("renderRuleTemplate: %v", err)
+	}
+	want := "See [make-readable](../skills/make-readable/SKILL.md) for help."
+	if got != want {
+		t.Errorf("renderRuleTemplate skill link\nwant: %q\ngot:  %q", want, got)
+	}
+}
+
+func TestRenderRuleTemplateMissingSkillDest(t *testing.T) {
+	_, err := renderRuleTemplate("See {{.Skill \"make-readable\"}}.", RuleRenderStyle{}, "writing.mdc")
+	if err == nil {
+		t.Fatal("expected error when skill_dest is not configured, got nil")
+	}
+	if !strings.Contains(err.Error(), "skill_dest") {
+		t.Errorf("expected skill_dest in error, got: %v", err)
+	}
+}
+
+func TestRenderRuleTemplatePassthrough(t *testing.T) {
+	content := "plain body without tokens\n"
+	got, err := renderRuleTemplate(content, RuleRenderStyle{}, "general.mdc")
+	if err != nil {
+		t.Fatalf("renderRuleTemplate: %v", err)
+	}
+	if got != content {
+		t.Errorf("expected passthrough, got: %q", got)
+	}
+}
+
 func TestRenderRuleFiles(t *testing.T) {
 	srcRoot := t.TempDir()
 	writeTestFile(t, filepath.Join(srcRoot, "general.mdc"), "---\ndescription: g\n---\ngeneral body\n")
@@ -236,7 +269,7 @@ func TestRenderRuleFiles(t *testing.T) {
 	stale := filepath.Join(dst, "old.mdc")
 	writeTestFile(t, stale, GeneratedAgentHTMLMarker+"\nstale\n")
 
-	if err := RenderRuleFiles(srcRoot, dst, ".mdc"); err != nil {
+	if err := RenderRuleFiles(srcRoot, dst, ".mdc", RuleRenderStyle{}); err != nil {
 		t.Fatalf("RenderRuleFiles: %v", err)
 	}
 	for _, name := range []string{"general.mdc", "code.mdc"} {

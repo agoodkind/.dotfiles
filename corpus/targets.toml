@@ -26,23 +26,26 @@ dest      = ".claude/skills"
 ref_style = "md"
 
 [[output]]
-provider = "claude"
-kind     = "rule-files"
-dest     = ".claude/rules"
-rule_ext = ".md"
+provider   = "claude"
+kind       = "rule-files"
+dest       = ".claude/rules"
+rule_ext   = ".md"
+skill_dest = ".claude/skills"
 
 [[output]]
-provider = "claude"
-kind     = "instruction-doc"
-dest     = ".claude/CLAUDE.md"
-title    = "Claude Memory"
+provider   = "claude"
+kind       = "instruction-doc"
+dest       = ".claude/CLAUDE.md"
+title      = "Claude Memory"
+skill_dest = ".claude/skills"
 
 # Cursor
 [[output]]
-provider = "cursor"
-kind     = "rule-files"
-dest     = ".cursor/rules"
-rule_ext = ".mdc"
+provider   = "cursor"
+kind       = "rule-files"
+dest       = ".cursor/rules"
+rule_ext   = ".mdc"
+skill_dest = ".agents/skills"
 
 # Shared cross-agent directory (read by Zed, VSCode, and Codex)
 [[output]]
@@ -52,10 +55,11 @@ dest      = ".agents/skills"
 ref_style = "mdc"
 
 [[output]]
-provider = "agents"
-kind     = "rule-files"
-dest     = ".agents/rules"
-rule_ext = ".mdc"
+provider   = "agents"
+kind       = "rule-files"
+dest       = ".agents/rules"
+rule_ext   = ".mdc"
+skill_dest = ".agents/skills"
 
 # Codex
 [[output]]
@@ -64,33 +68,38 @@ kind     = "codex-rules"
 dest     = ".codex/rules/dotfiles.rules"
 
 [[output]]
-provider = "codex"
-kind     = "instruction-doc"
-dest     = ".codex/AGENTS.md"
-title    = "Codex Instructions"
+provider   = "codex"
+kind       = "instruction-doc"
+dest       = ".codex/AGENTS.md"
+title      = "Codex Instructions"
+skill_dest = ".agents/skills"
 
 # Gemini
 [[output]]
-provider = "gemini"
-kind     = "instruction-doc"
-dest     = ".gemini/GEMINI.md"
-title    = "Gemini Instructions"
+provider   = "gemini"
+kind       = "instruction-doc"
+dest       = ".gemini/GEMINI.md"
+title      = "Gemini Instructions"
+skill_dest = ".agents/skills"
 
 # GitHub Copilot
 [[output]]
-provider = "copilot"
-kind     = "instruction-doc"
-dest     = ".copilot/copilot-instructions.md"
-title    = "Copilot Instructions"
+provider   = "copilot"
+kind       = "instruction-doc"
+dest       = ".copilot/copilot-instructions.md"
+title      = "Copilot Instructions"
+skill_dest = ".agents/skills"
 
 [[output]]
-provider = "copilot"
-kind     = "per-file-instructions"
-dest     = ".copilot/instructions"
+provider   = "copilot"
+kind       = "per-file-instructions"
+dest       = ".copilot/instructions"
+skill_dest = ".agents/skills"
 
 # Zed (first-party agent reads user-global rules from this doc)
 [[output]]
-provider = "zed"
-kind     = "instruction-doc"
-dest     = ".config/zed/AGENTS.md"
-title    = "Zed Instructions"
+provider   = "zed"
+kind       = "instruction-doc"
+dest       = ".config/zed/AGENTS.md"
+title      = "Zed Instructions"
+skill_dest = ".agents/skills"
