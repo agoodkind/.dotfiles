@@ -157,8 +157,9 @@ func renderOutput(source compilation.CorpusPaths, output Output, home string, de
 }
 
 func resolveRuleRenderStyle(output Output, home string, dest string) (compilation.RuleRenderStyle, error) {
+	emptyStyle := compilation.RuleRenderStyle{SkillsRelDir: ""}
 	if output.SkillDest == "" {
-		return compilation.RuleRenderStyle{}, nil
+		return emptyStyle, nil
 	}
 	var linkBase string
 	switch output.Kind {
@@ -166,13 +167,14 @@ func resolveRuleRenderStyle(output Output, home string, dest string) (compilatio
 		linkBase = dest
 	case KindInstructionDoc:
 		linkBase = filepath.Dir(dest)
-	default:
-		return compilation.RuleRenderStyle{}, nil
+	case KindSkills, KindCodexRules:
+		return emptyStyle, nil
 	}
 	skillRoot := filepath.Join(home, output.SkillDest)
 	skillsRelDir, err := filepath.Rel(linkBase, skillRoot)
 	if err != nil {
-		return compilation.RuleRenderStyle{}, fmt.Errorf("computing skill link path for %s: %w", output.Provider, err)
+		slog.Error("corpus: computing skill link path", "provider", output.Provider, "err", err)
+		return emptyStyle, fmt.Errorf("computing skill link path for %s: %w", output.Provider, err)
 	}
 	return compilation.RuleRenderStyle{SkillsRelDir: filepath.ToSlash(skillsRelDir)}, nil
 }
