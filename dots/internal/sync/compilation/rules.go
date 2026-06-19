@@ -19,11 +19,15 @@ const (
 )
 
 // RuleTargetFormatFromExt maps a rule file extension to the target harness format.
-func RuleTargetFormatFromExt(ext string) RuleTargetFormat {
-	if ext == ".md" {
-		return RuleTargetClaude
+func RuleTargetFormatFromExt(ext string) (RuleTargetFormat, error) {
+	switch ext {
+	case ".md":
+		return RuleTargetClaude, nil
+	case ".mdc":
+		return RuleTargetCursor, nil
+	default:
+		return "", fmt.Errorf("unsupported rule_ext %q", ext)
 	}
-	return RuleTargetCursor
 }
 
 // RuleSource is a parsed neutral corpus rule with metadata and Markdown body.
@@ -66,7 +70,7 @@ func ParseRuleSource(content string) (RuleSource, error) {
 	endMarker := "\n---\n"
 	frontmatterEnd := strings.Index(content[4:], endMarker)
 	if frontmatterEnd == -1 {
-		return emptyRuleSource(content), nil
+		return RuleSource{Description: "", AppliesTo: nil, Always: false, Body: ""}, fmt.Errorf("rule source front matter missing closing delimiter")
 	}
 
 	var raw ruleSourceYAML
