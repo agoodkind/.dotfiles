@@ -1,7 +1,10 @@
 ---
 description: Technical documentation writing rules for scannable, plain, neutral prose
-globs: "*.md,*.mdc,*.txt"
-alwaysApply: false
+applies_to:
+  - "*.md"
+  - "*.mdc"
+  - "*.txt"
+always: false
 ---
 
 # Technical documentation writing

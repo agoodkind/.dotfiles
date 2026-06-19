@@ -1,7 +1,8 @@
 ---
 description: Use the semantic MCP server first for conceptual code discovery
-globs: "**/*"
-alwaysApply: true
+applies_to:
+  - "**/*"
+always: true
 ---
 
 Prefer the semantic MCP server's `search_code` for conceptual repo-wide discovery, but do not use it blindly.

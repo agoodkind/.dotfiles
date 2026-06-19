@@ -128,7 +128,7 @@ func renderOutput(source compilation.CorpusPaths, output Output, home string, de
 		if ruleStyleErr != nil {
 			return ruleStyleErr
 		}
-		err = compilation.RenderRuleFiles(source.Rules, dest, output.RuleExt, ruleStyle)
+		err = compilation.RenderRuleFiles(source.Rules, dest, output.RuleExt, compilation.RuleTargetFormatFromExt(output.RuleExt), ruleStyle)
 	case KindInstructionDoc:
 		if output.Title == "" {
 			return fmt.Errorf("instruction-doc output for %s requires title", output.Provider)

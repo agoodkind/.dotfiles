@@ -1,7 +1,8 @@
 ---
 description: Shell and command execution mechanics
-globs: "**/*"
-alwaysApply: true
+applies_to:
+  - "**/*"
+always: true
 ---
 
 File editing: Read the current state of a file immediately before editing it. The user may have made changes since the file was last read, and edits should reflect the actual current content.
