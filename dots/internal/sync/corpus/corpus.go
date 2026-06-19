@@ -33,8 +33,6 @@ const (
 	KindInstructionDoc OutputKind = "instruction-doc"
 	// KindPerFileInstructions renders each rule as a .instructions.md file.
 	KindPerFileInstructions OutputKind = "per-file-instructions"
-	// KindCodexRules concatenates all rules into the Codex .rules format.
-	KindCodexRules OutputKind = "codex-rules"
 )
 
 // RefStyleName names a skill rule-reference style.
@@ -45,10 +43,6 @@ const (
 	RefMDC RefStyleName = "mdc"
 	// RefMD links rules to sibling .md files.
 	RefMD RefStyleName = "md"
-	// RefInstructions links rules to .instructions.md files.
-	RefInstructions RefStyleName = "instructions"
-	// RefCodexDoc links rules to anchors in the Codex AGENTS.md document.
-	RefCodexDoc RefStyleName = "codex-doc"
 )
 
 // Output is one declarative fan-out artifact.
@@ -149,8 +143,6 @@ func renderOutput(source compilation.CorpusPaths, output Output, home string, de
 			return ruleStyleErr
 		}
 		err = compilation.RenderCopilotInstructionFiles(source.Rules, dest, ruleStyle)
-	case KindCodexRules:
-		err = compilation.RenderCodexRules(source.Rules, dest)
 	default:
 		return fmt.Errorf("unknown output kind %q for %s", output.Kind, output.Provider)
 	}
@@ -168,11 +160,13 @@ func resolveRuleRenderStyle(output Output, home string, dest string) (compilatio
 	}
 	var linkBase string
 	switch output.Kind {
+	case KindSkills:
+		return emptyStyle, nil
 	case KindRuleFiles, KindPerFileInstructions:
 		linkBase = dest
 	case KindInstructionDoc:
 		linkBase = filepath.Dir(dest)
-	case KindSkills, KindCodexRules:
+	default:
 		return emptyStyle, nil
 	}
 	skillRoot := filepath.Join(home, output.SkillDest)
@@ -190,10 +184,6 @@ func resolveRefStyle(name RefStyleName) (compilation.SkillRefStyle, error) {
 		return compilation.SkillRefMDC, nil
 	case RefMD:
 		return compilation.SkillRefMD, nil
-	case RefInstructions:
-		return compilation.SkillRefInstructions, nil
-	case RefCodexDoc:
-		return compilation.SkillRefCodexDoc, nil
 	default:
 		return compilation.SkillRefStyle{}, fmt.Errorf("unknown ref_style %q", name)
 	}

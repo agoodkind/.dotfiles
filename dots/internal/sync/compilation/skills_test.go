@@ -48,18 +48,6 @@ func TestRenderSkillDirsTokenExpansion(t *testing.T) {
 			wantRulesTop: "- [code.md](../../rules/code.md)\n- [general.md](../../rules/general.md)",
 			wantInline:   "One: [code.md](../../rules/code.md)",
 		},
-		{
-			name:         "instructions",
-			style:        SkillRefInstructions,
-			wantRulesTop: "- [code.instructions.md](../../instructions/code.instructions.md)\n- [general.instructions.md](../../instructions/general.instructions.md)",
-			wantInline:   "One: [code.instructions.md](../../instructions/code.instructions.md)",
-		},
-		{
-			name:         "codex-doc",
-			style:        SkillRefCodexDoc,
-			wantRulesTop: "- [code](../../AGENTS.md#code)\n- [general](../../AGENTS.md#general)",
-			wantInline:   "One: [code](../../AGENTS.md#code)",
-		},
 	}
 
 	for _, testCase := range testCases {
@@ -283,5 +271,47 @@ func TestRenderRuleFiles(t *testing.T) {
 	}
 	if _, err := os.Stat(stale); !os.IsNotExist(err) {
 		t.Errorf("expected stale managed rule file to be pruned, stat err: %v", err)
+	}
+}
+
+func TestRenderRulesForUpload(t *testing.T) {
+	srcRoot := t.TempDir()
+	writeTestFile(t, filepath.Join(srcRoot, "writing.mdc"),
+		"---\ndescription: Writing rules\n---\n\nSee {{.Skill \"make-readable\"}} for help.\n")
+	writeTestFile(t, filepath.Join(srcRoot, "general.mdc"),
+		"---\ndescription: Global rules\n---\n\nGlobal body\n")
+
+	style := RuleRenderStyle{SkillsRelDir: "../skills"}
+	rules, err := RenderRulesForUpload(srcRoot, style)
+	if err != nil {
+		t.Fatalf("RenderRulesForUpload: %v", err)
+	}
+	if len(rules) != 2 {
+		t.Fatalf("expected 2 rules, got %d", len(rules))
+	}
+
+	byTitle := map[string]RenderedRule{}
+	for _, rule := range rules {
+		byTitle[rule.Title] = rule
+	}
+
+	general, ok := byTitle["general"]
+	if !ok {
+		t.Fatal("expected general rule")
+	}
+	if general.Body != "Global body" {
+		t.Errorf("general body\nwant: %q\ngot:  %q", "Global body", general.Body)
+	}
+	if strings.Contains(general.Body, "---") {
+		t.Errorf("general body should not contain frontmatter:\n%s", general.Body)
+	}
+
+	writing, ok := byTitle["writing"]
+	if !ok {
+		t.Fatal("expected writing rule")
+	}
+	want := "See [make-readable](../skills/make-readable/SKILL.md) for help."
+	if writing.Body != want {
+		t.Errorf("writing body\nwant: %q\ngot:  %q", want, writing.Body)
 	}
 }

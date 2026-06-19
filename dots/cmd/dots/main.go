@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -15,6 +16,7 @@ import (
 	perfcmd "goodkind.io/.dotfiles/internal/perf"
 	"goodkind.io/.dotfiles/internal/runner"
 	syncer "goodkind.io/.dotfiles/internal/sync"
+	"goodkind.io/.dotfiles/internal/sync/compilation"
 	"goodkind.io/.dotfiles/internal/telemetry"
 	uninstaller "goodkind.io/.dotfiles/internal/uninstall"
 )
@@ -190,11 +192,31 @@ func runCursorSync(args []string) int {
 			}
 		}
 	}
-	if err := cursorSync.Run(); err != nil {
+	rules, err := renderCursorRules()
+	if err != nil {
+		logError("rendering corpus rules for cursor upload", err)
+		return 1
+	}
+	if err := cursorSync.Run(rules); err != nil {
 		logError("cursor sync failed", err)
 		return 1
 	}
 	return 0
+}
+
+func renderCursorRules() ([]compilation.RenderedRule, error) {
+	dotfiles := os.Getenv("DOTDOTFILES")
+	if dotfiles == "" {
+		dotfiles = filepath.Join(os.Getenv("HOME"), ".dotfiles")
+	}
+	source := compilation.ResolveCorpusSource(dotfiles)
+	style := compilation.RuleRenderStyle{SkillsRelDir: "../skills"}
+	rules, err := compilation.RenderRulesForUpload(source.Rules, style)
+	if err != nil {
+		slog.Error("dots: rendering corpus rules for cursor upload", "err", err)
+		return nil, fmt.Errorf("rendering corpus rules for cursor upload: %w", err)
+	}
+	return rules, nil
 }
 
 func runInstall(args []string) int {

@@ -9,14 +9,15 @@
 #   rule-files            each rule written as a marker-stamped file (needs rule_ext)
 #   instruction-doc       all rules concatenated into one document (needs title)
 #   per-file-instructions each rule rendered as a .instructions.md file
-#   codex-rules           all rules concatenated into the Codex .rules format
 #
-# ref_style values (skills only): mdc | md | instructions | codex-doc
+# ref_style values (skills only): mdc | md
 #
-# Codex, VSCode Copilot, and Cursor read shared skills from ~/.agents/skills.
+# Codex, VSCode Copilot, Cursor, and Zed read shared skills from ~/.agents/skills.
+# Codex needs [features] skills = true in ~/.codex/config.toml.
 # Claude Code and Claude Desktop read skills from ~/.claude/skills.
 # VSCode also reads ~/.copilot/instructions, ~/.claude/rules, and ~/.agents/skills.
 # Claude Desktop shares ~/.claude with Claude Code.
+# Cursor global user rules are uploaded to the cloud API during dots sync (not from ~/.cursor/rules).
 
 # Claude Code (and Claude Desktop)
 [[output]]
@@ -39,14 +40,6 @@ dest       = ".claude/CLAUDE.md"
 title      = "Claude Memory"
 skill_dest = ".claude/skills"
 
-# Cursor
-[[output]]
-provider   = "cursor"
-kind       = "rule-files"
-dest       = ".cursor/rules"
-rule_ext   = ".mdc"
-skill_dest = ".agents/skills"
-
 # Shared cross-agent directory (read by Zed, VSCode, and Codex)
 [[output]]
 provider  = "agents"
@@ -62,11 +55,6 @@ rule_ext   = ".mdc"
 skill_dest = ".agents/skills"
 
 # Codex
-[[output]]
-provider = "codex"
-kind     = "codex-rules"
-dest     = ".codex/rules/dotfiles.rules"
-
 [[output]]
 provider   = "codex"
 kind       = "instruction-doc"
