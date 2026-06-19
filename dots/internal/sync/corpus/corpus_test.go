@@ -49,10 +49,13 @@ func TestLoadManifest(t *testing.T) {
 func TestSyncRendersAndGatesByOS(t *testing.T) {
 	dotfiles := t.TempDir()
 	writeFile(t, filepath.Join(dotfiles, "corpus", "rules", "code.mdc"), "---\ndescription: c\n---\ncode body\n")
+	writeFile(t, filepath.Join(dotfiles, "corpus", "rules", "writing.mdc"), "---\ndescription: w\n---\nSkill: {{.Skill \"make-readable\"}}\n")
 	writeFile(t, filepath.Join(dotfiles, "corpus", "skills", "enforce-rules", "SKILL.md.tmpl"), "---\nname: enforce-rules\n---\n\nOne: {{.Rule \"code\"}}\n")
+	writeFile(t, filepath.Join(dotfiles, "corpus", "skills", "make-readable", "SKILL.md.tmpl"), "---\nname: make-readable\n---\n")
 	writeFile(t, filepath.Join(dotfiles, "corpus", ManifestName),
 		"[[output]]\nprovider=\"claude\"\nkind=\"skills\"\ndest=\".claude/skills\"\nref_style=\"md\"\n\n"+
-			"[[output]]\nprovider=\"claude\"\nkind=\"instruction-doc\"\ndest=\".claude/CLAUDE.md\"\ntitle=\"Claude Memory\"\n\n"+
+			"[[output]]\nprovider=\"claude\"\nkind=\"rule-files\"\ndest=\".claude/rules\"\nrule_ext=\".md\"\nskill_dest=\".claude/skills\"\n\n"+
+			"[[output]]\nprovider=\"claude\"\nkind=\"instruction-doc\"\ndest=\".claude/CLAUDE.md\"\ntitle=\"Claude Memory\"\nskill_dest=\".claude/skills\"\n\n"+
 			"[[output]]\nprovider=\"never\"\nkind=\"instruction-doc\"\ndest=\".never/NEVER.md\"\ntitle=\"Never\"\nos=\"plan9\"\n")
 
 	home := t.TempDir()
@@ -70,8 +73,21 @@ func TestSyncRendersAndGatesByOS(t *testing.T) {
 	if want := "[code.md](../../rules/code.md)"; !strings.Contains(string(got), want) {
 		t.Errorf("rendered skill missing expanded rule link %q:\n%s", want, string(got))
 	}
-	if _, err := os.Stat(filepath.Join(home, ".claude", "CLAUDE.md")); err != nil {
-		t.Errorf("expected CLAUDE.md to be written: %v", err)
+
+	rule, err := os.ReadFile(filepath.Join(home, ".claude", "rules", "writing.md"))
+	if err != nil {
+		t.Fatalf("reading rendered rule: %v", err)
+	}
+	if want := "[make-readable](../skills/make-readable/SKILL.md)"; !strings.Contains(string(rule), want) {
+		t.Errorf("rendered rule missing expanded skill link %q:\n%s", want, string(rule))
+	}
+
+	doc, err := os.ReadFile(filepath.Join(home, ".claude", "CLAUDE.md"))
+	if err != nil {
+		t.Fatalf("reading CLAUDE.md: %v", err)
+	}
+	if want := "[make-readable](skills/make-readable/SKILL.md)"; !strings.Contains(string(doc), want) {
+		t.Errorf("instruction doc missing expanded skill link %q:\n%s", want, string(doc))
 	}
 	if _, err := os.Stat(filepath.Join(home, ".never", "NEVER.md")); !os.IsNotExist(err) {
 		t.Errorf("expected os-gated output to be skipped, stat err: %v", err)
