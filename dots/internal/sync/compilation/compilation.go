@@ -342,7 +342,7 @@ func RenderRulesForUpload(rulesDir string, style RuleRenderStyle) ([]RenderedRul
 		}
 		renderedBody, renderErr := renderRuleTemplate(strings.TrimSpace(rule.Body), style, filepath.Base(file))
 		if renderErr != nil {
-			return nil, renderErr
+			return nil, fmt.Errorf("rendering rule template %s: %w", file, renderErr)
 		}
 		title := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
 		renderedRules = append(renderedRules, RenderedRule{
