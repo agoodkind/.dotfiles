@@ -5,7 +5,55 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
+
+func parseFrontmatterMap(t *testing.T, content string) map[string]any {
+	t.Helper()
+	if !strings.HasPrefix(content, "---\n") {
+		t.Fatalf("expected front matter in content:\n%s", content)
+	}
+	endMarker := "\n---\n"
+	frontmatterEnd := strings.Index(content[4:], endMarker)
+	if frontmatterEnd == -1 {
+		t.Fatalf("expected closing front matter delimiter in content:\n%s", content)
+	}
+	rawFrontmatter := content[4 : 4+frontmatterEnd]
+	var metadata map[string]any
+	if err := yaml.Unmarshal([]byte(rawFrontmatter), &metadata); err != nil {
+		t.Fatalf("unmarshaling front matter: %v\n%s", err, rawFrontmatter)
+	}
+	return metadata
+}
+
+func frontmatterStringField(t *testing.T, content string, key string) string {
+	t.Helper()
+	metadata := parseFrontmatterMap(t, content)
+	value, ok := metadata[key].(string)
+	if !ok {
+		t.Fatalf("front matter key %q missing or not a string in %#v", key, metadata)
+	}
+	return value
+}
+
+func frontmatterStringSliceField(t *testing.T, content string, key string) []string {
+	t.Helper()
+	metadata := parseFrontmatterMap(t, content)
+	rawValues, ok := metadata[key].([]any)
+	if !ok {
+		t.Fatalf("front matter key %q missing or not a string slice in %#v", key, metadata)
+	}
+	values := make([]string, 0, len(rawValues))
+	for _, rawValue := range rawValues {
+		stringValue, ok := rawValue.(string)
+		if !ok {
+			t.Fatalf("front matter key %q contains non-string value in %#v", key, metadata)
+		}
+		values = append(values, stringValue)
+	}
+	return values
+}
 
 func TestParseRuleSourceNeutralSchema(t *testing.T) {
 	content := "---\ndescription: Writing rules\napplies_to:\n  - \"*.md\"\n  - \"*.txt\"\nalways: false\n---\n\nBody text\n"
@@ -52,10 +100,14 @@ func TestRenderCursorFrontmatter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RenderForTarget: %v", err)
 	}
-	for _, want := range []string{"description: Writing rules", "globs: '*.md,*.txt'", "Body text"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("cursor output missing %q:\n%s", want, got)
-		}
+	if frontmatterStringField(t, got, "description") != "Writing rules" {
+		t.Errorf("cursor description mismatch:\n%s", got)
+	}
+	if frontmatterStringField(t, got, "globs") != "*.md,*.txt" {
+		t.Errorf("cursor globs mismatch:\n%s", got)
+	}
+	if !strings.Contains(got, "Body text") {
+		t.Errorf("cursor output missing body:\n%s", got)
 	}
 	if strings.Contains(got, "alwaysApply:") {
 		t.Errorf("cursor output should omit alwaysApply when false:\n%s", got)
@@ -73,8 +125,9 @@ func TestRenderClaudeScopedFrontmatter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RenderForTarget: %v", err)
 	}
-	if !strings.Contains(got, "paths:") || !strings.Contains(got, "'*.py'") {
-		t.Errorf("claude scoped output missing paths:\n%s", got)
+	paths := frontmatterStringSliceField(t, got, "paths")
+	if len(paths) != 1 || paths[0] != "*.py" {
+		t.Errorf("claude scoped paths = %#v, want [\"*.py\"]", paths)
 	}
 	if !strings.Contains(got, "Use uv.") {
 		t.Errorf("claude scoped output missing body:\n%s", got)
@@ -111,10 +164,20 @@ func TestRenderCopilotFrontmatter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RenderCopilot: %v", err)
 	}
-	for _, want := range []string{"name: writing", "description: Writing rules", "applyTo: '*.md'", GeneratedAgentHTMLMarker, "Write plainly."} {
-		if !strings.Contains(got, want) {
-			t.Errorf("copilot output missing %q:\n%s", want, got)
-		}
+	if frontmatterStringField(t, got, "name") != "writing" {
+		t.Errorf("copilot name mismatch:\n%s", got)
+	}
+	if frontmatterStringField(t, got, "description") != "Writing rules" {
+		t.Errorf("copilot description mismatch:\n%s", got)
+	}
+	if frontmatterStringField(t, got, "applyTo") != "*.md" {
+		t.Errorf("copilot applyTo mismatch:\n%s", got)
+	}
+	if !strings.Contains(got, GeneratedAgentHTMLMarker) {
+		t.Errorf("copilot output missing generated marker:\n%s", got)
+	}
+	if !strings.Contains(got, "Write plainly.") {
+		t.Errorf("copilot output missing body:\n%s", got)
 	}
 }
 
@@ -129,8 +192,8 @@ func TestRenderCopilotGlobalApplyTo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RenderCopilot: %v", err)
 	}
-	if !strings.Contains(got, "applyTo: '**/*'") {
-		t.Errorf("copilot global output missing applyTo:\n%s", got)
+	if frontmatterStringField(t, got, "applyTo") != "**/*" {
+		t.Errorf("copilot global applyTo mismatch:\n%s", got)
 	}
 }
 
@@ -149,8 +212,8 @@ func TestRenderRuleFilesTargetFrontmatter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading cursor rule: %v", err)
 	}
-	if !strings.Contains(string(cursorGot), "globs: '*.md'") {
-		t.Errorf("cursor rule missing globs:\n%s", string(cursorGot))
+	if frontmatterStringField(t, string(cursorGot), "globs") != "*.md" {
+		t.Errorf("cursor rule globs mismatch:\n%s", string(cursorGot))
 	}
 
 	claudeDir := filepath.Join(t.TempDir(), "claude")
@@ -161,8 +224,9 @@ func TestRenderRuleFilesTargetFrontmatter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading claude scoped rule: %v", err)
 	}
-	if !strings.Contains(string(scoped), "paths:") || !strings.Contains(string(scoped), "'*.md'") {
-		t.Errorf("claude scoped rule missing paths:\n%s", string(scoped))
+	scopedPaths := frontmatterStringSliceField(t, string(scoped), "paths")
+	if len(scopedPaths) != 1 || scopedPaths[0] != "*.md" {
+		t.Errorf("claude scoped paths = %#v, want [\"*.md\"]", scopedPaths)
 	}
 	global, err := os.ReadFile(filepath.Join(claudeDir, "general.md"))
 	if err != nil {
