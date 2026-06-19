@@ -162,16 +162,16 @@ func RenderRuleFiles(src string, dst string, ext string, format RuleTargetFormat
 		}
 		rule, parseErr := ParseRuleSource(string(content))
 		if parseErr != nil {
-			return parseErr
+			return fmt.Errorf("parsing rule source %s: %w", file, parseErr)
 		}
 		renderedBody, renderErr := renderRuleTemplate(strings.TrimSpace(rule.Body), style, filepath.Base(file))
 		if renderErr != nil {
-			return renderErr
+			return fmt.Errorf("rendering rule template %s: %w", file, renderErr)
 		}
 		rule.Body = renderedBody
 		rendered, renderErr := rule.RenderForTarget(format)
 		if renderErr != nil {
-			return renderErr
+			return fmt.Errorf("rendering rule %s for format %q: %w", file, format, renderErr)
 		}
 		target := filepath.Join(dst, targetName)
 		if isSymlink(target) {
@@ -261,11 +261,11 @@ func RenderRulesAsInstructionDoc(src string, dst string, title string, style Rul
 		}
 		rule, parseErr := ParseRuleSource(string(content))
 		if parseErr != nil {
-			return parseErr
+			return fmt.Errorf("parsing rule source %s: %w", file, parseErr)
 		}
 		rendered, renderErr := renderRuleTemplate(strings.TrimSpace(rule.Body), style, filepath.Base(file))
 		if renderErr != nil {
-			return renderErr
+			return fmt.Errorf("rendering rule template %s: %w", file, renderErr)
 		}
 		builder.WriteString(rendered)
 		builder.WriteString("\n")
@@ -298,16 +298,16 @@ func RenderCopilotInstructionFiles(src string, dst string, style RuleRenderStyle
 		}
 		rule, parseErr := ParseRuleSource(string(content))
 		if parseErr != nil {
-			return parseErr
+			return fmt.Errorf("parsing rule source %s: %w", file, parseErr)
 		}
 		renderedBody, renderErr := renderRuleTemplate(strings.TrimSpace(rule.Body), style, filepath.Base(file))
 		if renderErr != nil {
-			return renderErr
+			return fmt.Errorf("rendering rule template %s: %w", file, renderErr)
 		}
 		rule.Body = renderedBody
 		rendered, renderErr := rule.RenderCopilot(baseName)
 		if renderErr != nil {
-			return renderErr
+			return fmt.Errorf("rendering copilot instruction %s from %s: %w", baseName, file, renderErr)
 		}
 		if err := writeFileIfChanged(filepath.Join(dst, targetName), []byte(rendered)); err != nil {
 			return err
