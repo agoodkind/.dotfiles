@@ -3,10 +3,9 @@ package models
 
 // SyncConfig holds runtime configuration for syncing Cursor rules.
 type SyncConfig struct {
-	CursorDB        string
-	APIBase         string
-	WorkspaceURL    string
-	RuleDirectories []string
+	CursorDB     string
+	APIBase      string
+	WorkspaceURL string
 }
 
 // ParsedValueKind identifies the wire type of a parsed protobuf value.

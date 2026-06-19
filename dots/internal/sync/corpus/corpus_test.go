@@ -67,7 +67,7 @@ func writeFile(t *testing.T, path string, content string) {
 }
 
 func TestResolveRefStyle(t *testing.T) {
-	for _, name := range []RefStyleName{RefMDC, RefMD, RefInstructions, RefCodexDoc} {
+	for _, name := range []RefStyleName{RefMDC, RefMD} {
 		if _, err := resolveRefStyle(name); err != nil {
 			t.Errorf("resolveRefStyle(%q) unexpected error: %v", name, err)
 		}

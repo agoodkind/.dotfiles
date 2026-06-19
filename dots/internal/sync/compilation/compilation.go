@@ -139,10 +139,16 @@ type RuleRenderStyle struct {
 	SkillsRelDir string
 }
 
+// RenderedRule is a corpus rule prepared for cloud upload (title plus body without front matter).
+type RenderedRule struct {
+	Title string
+	Body  string
+}
+
 // RenderRuleFiles writes each .mdc rule file from src into dst as a marker-stamped
 // generated file with the given extension (for example ".mdc" or ".md").
 func RenderRuleFiles(src string, dst string, ext string, format RuleTargetFormat, style RuleRenderStyle) error {
-	files, err := sortedFilesWithExt(src, ".mdc")
+	files, err := sortedMdcFiles(src)
 	if err != nil {
 		return err
 	}
@@ -230,7 +236,7 @@ func renderSkillLink(style RuleRenderStyle, name string) string {
 
 // RenderRulesAsInstructionDoc concatenates .mdc rule files from src into a single markdown document at dst.
 func RenderRulesAsInstructionDoc(src string, dst string, title string, style RuleRenderStyle) error {
-	files, err := sortedFilesWithExt(src, ".mdc")
+	files, err := sortedMdcFiles(src)
 	if err != nil {
 		return err
 	}
@@ -276,7 +282,7 @@ func RenderRulesAsInstructionDoc(src string, dst string, title string, style Rul
 
 // RenderCopilotInstructionFiles renders .mdc rule files from src as .instructions.md files in dst.
 func RenderCopilotInstructionFiles(src string, dst string, style RuleRenderStyle) error {
-	files, err := sortedFilesWithExt(src, ".mdc")
+	files, err := sortedMdcFiles(src)
 	if err != nil {
 		return err
 	}
@@ -317,33 +323,34 @@ func RenderCopilotInstructionFiles(src string, dst string, style RuleRenderStyle
 	return removeMissingManagedFiles(dst, ".instructions.md", activeFiles)
 }
 
-// RenderCodexRules concatenates .rules files from src into a single Codex rules file at dst.
-func RenderCodexRules(src string, dst string) error {
-	files, err := sortedFilesWithExt(src, ".rules")
+// RenderRulesForUpload parses corpus rules and returns title/body pairs for direct cloud upload.
+func RenderRulesForUpload(rulesDir string, style RuleRenderStyle) ([]RenderedRule, error) {
+	files, err := sortedMdcFiles(rulesDir)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	var builder strings.Builder
-	builder.WriteString(GeneratedAgentMarker)
-	builder.WriteString("\n")
+	renderedRules := make([]RenderedRule, 0, len(files))
 	for _, file := range files {
 		content, readErr := os.ReadFile(file)
 		if readErr != nil {
-			slog.Warn("compilation: RenderCodexRules read failed", "file", file, "err", readErr)
-			return fmt.Errorf("reading file %s: %w", file, readErr)
+			slog.Warn("compilation: RenderRulesForUpload read failed", "file", file, "err", readErr)
+			return nil, fmt.Errorf("reading file %s: %w", file, readErr)
 		}
-		trimmedContent := strings.TrimSpace(string(content))
-		if trimmedContent == "" {
-			continue
+		rule, parseErr := ParseRuleSource(string(content))
+		if parseErr != nil {
+			return nil, fmt.Errorf("parsing rule source %s: %w", file, parseErr)
 		}
-		builder.WriteString("\n# ")
-		builder.WriteString(filepath.Base(file))
-		builder.WriteString("\n")
-		builder.WriteString(trimmedContent)
-		builder.WriteString("\n")
+		renderedBody, renderErr := renderRuleTemplate(strings.TrimSpace(rule.Body), style, filepath.Base(file))
+		if renderErr != nil {
+			return nil, fmt.Errorf("rendering rule template %s: %w", file, renderErr)
+		}
+		title := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
+		renderedRules = append(renderedRules, RenderedRule{
+			Title: title,
+			Body:  strings.TrimSpace(renderedBody),
+		})
 	}
-	return writeFileIfChanged(dst, []byte(builder.String()))
+	return renderedRules, nil
 }
 
 // SkillRefStyle describes how a provider's skill files reference rule documents.
@@ -352,21 +359,13 @@ type SkillRefStyle struct {
 	RulesRelDir string
 	// RuleExt is the rule file extension including the leading dot.
 	RuleExt string
-	// SingleDocAnchor links rule references to one instruction document using a section anchor.
-	SingleDocAnchor bool
-	// DocRelPath is the relative path to the single instruction document when SingleDocAnchor is true.
-	DocRelPath string
 }
 
 var (
-	// SkillRefMDC links rule references to sibling .mdc rule files (Cursor and the shared agents mirror).
-	SkillRefMDC = SkillRefStyle{RulesRelDir: "../../rules", RuleExt: ".mdc", SingleDocAnchor: false, DocRelPath: ""}
+	// SkillRefMDC links rule references to sibling .mdc rule files (the shared agents mirror).
+	SkillRefMDC = SkillRefStyle{RulesRelDir: "../../rules", RuleExt: ".mdc"}
 	// SkillRefMD links rule references to sibling .md rule files (Claude).
-	SkillRefMD = SkillRefStyle{RulesRelDir: "../../rules", RuleExt: ".md", SingleDocAnchor: false, DocRelPath: ""}
-	// SkillRefInstructions links rule references to Copilot .instructions.md files.
-	SkillRefInstructions = SkillRefStyle{RulesRelDir: "../../instructions", RuleExt: ".instructions.md", SingleDocAnchor: false, DocRelPath: ""}
-	// SkillRefCodexDoc links rule references to sections of the Codex AGENTS.md document.
-	SkillRefCodexDoc = SkillRefStyle{RulesRelDir: "", RuleExt: "", SingleDocAnchor: true, DocRelPath: "../../AGENTS.md"}
+	SkillRefMD = SkillRefStyle{RulesRelDir: "../../rules", RuleExt: ".md"}
 )
 
 // RenderSkillDirs renders skill directories from src into dst, expanding rule-reference tokens for refStyle.
@@ -482,9 +481,6 @@ func renderSkillTemplate(content string, refStyle SkillRefStyle, ruleNames []str
 }
 
 func renderRuleLink(refStyle SkillRefStyle, name string) string {
-	if refStyle.SingleDocAnchor {
-		return fmt.Sprintf("[%s](%s#%s)", name, refStyle.DocRelPath, name)
-	}
 	fileName := name + refStyle.RuleExt
 	return fmt.Sprintf("[%s](%s/%s)", fileName, refStyle.RulesRelDir, fileName)
 }
@@ -517,7 +513,7 @@ func injectSkillMarker(content string) string {
 }
 
 func ruleBaseNames(rulesDir string) ([]string, error) {
-	files, err := sortedFilesWithExt(rulesDir, ".mdc")
+	files, err := sortedMdcFiles(rulesDir)
 	if err != nil {
 		return nil, err
 	}
@@ -573,9 +569,10 @@ func isSymlink(path string) bool {
 	return info.Mode()&os.ModeSymlink != 0
 }
 
-func sortedFilesWithExt(src string, ext string) ([]string, error) {
+func sortedMdcFiles(src string) ([]string, error) {
+	const ext = ".mdc"
 	if _, err := os.Stat(src); err != nil && !os.IsNotExist(err) {
-		slog.Warn("compilation: sortedFilesWithExt stat failed", "src", src, "err", err)
+		slog.Warn("compilation: sortedMdcFiles stat failed", "src", src, "err", err)
 		return nil, fmt.Errorf("stat %s: %w", src, err)
 	}
 	files, err := filepath.Glob(filepath.Join(src, "*"+ext))
