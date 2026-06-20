@@ -1,6 +1,6 @@
 ---
 name: graphite
-description: Create, adopt, split, submit, and babysit stacked pull requests with Graphite (gt) via MCP. Use when the user mentions Graphite, gt, stacked PRs, split-to-prs with Graphite, adopting an existing branch chain, or merge conflicts on a live stack.
+description: Create, adopt, split, submit, merge, and babysit stacked pull requests with Graphite (gt) via MCP. Use when the user mentions Graphite, gt, stacked PRs, split-to-prs with Graphite, adopting an existing branch chain, gt merge, or merge conflicts on a live stack.
 ---
 
 # Graphite Stacked PRs
@@ -63,6 +63,9 @@ Run through MCP before creating, adopting, or restacking:
 | refresh trunk and stacks | `["sync", "--no-interactive"]` |
 | route tip fixes into stack | `["absorb", "--dry-run"]` then `["absorb", "--all", "--force"]` |
 | resume after conflict | `["continue"]` |
+| preview stack merge | `["merge", "--dry-run", "--no-interactive"]` |
+| merge stack bottom-up | `["merge", "--no-interactive"]` |
+| auto-merge when requirements met | add `--merge-when-ready` to `submit` args |
 
 Always pass `--no-interactive` when the flag exists.
 
@@ -243,7 +246,7 @@ Common after Graphite or GitHub merges PRs 1..N while N+1..M remain open. Upper 
 
 ### Stack merge from Graphite
 
-Prefer merging the whole stack from the Graphite web UI when all PRs are green and threads are resolved. For CLI merge exploration: `["merge", "--dry-run", "--no-interactive"]` before `["merge", "--no-interactive"]`.
+When the user asks to merge a stack, finish babysit first, then follow **Task: Merge a Graphite stack** below. Do not substitute `gh pr merge` when the user authorized Graphite merge on a `gt init` repo.
 
 ### Babysit exit criteria (stack-aware)
 
@@ -257,6 +260,86 @@ All of the following, for **each open PR in the stack**:
 - `gt log short` parent chain still correct
 
 Report bottom PR URL, merge state per PR, and anything still blocking the stack tip.
+
+---
+
+## Task: Merge a Graphite stack
+
+Use when the user asks to merge, land, or ship a stack and the repo is Graphite-initialized.
+
+### Before merge
+
+1. Finish {{.Skill "babysit"}} (or the babysit section above) for every open PR in the stack.
+2. MCP: `["log", "short"]` and confirm the parent chain is intact.
+3. Check out the **stack tip** (top branch). `gt merge` merges every PR from trunk through the current branch.
+
+Each PR must be:
+
+- not draft (`gh pr ready` if needed)
+- green on required checks
+- approved per ruleset
+- free of unresolved required review threads
+- not `DIRTY`, `CONFLICTING`, or `BEHIND` trunk
+
+If lower PRs already merged and upper PRs are DIRTY, restack onto current trunk first (see partial stack merge above). Do not merge a DIRTY upstack PR.
+
+### Merge paths (prefer in this order)
+
+1. **Graphite web UI:** open the stack and use **Merge Stack**. Best when a human wants visibility into merge order.
+2. **`gt merge` via MCP:** when the user asks an agent to merge from CLI.
+3. **`gh pr merge`:** only when Graphite is unavailable, the repo is not `gt init`, or branch policy needs a GitHub-only flag such as `--admin`. Merge bottom-up one PR at a time if you must use `gh`.
+
+### Merge with MCP
+
+1. Dry-run first. This lists the PRs Graphite would merge and exits without merging:
+
+```text
+args: ["merge", "--dry-run", "--no-interactive"]
+```
+
+2. Read the dry-run output. Confirm bottom-to-top order matches the stack and no unexpected PR appears.
+3. If the user asked to merge and the dry-run looks correct:
+
+```text
+args: ["merge", "--no-interactive"]
+```
+
+4. `gt merge` merges PRs bottom-up through Graphite. Graphite handles re-parenting upstack PRs as lower PRs land.
+5. After merge, refresh local state:
+
+```text
+args: ["sync", "--no-interactive"]
+```
+
+`gt sync` fast-forwards trunk and offers to delete merged local branches.
+
+### Auto-merge instead of a manual merge
+
+To queue merge as soon as each PR satisfies requirements, pass `--merge-when-ready` on submit:
+
+```text
+args: ["submit", "--stack", "--merge-when-ready", "--no-interactive"]
+```
+
+Graphite merges in stack order when checks and approvals complete. Use this at submit time, not as a substitute for fixing a blocked stack.
+
+### Local vs remote drift
+
+`gt merge` prompts when local branches differ from remote, even with `--no-interactive`. Before merge, run `["submit", "--stack", "--no-interactive"]` so remote PRs match local branches, then dry-run merge again.
+
+### Partial stack merge
+
+To merge only the bottom N PRs and leave the rest open:
+
+1. Dry-run from the branch that should be the merge tip (not necessarily the stack tip).
+2. Merge through that branch with `["merge", "--no-interactive"]`.
+3. Restack any remaining open branches onto trunk, then `["submit", "--stack", "--no-interactive"]`.
+
+### After merge
+
+- Confirm each targeted PR shows `MERGED` on GitHub.
+- MCP: `["log", "short"]` should show only remaining open branches, or trunk only if the whole stack landed.
+- Report merged PR URLs and any branches still open.
 
 ---
 
@@ -292,6 +375,8 @@ Prefer `["continue"]` over `git rebase --continue`. Avoid `["abort"]` in agent s
 | `git` without `-C` in worktrees | wrong repo | explicit `cwd` in MCP or `git -C` |
 | force-push outside `gt submit` | Graphite loses sync with remote | `gt submit` after restack |
 | babysit only the tip PR | miss blocked lower PRs | check whole stack each loop |
+| `gh pr merge` on a Graphite stack | skips Graphite merge orchestration; DIRTY upstack PRs | `gt merge` or Graphite UI after babysit |
+| merge before dry-run | wrong PRs may merge | `gt merge --dry-run` first |
 
 ---
 
@@ -304,6 +389,9 @@ cd /absolute/path/to/repo
 gt log short
 gt submit --stack --dry-run --no-interactive
 gt submit --stack --no-interactive
+gt merge --dry-run --no-interactive
+gt merge --no-interactive
+gt sync --no-interactive
 ```
 
 No pipes, redirection, or `head`/`tail` on `gt` output.
