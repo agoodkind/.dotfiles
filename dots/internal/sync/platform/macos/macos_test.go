@@ -324,6 +324,7 @@ func TestTapQualifiedNamesRequiresOwnerTapNameShape(t *testing.T) {
 	got := tapQualifiedNames([]string{
 		"bat",
 		"homebrew/cask-fonts",
+		"a/b/c/d",
 		"MisterTea/et/et",
 		"someuser/some-tap/some-cask",
 	})

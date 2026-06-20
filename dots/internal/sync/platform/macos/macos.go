@@ -322,7 +322,7 @@ func tapQualifiedNames(names []string) []string {
 	seen := make(map[string]struct{})
 	out := make([]string, 0)
 	for _, name := range names {
-		if strings.Count(name, "/") < 2 {
+		if strings.Count(name, "/") != 2 {
 			continue
 		}
 		if _, ok := seen[name]; ok {
