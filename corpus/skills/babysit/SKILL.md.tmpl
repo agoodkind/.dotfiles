@@ -28,10 +28,11 @@ A draft also shows `mergeStateStatus` of `DRAFT`, so marking it ready first lets
 
 ## 2. Read ruleset merge requirements for the base branch
 
-This repo uses GitHub rulesets, not classic branch protection. Read the effective rules for the PR base branch:
+This repo uses GitHub rulesets, not classic branch protection. Read the effective rules for the PR base branch. `gh api` auto-populates `{owner}` and `{repo}` from the current repository, but the base branch is not a `gh api` placeholder, so substitute it from `gh pr view`:
 
 ```bash
-gh api "repos/{owner}/{repo}/rules/branches/{baseRefName}"
+BASE=$(gh pr view --json baseRefName --jq .baseRefName)
+gh api "repos/{owner}/{repo}/rules/branches/$BASE"
 ```
 
 Or use `gh ruleset check --default` when the PR targets the default branch.
@@ -53,10 +54,11 @@ If `mergeStateStatus` is `BEHIND`, update the branch from base before re-checkin
 
 Inline diff comments are separate from PR timeline comments.
 
-List inline comments:
+List inline comments. The PR number is not a `gh api` placeholder, so substitute it from `gh pr view`:
 
 ```bash
-gh api "repos/{owner}/{repo}/pulls/{number}/comments"
+NUM=$(gh pr view --json number --jq .number)
+gh api "repos/{owner}/{repo}/pulls/$NUM/comments"
 ```
 
 Read thread resolution state and stable thread IDs with GraphQL:
