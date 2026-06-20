@@ -452,8 +452,8 @@ func renderSkillDir(src string, dst string, refStyle SkillRefStyle, ruleNames []
 	return nil
 }
 
-// skillTemplateData exposes the rule reference helpers to a skill template as the
-// "{{.Rules}}" and "{{.Rule \"name\"}}" methods for the active refStyle.
+// skillTemplateData exposes corpus reference helpers to a skill template as the
+// "{{.Rules}}", "{{.Rule \"name\"}}", and "{{.Skill \"name\"}}" methods.
 type skillTemplateData struct {
 	style     SkillRefStyle
 	ruleNames []string
@@ -464,6 +464,14 @@ func (d skillTemplateData) Rules() string { return renderRulesList(d.style, d.ru
 
 // Rule renders a single rule link for the active style.
 func (d skillTemplateData) Rule(name string) string { return renderRuleLink(d.style, name) }
+
+// Skill renders a sibling skill link for the active style.
+func (d skillTemplateData) Skill(name string) string { return renderSkillSiblingLink(name) }
+
+func renderSkillSiblingLink(name string) string {
+	skillPath := filepath.ToSlash(filepath.Join("..", name, "SKILL.md"))
+	return fmt.Sprintf("[%s](%s)", name, skillPath)
+}
 
 // renderSkillTemplate renders one skill template through text/template.
 func renderSkillTemplate(content string, refStyle SkillRefStyle, ruleNames []string, name string) (string, error) {

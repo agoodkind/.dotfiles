@@ -215,6 +215,29 @@ func TestRenderSkillDirsTemplateParseError(t *testing.T) {
 	}
 }
 
+func TestRenderSkillDirsSkillLink(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "rules", "code.mdc"), "---\ndescription: c\n---\ncode body\n")
+	skillsDir := filepath.Join(root, "skills")
+	writeTestFile(
+		t,
+		filepath.Join(skillsDir, "split-to-prs", "SKILL.md.tmpl"),
+		"---\nname: split-to-prs\ndescription: d\n---\n\nSee {{.Skill \"graphite\"}}.\n",
+	)
+	dst := filepath.Join(t.TempDir(), "skills")
+	if err := RenderSkillDirs(skillsDir, dst, SkillRefMDC); err != nil {
+		t.Fatalf("RenderSkillDirs: %v", err)
+	}
+	rendered, err := os.ReadFile(filepath.Join(dst, "split-to-prs", "SKILL.md"))
+	if err != nil {
+		t.Fatalf("reading rendered skill: %v", err)
+	}
+	want := "See [graphite](../graphite/SKILL.md)."
+	if !strings.Contains(string(rendered), want) {
+		t.Errorf("rendered skill missing skill link\nwant substring:\n%s\ngot:\n%s", want, string(rendered))
+	}
+}
+
 func TestRenderRuleTemplateSkillLink(t *testing.T) {
 	style := RuleRenderStyle{SkillsRelDir: "../skills"}
 	got, err := renderRuleTemplate("See {{.Skill \"make-readable\"}} for help.", style, "writing.mdc")

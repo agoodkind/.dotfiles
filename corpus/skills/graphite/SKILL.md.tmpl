@@ -1,0 +1,323 @@
+---
+name: graphite
+description: Create, adopt, split, submit, and babysit stacked pull requests with Graphite (gt) via MCP. Use when the user mentions Graphite, gt, stacked PRs, split-to-prs with Graphite, adopting an existing branch chain, or merge conflicts on a live stack.
+---
+
+# Graphite Stacked PRs
+
+Graphite manages **stacks**: dependent PRs where each branch builds on the one below instead of trunk directly.
+
+```text
+main <- pr-1 <- pr-2 <- pr-3
+```
+
+## Terms
+
+- **Trunk**: base branch PRs merge into (usually `main`)
+- **Downstack**: ancestor PRs below the current branch
+- **Upstack**: descendant PRs above the current branch
+
+## MCP First
+
+Use the Graphite MCP server as the **primary** interface for every `gt` operation. MCP preserves repo `cwd`, argv, and command history across turns.
+
+**Cursor:** `run_gt_cmd` on `user-Graphite`.
+
+**Codex / Claude:** the session's Graphite MCP `run_gt_cmd`.
+
+Every call needs:
+
+- `args`: argv array, for example `["submit", "--stack", "--no-interactive"]`
+- `cwd`: absolute repo root path
+- `why`: one line stating purpose
+
+Call `learn_gt` when starting stacked work in an unfamiliar repo.
+
+Shell `gt` is fallback only when MCP is missing or not loaded yet. Never fall back to `git push` for stacked PR work.
+
+Do **not** use `git commit`, `git push`, `git branch -D`, or manual rebases for work the user authorized through `gt`. If MCP is available, do not run ad hoc shell `gt` either.
+
+## Preflight (every task)
+
+Run through MCP before creating, adopting, or restacking:
+
+1. `["log", "short"]` for tracked branches and parent chain
+2. `["init"]` and `["auth"]` if the repo is new to Graphite
+3. Fetch trunk and confirm it is current. Stale local trunk blocks submit and restack
+4. `git worktree list` when multiple agents may share the repo
+
+**Untracked branches:** if git shows branches that `gt log` omits, they were created outside Graphite. Adopt before submit (see adopt workflow below).
+
+## Command Map
+
+| Task | MCP `args` |
+| --- | --- |
+| inspect stack | `["log", "short"]` or `["log"]` |
+| new slice on current branch | `["create", "--message", "..."]` |
+| amend tip and restack upstack | `["modify", "--all"]` |
+| add a new commit on tip | `["modify", "--commit", "--message", "..."]` |
+| adopt existing branch | `["branch", "track", "<branch>", "--parent", "<parent>"]` |
+| preview submit | `["submit", "--stack", "--dry-run", "--no-interactive"]` |
+| push and open/update PRs | `["submit", "--stack", "--no-interactive"]` |
+| rebase stack onto parents | `["restack", "--no-interactive"]` |
+| refresh trunk and stacks | `["sync", "--no-interactive"]` |
+| route tip fixes into stack | `["absorb", "--dry-run"]` then `["absorb", "--all", "--force"]` |
+| resume after conflict | `["continue"]` |
+
+Always pass `--no-interactive` when the flag exists.
+
+Staging stays in git (`git add` named paths only). Creation, restack, and submit go through MCP.
+
+---
+
+## Task: Split work into a Graphite stack
+
+This is {{.Skill "split-to-prs"}} executed with Graphite instead of plain git branches.
+
+### Planning rules (from split-to-prs)
+
+- Do not create branches, commit, submit, or open PRs until the user approves the split plan.
+- Never discard user work. No destructive git without explicit approval.
+- Save a recoverable snapshot before moving work around.
+- Stage only named files or hunks. No `git add .` or `git add -A`.
+- Default to independent PRs off trunk. Stack only when dependency is real.
+- Order foundations before consumers.
+
+Propose titles (and a Mermaid diagram when helpful). Ask for approval before executing.
+
+### Execute with Graphite
+
+1. **Snapshot** uncommitted work:
+
+```bash
+SHA=$(git stash create "pre-split")
+if [ -n "$SHA" ]; then
+  git update-ref "refs/backup/pre-split-$(date +%s)" "$SHA"
+fi
+```
+
+2. **Sync trunk** via MCP: `["sync", "--no-interactive"]` or fast-forward trunk first.
+
+3. **Bottom slice first.** Check out trunk, apply only that slice's files/hunks, stage, then:
+
+```text
+args: ["create", "--message", "imperative subject for slice 1"]
+```
+
+4. **Each next slice** on the previous branch tip: apply files/hunks, stage, `["create", "--message", "..."]`.
+
+5. **Dry-run submit:**
+
+```text
+args: ["submit", "--stack", "--dry-run", "--no-interactive"]
+```
+
+6. **Submit:**
+
+```text
+args: ["submit", "--stack", "--no-interactive"]
+```
+
+7. **Mark PRs ready** when reviewers are required. Non-interactive submit often creates drafts and Copilot skips drafts:
+
+```bash
+gh pr ready <number>   # for each PR in the stack
+```
+
+8. **Report** bottom PR URL, full stack order, and anything left uncommitted on trunk.
+
+One logical change per branch. The first commit message line becomes the PR title.
+
+---
+
+## Task: Adopt a non-Graphite stack
+
+Use when branches and GitHub PRs already exist but Graphite metadata is missing or incomplete.
+
+### Symptoms
+
+- `gt log` shows an old unrelated stack or only trunk
+- branches were created with `git worktree`, `git switch`, or subagents
+- repo has no `.graphite_repo_config`
+- open PRs already form a correct parent chain on GitHub
+
+### Steps
+
+1. **Initialize** if needed: `["init"]`, `["auth"]`.
+
+2. **Map the chain** bottom to top. Confirm each PR's GitHub base branch matches its git parent. Write the chain down before tracking.
+
+3. **Track bottom-up** (trunk parent for the first branch, then each child):
+
+```text
+args: ["branch", "track", "<bottom-branch>", "--parent", "main"]
+args: ["branch", "track", "<next-branch>", "--parent", "<bottom-branch>"]
+# repeat for each branch up the stack
+```
+
+4. **Verify:** `["log", "short"]` shows the full parent chain.
+
+5. **Dry-run submit** to confirm adoption, not duplication:
+
+```text
+args: ["submit", "--stack", "--dry-run", "--no-interactive"]
+```
+
+Expect **Sync** or **New parent** actions. **Create** on an existing PR means the mapping is wrong; stop and fix parents.
+
+6. **Submit:**
+
+```text
+args: ["submit", "--stack", "--no-interactive"]
+```
+
+7. **Mark drafts ready** if reviewers are required.
+
+### Worktree branches
+
+If a branch was committed in a worktree before Graphite knew about it, `gt track` on that branch is the sanctioned adopt path. Do not recreate the branch with `gt create`.
+
+### Ghost metadata after git cleanup
+
+If branches were deleted with `git branch -D` instead of `gt delete`, Graphite may still list them. Run `["sync", "--no-interactive"]` when no other agent's worktrees are mid-stack, or wait until a safe point. Do not substitute git cleanup when the user authorized `gt sync` / `gt delete`.
+
+---
+
+## Task: Create a new stack from scratch
+
+When there is no existing branch chain:
+
+1. Propose stack structure and get confirmation.
+2. Preflight (above).
+3. For each PR bottom to top: write code, stage named paths, `["create", "--message", "..."]`.
+4. `["submit", "--stack", "--dry-run", "--no-interactive"]` then real submit.
+5. Mark PRs ready. Share bottom PR URL.
+
+---
+
+## Task: Babysit a Graphite stack
+
+Follow {{.Skill "babysit"}} for ruleset requirements, inline comment triage, thread resolution, and CI scope.
+
+Graphite adds stack-specific state that plain PR babysitting misses.
+
+### Each babysit loop
+
+1. Run babysit step 1 (`gh pr view`, `gh pr checks`) on the PR you are driving (often the stack tip or the blocked PR).
+
+2. MCP: `["log", "short"]` and inspect the full stack, not only the current branch.
+
+3. Check **every PR in the stack** for `isDraft`, `mergeStateStatus`, and failing checks.
+
+### Trunk moved under you (other agents merged to main)
+
+When `mergeStateStatus` is `BEHIND` or trunk advanced while your stack is open:
+
+1. Prefer a **scoped restack** of your stack, not a repo-wide sync, when other worktrees are active.
+2. MCP: `["sync", "--no-interactive"]` only after confirming `git worktree list` shows no unrelated mid-flight work, or restack just your stack:
+
+```text
+args: ["restack", "--branch", "<bottom-branch>", "--upstack", "--no-interactive"]
+```
+
+3. Resolve conflicts (below), then `["submit", "--stack", "--no-interactive"]`.
+4. Re-run `gh pr checks` on affected PRs.
+
+### Partial stack merge (lower PRs landed, upper PRs DIRTY)
+
+Common after Graphite or GitHub merges PRs 1..N while N+1..M remain open. Upper branches still carry duplicate commits from merged lower PRs.
+
+1. Do not force-merge a DIRTY PR. Inspect whether the branch still contains commits already on trunk.
+2. MCP restack the remaining stack onto current trunk.
+3. After restack, the upper PR diff should shrink to only its slice.
+4. `["submit", "--stack", "--no-interactive"]` and re-check CI.
+
+### Review feedback on a mid-stack PR
+
+1. Check out that branch (git checkout is fine for file edits).
+2. Apply fixes, stage named paths.
+3. MCP: `["modify", "--all"]` (amend) or `["modify", "--commit", "--message", "..."]`.
+4. If fixes belong in a lower stack commit, use `["absorb", "--dry-run"]` first, then `["absorb", "--all", "--force"]`.
+5. `["submit", "--stack", "--no-interactive"]`.
+6. Resolve review threads per babysit. Re-run checks.
+
+### Stack merge from Graphite
+
+Prefer merging the whole stack from the Graphite web UI when all PRs are green and threads are resolved. For CLI merge exploration: `["merge", "--dry-run", "--no-interactive"]` before `["merge", "--no-interactive"]`.
+
+### Babysit exit criteria (stack-aware)
+
+All of the following, for **each open PR in the stack**:
+
+- not draft
+- required checks green
+- review decision satisfied
+- required threads resolved
+- not DIRTY or CONFLICTING
+- `gt log short` parent chain still correct
+
+Report bottom PR URL, merge state per PR, and anything still blocking the stack tip.
+
+---
+
+## Conflict recovery
+
+When sync or restack pauses:
+
+1. Read which branch Graphite names as conflicted.
+2. Fix markers in that branch's worktree checkout.
+3. `git add` resolved files (named paths only).
+4. MCP: `["continue"]`
+5. Repeat until restack completes, then `["submit", "--stack", "--no-interactive"]`.
+
+Prefer `["continue"]` over `git rebase --continue`. Avoid `["abort"]` in agent shells; it often wants a TTY.
+
+---
+
+## Things to avoid
+
+| Mistake | Why it hurts | Instead |
+| --- | --- | --- |
+| `git commit` / `git push` on stack work | breaks Graphite metadata and PR bases | `gt create` / `gt submit` via MCP |
+| shell `gt` when MCP is available | loses cross-turn context | `run_gt_cmd` |
+| branches created outside `gt` | invisible to `gt log` | `gt branch track` before submit |
+| submit without dry-run on existing PRs | duplicate PRs | dry-run first; expect Sync/New parent |
+| ignore draft state after submit | Copilot and other bots skip drafts | `gh pr ready` on each PR |
+| stale trunk | submit and restack block | sync or fast-forward trunk first |
+| repo-wide `gt sync` with shared worktrees | restacks or deletes other agents' branches | scoped restack; check worktree list |
+| `git branch -D` when user authorized `gt delete` | ghost Graphite metadata | `gt delete` or `gt sync` when safe |
+| manual rebase of one stack branch | desyncs upstack parents | `gt modify` or `gt restack` |
+| merge DIRTY upstack PR after partial merge | conflicts from duplicate commits | restack onto current trunk first |
+| `gt` inside pipes or redirection | agent-gate blocks; hides errors | plain MCP calls |
+| `git` without `-C` in worktrees | wrong repo | explicit `cwd` in MCP or `git -C` |
+| force-push outside `gt submit` | Graphite loses sync with remote | `gt submit` after restack |
+| babysit only the tip PR | miss blocked lower PRs | check whole stack each loop |
+
+---
+
+## Shell fallback
+
+When MCP is unavailable:
+
+```bash
+cd /absolute/path/to/repo
+gt log short
+gt submit --stack --dry-run --no-interactive
+gt submit --stack --no-interactive
+```
+
+No pipes, redirection, or `head`/`tail` on `gt` output.
+
+---
+
+## Caveats
+
+- `gt submit` may refuse to force-push when remote changed since last submit. Restack, then submit again.
+- Dotfiles uses bare-repo `config push`. Graphite targets normal GitHub repos with `gt init`, not dotfiles itself.
+
+## Verification
+
+- `gt log short` matches the intended parent chain
+- each GitHub PR has the correct base branch
+- no PR stuck in draft when review is required
+- CI scopes match each PR's slice, not the whole feature at once

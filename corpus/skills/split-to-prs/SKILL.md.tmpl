@@ -1,11 +1,24 @@
 ---
 name: split-to-prs
-description: Split current work into small reviewable PRs. Use when the user asks to split a chat, set of changes, branch, or PR.
+description: Split current work into small reviewable PRs. Prefer Graphite stacks when gt or the Graphite MCP is available. Use when the user asks to split a chat, set of changes, branch, or PR.
 ---
 
 # Split to PRs
 
 Turn one pile of work into a few small PRs.
+
+## Graphite first
+
+When Graphite is available, prefer a stacked split over plain git branches.
+
+Graphite is available when any of these hold:
+
+- the Graphite MCP `run_gt_cmd` tool is loaded in the session
+- `gt` is on PATH and the repo has been initialized with `gt init`
+
+For planning, stay in this skill. For execution, follow {{.Skill "graphite"}} task **Split work into a Graphite stack**. That skill owns MCP usage, `gt create`, dry-run submit, draft-ready handling, and stack verification.
+
+Use the plain git path in section 3 only when Graphite is unavailable and the user does not want to set it up.
 
 ## Hard rules
 
@@ -20,6 +33,8 @@ Compare the current work to the repo's default branch, including committed and u
 
 Before proposing slices, find ownership signals for the touched paths (`CODEOWNERS`, nested ownership files, `tools/ownership/PRODUCTOWNERS`, or repo equivalents) and use them to identify natural reviewer boundaries.
 
+Note whether Graphite is available (see above).
+
 ## 2. Propose the split
 
 Use judgment on detail. Usually PR titles are enough. Add a one-line scope note only when a title is unclear. Show a Mermaid diagram when there are multiple slices.
@@ -28,9 +43,22 @@ Optimize for reviewer-aligned PRs with minimal unrelated diff: split independent
 
 Default to independent PRs off the default branch. Stack PRs only when the dependency is real.
 
+State which execution path you will use after approval:
+
+- **Graphite stack** when Graphite is available and slices depend on each other
+- **Plain git branches** when Graphite is unavailable or slices are independent
+
 Ask for approval before starting. In Claude Code call `AskUserQuestion`. In Codex call `request_user_input`. In Cursor call `AskQuestion`. When none is available, present the plan in plain text and wait for approval.
 
 ## 3. Execute the split
+
+### Graphite path (preferred)
+
+After approval, switch to {{.Skill "graphite"}} and run **Split work into a Graphite stack** with the approved plan. Do not reimplement those steps here.
+
+### Plain git path (fallback)
+
+Use only when Graphite is unavailable.
 
 If there is uncommitted work, save a recoverable snapshot without changing the working tree:
 
@@ -45,4 +73,4 @@ For each approved slice, create a branch from the right base, stage and commit o
 
 ## 4. Report back
 
-Keep it short: PR titles and URLs, plus anything left on the starting branch or working tree. Do not delete the backup ref or original branch unless the user asks.
+Keep it short: PR titles and URLs, plus anything left on the starting branch or working tree. For Graphite splits, include the bottom PR URL and stack order. Do not delete the backup ref or original branch unless the user asks.
