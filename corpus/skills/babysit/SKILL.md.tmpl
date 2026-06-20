@@ -18,6 +18,14 @@ gh pr checks
 
 Read `mergeable`, `mergeStateStatus`, `reviewDecision`, and `statusCheckRollup` against the ruleset requirements in step 2.
 
+If `isDraft` is `true`, mark the PR ready for review before doing anything else, since a draft PR cannot be merged:
+
+```bash
+gh pr ready
+```
+
+A draft also shows `mergeStateStatus` of `DRAFT`, so marking it ready first lets the real merge state surface. Automated reviewers like Copilot and Bugbot do not comment on draft PRs either by default, so marking it ready is what triggers the review comments this loop then triages.
+
 ## 2. Read ruleset merge requirements for the base branch
 
 This repo uses GitHub rulesets, not classic branch protection. Read the effective rules for the PR base branch:
