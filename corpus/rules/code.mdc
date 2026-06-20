@@ -1,5 +1,5 @@
 ---
-description: Code style conventions for JavaScript, TypeScript, Ruby, and Shell
+description: Code style conventions for JavaScript, TypeScript, Go, Ruby, shell, and cross-language scripts
 applies_to:
   - "*.js"
   - "*.jsx"
@@ -13,16 +13,80 @@ applies_to:
 always: false
 ---
 
-JavaScript/TypeScript: Use function definitions for top-level functions, not arrow functions (e.g. `function handleClick(event: FullyQualifiedType) { ... }`). All JSDoc must include types exhaustively.
+# Code style
 
-Git: Always fetch before any diff, merge-base, log range, or branch comparison, then use the remote-tracking ref (e.g. `origin/main`, but could be `upstream/master` or another remote/branch) rather than the local branch name, since local refs are checked out elsewhere in worktrees and go stale.
+These rules set multi-language code conventions for this repository.
 
-Subagents: Prefer fast Composer-based subagents for independent, bounded slices of work (search, exploration, isolated edits). Give each subagent a detailed, narrow prompt: concrete paths, the exact question or change, and the shape of the answer you need. Launch several in parallel when their scopes are separate so the main thread stays smaller and token cost stays lower.
+## JavaScript and TypeScript
 
-Ruby: Use one guard clause per condition (e.g. `return unless x`, `return unless y`, `return if z`).
+Define top-level functions with `function` declarations, not arrow functions (for example `function handleClick(event: FullyQualifiedType) { ... }`).
 
-Cross-language scripts: When code calls out to a different language (AppleScript via `osascript`, SQL, shell via `subprocess`, etc.), write the script in its own file with the appropriate extension (`.applescript`, `.sql`, `.sh`), then load the file at runtime and substitute dynamic values using the host language's templating primitives. This keeps each language in its own file where editors, linters, and syntax highlighting work correctly.
+Include types exhaustively in every JSDoc block.
 
-Shell: Use a shebang (`#!/usr/bin/env bash` or `#!/usr/bin/env zsh`), snake_case for functions and local variables, UPPER_CASE for globals and constants, 4-space indentation, and `[[...]]` for tests; scope variables with `local` inside functions, use `source` instead of `.`, and add shellcheck directives when they help. For conditionals, use a full `if / then / fi` block; use a single-line `|| return 1` or `|| exit 1` for guard clauses on missing prerequisites; and use `|| true` for intentionally best-effort calls. Scripts that spawn background processes must trap INT/TERM, track PIDs in an array, have the trap handler kill them, check an interrupt flag each iteration in long-running loops, exit with 130 after handling INT, and clean up temp files and dirs in the trap handler.
+## Git
 
-Code comments: Add comments only when the code is not self-explanatory. Keep comments technical and explain the "why" behind non-obvious decisions.
+Fetch before any diff, merge-base, log range, or branch comparison.
+
+Use the remote-tracking ref (for example `origin/main`, or `upstream/master` when that is the upstream) rather than the local branch name.
+
+Local refs can go stale when they are checked out elsewhere in worktrees.
+
+## Subagents
+
+Prefer fast Composer-based subagents for independent, bounded slices of work (search, exploration, isolated edits).
+
+Give each subagent a detailed, narrow prompt with concrete paths, the exact question or change, and the shape of the answer you need.
+
+Launch several subagents in parallel when their scopes are separate so the main thread stays smaller and token cost stays lower.
+
+## Ruby
+
+Use one guard clause per condition (for example `return unless x`, `return unless y`, `return if z`).
+
+## Cross-language scripts
+
+When code calls out to another language (AppleScript via `osascript`, SQL, shell via `subprocess`, and similar cases), write the script in its own file with the matching extension (`.applescript`, `.sql`, `.sh`).
+
+Load that file at runtime and substitute dynamic values with the host language's templating primitives.
+
+This keeps each language in its own file where editors, linters, and syntax highlighting work correctly.
+
+## Shell
+
+Start scripts with a shebang (`#!/usr/bin/env bash` or `#!/usr/bin/env zsh`).
+
+Use snake_case for functions and local variables.
+
+Use UPPER_CASE for globals and constants.
+
+Use 4-space indentation and `[[...]]` for tests.
+
+Scope variables with `local` inside functions.
+
+Use `source` instead of `.`.
+
+Add shellcheck directives when they help.
+
+For conditionals, use a full `if / then / fi` block.
+
+Use a single-line `|| return 1` or `|| exit 1` for guard clauses on missing prerequisites.
+
+Use `|| true` for intentionally best-effort calls.
+
+Scripts that spawn background processes must trap INT and TERM.
+
+Track PIDs in an array.
+
+Have the trap handler kill child processes.
+
+Check an interrupt flag on each iteration in long-running loops.
+
+Exit with status 130 after handling INT.
+
+Clean up temp files and directories in the trap handler.
+
+## Code comments
+
+Add comments only when the code is not self-explanatory.
+
+Keep comments technical and explain the why behind non-obvious decisions.
