@@ -17,8 +17,8 @@ gh pr view --json body,title,url,state,mergedAt,number
 
 You are working from the current branch. Choose exactly one path for that branch:
 
-- If no existing PR is associated with the branch, prepare a new draft PR for the branch.
-- If an existing PR is associated with the branch and `state` is `MERGED` or `mergedAt` is non-empty, say that the branch's existing PR is already merged, treat it as historical context, and do not edit it. If the user asked to create a PR for the current branch, continue toward a new draft PR for the branch.
+- If no existing PR is associated with the branch, prepare a new PR for the branch.
+- If an existing PR is associated with the branch and `state` is `MERGED` or `mergedAt` is non-empty, say that the branch's existing PR is already merged, treat it as historical context, and do not edit it. If the user asked to create a PR for the current branch, continue toward a new PR for the branch.
 - If an existing PR is associated with the branch and it is open, stop before drafting or editing unless the user clearly asked to update that existing PR.
 - If the user clearly asked to update, reword, tighten, revise, or improve the open PR, preserve useful existing title/body content and update only what the user asked to change.
 - Before modifying an open PR, read the full existing title and body and save them to a backup file in a temporary directory.
@@ -205,7 +205,7 @@ Ticket: [`AGENCY-11414`](https://agency.ticket.net/browse/AGENCY-11414)
 
 Before creating or editing a PR, show:
 
-- The action you plan to take: create a new draft PR, edit an existing non-merged PR, edit title only, edit body only, or full rewrite.
+- The action you plan to take: create a new PR, edit an existing non-merged PR, edit title only, edit body only, or full rewrite.
 - The proposed title.
 - The proposed body.
 
@@ -220,7 +220,7 @@ Ask for explicit confirmation before running any GitHub write command.
 Use the narrowest command that matches the confirmed action:
 
 ```bash
-gh pr create --draft --title '<title>' --body '<description>'
+gh pr create --title '<title>' --body '<description>'
 gh pr edit --title '<title>' --body '<description>'
 gh pr edit --title '<title>'
 gh pr edit --body '<description>'
