@@ -291,7 +291,7 @@ func (installer *Installer) installMacPackages(ctx context.Context, strictMode b
 		}
 	}
 
-	installer.trustMacTapPackages(ctx, cfg, logger)
+	installer.trustMacTapPackages(ctx, cfg)
 
 	if err := installer.installMacFormulae(ctx, cfg, strictMode, logger); err != nil {
 		return err
@@ -299,14 +299,14 @@ func (installer *Installer) installMacPackages(ctx context.Context, strictMode b
 	return installer.installMacCasks(ctx, cfg, strictMode, logger)
 }
 
-func (installer *Installer) trustMacTapPackages(ctx context.Context, cfg *catalog.PackageConfig, logger *telemetry.Logger) {
+func (installer *Installer) trustMacTapPackages(ctx context.Context, cfg *catalog.PackageConfig) {
 	if !installer.deps.Commands.CommandSucceeds(ctx, "brew", "trust", "--help") {
 		return
 	}
 
 	formulae := tapQualifiedNames(append(append([]string{}, cfg.CommonPackages...), cfg.BrewSpecific...))
 	for _, name := range formulae {
-		_ = installer.deps.Commands.RunWithLogger(ctx, logger, "brew", "trust", "--formula", name)
+		installer.deps.Commands.CommandSucceeds(ctx, "brew", "trust", "--formula", name)
 	}
 
 	caskNames := make([]string, 0, len(cfg.BrewCasks))
@@ -314,7 +314,7 @@ func (installer *Installer) trustMacTapPackages(ctx context.Context, cfg *catalo
 		caskNames = append(caskNames, cask)
 	}
 	for _, name := range tapQualifiedNames(caskNames) {
-		_ = installer.deps.Commands.RunWithLogger(ctx, logger, "brew", "trust", "--cask", name)
+		installer.deps.Commands.CommandSucceeds(ctx, "brew", "trust", "--cask", name)
 	}
 }
 

@@ -19,9 +19,10 @@ type commandCall struct {
 }
 
 type fakeCommands struct {
-	runCalls []commandCall
-	runErrs  map[string]error
-	succeeds map[string]bool
+	runCalls     []commandCall
+	succeedCalls []commandCall
+	runErrs      map[string]error
+	succeeds     map[string]bool
 }
 
 func (commands *fakeCommands) RunWithLogger(_ context.Context, _ *telemetry.Logger, command string, args ...string) error {
@@ -33,6 +34,7 @@ func (commands *fakeCommands) RunWithLogger(_ context.Context, _ *telemetry.Logg
 }
 
 func (commands *fakeCommands) CommandSucceeds(_ context.Context, command string, args ...string) bool {
+	commands.succeedCalls = append(commands.succeedCalls, commandCall{command: command, args: append([]string{}, args...)})
 	return commands.succeeds[commandKey(command, args...)]
 }
 
@@ -269,10 +271,10 @@ func TestInstallMacPackagesTrustsTapQualifiedFormulae(t *testing.T) {
 		t.Fatalf("installMacPackages() returned error: %v", err)
 	}
 
-	if !containsRunCall(commands.runCalls, "brew", []string{"trust", "--formula", "MisterTea/et/et"}) {
+	if !containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--formula", "MisterTea/et/et"}) {
 		t.Fatal("expected brew trust --formula MisterTea/et/et")
 	}
-	if containsRunCall(commands.runCalls, "brew", []string{"trust", "--formula", "bat"}) {
+	if containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--formula", "bat"}) {
 		t.Fatal("did not expect brew trust for core formula bat")
 	}
 }
@@ -308,10 +310,10 @@ func TestInstallMacPackagesTrustsTapQualifiedCasks(t *testing.T) {
 		t.Fatalf("installMacPackages() returned error: %v", err)
 	}
 
-	if !containsRunCall(commands.runCalls, "brew", []string{"trust", "--cask", "someuser/some-tap/some-cask"}) {
+	if !containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--cask", "someuser/some-tap/some-cask"}) {
 		t.Fatal("expected brew trust --cask someuser/some-tap/some-cask")
 	}
-	if containsRunCall(commands.runCalls, "brew", []string{"trust", "--cask", "ghostty"}) {
+	if containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--cask", "ghostty"}) {
 		t.Fatal("did not expect brew trust for core cask ghostty")
 	}
 }
@@ -331,7 +333,7 @@ func TestTapQualifiedNamesRequiresOwnerTapNameShape(t *testing.T) {
 	}
 }
 
-func containsRunCall(calls []commandCall, command string, args []string) bool {
+func containsCommandCall(calls []commandCall, command string, args []string) bool {
 	for _, call := range calls {
 		if call.command != command {
 			continue
