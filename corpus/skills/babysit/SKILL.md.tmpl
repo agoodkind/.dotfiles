@@ -1,0 +1,123 @@
+---
+name: babysit
+description: Keep a PR merge-ready by triaging comments, resolving clear conflicts, and fixing CI in a loop.
+---
+
+# Babysit PR
+
+Get this PR to a merge-ready state. Run the verification commands below, fix what is in scope, and loop until every ruleset requirement is satisfied.
+
+## 1. Identify the PR and read merge state
+
+Derive `owner/repo` from `gh repo view --json nameWithOwner` or from the PR JSON.
+
+```bash
+gh pr view --json number,headRefName,baseRefName,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,isDraft
+gh pr checks
+```
+
+Read `mergeable`, `mergeStateStatus`, `reviewDecision`, and `statusCheckRollup` against the ruleset requirements in step 2.
+
+## 2. Read ruleset merge requirements for the base branch
+
+This repo uses GitHub rulesets, not classic branch protection. Read the effective rules for the PR base branch:
+
+```bash
+gh api "repos/{owner}/{repo}/rules/branches/{baseRefName}"
+```
+
+Or use `gh ruleset check --default` when the PR targets the default branch.
+
+Parse the returned rules:
+
+- `required_status_checks`: lists the checks that must pass before merge.
+- `pull_request`: carries `required_approving_review_count`, `require_code_owner_review`, `require_last_push_approval`, and `required_review_thread_resolution`.
+
+Only `active` rules are returned. Rules in `evaluate` or `disabled` enforcement do not gate merge.
+
+## 3. Resolve merge conflicts
+
+Resolve merge conflicts while preserving intent on both the PR branch and the base branch. If intents truly conflict, abort the merge and ask the user for clarification before continuing.
+
+If `mergeStateStatus` is `BEHIND`, update the branch from base before re-checking CI, since another PR may have already fixed a failing check.
+
+## 4. Triage inline review comments
+
+Inline diff comments are separate from PR timeline comments.
+
+List inline comments:
+
+```bash
+gh api "repos/{owner}/{repo}/pulls/{number}/comments"
+```
+
+Read thread resolution state and stable thread IDs with GraphQL:
+
+```graphql
+{
+  repository(owner: "OWNER", name: "REPO") {
+    pullRequest(number: PR_NUMBER) {
+      reviewThreads(first: 100) {
+        nodes {
+          id
+          isResolved
+          isOutdated
+          path
+          line
+          comments(first: 10) {
+            nodes { body author { login } }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Filter to unresolved threads first. Read only each comment body and the minimum location needed to act. Do not dump the full JSON payload.
+
+Validate automated review bot comments (for example Bugbot) before acting. Fix valid points. Reply and leave the thread open when you disagree or are unsure.
+
+## 5. Resolve threads once addressed
+
+After a requested change is made and pushed, resolve the thread with GraphQL. REST has no resolve endpoint. Use the `PRRT_...` thread `id` from `reviewThreads`, not a comment ID.
+
+Reply first when a short explanation helps:
+
+```graphql
+mutation {
+  addPullRequestReviewThreadReply(input: {
+    pullRequestReviewThreadId: "PRRT_..."
+    body: "Fixed in <commit>."
+  }) { comment { id } }
+}
+```
+
+Then resolve:
+
+```graphql
+mutation {
+  resolveReviewThread(input: {threadId: "PRRT_..."}) {
+    thread { id isResolved }
+  }
+}
+```
+
+Resolve only after the change is genuinely addressed. When `required_review_thread_resolution` is active in the ruleset, every required thread must be resolved before merge.
+
+## 6. Fix CI within PR scope
+
+Fix CI failures caused by changes within this PR's scope. Push scoped fixes and re-run `gh pr checks`.
+
+Never edit CI workflows or unrelated code just to make failures pass. Report back when that would be required.
+
+## 7. Loop until merge-ready
+
+After each push, re-run steps 1 through 6 until all of the following hold:
+
+- Required status checks are green.
+- `reviewDecision` satisfies the ruleset approval count and code-owner requirements.
+- Required review threads are resolved when `required_review_thread_resolution` is active.
+- `mergeable` is not blocked by conflicts.
+
+Report the final state: checks, review decision, unresolved threads, and anything that still blocks merge.

@@ -1,0 +1,62 @@
+---
+name: codex-subagent
+description: Use Codex as a subagent through the Codex MCP server. Use when the user asks to delegate work to Codex, run a Codex review, have Codex perform a second pass, continue a Codex MCP thread, or compare host and Codex answers.
+---
+
+# Codex Subagent
+
+Use the connected Codex MCP server when the user asks to delegate work to Codex. Prefer the MCP tools over shell commands because the MCP path preserves the agent protocol, returns a thread ID, and supports follow-up with `codex-reply`.
+
+Assume the Codex MCP server is already connected. This skill gives only tool-calling instructions.
+
+## Tool selection
+
+Call the Codex MCP server's `codex` tool for a new task and `codex-reply` to continue a known thread when the `threadId` is available.
+
+Per host:
+
+- **Claude Code**: call `mcp__codex__codex` or `mcp__codex__codex-reply`.
+- **Cursor**: call `CallMcpTool` with `{server: "codex", toolName: "codex"}` or `{server: "codex", toolName: "codex-reply", arguments: {...}}`.
+- **Codex**: call the `codex` server's `codex` or `codex-reply` tools directly.
+
+If no Codex MCP tool is available in the current session, say so plainly. Do not pretend a Codex review happened.
+
+Use `codex exec` only as a fallback when the user explicitly accepts a CLI fallback.
+
+## Prompt shape
+
+Send Codex a bounded prompt with the task, scope, permissions, expected output, and verification requirement.
+
+```text
+You are running as a Codex subagent through the Codex MCP server.
+Task: <specific task>
+Scope: <files, repo, question, or artifact boundaries>
+Permissions: <read-only, edit allowed, test allowed, network allowed>
+Output: <exact summary, findings, patch plan, or answer format>
+Verification: <tests, commands, logs, or evidence to report>
+```
+
+Keep prompts narrow. Include paths, branch names, command names, and exact questions when they matter. Do not include secrets or sensitive token values.
+
+## Delegation rules
+
+- Ask Codex for independent analysis when the user wants a second pass, adversarial review, broad code search, or a cheaper subagent.
+- Ask Codex for implementation only when the user has granted edit permission for that work.
+- Keep the host agent responsible for the final answer. Summarize what Codex returned, cite the `threadId`, and separate Codex's result from the host agent's own observations.
+- Treat Codex output as evidence to inspect, not as automatically true. Verify high-risk claims with source, tests, logs, or direct reads.
+- Do not send large private logs, secrets, credentials, or unrelated personal context to Codex.
+- If Codex edits files through the MCP session, inspect the resulting diff before reporting success.
+
+## Reporting
+
+Report the result in this order:
+
+1. State whether the host agent successfully called Codex through MCP.
+2. Include the Codex `threadId`.
+3. Quote or summarize the Codex response, depending on what the user asked for.
+4. Name any verification performed by the host agent after the Codex response.
+5. State exact errors if the MCP call failed.
+
+For failures, preserve exact backend or MCP error text. If a retry is appropriate, retry once with no model override or with `model="gpt-5.5"`, then report the observed result.
+
+Avoid `model="gpt-5.5-codex"` for ChatGPT-account Codex sessions unless the user has verified that model is supported for the account.

@@ -1,0 +1,59 @@
+---
+name: review-bugbot
+description: Review code changes with a read-only bug-focused review subagent.
+---
+
+# Review Bugbot
+
+Use this skill when the user asks for a bug-focused code review.
+
+Launch one read-only review subagent focused on bugs. Use the host's task or subagent mechanism: in Claude Code the `Task` tool with an appropriate subagent; in Codex a Codex subagent run (see [codex-subagent/SKILL.md](../codex-subagent/SKILL.md)); in Cursor the `Task` tool with a review subagent.
+
+The review subagent computes the local diff from the repository path, so do not compute the diff yourself before launching it. The repository path should be the active workspace or repository root for the code the user wants reviewed.
+
+By default, the review subagent infers the repository's actual base branch, such as `main`, when computing branch changes. In most cases, do not provide a specific base branch. Only provide it when you know the current branch or PR should be compared against a branch other than the repository's default base branch.
+
+## Special case: review a specific PR or branch
+
+When the user explicitly asks to review a specific PR or branch, check out that target before launching the subagent:
+
+- Examples include `github.com/... /review`, `review {link}`, or `review {branch-name}`.
+- Resolve the provided PR link, PR number, or branch name to the PR head branch or named branch.
+- If the target branch is already checked out locally, continue.
+- If a different branch is checked out, switch to the target branch.
+- If Git refuses to switch because local files would be overwritten, explain the blocker and ask whether the user wants to stash local changes before retrying.
+- Only stash after the user confirms. If the stash succeeds, retry switching to the target branch.
+- Launch the review subagent only after the target branch is checked out locally.
+
+## What to tell the review subagent
+
+Send a bounded prompt with:
+
+- Repository root: the absolute path to the repository.
+- Diff scope: `branch changes` (default), `uncommitted changes`, or a natural-language change description when the diff cannot be computed.
+- Base branch: include only when reviewing branch changes against a known specific base branch.
+- Change description: required only for natural-language scope; list each changed file and what changed.
+- Custom instructions: include only when the user gave specific review instructions.
+
+Default to `branch changes`, which reviews branch changes against the merge-base with the default or base branch, including committed, staged, and unstaged changes. Use `uncommitted changes` when the user asks to review only local, dirty, or not-yet-committed work.
+
+## Retry on failure
+
+If the review subagent fails before producing findings, inspect the failure text.
+
+- If the failure is caused by an incorrect invocation (missing repository path, missing diff scope, wrong prompt shape), correct the invocation and retry once immediately.
+- If the subagent reports it could not compute the diff, retry once with a natural-language change description and omit the base branch. The subagent will read those files directly. Use this only after a regular diff-based review has failed.
+- For any other subagent failure, retry once with the same prompt shape.
+- If the same failure persists after the retry, stop. Tell the user the review subagent could not complete and include the short error or blocker. Do not keep retrying.
+
+Write a natural-language change description as one block per changed file: a `<path> (added|modified|deleted|renamed)` header followed by bullet points of what changed. Mention line numbers or ranges inline where they help.
+
+## Report the result
+
+After the subagent finishes, summarize the result:
+
+- If it reports that no diff was found or the diff is empty, tell the user in one sentence that there was no diff to review.
+- If it found no issues, give a one-line status such as "Bug review found no bugs" or "Bug review found 2 findings".
+- If it found issues, print a compact markdown table with one row per finding, sorted by severity (highest first), using exactly these columns: Severity, Location (file:line), Finding. Put the file and line in the location column as `file:line`.
+
+Do not fix findings or rerun review unless the user explicitly asks for that next step.
