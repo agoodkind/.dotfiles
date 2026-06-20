@@ -19,9 +19,10 @@ type commandCall struct {
 }
 
 type fakeCommands struct {
-	runCalls []commandCall
-	runErrs  map[string]error
-	succeeds map[string]bool
+	runCalls     []commandCall
+	succeedCalls []commandCall
+	runErrs      map[string]error
+	succeeds     map[string]bool
 }
 
 func (commands *fakeCommands) RunWithLogger(_ context.Context, _ *telemetry.Logger, command string, args ...string) error {
@@ -33,6 +34,7 @@ func (commands *fakeCommands) RunWithLogger(_ context.Context, _ *telemetry.Logg
 }
 
 func (commands *fakeCommands) CommandSucceeds(_ context.Context, command string, args ...string) bool {
+	commands.succeedCalls = append(commands.succeedCalls, commandCall{command: command, args: append([]string{}, args...)})
 	return commands.succeeds[commandKey(command, args...)]
 }
 
@@ -239,6 +241,109 @@ func TestInstallMacPackagesStrictModeReturnsUpdateError(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "running brew update") {
 		t.Fatalf("installMacPackages() error = %v, want brew update error", err)
 	}
+}
+
+func TestInstallMacPackagesTrustsTapQualifiedFormulae(t *testing.T) {
+	t.Parallel()
+
+	commands := &fakeCommands{
+		succeeds: map[string]bool{
+			commandKey("brew", "trust", "--help"):                      true,
+			commandKey("brew", "list", "--formula", "bat"):             true,
+			commandKey("brew", "list", "--formula", "MisterTea/et/et"): true,
+		},
+	}
+	installer := &Installer{
+		deps: Deps{
+			Commands: commands,
+			Lookup: fakeLookup{commands: map[string]bool{
+				"brew": true,
+			}},
+			Catalog: fakeCatalog{
+				packageConfig: &catalog.PackageConfig{
+					BrewSpecific: []string{"bat", "MisterTea/et/et"},
+				},
+			},
+		},
+	}
+
+	if err := installer.installMacPackages(context.Background(), false, nil); err != nil {
+		t.Fatalf("installMacPackages() returned error: %v", err)
+	}
+
+	if !containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--formula", "MisterTea/et/et"}) {
+		t.Fatal("expected brew trust --formula MisterTea/et/et")
+	}
+	if containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--formula", "bat"}) {
+		t.Fatal("did not expect brew trust for core formula bat")
+	}
+}
+
+func TestInstallMacPackagesTrustsTapQualifiedCasks(t *testing.T) {
+	t.Parallel()
+
+	commands := &fakeCommands{
+		succeeds: map[string]bool{
+			commandKey("brew", "trust", "--help"):                               true,
+			commandKey("brew", "list", "--cask", "ghostty"):                     true,
+			commandKey("brew", "list", "--cask", "someuser/some-tap/some-cask"): true,
+		},
+	}
+	installer := &Installer{
+		deps: Deps{
+			Commands: commands,
+			Lookup: fakeLookup{commands: map[string]bool{
+				"brew": true,
+			}},
+			Catalog: fakeCatalog{
+				packageConfig: &catalog.PackageConfig{
+					BrewCasks: map[string]string{
+						"ghostty":                     "Ghostty",
+						"someuser/some-tap/some-cask": "",
+					},
+				},
+			},
+		},
+	}
+
+	if err := installer.installMacPackages(context.Background(), false, nil); err != nil {
+		t.Fatalf("installMacPackages() returned error: %v", err)
+	}
+
+	if !containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--cask", "someuser/some-tap/some-cask"}) {
+		t.Fatal("expected brew trust --cask someuser/some-tap/some-cask")
+	}
+	if containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--cask", "ghostty"}) {
+		t.Fatal("did not expect brew trust for core cask ghostty")
+	}
+}
+
+func TestTapQualifiedNamesRequiresOwnerTapNameShape(t *testing.T) {
+	t.Parallel()
+
+	got := tapQualifiedNames([]string{
+		"bat",
+		"homebrew/cask-fonts",
+		"a/b/c/d",
+		"MisterTea/et/et",
+		"someuser/some-tap/some-cask",
+	})
+	want := []string{"MisterTea/et/et", "someuser/some-tap/some-cask"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("tapQualifiedNames() = %#v, want %#v", got, want)
+	}
+}
+
+func containsCommandCall(calls []commandCall, command string, args []string) bool {
+	for _, call := range calls {
+		if call.command != command {
+			continue
+		}
+		if reflect.DeepEqual(call.args, args) {
+			return true
+		}
+	}
+	return false
 }
 
 func TestInstallMacPackagesLenientModeContinuesAfterUpdateError(t *testing.T) {

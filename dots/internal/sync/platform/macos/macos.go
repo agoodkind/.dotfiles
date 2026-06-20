@@ -291,10 +291,48 @@ func (installer *Installer) installMacPackages(ctx context.Context, strictMode b
 		}
 	}
 
+	installer.trustMacTapPackages(ctx, cfg)
+
 	if err := installer.installMacFormulae(ctx, cfg, strictMode, logger); err != nil {
 		return err
 	}
 	return installer.installMacCasks(ctx, cfg, strictMode, logger)
+}
+
+func (installer *Installer) trustMacTapPackages(ctx context.Context, cfg *catalog.PackageConfig) {
+	if !installer.deps.Commands.CommandSucceeds(ctx, "brew", "trust", "--help") {
+		return
+	}
+
+	formulae := tapQualifiedNames(append(append([]string{}, cfg.CommonPackages...), cfg.BrewSpecific...))
+	for _, name := range formulae {
+		installer.deps.Commands.CommandSucceeds(ctx, "brew", "trust", "--formula", name)
+	}
+
+	caskNames := make([]string, 0, len(cfg.BrewCasks))
+	for cask := range cfg.BrewCasks {
+		caskNames = append(caskNames, cask)
+	}
+	for _, name := range tapQualifiedNames(caskNames) {
+		installer.deps.Commands.CommandSucceeds(ctx, "brew", "trust", "--cask", name)
+	}
+}
+
+func tapQualifiedNames(names []string) []string {
+	seen := make(map[string]struct{})
+	out := make([]string, 0)
+	for _, name := range names {
+		if strings.Count(name, "/") != 2 {
+			continue
+		}
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		seen[name] = struct{}{}
+		out = append(out, name)
+	}
+	slices.Sort(out)
+	return out
 }
 
 func (installer *Installer) installMacFormulae(ctx context.Context, cfg *catalog.PackageConfig, strictMode bool, logger *telemetry.Logger) error {
