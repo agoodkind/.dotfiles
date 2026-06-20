@@ -45,8 +45,8 @@ Default to independent PRs off the default branch. Stack PRs only when the depen
 
 State which execution path you will use after approval:
 
-- **Graphite stack** when Graphite is available and slices depend on each other
-- **Plain git branches** when Graphite is unavailable or slices are independent
+- **Graphite** when Graphite is available (stacked branches when slices depend on each other, parallel `gt create` branches off trunk when slices are independent)
+- **Plain git branches** only when Graphite is unavailable or the user opts out
 
 Ask for approval before starting. In Claude Code call `AskUserQuestion`. In Codex call `request_user_input`. In Cursor call `AskQuestion`. When none is available, present the plan in plain text and wait for approval.
 
