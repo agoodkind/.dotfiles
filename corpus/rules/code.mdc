@@ -89,4 +89,4 @@ Clean up temp files and directories in the trap handler.
 
 Add comments only when the code is not self-explanatory.
 
-Keep comments technical and explain the why behind non-obvious decisions.
+Keep comments technical and explain why behind non-obvious decisions.
