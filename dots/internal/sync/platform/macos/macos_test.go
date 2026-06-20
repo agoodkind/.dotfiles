@@ -241,6 +241,53 @@ func TestInstallMacPackagesStrictModeReturnsUpdateError(t *testing.T) {
 	}
 }
 
+func TestInstallMacPackagesTrustsTapQualifiedFormulae(t *testing.T) {
+	t.Parallel()
+
+	commands := &fakeCommands{
+		succeeds: map[string]bool{
+			commandKey("brew", "list", "--formula", "bat"):             true,
+			commandKey("brew", "list", "--formula", "MisterTea/et/et"): true,
+		},
+	}
+	installer := &Installer{
+		deps: Deps{
+			Commands: commands,
+			Lookup: fakeLookup{commands: map[string]bool{
+				"brew": true,
+			}},
+			Catalog: fakeCatalog{
+				packageConfig: &catalog.PackageConfig{
+					BrewSpecific: []string{"bat", "MisterTea/et/et"},
+				},
+			},
+		},
+	}
+
+	if err := installer.installMacPackages(context.Background(), false, nil); err != nil {
+		t.Fatalf("installMacPackages() returned error: %v", err)
+	}
+
+	if !containsRunCall(commands.runCalls, "brew", []string{"trust", "--formula", "MisterTea/et/et"}) {
+		t.Fatal("expected brew trust --formula MisterTea/et/et")
+	}
+	if containsRunCall(commands.runCalls, "brew", []string{"trust", "--formula", "bat"}) {
+		t.Fatal("did not expect brew trust for core formula bat")
+	}
+}
+
+func containsRunCall(calls []commandCall, command string, args []string) bool {
+	for _, call := range calls {
+		if call.command != command {
+			continue
+		}
+		if reflect.DeepEqual(call.args, args) {
+			return true
+		}
+	}
+	return false
+}
+
 func TestInstallMacPackagesLenientModeContinuesAfterUpdateError(t *testing.T) {
 	t.Parallel()
 
