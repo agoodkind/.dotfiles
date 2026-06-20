@@ -300,6 +300,10 @@ func (installer *Installer) installMacPackages(ctx context.Context, strictMode b
 }
 
 func (installer *Installer) trustMacTapPackages(ctx context.Context, cfg *catalog.PackageConfig, logger *telemetry.Logger) {
+	if !installer.deps.Commands.CommandSucceeds(ctx, "brew", "trust", "--help") {
+		return
+	}
+
 	formulae := tapQualifiedNames(append(append([]string{}, cfg.CommonPackages...), cfg.BrewSpecific...))
 	for _, name := range formulae {
 		_ = installer.deps.Commands.RunWithLogger(ctx, logger, "brew", "trust", "--formula", name)
@@ -318,7 +322,7 @@ func tapQualifiedNames(names []string) []string {
 	seen := make(map[string]struct{})
 	out := make([]string, 0)
 	for _, name := range names {
-		if !strings.Contains(name, "/") {
+		if strings.Count(name, "/") < 2 {
 			continue
 		}
 		if _, ok := seen[name]; ok {

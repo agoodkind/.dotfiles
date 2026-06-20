@@ -246,6 +246,7 @@ func TestInstallMacPackagesTrustsTapQualifiedFormulae(t *testing.T) {
 
 	commands := &fakeCommands{
 		succeeds: map[string]bool{
+			commandKey("brew", "trust", "--help"):                      true,
 			commandKey("brew", "list", "--formula", "bat"):             true,
 			commandKey("brew", "list", "--formula", "MisterTea/et/et"): true,
 		},
@@ -273,6 +274,60 @@ func TestInstallMacPackagesTrustsTapQualifiedFormulae(t *testing.T) {
 	}
 	if containsRunCall(commands.runCalls, "brew", []string{"trust", "--formula", "bat"}) {
 		t.Fatal("did not expect brew trust for core formula bat")
+	}
+}
+
+func TestInstallMacPackagesTrustsTapQualifiedCasks(t *testing.T) {
+	t.Parallel()
+
+	commands := &fakeCommands{
+		succeeds: map[string]bool{
+			commandKey("brew", "trust", "--help"):                               true,
+			commandKey("brew", "list", "--cask", "ghostty"):                     true,
+			commandKey("brew", "list", "--cask", "someuser/some-tap/some-cask"): true,
+		},
+	}
+	installer := &Installer{
+		deps: Deps{
+			Commands: commands,
+			Lookup: fakeLookup{commands: map[string]bool{
+				"brew": true,
+			}},
+			Catalog: fakeCatalog{
+				packageConfig: &catalog.PackageConfig{
+					BrewCasks: map[string]string{
+						"ghostty":                     "Ghostty",
+						"someuser/some-tap/some-cask": "",
+					},
+				},
+			},
+		},
+	}
+
+	if err := installer.installMacPackages(context.Background(), false, nil); err != nil {
+		t.Fatalf("installMacPackages() returned error: %v", err)
+	}
+
+	if !containsRunCall(commands.runCalls, "brew", []string{"trust", "--cask", "someuser/some-tap/some-cask"}) {
+		t.Fatal("expected brew trust --cask someuser/some-tap/some-cask")
+	}
+	if containsRunCall(commands.runCalls, "brew", []string{"trust", "--cask", "ghostty"}) {
+		t.Fatal("did not expect brew trust for core cask ghostty")
+	}
+}
+
+func TestTapQualifiedNamesRequiresOwnerTapNameShape(t *testing.T) {
+	t.Parallel()
+
+	got := tapQualifiedNames([]string{
+		"bat",
+		"homebrew/cask-fonts",
+		"MisterTea/et/et",
+		"someuser/some-tap/some-cask",
+	})
+	want := []string{"MisterTea/et/et", "someuser/some-tap/some-cask"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("tapQualifiedNames() = %#v, want %#v", got, want)
 	}
 }
 
