@@ -13,7 +13,7 @@
 # ref_style values (skills only): mdc | md
 #
 # Codex, VSCode Copilot, Cursor, and Zed read shared skills from ~/.agents/skills.
-# Codex needs [features] skills = true in ~/.codex/config.toml.
+# Recent Codex builds enable skills by default; older builds needed [features] skills = true in ~/.codex/config.toml.
 # Claude Code and Claude Desktop read skills from ~/.claude/skills.
 # VSCode also reads ~/.copilot/instructions, ~/.claude/rules, and ~/.agents/skills.
 # Claude Desktop shares ~/.claude with Claude Code.
