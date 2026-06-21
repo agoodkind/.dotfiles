@@ -65,7 +65,7 @@ Run through MCP before creating, adopting, or restacking:
 | resume after conflict | `["continue"]` |
 | preview stack merge | `["merge", "--dry-run", "--no-interactive"]` |
 | merge stack bottom-up | `["merge", "--no-interactive"]` |
-| auto-merge when requirements met | add `--merge-when-ready` to `submit` args |
+| auto-merge when requirements met | `["submit", "--stack", "--merge-when-ready", "--no-interactive"]` |
 
 Always pass `--no-interactive` when the flag exists.
 
@@ -325,7 +325,7 @@ Graphite merges in stack order when checks and approvals complete. Use this at s
 
 ### Local vs remote drift
 
-`gt merge` prompts when local branches differ from remote, even with `--no-interactive`. Before merge, run `["submit", "--stack", "--no-interactive"]` so remote PRs match local branches, then dry-run merge again.
+`gt merge` stops when local branches differ from remote. In `--no-interactive` mode it fails instead of waiting for input. Before merge, run `["submit", "--stack", "--no-interactive"]` so remote PRs match local branches, then dry-run merge again.
 
 ### Partial stack merge
 
