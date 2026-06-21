@@ -12,6 +12,8 @@ import (
 	"strings"
 	"text/template"
 
+	"gopkg.in/yaml.v3"
+
 	"goodkind.io/.dotfiles/internal/cmdexec"
 	"goodkind.io/.dotfiles/internal/prefercache"
 	"goodkind.io/.dotfiles/internal/runner"
@@ -483,28 +485,35 @@ func skillRenderConflict(target string) string {
 }
 
 func hasUsableSkillFrontmatter(content string) bool {
-	if !strings.HasPrefix(content, "---\n") {
+	frontmatter, err := parseSkillFrontmatter(content)
+	if err != nil {
 		return false
+	}
+	return strings.TrimSpace(frontmatter.Name) != "" &&
+		strings.TrimSpace(frontmatter.Description) != ""
+}
+
+type skillFrontmatterYAML struct {
+	Name        string `yaml:"name"`
+	Description string `yaml:"description"`
+}
+
+func parseSkillFrontmatter(content string) (skillFrontmatterYAML, error) {
+	var result skillFrontmatterYAML
+	if !strings.HasPrefix(content, "---\n") {
+		return result, fmt.Errorf("missing opening frontmatter delimiter")
 	}
 	endMarker := "\n---\n"
 	frontmatterEnd := strings.Index(content[4:], endMarker)
 	if frontmatterEnd == -1 {
-		return false
+		return result, fmt.Errorf("missing closing frontmatter delimiter")
 	}
-	frontmatter := content[4 : 4+frontmatterEnd]
-	return skillFrontmatterField(frontmatter, "name") != "" &&
-		skillFrontmatterField(frontmatter, "description") != ""
-}
-
-func skillFrontmatterField(frontmatter string, key string) string {
-	prefix := key + ":"
-	for line := range strings.SplitSeq(frontmatter, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, prefix) {
-			return strings.TrimSpace(trimmed[len(prefix):])
-		}
+	rawFrontmatter := content[4 : 4+frontmatterEnd]
+	if err := yaml.Unmarshal([]byte(rawFrontmatter), &result); err != nil {
+		slog.Warn("compilation: parseSkillFrontmatter yaml failed", "err", err)
+		return result, fmt.Errorf("parsing skill front matter: %w", err)
 	}
-	return ""
+	return result, nil
 }
 
 func skillRenderConflictsError(conflicts []string) error {

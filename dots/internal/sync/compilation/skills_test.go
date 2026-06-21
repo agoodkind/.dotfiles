@@ -152,6 +152,23 @@ func TestRenderSkillDirsFailsOnCorruptFrontmatter(t *testing.T) {
 	}
 }
 
+func TestRenderSkillDirsFailsOnInvalidYAMLFrontmatter(t *testing.T) {
+	src := setupAgentSource(t)
+	dst := filepath.Join(t.TempDir(), "skills")
+
+	corrupt := filepath.Join(dst, "enforce-rules", "SKILL.md")
+	corruptContent := "---\nname: enforce-rules\ndescription: \"broken\n---\n"
+	writeTestFile(t, corrupt, corruptContent)
+
+	err := RenderSkillDirs(src, dst, SkillRefMDC)
+	if err == nil {
+		t.Fatal("expected RenderSkillDirs to fail on invalid YAML frontmatter, got nil")
+	}
+	if !strings.Contains(err.Error(), corrupt) {
+		t.Errorf("expected error to name corrupt skill path %q, got: %v", corrupt, err)
+	}
+}
+
 func TestRenderSkillDirsReplacesSymlinkedSkillDir(t *testing.T) {
 	src := setupAgentSource(t)
 	dst := filepath.Join(t.TempDir(), "skills")
