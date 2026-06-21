@@ -116,7 +116,7 @@ func TestRenderSkillDirsPreservesHandEditedFiles(t *testing.T) {
 	dst := filepath.Join(t.TempDir(), "skills")
 
 	handEdited := filepath.Join(dst, "enforce-rules", "SKILL.md")
-	handEditedContent := "hand edited without marker\n"
+	handEditedContent := "---\nname: enforce-rules\ndescription: hand edited\n---\n\nhand edited without marker\n"
 	writeTestFile(t, handEdited, handEditedContent)
 
 	if err := RenderSkillDirs(src, dst, SkillRefMDC); err != nil {
@@ -128,7 +128,27 @@ func TestRenderSkillDirsPreservesHandEditedFiles(t *testing.T) {
 		t.Fatalf("reading skill: %v", err)
 	}
 	if string(got) != handEditedContent {
-		t.Errorf("expected hand-edited skill without marker to be preserved\nwant: %q\ngot: %q", handEditedContent, string(got))
+		t.Errorf("expected hand-edited skill with valid frontmatter to be preserved\nwant: %q\ngot: %q", handEditedContent, string(got))
+	}
+}
+
+func TestRenderSkillDirsFailsOnCorruptFrontmatter(t *testing.T) {
+	src := setupAgentSource(t)
+	dst := filepath.Join(t.TempDir(), "skills")
+
+	corrupt := filepath.Join(dst, "enforce-rules", "SKILL.md")
+	corruptContent := "---\n\n## name: enforce-rules\ndescription: broken\n"
+	writeTestFile(t, corrupt, corruptContent)
+
+	err := RenderSkillDirs(src, dst, SkillRefMDC)
+	if err == nil {
+		t.Fatal("expected RenderSkillDirs to fail on corrupt frontmatter, got nil")
+	}
+	if !strings.Contains(err.Error(), corrupt) {
+		t.Errorf("expected error to name corrupt skill path %q, got: %v", corrupt, err)
+	}
+	if !strings.Contains(err.Error(), "unusable frontmatter") {
+		t.Errorf("expected unusable frontmatter in error, got: %v", err)
 	}
 }
 

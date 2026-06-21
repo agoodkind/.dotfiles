@@ -391,6 +391,7 @@ func RenderSkillDirs(src string, dst string, refStyle SkillRefStyle) error {
 		return fmt.Errorf("read dir %s: %w", src, err)
 	}
 	activeSkills := make(map[string]struct{}, len(entries))
+	var conflicts []string
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
@@ -401,14 +402,17 @@ func RenderSkillDirs(src string, dst string, refStyle SkillRefStyle) error {
 		if isSymlink(target) {
 			_ = os.Remove(target)
 		}
-		if err := renderSkillDir(source, target, refStyle, ruleNames); err != nil {
+		if err := renderSkillDir(source, target, refStyle, ruleNames, &conflicts); err != nil {
 			return err
 		}
 	}
-	return removeMissingManagedSkillDirs(dst, activeSkills)
+	if err := removeMissingManagedSkillDirs(dst, activeSkills); err != nil {
+		return err
+	}
+	return skillRenderConflictsError(conflicts)
 }
 
-func renderSkillDir(src string, dst string, refStyle SkillRefStyle, ruleNames []string) error {
+func renderSkillDir(src string, dst string, refStyle SkillRefStyle, ruleNames []string, conflicts *[]string) error {
 	entries, err := os.ReadDir(src)
 	if err != nil {
 		slog.Warn("compilation: renderSkillDir ReadDir failed", "src", src, "err", err)
@@ -421,7 +425,7 @@ func renderSkillDir(src string, dst string, refStyle SkillRefStyle, ruleNames []
 		source := filepath.Join(src, entry.Name())
 		target := filepath.Join(dst, entry.Name())
 		if entry.IsDir() {
-			if err := renderSkillDir(source, target, refStyle, ruleNames); err != nil {
+			if err := renderSkillDir(source, target, refStyle, ruleNames, conflicts); err != nil {
 				return err
 			}
 			continue
@@ -433,8 +437,10 @@ func renderSkillDir(src string, dst string, refStyle SkillRefStyle, ruleNames []
 		}
 		outputName := entry.Name()
 		output := content
+		fromTemplate := false
 		if base, ok := strings.CutSuffix(entry.Name(), ".tmpl"); ok {
 			outputName = base
+			fromTemplate = true
 			rendered, tmplErr := renderSkillTemplate(string(content), refStyle, ruleNames, entry.Name())
 			if tmplErr != nil {
 				return tmplErr
@@ -445,11 +451,67 @@ func renderSkillDir(src string, dst string, refStyle SkillRefStyle, ruleNames []
 		if isSymlink(target) {
 			_ = os.Remove(target)
 		}
+		if fromTemplate && outputName == "SKILL.md" {
+			if conflict := skillRenderConflict(target); conflict != "" {
+				*conflicts = append(*conflicts, conflict)
+				continue
+			}
+		}
 		if err := writeFileIfChanged(target, output); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func skillRenderConflict(target string) string {
+	existing, err := os.ReadFile(filepath.Clean(target))
+	if err != nil {
+		return ""
+	}
+	existingContent := string(existing)
+	if strings.TrimSpace(existingContent) == "" {
+		return ""
+	}
+	if HasGeneratedMarker(existingContent) {
+		return ""
+	}
+	if hasUsableSkillFrontmatter(existingContent) {
+		return ""
+	}
+	return target + ": marker-less SKILL.md has unusable frontmatter; delete the file or restore the generated marker before syncing"
+}
+
+func hasUsableSkillFrontmatter(content string) bool {
+	if !strings.HasPrefix(content, "---\n") {
+		return false
+	}
+	endMarker := "\n---\n"
+	frontmatterEnd := strings.Index(content[4:], endMarker)
+	if frontmatterEnd == -1 {
+		return false
+	}
+	frontmatter := content[4 : 4+frontmatterEnd]
+	return skillFrontmatterField(frontmatter, "name") != "" &&
+		skillFrontmatterField(frontmatter, "description") != ""
+}
+
+func skillFrontmatterField(frontmatter string, key string) string {
+	prefix := key + ":"
+	for line := range strings.SplitSeq(frontmatter, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, prefix) {
+			return strings.TrimSpace(trimmed[len(prefix):])
+		}
+	}
+	return ""
+}
+
+func skillRenderConflictsError(conflicts []string) error {
+	if len(conflicts) == 0 {
+		return nil
+	}
+	return fmt.Errorf("skill render conflicts:\n- %s", strings.Join(conflicts, "\n- "))
 }
 
 // skillTemplateData exposes corpus reference helpers to a skill template as the
