@@ -21,7 +21,23 @@ Per host:
 
 If no Codex MCP tool is available in the current session, say so plainly. Do not pretend a Codex review happened.
 
-Use `codex exec` only as a fallback when the user explicitly accepts a CLI fallback.
+Use `codex exec` only as a fallback when the user explicitly accepts a CLI fallback. When you use the CLI fallback, run it in the background, not on the foreground thread.
+
+## Run in the background
+
+The MCP `codex` and `codex-reply` calls are a single blocking request/response from the client's view. A foreground call freezes the host agent until Codex finishes.
+
+The Codex MCP server can return immediately under opt-in `--compatibility-mode` or `mcp.compatibility_mode` (see [openai/codex#2924](https://github.com/openai/codex/pull/2924)). Do not assume that mode is enabled.
+
+Never make the Codex MCP call on the foreground thread. Delegate it to a background job so the host agent stays responsive.
+
+Per host:
+
+- **Claude Code**: dispatch a background subagent (`run_in_background`) that makes the blocking `mcp__codex__codex` call, or run `codex exec` as a background Bash job with `-o <result-file>` and a non-interactive approval flag.
+- **Cursor**: launch a background `Task` (`run_in_background: true`) that calls `CallMcpTool` for the `codex` server, or run `codex exec` via `Shell` with `block_until_ms: 0`.
+- **Codex**: spawn the `codex` or `codex-reply` call as a background task rather than inline.
+
+When no background-capable subagent wrapper is available, use `codex exec` in the background as the CLI fallback (with user acceptance per the rule above).
 
 ## Prompt shape
 
@@ -37,6 +53,18 @@ Verification: <tests, commands, logs, or evidence to report>
 ```
 
 Keep prompts narrow. Include paths, branch names, command names, and exact questions when they matter. Do not include secrets or sensitive token values.
+
+## Check in on the subagent periodically
+
+Codex subagents stall in practice. Known failure modes include stdin-EOF waits ([tuannvm/codex-mcp-server#154](https://github.com/tuannvm/codex-mcp-server/pull/154)), background-script completion not detected ([openai/codex#14303](https://github.com/openai/codex/issues/14303)), and approval-elicitation blocks when the client cannot answer ([openai/codex#11816](https://github.com/openai/codex/issues/11816)).
+
+Run Codex with non-interactive or full-auto approval so it does not block on elicitation.
+
+After launching the background job, arm a periodic check-in loop. Poll the result file or thread on a fixed cadence. Compare each snapshot to the previous one to detect no progress. Steer with `codex-reply` or restart a stuck run when progress stops.
+
+Use the host's recurring-wake mechanism for the loop. One option is a background sleep loop that emits a sentinel and uses output monitoring, as described in the `loop` skill.
+
+The host agent stays the owner. It must still consume the final result and report per the Reporting section below.
 
 ## Delegation rules
 
