@@ -60,7 +60,9 @@ Codex subagents stall in practice. Known failure modes include stdin-EOF waits (
 
 Run Codex with non-interactive or full-auto approval so it does not block on elicitation.
 
-After launching the background job, arm a periodic check-in loop. Poll the result file or thread on a fixed cadence. Compare each snapshot to the previous one to detect no progress. Steer with `codex-reply` or restart a stuck run when progress stops.
+YOU MUST poll the background job on a fixed interval. This is mandatory, not optional. A launched-and-forgotten Codex job will sit stuck without anyone noticing, so the host agent has to drive the check-in loop until the job finishes or you stop it.
+
+After launching the background job, arm a periodic check-in loop that fires on a fixed cadence. On every tick, read the result file or thread, compare each snapshot to the previous one to detect no progress, and steer with `codex-reply` or restart the run the moment progress stops.
 
 Use the host's recurring-wake mechanism for the loop. One option is a background sleep loop that emits a sentinel and uses output monitoring, as described in the `loop` skill.
 
