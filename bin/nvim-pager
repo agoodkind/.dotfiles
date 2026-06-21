@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 # nvim as a pager; ANSI rendering handled by the StdinReadPost autocmd in init.lua (baleia.nvim)
 
-exec nvim -R "$@"
+exec nvim -R --cmd 'let g:dotfiles_pager = 1' "$@"

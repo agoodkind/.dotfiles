@@ -205,21 +205,27 @@ vim.api.nvim_create_autocmd('FileType', {
 vim.api.nvim_create_autocmd('StdinReadPost', {
     pattern = '*',
     callback = function(ev)
+        if not vim.g.dotfiles_pager then
+            return
+        end
         local buf = ev.buf
+
+        vim.bo[buf].buftype = 'nofile'
+        vim.bo[buf].swapfile = false
+        vim.bo[buf].bufhidden = 'wipe'
+        vim.keymap.set('n', 'q', '<cmd>quitall!<cr>', { buffer = buf, nowait = true })
+
         local first = vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1] or ''
-        if not first:match('\27%[') then
-            return
+        if first:match('\27%[') and vim.g.baleia then
+            vim.bo[buf].readonly = false
+            vim.bo[buf].modifiable = true
+            vim.g.baleia.once(buf)
         end
-        if not vim.g.baleia then
-            return
-        end
-        local was_modifiable = vim.bo[buf].modifiable
-        vim.bo[buf].modifiable = true
-        vim.g.baleia.once(buf)
+
         vim.schedule(function()
             if vim.api.nvim_buf_is_valid(buf) then
                 vim.bo[buf].modified = false
-                vim.bo[buf].modifiable = was_modifiable
+                vim.bo[buf].modifiable = false
             end
         end)
     end,
