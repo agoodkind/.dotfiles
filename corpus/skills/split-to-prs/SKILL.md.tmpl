@@ -20,11 +20,16 @@ For planning, stay in this skill. For execution, follow {{.Skill "graphite"}} ta
 
 Use the plain git path in section 3 only when Graphite is unavailable and the user does not want to set it up.
 
+## Reuse before recreate
+
+When an open PR already covers the work being split, default to repurposing that PR as the stack base. Do not open new PRs that abandon the existing one unless the user explicitly chose otherwise in the approved plan. Surface the disposition and ask before you execute.
+
 ## Hard rules
 
 - Do not create branches, commit, push, or open PRs until the user approves the split plan.
-- Reuse before recreate. If an open PR already covers the work being split, treat repurposing that PR as the base of the stack as the default. Never silently abandon an existing PR by opening new ones. Surface the choice and ask.
-- Never discard user work. No destructive git commands (`reset --hard`, `clean -fdx`, branch deletion, force-push, history rewrite) without explicit approval. A recoverable snapshot does not mean leaving an existing open PR untouched when the user asked to split it.
+- When an open PR exists, follow **Reuse before recreate** above.
+- Never discard user work. No destructive git commands (`reset --hard`, `clean -fdx`, branch deletion, force-push, history rewrite) without explicit approval.
+- A recoverable snapshot preserves work. It does not require leaving an existing open PR untouched after a split request.
 - Always save a recoverable snapshot before moving work around. This often starts from dirty work on `main`, so do not assume there is already a safe branch.
 - Stage only named files or hunks. No `git add .` or `git add -A`.
 - Every PR title and body comes from {{.Skill "pr"}}, reviewed with the user per PR. Do not use ad hoc text or default commit-message bodies.
@@ -50,20 +55,20 @@ Note whether Graphite is available (see above).
 
 Use judgment on detail. Usually PR titles are enough. Add a one-line scope note only when a title is unclear. Show a Mermaid diagram when there are multiple slices.
 
-Optimize for reviewer-aligned PRs with minimal unrelated diff: split independent owners or concerns, keep tightly coupled changes together, and when stacking is necessary, order foundations before consumers.
+Optimize for reviewer-aligned PRs with minimal unrelated diff. Split independent owners or concerns. Keep tightly coupled changes together. When stacking is necessary, order foundations before consumers.
 
 Default to independent PRs off the default branch. Stack PRs only when the dependency is real.
 
 State the disposition of every existing open PR explicitly. Use one of these labels:
 
-- **Repurpose as stack base** (default when an open PR already covers the work)
-- **Replace and close** (open a new stack and close the old PR)
-- **Leave untouched** (only when the user explicitly wants the existing PR unchanged)
+- **Repurpose as stack base**: keep the open PR and thin it to the bottom slice (default)
+- **Replace and close**: open a new stack and close the old PR
+- **Leave untouched**: keep the existing PR unchanged (only when the user asks explicitly)
 
 State which execution path you will use after approval:
 
-- **Graphite** when Graphite is available (stacked branches when slices depend on each other, parallel `gt create` branches off trunk when slices are independent)
-- **Plain git branches** only when Graphite is unavailable or the user opts out
+- **Graphite** when Graphite is available. Use stacked branches when slices depend on each other. Use parallel `gt create` branches off trunk when slices are independent.
+- **Plain git branches** only when Graphite is unavailable or the user opts out.
 
 Ask for approval before starting. In Claude Code call `AskUserQuestion`. In Codex call `request_user_input`. In Cursor call `AskQuestion`. When none is available, present the plan in plain text and wait for approval.
 

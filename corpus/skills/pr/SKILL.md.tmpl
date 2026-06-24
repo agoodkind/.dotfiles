@@ -26,11 +26,10 @@ You are working from the current branch. Choose exactly one path for that branch
 
 ### Split or stack context
 
-When the user asked to split work into multiple PRs or a stack, and an open PR already covers that work:
+When the user asked to split work into multiple PRs or a stack, and an open PR already covers that work, follow **Reuse before recreate** in {{.Skill "split-to-prs"}}.
 
-- Reuse before recreate. If an open PR already covers the work being split, treat repurposing that PR as the base of the stack as the default. Never silently abandon an existing PR by opening new ones. Surface the choice and ask.
-- Do not open new PRs that abandon the existing one unless the user explicitly chose **Replace and close** or **Leave untouched** in the approved split plan from {{.Skill "split-to-prs"}}.
-- When repurposing is approved, update the existing PR's title and body to match the bottom slice only. Stack new PRs on top of that branch.
+- Do not open new PRs that abandon the existing one unless the user chose **Replace and close** or **Leave untouched** in the approved plan.
+- When repurposing is approved, update the existing PR title and body to match the bottom slice only. Stack new PRs on top of that branch.
 - If the disposition is unclear, stop and ask before creating any PR.
 
 ## Step 2: Read The Branch

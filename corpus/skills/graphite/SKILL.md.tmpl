@@ -82,13 +82,13 @@ This is {{.Skill "split-to-prs"}} executed with Graphite instead of plain git br
 ### Planning rules (from split-to-prs)
 
 - Do not create branches, commit, submit, or open PRs until the user approves the split plan.
-- Reuse before recreate. If an open PR already covers the work being split, treat repurposing that PR as the base of the stack as the default. Never silently abandon an existing PR by opening new ones. Surface the choice and ask.
+- When an open PR exists, follow **Reuse before recreate** in {{.Skill "split-to-prs"}}.
 - Never discard user work. No destructive git without explicit approval.
 - Save a recoverable snapshot before moving work around.
 - Stage only named files or hunks. No `git add .` or `git add -A`.
 - Default to independent PRs off trunk. Stack only when dependency is real.
 - Order foundations before consumers.
-- Do not check out trunk and `gt create` a fresh bottom slice when an open PR already covers the work. First decide whether that PR's branch becomes the stack base.
+- Do not check out trunk and `gt create` a fresh bottom slice until the approved plan names the stack base branch.
 
 Propose titles (and a Mermaid diagram when helpful). Ask for approval before executing.
 
@@ -97,8 +97,8 @@ Propose titles (and a Mermaid diagram when helpful). Ask for approval before exe
 Use this path when the approved plan repurposes an existing open PR as the stack base.
 
 1. Confirm the existing PR branch and number with `gh pr view`.
-2. Thin that branch to the bottom slice only (stage named files or hunks, then `["modify", "--all"]` or a new commit via `["modify", "--commit", "--message", "..."]`).
-3. If Graphite does not yet track the branch, adopt it before stacking:
+2. Thin that branch to the bottom slice only. Stage named files or hunks. Amend or commit with `["modify", "--all"]` or `["modify", "--commit", "--message", "..."]`.
+3. If Graphite does not track the branch yet, adopt it before stacking:
 
 ```text
 args: ["branch", "track", "<existing-branch>", "--parent", "main"]
@@ -107,9 +107,11 @@ args: ["branch", "track", "<existing-branch>", "--parent", "main"]
 4. Stack each remaining slice on top with `["create", "--message", "..."]` on the previous branch tip.
 5. Dry-run submit, submit, then draft and review each PR per the steps below.
 
-For full adopt steps when branches and PRs already exist but Graphite metadata is missing, see **Task: Adopt a non-Graphite stack** below.
+For adopt steps when Graphite metadata is missing, see **Task: Adopt a non-Graphite stack** below.
 
 ### Execute with Graphite
+
+Skip steps 3 and 4 below when the approved plan repurposes an existing open PR. Use **When an open PR already exists** instead.
 
 1. **Snapshot** uncommitted work:
 
@@ -142,7 +144,7 @@ args: ["submit", "--stack", "--dry-run", "--no-interactive"]
 args: ["submit", "--stack", "--no-interactive"]
 ```
 
-7. **Draft and review each PR.** Check out each branch bottom to top. The `pr` skill reads the current branch, so you must be on the PR's branch before invoking it. For each branch, invoke {{.Skill "pr"}} to draft and review the title and body with the user, then apply the reviewed title and body. The PR already exists from `gt submit`, so use the `pr` skill edit path (`gh pr edit`), not create.
+7. **Draft and review each PR.** Check out each branch bottom to top. The `pr` skill reads the current branch, so check out the PR branch before invoking it. For each branch, invoke {{.Skill "pr"}} to draft and review the title and body with the user. Apply the reviewed title and body through the `pr` skill edit path (`gh pr edit`), not create. The PR already exists from `gt submit`.
 
 8. **Mark PRs ready** when reviewers are required. Non-interactive submit often creates drafts and Copilot skips drafts:
 
@@ -391,7 +393,7 @@ Prefer `["continue"]` over `git rebase --continue`. Avoid `["abort"]` in agent s
 | shell `gt` when MCP is available | loses cross-turn context | `run_gt_cmd` |
 | branches created outside `gt` | invisible to `gt log` | `gt branch track` before submit |
 | submit without dry-run on existing PRs | duplicate PRs | dry-run first; expect Sync/New parent |
-| fresh stack from trunk when an open PR already covers the work | orphans the existing PR number and its review history | reuse the existing PR as the stack base, or ask |
+| fresh stack from trunk when an open PR covers the work | orphans the PR number and review history | follow **Reuse before recreate** in {{.Skill "split-to-prs"}}, or ask |
 | ignore draft state after submit | Copilot and other bots skip drafts | `gh pr ready` on each PR |
 | stale trunk | submit and restack block | sync or fast-forward trunk first |
 | repo-wide `gt sync` with shared worktrees | restacks or deletes other agents' branches | scoped restack; check worktree list |
