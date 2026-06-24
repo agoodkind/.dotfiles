@@ -73,7 +73,7 @@ fi
 For each approved slice:
 
 1. Create a branch from the right base, stage and commit only the planned files or hunks, then push.
-2. Invoke {{.Skill "pr"}} for that branch. Draft the title and body, review with the user, and open the PR through the canonical Step 1 through Step 8 flow.
+2. Stay on that branch (or check it out). The `pr` skill reads the current branch. Invoke {{.Skill "pr"}} to draft the title and body, review with the user, and open the PR through the canonical Step 1 through Step 8 flow.
 
 ## 4. Report back
 
