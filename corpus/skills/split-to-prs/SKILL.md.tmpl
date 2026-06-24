@@ -23,7 +23,8 @@ Use the plain git path in section 3 only when Graphite is unavailable and the us
 ## Hard rules
 
 - Do not create branches, commit, push, or open PRs until the user approves the split plan.
-- Never discard user work. No destructive git commands (`reset --hard`, `clean -fdx`, branch deletion, force-push, history rewrite) without explicit approval.
+- Reuse before recreate. If an open PR already covers the work being split, treat repurposing that PR as the base of the stack as the default. Never silently abandon an existing PR by opening new ones. Surface the choice and ask.
+- Never discard user work. No destructive git commands (`reset --hard`, `clean -fdx`, branch deletion, force-push, history rewrite) without explicit approval. A recoverable snapshot does not mean leaving an existing open PR untouched when the user asked to split it.
 - Always save a recoverable snapshot before moving work around. This often starts from dirty work on `main`, so do not assume there is already a safe branch.
 - Stage only named files or hunks. No `git add .` or `git add -A`.
 - Every PR title and body comes from {{.Skill "pr"}}, reviewed with the user per PR. Do not use ad hoc text or default commit-message bodies.
@@ -33,6 +34,15 @@ Use the plain git path in section 3 only when Graphite is unavailable and the us
 Compare the current work to the repo's default branch, including committed and uncommitted changes. Summarize the real slices you see, and use the chat history to recover intent.
 
 Before proposing slices, find ownership signals for the touched paths (`CODEOWNERS`, nested ownership files, `tools/ownership/PRODUCTOWNERS`, or repo equivalents) and use them to identify natural reviewer boundaries.
+
+Check for existing open PRs that already cover this work:
+
+```bash
+gh pr list --head "$(git branch --show-current)" --state open --json number,title,url,headRefName
+gh pr view --json body,title,url,state,number
+```
+
+Record every open PR number, branch, and URL. If the user mentioned a PR by number, confirm it with `gh pr view <number>`.
 
 Note whether Graphite is available (see above).
 
@@ -44,12 +54,24 @@ Optimize for reviewer-aligned PRs with minimal unrelated diff: split independent
 
 Default to independent PRs off the default branch. Stack PRs only when the dependency is real.
 
+State the disposition of every existing open PR explicitly. Use one of these labels:
+
+- **Repurpose as stack base** (default when an open PR already covers the work)
+- **Replace and close** (open a new stack and close the old PR)
+- **Leave untouched** (only when the user explicitly wants the existing PR unchanged)
+
 State which execution path you will use after approval:
 
 - **Graphite** when Graphite is available (stacked branches when slices depend on each other, parallel `gt create` branches off trunk when slices are independent)
 - **Plain git branches** only when Graphite is unavailable or the user opts out
 
 Ask for approval before starting. In Claude Code call `AskUserQuestion`. In Codex call `request_user_input`. In Cursor call `AskQuestion`. When none is available, present the plan in plain text and wait for approval.
+
+When an existing open PR was detected, the approval question must include these options in this order:
+
+1. Repurpose existing PR #N as the base of the stack (recommended)
+2. Create a new stack from trunk and leave #N alone
+3. Other
 
 ## 3. Execute the split
 
