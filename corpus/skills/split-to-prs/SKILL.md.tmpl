@@ -26,6 +26,7 @@ Use the plain git path in section 3 only when Graphite is unavailable and the us
 - Never discard user work. No destructive git commands (`reset --hard`, `clean -fdx`, branch deletion, force-push, history rewrite) without explicit approval.
 - Always save a recoverable snapshot before moving work around. This often starts from dirty work on `main`, so do not assume there is already a safe branch.
 - Stage only named files or hunks. No `git add .` or `git add -A`.
+- Every PR title and body comes from {{.Skill "pr"}}, reviewed with the user per PR. Do not use ad hoc text or default commit-message bodies.
 
 ## 1. Check the state
 
@@ -69,8 +70,11 @@ if [ -n "$SHA" ]; then
 fi
 ```
 
-For each approved slice, create a branch from the right base, stage and commit only the planned files or hunks, then push and open the PR.
+For each approved slice:
+
+1. Create a branch from the right base, stage and commit only the planned files or hunks, then push.
+2. Stay on that branch (or check it out). The `pr` skill reads the current branch. Invoke {{.Skill "pr"}} to draft the title and body, review with the user, and open the PR through the canonical Step 1 through Step 8 flow.
 
 ## 4. Report back
 
-Keep it short: PR titles and URLs, plus anything left on the starting branch or working tree. For Graphite splits, include the bottom PR URL and stack order. Do not delete the backup ref or original branch unless the user asks.
+Keep it short: PR titles and URLs, plus anything left on the starting branch or working tree. For Graphite splits, include the bottom PR URL and stack order. Per-PR final output (Slack one-liner and URL) comes from the `pr` skill Step 8. Do not delete the backup ref or original branch unless the user asks.

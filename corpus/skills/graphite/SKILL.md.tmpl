@@ -37,6 +37,8 @@ Shell `gt` is fallback only when MCP is missing or not loaded yet. Never fall ba
 
 Do **not** use `git commit`, `git push`, `git branch -D`, or manual rebases for work the user authorized through `gt`. If MCP is available, do not run ad hoc shell `gt` either.
 
+PR titles and bodies are owned by {{.Skill "pr"}}, not by `gt submit` defaults.
+
 ## Preflight (every task)
 
 Run through MCP before creating, adopting, or restacking:
@@ -121,15 +123,17 @@ args: ["submit", "--stack", "--dry-run", "--no-interactive"]
 args: ["submit", "--stack", "--no-interactive"]
 ```
 
-7. **Mark PRs ready** when reviewers are required. Non-interactive submit often creates drafts and Copilot skips drafts:
+7. **Draft and review each PR.** Check out each branch bottom to top. The `pr` skill reads the current branch, so you must be on the PR's branch before invoking it. For each branch, invoke {{.Skill "pr"}} to draft and review the title and body with the user, then apply the reviewed title and body. The PR already exists from `gt submit`, so use the `pr` skill edit path (`gh pr edit`), not create.
+
+8. **Mark PRs ready** when reviewers are required. Non-interactive submit often creates drafts and Copilot skips drafts:
 
 ```bash
 gh pr ready <number>   # for each PR in the stack
 ```
 
-8. **Report** bottom PR URL, full stack order, and anything left uncommitted on trunk.
+9. **Report** bottom PR URL, full stack order, and anything left uncommitted on trunk.
 
-One logical change per branch. The first commit message line becomes the PR title.
+One logical change per branch. The first commit message line becomes the initial PR title until the `pr` skill review updates it.
 
 ---
 
@@ -174,7 +178,9 @@ Expect **Sync** or **New parent** actions. **Create** on an existing PR means th
 args: ["submit", "--stack", "--no-interactive"]
 ```
 
-7. **Mark drafts ready** if reviewers are required.
+7. **Draft and review each PR.** Check out each adopted branch bottom to top. The `pr` skill reads the current branch, so you must be on the PR's branch before invoking it. For each branch, invoke {{.Skill "pr"}} to draft and review the title and body with the user, then apply the reviewed title and body through the `pr` skill edit path (`gh pr edit`).
+
+8. **Mark drafts ready** if reviewers are required.
 
 ### Worktree branches
 
@@ -194,7 +200,8 @@ When there is no existing branch chain:
 2. Preflight (above).
 3. For each PR bottom to top: write code, stage named paths, `["create", "--message", "..."]`.
 4. `["submit", "--stack", "--dry-run", "--no-interactive"]` then real submit.
-5. Mark PRs ready. Share bottom PR URL.
+5. Check out each branch bottom to top. The `pr` skill reads the current branch, so you must be on the PR's branch before invoking it. For each branch, invoke {{.Skill "pr"}} to draft and review the title and body with the user, then apply the reviewed title and body through the `pr` skill edit path (`gh pr edit`).
+6. Mark PRs ready. Share bottom PR URL.
 
 ---
 
@@ -377,6 +384,7 @@ Prefer `["continue"]` over `git rebase --continue`. Avoid `["abort"]` in agent s
 | babysit only the tip PR | miss blocked lower PRs | check whole stack each loop |
 | `gh pr merge` on a Graphite stack | skips Graphite merge orchestration; DIRTY upstack PRs | `gt merge` or Graphite UI after babysit |
 | merge before dry-run | wrong PRs may merge | `gt merge --dry-run` first |
+| auto-generated PR bodies from submit | reviewers get commit-message stubs | {{.Skill "pr"}} per PR before marking ready |
 
 ---
 
