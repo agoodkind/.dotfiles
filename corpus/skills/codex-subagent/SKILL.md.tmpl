@@ -1,50 +1,59 @@
 ---
 name: codex-subagent
-description: Use Codex as a subagent through the Codex MCP server. Use when the user asks to delegate work to Codex, run a Codex review, have Codex perform a second pass, continue a Codex MCP thread, or compare host and Codex answers.
+description: Use Codex as a subagent through the codex exec CLI. Use when the user asks to delegate work to Codex, run a Codex review, have Codex perform a second pass, continue a Codex session, or compare host and Codex answers.
 ---
 
 # Codex Subagent
 
-Use the connected Codex MCP server when the user asks to delegate work to Codex. Prefer the MCP tools over shell commands because the MCP path preserves the agent protocol, returns a thread ID, and supports follow-up with `codex-reply`.
+Use `codex exec` when the user asks to delegate work to Codex. The CLI path gives observable progress, a hard timeout, and session continuation via `resume`. Do not use the Codex MCP server for subagent delegation.
 
-Assume the Codex MCP server is already connected. This skill gives only tool-calling instructions.
+Assume `codex` is on PATH. This skill gives only CLI invocation instructions.
 
-## Tool selection
+## Run codex exec
 
-Call the Codex MCP server's `codex` tool for a new task and `codex-reply` to continue a known thread when the `threadId` is available.
+Start a new read-only task with the prompt on stdin and the final answer written to a file:
 
-Per host:
+```bash
+result_file="$(mktemp)"
+timeout 1500 codex exec -s read-only -m gpt-5.5 -o "$result_file" - <<'PROMPT'
+<bounded prompt>
+PROMPT
+```
 
-- **Claude Code**: call `mcp__codex__codex` or `mcp__codex__codex-reply`.
-- **Cursor**: call `CallMcpTool` with `{server: "codex", toolName: "codex"}` or `{server: "codex", toolName: "codex-reply", arguments: {...}}`.
-- **Codex**: call the `codex` server's `codex` or `codex-reply` tools directly.
+Permissions:
 
-If no Codex MCP tool is available in the current session, say so plainly. Do not pretend a Codex review happened.
+- Use `-s read-only` for analysis, review, and search.
+- Use `-s workspace-write` only when the user grants edit permission for that work.
+- `codex exec` is non-interactive by default, so it does not block on approval elicitation.
 
-Use `codex exec` only as a fallback when the user explicitly accepts a CLI fallback. When you use the CLI fallback, run it in the background, not on the foreground thread.
+Continue a prior session with `codex exec resume`:
+
+```bash
+timeout 1500 codex exec resume <session-id> -s read-only -m gpt-5.5 -o "$result_file" - <<'PROMPT'
+<follow-up prompt>
+PROMPT
+```
+
+Use `codex exec resume --last` when the session id is unknown and the most recent session is the right one.
+
+Set `-C <dir>` when the task is scoped to a specific repository or directory.
 
 ## Run in the background
 
-The MCP `codex` and `codex-reply` calls are a single blocking request/response from the client's view. A foreground call freezes the host agent until Codex finishes.
-
-The Codex MCP server can return immediately under opt-in `--compatibility-mode` or `mcp.compatibility_mode` (see [openai/codex#2924](https://github.com/openai/codex/pull/2924)). Do not assume that mode is enabled.
-
-Never make the Codex MCP call on the foreground thread. Delegate it to a background job so the host agent stays responsive.
+Never run `codex exec` on the foreground thread. A foreground call freezes the host agent until Codex finishes or the timeout fires.
 
 Per host:
 
-- **Claude Code**: dispatch a background subagent (`run_in_background`) that makes the blocking `mcp__codex__codex` call, or run `codex exec` as a background Bash job with `-o <result-file>` and a non-interactive approval flag.
-- **Cursor**: launch a background `Task` (`run_in_background: true`) that calls `CallMcpTool` for the `codex` server, or run `codex exec` via `Shell` with `block_until_ms: 0`.
-- **Codex**: spawn the `codex` or `codex-reply` call as a background task rather than inline.
-
-When no background-capable subagent wrapper is available, use `codex exec` in the background as the CLI fallback (with user acceptance per the rule above).
+- **Claude Code**: run `codex exec` as a background Bash job with `-o <result-file>` and capture the shell task id.
+- **Cursor**: run `codex exec` via `Shell` with `block_until_ms: 0` and capture the terminal task id.
+- **Codex**: spawn `codex exec` as a background shell job rather than inline.
 
 ## Prompt shape
 
 Send Codex a bounded prompt with the task, scope, permissions, expected output, and verification requirement.
 
 ```text
-You are running as a Codex subagent through the Codex MCP server.
+You are running as a Codex subagent through codex exec.
 Task: <specific task>
 Scope: <files, repo, question, or artifact boundaries>
 Permissions: <read-only, edit allowed, test allowed, network allowed>
@@ -56,13 +65,19 @@ Keep prompts narrow. Include paths, branch names, command names, and exact quest
 
 ## Check in on the subagent periodically
 
-Codex subagents stall in practice. Known failure modes include stdin-EOF waits ([tuannvm/codex-mcp-server#154](https://github.com/tuannvm/codex-mcp-server/pull/154)), background-script completion not detected ([openai/codex#14303](https://github.com/openai/codex/issues/14303)), and approval-elicitation blocks when the client cannot answer ([openai/codex#11816](https://github.com/openai/codex/issues/11816)).
-
-Run Codex with non-interactive or full-auto approval so it does not block on elicitation.
+Codex subagents stall in practice. Known failure modes include background-script completion not detected ([openai/codex#14303](https://github.com/openai/codex/issues/14303)) and approval-elicitation blocks when the client cannot answer ([openai/codex#11816](https://github.com/openai/codex/issues/11816)).
 
 YOU MUST poll the background job on a fixed interval. This is mandatory, not optional. A launched-and-forgotten Codex job will sit stuck without anyone noticing, so the host agent has to drive the check-in loop until the job finishes or you stop it.
 
-After launching the background job, arm a periodic check-in loop that fires on a fixed cadence. On every tick, read the result file or thread, compare each snapshot to the previous one to detect no progress, and steer with `codex-reply` or restart the run the moment progress stops.
+After launching the background job, arm a periodic check-in loop that fires on a fixed cadence. On every tick:
+
+1. Read the streaming stdout from the background shell.
+2. Read `$result_file` if it exists.
+3. Compare each snapshot to the previous one to detect no progress.
+4. Treat exit code 124 from `timeout` as a spin or hang signal.
+5. Steer with `codex exec resume <session-id>` or restart the run the moment progress stops.
+
+Add `--json` when JSONL event streaming makes progress easier to parse.
 
 Use the host's recurring-wake mechanism for the loop. One option is a background sleep loop that emits a sentinel and uses output monitoring, as described in the `loop` skill.
 
@@ -72,21 +87,21 @@ The host agent stays the owner. It must still consume the final result and repor
 
 - Ask Codex for independent analysis when the user wants a second pass, adversarial review, broad code search, or a cheaper subagent.
 - Ask Codex for implementation only when the user has granted edit permission for that work.
-- Keep the host agent responsible for the final answer. Summarize what Codex returned, cite the `threadId`, and separate Codex's result from the host agent's own observations.
+- Keep the host agent responsible for the final answer. Summarize what Codex returned, cite the session id, and separate Codex's result from the host agent's own observations.
 - Treat Codex output as evidence to inspect, not as automatically true. Verify high-risk claims with source, tests, logs, or direct reads.
 - Do not send large private logs, secrets, credentials, or unrelated personal context to Codex.
-- If Codex edits files through the MCP session, inspect the resulting diff before reporting success.
+- If Codex edits files through `codex exec`, inspect the resulting diff before reporting success.
 
 ## Reporting
 
 Report the result in this order:
 
-1. State whether the host agent successfully called Codex through MCP.
-2. Include the Codex `threadId`.
-3. Quote or summarize the Codex response, depending on what the user asked for.
+1. State whether the host agent successfully ran `codex exec`.
+2. Include the Codex session id and exit code (0 for clean completion, 124 for timeout).
+3. Quote or summarize the Codex response from `$result_file`, depending on what the user asked for.
 4. Name any verification performed by the host agent after the Codex response.
-5. State exact errors if the MCP call failed.
+5. State exact errors if the `codex exec` run failed.
 
-For failures, preserve exact backend or MCP error text. If a retry is appropriate, retry once with no model override or with `model="gpt-5.5"`, then report the observed result.
+For failures, preserve exact CLI stderr and exit code. If a retry is appropriate, retry once with no model override or with `-m gpt-5.5`, then report the observed result.
 
-Avoid `model="gpt-5.5-codex"` for ChatGPT-account Codex sessions unless the user has verified that model is supported for the account.
+Avoid `-m gpt-5.5-codex` for ChatGPT-account Codex sessions unless the user has verified that model is supported for the account.
