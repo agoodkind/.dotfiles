@@ -97,7 +97,7 @@ Propose titles (and a Mermaid diagram when helpful). Ask for approval before exe
 Use this path when the approved plan repurposes an existing open PR as the stack base.
 
 1. Confirm the existing PR branch and number with `gh pr view`.
-2. Thin that branch to the bottom slice only. Stage named files or hunks. Amend or commit with `["modify", "--all"]` or `["modify", "--commit", "--message", "..."]`.
+2. Thin that branch to the bottom slice only. Stage named files or hunks. Amend with `["modify"]` or add a commit with `["modify", "--commit", "--message", "..."]`. Do not pass `--all`; only staged changes should enter the amend.
 3. If Graphite does not track the branch yet, adopt it before stacking:
 
 ```text

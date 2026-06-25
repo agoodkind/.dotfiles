@@ -44,8 +44,9 @@ Check for existing open PRs that already cover this work:
 
 ```bash
 gh pr list --head "$(git branch --show-current)" --state open --json number,title,url,headRefName
-gh pr view --json body,title,url,state,number
 ```
+
+For each PR number returned, run `gh pr view <number> --json body,title,url,state,number`.
 
 Record every open PR number, branch, and URL. If the user mentioned a PR by number, confirm it with `gh pr view <number>`.
 
@@ -72,10 +73,10 @@ State which execution path you will use after approval:
 
 Ask for approval before starting. In Claude Code call `AskUserQuestion`. In Codex call `request_user_input`. In Cursor call `AskQuestion`. When none is available, present the plan in plain text and wait for approval.
 
-When an existing open PR was detected, the approval question must include these options in this order:
+When one or more existing open PRs were detected, the approval question must include these options in this order. Repeat the question for each open PR when more than one exists:
 
-1. Repurpose existing PR #N as the base of the stack (recommended)
-2. Create a new stack from trunk and leave #N alone
+1. Repurpose existing PR #<number> as the base of the stack (recommended)
+2. Create a new stack from trunk and leave #<number> alone
 3. Other
 
 ## 3. Execute the split
