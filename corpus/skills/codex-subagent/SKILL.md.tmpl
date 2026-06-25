@@ -20,15 +20,18 @@ timeout 1500 codex exec -s read-only -m gpt-5.5 -o "$result_file" - <<'PROMPT'
 PROMPT
 ```
 
+GNU `timeout` is required. On macOS, use `gtimeout` from coreutils when `timeout` is not on PATH.
+
 Permissions:
 
 - Use `-s read-only` for analysis, review, and search.
 - Use `-s workspace-write` only when the user grants edit permission for that work.
-- `codex exec` is non-interactive by default, so it does not block on approval elicitation.
+- `codex exec` does not wait on stdin for approvals, but approval-elicitation stalls can still happen in edge cases, so polling and timeout remain mandatory.
 
 Continue a prior session with `codex exec resume`:
 
 ```bash
+result_file="$(mktemp)"
 timeout 1500 codex exec resume <session-id> -s read-only -m gpt-5.5 -o "$result_file" - <<'PROMPT'
 <follow-up prompt>
 PROMPT
@@ -74,7 +77,7 @@ After launching the background job, arm a periodic check-in loop that fires on a
 1. Read the streaming stdout from the background shell.
 2. Read `$result_file` if it exists.
 3. Compare each snapshot to the previous one to detect no progress.
-4. Treat exit code 124 from `timeout` as a spin or hang signal.
+4. Treat exit code 124 from `timeout` as a time-limit breach. That may mean the session is still healthy but needs more time, or that progress has stalled. Read stdout and `$result_file` before restarting or resuming.
 5. Steer with `codex exec resume <session-id>` or restart the run the moment progress stops.
 
 Add `--json` when JSONL event streaming makes progress easier to parse.
