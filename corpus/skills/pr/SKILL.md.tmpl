@@ -24,6 +24,14 @@ You are working from the current branch. Choose exactly one path for that branch
 - Before modifying an open PR, read the full existing title and body and save them to a backup file in a temporary directory.
 - If the branch has an open PR and the user did not clearly ask to update it, ask whether they want to update the existing open PR or create a new PR for the current branch.
 
+### Split or stack context
+
+When the user asked to split work into multiple PRs or a stack, and an open PR already covers that work, follow **Reuse before recreate** in {{.Skill "split-to-prs"}}.
+
+- Do not open new PRs that abandon the existing one unless the user chose **Replace and close** or **Leave untouched** in the approved plan.
+- When repurposing is approved, update the existing PR title and body to match the bottom slice only. Stack new PRs on top of that branch.
+- If the disposition is unclear, stop and ask before creating any PR.
+
 ## Step 2: Read The Branch
 
 Find the target branch from the workspace or repository context. Prefer the remote-tracking ref, such as `origin/main`.
