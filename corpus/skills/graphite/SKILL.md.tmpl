@@ -144,7 +144,7 @@ args: ["submit", "--stack", "--dry-run", "--no-interactive"]
 args: ["submit", "--stack", "--no-interactive"]
 ```
 
-7. **Draft and review each PR.** Check out each branch bottom to top. The `pr` skill reads the current branch, so check out the PR branch before invoking it. For each branch, invoke {{.Skill "pr"}} to draft and review the title and body with the user. Apply the reviewed title and body through the `pr` skill edit path (`gh pr edit`), not create. The PR already exists from `gt submit`.
+7. **Draft and review each PR.** Check out each branch bottom to top. The `pr` skill reads the current branch, so check out the PR branch before invoking it. For each branch, invoke {{.Skill "pr"}} to draft and review the title and body with the user. Apply the reviewed title and body through the `pr` skill edit path (`gh pr edit`), not create. The PR already exists from `gt submit`. After all stack PRs have numbers, read them bottom to top. When the numbers are non-sequential, append ` (PR x/N)` to each title through the `pr` skill edit path, per **Stack position in titles** in {{.Skill "split-to-prs"}}.
 
 8. **Mark PRs ready** when reviewers are required. Non-interactive submit often creates drafts and Copilot skips drafts:
 
@@ -199,7 +199,7 @@ Expect **Sync** or **New parent** actions. **Create** on an existing PR means th
 args: ["submit", "--stack", "--no-interactive"]
 ```
 
-7. **Draft and review each PR.** Check out each adopted branch bottom to top. The `pr` skill reads the current branch, so you must be on the PR's branch before invoking it. For each branch, invoke {{.Skill "pr"}} to draft and review the title and body with the user, then apply the reviewed title and body through the `pr` skill edit path (`gh pr edit`).
+7. **Draft and review each PR.** Check out each adopted branch bottom to top. The `pr` skill reads the current branch, so you must be on the PR's branch before invoking it. For each branch, invoke {{.Skill "pr"}} to draft and review the title and body with the user, then apply the reviewed title and body through the `pr` skill edit path (`gh pr edit`). After all stack PRs have numbers, read them bottom to top. When the numbers are non-sequential, append ` (PR x/N)` to each title through the `pr` skill edit path, per **Stack position in titles** in {{.Skill "split-to-prs"}}.
 
 8. **Mark drafts ready** if reviewers are required.
 
@@ -221,7 +221,7 @@ When there is no existing branch chain:
 2. Preflight (above).
 3. For each PR bottom to top: write code, stage named paths, `["create", "--message", "..."]`.
 4. `["submit", "--stack", "--dry-run", "--no-interactive"]` then real submit.
-5. Check out each branch bottom to top. The `pr` skill reads the current branch, so you must be on the PR's branch before invoking it. For each branch, invoke {{.Skill "pr"}} to draft and review the title and body with the user, then apply the reviewed title and body through the `pr` skill edit path (`gh pr edit`).
+5. Check out each branch bottom to top. The `pr` skill reads the current branch, so you must be on the PR's branch before invoking it. For each branch, invoke {{.Skill "pr"}} to draft and review the title and body with the user, then apply the reviewed title and body through the `pr` skill edit path (`gh pr edit`). After all stack PRs have numbers, read them bottom to top. When the numbers are non-sequential, append ` (PR x/N)` to each title through the `pr` skill edit path, per **Stack position in titles** in {{.Skill "split-to-prs"}}.
 6. Mark PRs ready. Share bottom PR URL.
 
 ---

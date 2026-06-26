@@ -24,6 +24,20 @@ Use the plain git path in section 3 only when Graphite is unavailable and the us
 
 When an open PR already covers the work being split, default to repurposing that PR as the stack base. Do not open new PRs that abandon the existing one unless the user explicitly chose otherwise in the approved plan. Surface the disposition and ask before you execute.
 
+## Stack position in titles
+
+After all PRs in the stack have GitHub numbers, read the numbers bottom to top.
+
+If the numbers are consecutive integers in stack order, leave titles unchanged.
+
+If the numbers are non-sequential, append ` (PR x/N)` to every title in the stack. Use `x` as the 1-based bottom-to-top position and `N` as the stack size. Apply the suffix through the `pr` skill edit path (`gh pr edit`).
+
+Put the suffix at the very end of the title, after the `[TICKET-12345] ...` text from the `pr` skill.
+
+Single-PR stacks (`N` is 1) never get the suffix.
+
+Example: `[AGENCY-11267] Add plaid relink URL (PR 2/3)`
+
 ## Hard rules
 
 - Do not create branches, commit, push, or open PRs until the user approves the split plan.
@@ -105,4 +119,4 @@ For each approved slice:
 
 ## 4. Report back
 
-Keep it short: PR titles and URLs, plus anything left on the starting branch or working tree. For Graphite splits, include the bottom PR URL and stack order. Per-PR final output (Slack one-liner and URL) comes from the `pr` skill Step 8. Do not delete the backup ref or original branch unless the user asks.
+Keep it short: PR titles and URLs, plus anything left on the starting branch or working tree. For Graphite splits, include the bottom PR URL and stack order. Before reporting, confirm stack PR numbers are sequential bottom to top. When they are not, apply **Stack position in titles** so each reported title includes ` (PR x/N)`. Per-PR final output (Slack one-liner and URL) comes from the `pr` skill Step 8. Do not delete the backup ref or original branch unless the user asks.
