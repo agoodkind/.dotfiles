@@ -58,7 +58,7 @@ Run through MCP before creating, adopting, or restacking:
 | new slice on current branch | `["create", "--message", "..."]` |
 | amend tip and restack upstack | `["modify", "--all"]` |
 | add a new commit on tip | `["modify", "--commit", "--message", "..."]` |
-| adopt existing branch | `["branch", "track", "<branch>", "--parent", "<parent>"]` |
+| adopt existing branch | `["track", "<branch>", "--parent", "<parent>"]` |
 | preview submit | `["submit", "--stack", "--dry-run", "--no-interactive"]` |
 | push and open/update PRs | `["submit", "--stack", "--no-interactive"]` |
 | rebase stack onto parents | `["restack", "--no-interactive"]` |
@@ -101,7 +101,7 @@ Use this path when the approved plan repurposes an existing open PR as the stack
 3. If Graphite does not track the branch yet, adopt it before stacking:
 
 ```text
-args: ["branch", "track", "<existing-branch>", "--parent", "main"]
+args: ["track", "<existing-branch>", "--parent", "main"]
 ```
 
 4. Stack each remaining slice on top with `["create", "--message", "..."]` on the previous branch tip.
@@ -178,8 +178,8 @@ Use when branches and GitHub PRs already exist but Graphite metadata is missing 
 3. **Track bottom-up** (trunk parent for the first branch, then each child):
 
 ```text
-args: ["branch", "track", "<bottom-branch>", "--parent", "main"]
-args: ["branch", "track", "<next-branch>", "--parent", "<bottom-branch>"]
+args: ["track", "<bottom-branch>", "--parent", "main"]
+args: ["track", "<next-branch>", "--parent", "<bottom-branch>"]
 # repeat for each branch up the stack
 ```
 
@@ -205,7 +205,7 @@ args: ["submit", "--stack", "--no-interactive"]
 
 ### Worktree branches
 
-If a branch was committed in a worktree before Graphite knew about it, `gt branch track` on that branch is the sanctioned adopt path. Do not recreate the branch with `gt create`.
+If a branch was committed in a worktree before Graphite knew about it, `gt track` on that branch is the sanctioned adopt path. Do not recreate the branch with `gt create`.
 
 ### Ghost metadata after git cleanup
 
@@ -391,7 +391,7 @@ Prefer `["continue"]` over `git rebase --continue`. Avoid `["abort"]` in agent s
 | --- | --- | --- |
 | `git commit` / `git push` on stack work | breaks Graphite metadata and PR bases | `gt create` / `gt submit` via MCP |
 | shell `gt` when MCP is available | loses cross-turn context | `run_gt_cmd` |
-| branches created outside `gt` | invisible to `gt log` | `gt branch track` before submit |
+| branches created outside `gt` | invisible to `gt log` | `gt track` before submit |
 | submit without dry-run on existing PRs | duplicate PRs | dry-run first; expect Sync/New parent |
 | fresh stack from trunk when an open PR covers the work | orphans the PR number and review history | follow **Reuse before recreate** in {{.Skill "split-to-prs"}}, or ask |
 | ignore draft state after submit | Copilot and other bots skip drafts | `gh pr ready` on each PR |
