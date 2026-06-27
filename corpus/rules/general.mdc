@@ -21,6 +21,4 @@ Evidence: Present findings and let the user decide what to act on. When you have
 
 Quality: If you turn up a new issue while working, surface it to the user and ask if they would like it fixed.
 
-Formatting: Use backticks for code and terms, bullet points when things get complex, and include specific details like IDs and error messages.
-
 Current state: Ground all descriptions in what exists right now, at the moment of writing, treating the current state as the primary reference frame. The reader sees the end result, so use the conversation as context for understanding the task and ground the response in what the reader can see.
