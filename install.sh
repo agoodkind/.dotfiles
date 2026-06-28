@@ -38,7 +38,7 @@ bootstrap_repo_from_archive() {
         return 1
     fi
 
-    if [ -d "$DOTDOTFILES" ] && [ -n "$(find "$DOTDOTFILES" -mindepth 1 -maxdepth 1 2>/dev/null | head -n 1)" ]; then
+    if [ -d "$DOTDOTFILES" ] && [ -n "$(ls -A "$DOTDOTFILES" 2>/dev/null)" ]; then
         echo "dotfiles bootstrap target already exists but is not a checkout: $DOTDOTFILES" >&2
         return 1
     fi
@@ -55,8 +55,12 @@ bootstrap_repo_from_archive() {
     echo "dotfiles: downloading installer repository archive..." >&2
     download_file "$DOTFILES_ARCHIVE_URL" "$archive_path"
     tar -xzf "$archive_path" -C "$tmpdir"
-    extracted_root="$(find "$tmpdir" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
-    if [ -z "$extracted_root" ] || [ ! -f "$extracted_root/dots/bootstrap-go.sh" ]; then
+    if [ "$(find "$tmpdir" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" -ne 1 ]; then
+        echo "dotfiles bootstrap archive must contain exactly one top-level directory" >&2
+        return 1
+    fi
+    extracted_root="$(find "$tmpdir" -mindepth 1 -maxdepth 1 -type d)"
+    if [ ! -f "$extracted_root/dots/bootstrap-go.sh" ]; then
         echo "dotfiles bootstrap archive is missing dots/bootstrap-go.sh" >&2
         return 1
     fi
