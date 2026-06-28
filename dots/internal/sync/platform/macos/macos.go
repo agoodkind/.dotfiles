@@ -336,10 +336,14 @@ func (installer *Installer) tapQualifiedCaskNames(cfg *catalog.PackageConfig) []
 	names := make([]string, 0, len(cfg.BrewCasks))
 	for cask := range cfg.BrewCasks {
 		name := cask
-		if tap := cfg.BrewCaskTaps[cask]; tap != "" {
+		tap := cfg.BrewCaskTaps[cask]
+		if tap != "" {
 			name = tapQualifiedCaskName(tap, cask)
 		}
 		if strings.Count(name, "/") != 2 {
+			if tap != "" || strings.Contains(cask, "/") {
+				slog.Warn("platform/macos: skipping brew cask trust for invalid cask name", "cask", cask, "resolved", name)
+			}
 			continue
 		}
 		if _, ok := seen[name]; ok {
@@ -388,7 +392,12 @@ func brewCaskTaps(cfg *catalog.PackageConfig) []string {
 }
 
 func tapQualifiedCaskName(tap string, cask string) string {
-	if strings.Count(tap, "/") != 1 || cask == "" || strings.Contains(cask, "/") {
+	if strings.Count(tap, "/") != 1 {
+		slog.Warn("platform/macos: ignoring invalid brew cask tap name", "tap", tap, "cask", cask)
+		return cask
+	}
+	if cask == "" || strings.Contains(cask, "/") {
+		slog.Warn("platform/macos: ignoring invalid brew cask name for tap", "tap", tap, "cask", cask)
 		return cask
 	}
 	return tap + "/" + cask
