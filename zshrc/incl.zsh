@@ -24,8 +24,8 @@ if ((!DOTFILES_INTERACTIVE)); then
     return 0 2>/dev/null || true
 fi
 
-if [[ -d ~/.cache/dotfiles_install.lock ]]; then
-    local _install_status_dir=~/.cache/dotfiles_install.lock
+local _install_status_dir=~/.cache/dotfiles_install.lock
+if [[ -d "$_install_status_dir" ]]; then
     local _install_flock=~/.cache/dotfiles_install.flock
 
     # The installer only creates this status directory after it acquires the
