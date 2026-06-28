@@ -346,10 +346,10 @@ func TestInstallMacPackagesTapsConfiguredCasksBeforeInstall(t *testing.T) {
 		t.Fatalf("installMacPackages() returned error: %v", err)
 	}
 
-	if !containsRunCall(commands.runCalls, "brew", []string{"tap", "manaflow-ai/cmux"}) {
+	if !containsCommandCall(commands.runCalls, "brew", []string{"tap", "manaflow-ai/cmux"}) {
 		t.Fatal("expected brew tap manaflow-ai/cmux")
 	}
-	if !containsRunCall(commands.runCalls, "brew", []string{"install", "--cask", "cmux"}) {
+	if !containsCommandCall(commands.runCalls, "brew", []string{"install", "--cask", "cmux"}) {
 		t.Fatal("expected brew install --cask cmux")
 	}
 }
@@ -380,10 +380,6 @@ func containsCommandCall(calls []commandCall, command string, args []string) boo
 		}
 	}
 	return false
-}
-
-func containsRunCall(calls []commandCall, command string, args []string) bool {
-	return containsCommandCall(calls, command, args)
 }
 
 func TestInstallMacPackagesLenientModeContinuesAfterUpdateError(t *testing.T) {
