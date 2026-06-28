@@ -535,13 +535,17 @@ build_dots_binary() {
     local build_log
     toolchain="$(dots_go_toolchain)"
     build_log="$(mktemp)"
-    trap 'rm -f "$build_log"' RETURN
+    if [ -z "$build_log" ]; then
+        echo "dots: failed to create build log" >&2
+        return 1
+    fi
 
     if [ "$DOTS_BUILD_TIMEOUT_SECONDS" -gt 0 ] && check_command timeout; then
         if ! GOTOOLCHAIN="$toolchain" GO111MODULE=on GOWORK=off \
             timeout "$DOTS_BUILD_TIMEOUT_SECONDS" \
             "$GO_BINARY" build -C "$DOTDOTFILES/dots" -o "$DOTS_BINARY" ./cmd/dots >"$build_log" 2>&1; then
             cat "$build_log" >&2
+            rm -f "$build_log"
             echo "dots: build failed or timed out after ${DOTS_BUILD_TIMEOUT_SECONDS}s" >&2
             return 1
         fi
@@ -549,11 +553,13 @@ build_dots_binary() {
         if ! GOTOOLCHAIN="$toolchain" GO111MODULE=on GOWORK=off \
             "$GO_BINARY" build -C "$DOTDOTFILES/dots" -o "$DOTS_BINARY" ./cmd/dots >"$build_log" 2>&1; then
             cat "$build_log" >&2
+            rm -f "$build_log"
             echo "dots: build failed" >&2
             return 1
         fi
     fi
 
+    rm -f "$build_log"
     write_build_hash
 }
 

@@ -30,13 +30,14 @@ if [[ -d "$_install_status_dir" ]]; then
 
     # The installer only creates this status directory after it acquires the
     # install flock, so a busy flock means the install is still live.
-    if zmodload -F zsh/system b:zsystem 2>/dev/null && ! zsystem flock -n "$_install_flock" -- true; then
+    zmodload -F zsh/system b:zsystem
+    if ! zsystem flock -n "$_install_flock" -- true; then
         print -P "%F{blue}↻ dotfiles install is running in another terminal, so this shell is using minimal startup%f"
         return 0 2>/dev/null || true
     fi
 
-    # If the flock is free, or zsh/system is unavailable, the marker directory
-    # is not enough on its own and can be cleaned up.
+    # If the flock is free, the marker directory is not enough on its own and
+    # can be cleaned up.
     rm -rf "$_install_status_dir" 2>/dev/null || true
 fi
 
