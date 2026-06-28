@@ -67,7 +67,7 @@ Run through MCP before creating, adopting, or restacking:
 | resume after conflict | `["continue"]` |
 | preview stack merge | `["merge", "--dry-run", "--no-interactive"]` |
 | merge stack bottom-up | `["merge", "--no-interactive"]` |
-| auto-merge when requirements met | `["submit", "--stack", "--merge-when-ready", "--no-interactive"]` |
+| auto-merge when requirements met | `["submit", "--stack", "--merge-when-ready", "--always", "--no-interactive"]` |
 
 Always pass `--no-interactive` when the flag exists.
 
@@ -240,6 +240,10 @@ Graphite adds stack-specific state that plain PR babysitting misses.
 
 3. Check **every PR in the stack** for `isDraft`, `mergeStateStatus`, and failing checks.
 
+4. Re-read unresolved review threads on **every PR in the stack**. Copilot, Bugbot, and similar re-comment on every push, so new threads can appear after checks pass. When `required_review_thread_resolution` is active, unresolved threads block merge even when CI is green.
+
+5. When the only blocker is CI time (no real failure, threads resolved, not draft), arm merge-when-ready once from the stack tip (see **Auto-merge instead of a manual merge** below). Do not restack, re-submit, force-push, amend, or close/reopen just to re-run checks that are pending or already green.
+
 ### Trunk moved under you (other agents merged to main)
 
 When `mergeStateStatus` is `BEHIND` or trunk advanced while your stack is open:
@@ -278,12 +282,14 @@ When the user asks to merge a stack, finish babysit first, then follow **Task: M
 
 ### Babysit exit criteria (stack-aware)
 
-All of the following, for **each open PR in the stack**:
+The loop ends when every targeted PR shows `MERGED` on GitHub, not when checks first go green. A CI-only watcher stalls: merge-when-ready holds on unresolved review threads even when CI passes.
+
+Until merge, each open PR in the stack must satisfy:
 
 - not draft
 - required checks green
 - review decision satisfied
-- required threads resolved
+- required threads resolved (re-check each loop; automated reviewers add threads per push)
 - not DIRTY or CONFLICTING
 - `gt log short` parent chain still correct
 
@@ -313,9 +319,20 @@ If lower PRs already merged and upper PRs are DIRTY, restack onto current trunk 
 
 ### Merge paths (prefer in this order)
 
-1. **Graphite web UI:** open the stack and use **Merge Stack**. Best when a human wants visibility into merge order.
-2. **`gt merge` via MCP:** when the user asks an agent to merge from CLI.
-3. **`gh pr merge`:** only when Graphite is unavailable, the repo is not `gt init`, or branch policy needs a GitHub-only flag such as `--admin`. Merge bottom-up one PR at a time if you must use `gh`.
+1. **Graphite merge-when-ready via MCP:** default when the user asks to babysit to merge and CI is still running with no real failure. Arms the stack without re-running checks (see **Auto-merge instead of a manual merge** below).
+2. **Graphite web UI:** open the stack and use **Merge Stack** or **Merge when ready**. Best when a human wants visibility into merge order.
+3. **`gt merge` via MCP:** when every PR in the stack is already green, approved, and thread-clean. Single-shot; does not wait for CI.
+4. **`gh pr merge`:** only when Graphite is unavailable, the repo is not `gt init`, or branch policy needs a GitHub-only flag such as `--admin`. Merge bottom-up one PR at a time if you must use `gh`. Never use `gh pr merge --auto` on a Graphite stack; GitHub native auto-merge conflicts with Graphite merge-when-ready.
+
+### Do not re-trigger CI to merge
+
+When only waiting on CI, arm `gt` merge-when-ready once and stop. Do not loop `gt merge`, restack, re-submit, force-push, amend, or close/reopen to re-run checks.
+
+Re-runs cost CI credits. macOS bootstrap jobs are especially expensive. Merge-when-ready lands the stack when requirements are met without new check runs.
+
+Re-trigger CI only for a real in-scope failure, or a required check that genuinely never fired (a trigger miss). Never re-trigger checks that are pending or already green.
+
+Fewer pushes also means fewer new automated review threads, since Copilot and Bugbot re-comment on every push.
 
 ### Merge with MCP
 
@@ -332,7 +349,7 @@ args: ["merge", "--dry-run", "--no-interactive"]
 args: ["merge", "--no-interactive"]
 ```
 
-4. `gt merge` merges PRs bottom-up through Graphite. Graphite handles re-parenting upstack PRs as lower PRs land.
+4. `gt merge` merges PRs bottom-up through Graphite. Graphite handles re-parenting upstack PRs as lower PRs land. Per `gt merge --help`, `gt merge` is single-shot: it has no watch or wait mode. When any PR still has pending CI or unresolved threads, `gt merge` merges nothing further and returns. Re-running it while CI is pending changes nothing. Wait for terminal green on every PR, then run `gt merge` once, or arm merge-when-ready instead.
 5. After merge, refresh local state:
 
 ```text
@@ -343,13 +360,21 @@ args: ["sync", "--no-interactive"]
 
 ### Auto-merge instead of a manual merge
 
-To queue merge as soon as each PR satisfies requirements, pass `--merge-when-ready` on submit:
+Default path when the user asks to babysit to merge and CI is still in flight with no real failure. This is the CLI equivalent of Graphite's web **Merge when ready** dialog with **Enable for downstack** (arm the whole stack from the tip).
+
+`gt submit` is idempotent and no-ops when nothing changed, so `--merge-when-ready` alone never arms on an unchanged stack. Add `--always` to force the push (same commits, same SHA) so the mark actually applies:
 
 ```text
-args: ["submit", "--stack", "--merge-when-ready", "--no-interactive"]
+args: ["submit", "--stack", "--merge-when-ready", "--always", "--no-interactive"]
 ```
 
-Graphite merges in stack order when checks and approvals complete. Use this at submit time, not as a substitute for fixing a blocked stack.
+`--stack` covers downstack PRs. Graphite merges in stack order when checks, approvals, and thread resolution complete, without new check runs.
+
+When CI is still running with no real failure, arm merge-when-ready with `--always` and stop. Do not alternate between merge-when-ready and manual `gt merge`.
+
+After arming merge-when-ready, keep triaging incoming review threads until every PR is `MERGED`. Automated reviewers re-comment on every push, and unresolved threads block merge even when CI is green.
+
+Use manual `gt merge` only when every PR is already green, approved, and thread-clean. Merge-when-ready is not a substitute for fixing a blocked stack (real CI failure, conflicts, or unresolved threads that need code changes).
 
 ### Local vs remote drift
 
@@ -404,6 +429,10 @@ Prefer `["continue"]` over `git rebase --continue`. Avoid `["abort"]` in agent s
 | `git` without `-C` in worktrees | wrong repo | explicit `cwd` in MCP or `git -C` |
 | force-push outside `gt submit` | Graphite loses sync with remote | `gt submit` after restack |
 | babysit only the tip PR | miss blocked lower PRs | check whole stack each loop |
+| CI-only watcher after arming merge-when-ready | checks go green but merge stalls on new review threads | exit when PRs are MERGED; re-read threads each loop |
+| re-trigger CI on passing or pending PRs | burns CI credits; adds new bot threads per push | arm merge-when-ready `--always`, then wait |
+| loop `gt merge` while CI pending | single-shot command merges nothing and returns | arm merge-when-ready or wait for green then one `gt merge` |
+| `gh pr merge --auto` on a Graphite stack | conflicts with Graphite merge-when-ready | `gt submit --stack --merge-when-ready --always` |
 | `gh pr merge` on a Graphite stack | skips Graphite merge orchestration; DIRTY upstack PRs | `gt merge` or Graphite UI after babysit |
 | merge before dry-run | wrong PRs may merge | `gt merge --dry-run` first |
 | auto-generated PR bodies from submit | reviewers get commit-message stubs | {{.Skill "pr"}} per PR before marking ready |
@@ -419,6 +448,7 @@ cd /absolute/path/to/repo
 gt log short
 gt submit --stack --dry-run --no-interactive
 gt submit --stack --no-interactive
+gt submit --stack --merge-when-ready --always --no-interactive
 gt merge --dry-run --no-interactive
 gt merge --no-interactive
 gt sync --no-interactive
