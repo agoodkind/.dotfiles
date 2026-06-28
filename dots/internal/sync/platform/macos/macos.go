@@ -337,9 +337,8 @@ func (installer *Installer) tapQualifiedCaskNames(cfg *catalog.PackageConfig) []
 	for cask := range cfg.BrewCasks {
 		tap := cfg.BrewCaskTaps[cask]
 		if tap != "" {
-			name := tapQualifiedCaskName(tap, cask)
-			if strings.Count(name, "/") != 2 {
-				slog.Warn("platform/macos: skipping brew cask trust for invalid tapped cask name", "cask", cask, "resolved", name)
+			name, ok := tapQualifiedCaskName(tap, cask)
+			if !ok {
 				continue
 			}
 			if _, ok := seen[name]; ok {
@@ -350,7 +349,7 @@ func (installer *Installer) tapQualifiedCaskNames(cfg *catalog.PackageConfig) []
 			continue
 		}
 
-		if strings.Count(cask, "/") != 2 {
+		if !validTapQualifiedCaskName(cask) {
 			continue
 		}
 		if _, ok := seen[cask]; ok {
@@ -398,21 +397,31 @@ func brewCaskTaps(cfg *catalog.PackageConfig) []string {
 	return out
 }
 
-func tapQualifiedCaskName(tap string, cask string) string {
+func tapQualifiedCaskName(tap string, cask string) (string, bool) {
 	if !validTapName(tap) {
 		slog.Warn("platform/macos: ignoring invalid brew cask tap name", "tap", tap, "cask", cask)
-		return cask
+		return "", false
 	}
 	if cask == "" || strings.Contains(cask, "/") {
 		slog.Warn("platform/macos: ignoring invalid brew cask name for tap", "tap", tap, "cask", cask)
-		return cask
+		return "", false
 	}
-	return tap + "/" + cask
+	name := tap + "/" + cask
+	if !validTapQualifiedCaskName(name) {
+		slog.Warn("platform/macos: skipping brew cask trust for invalid tapped cask name", "cask", cask, "resolved", name)
+		return "", false
+	}
+	return name, true
 }
 
 func validTapName(tap string) bool {
 	parts := strings.Split(tap, "/")
 	return len(parts) == 2 && parts[0] != "" && parts[1] != ""
+}
+
+func validTapQualifiedCaskName(name string) bool {
+	parts := strings.Split(name, "/")
+	return len(parts) == 3 && parts[0] != "" && parts[1] != "" && parts[2] != ""
 }
 
 func (installer *Installer) installMacFormulae(ctx context.Context, cfg *catalog.PackageConfig, strictMode bool, logger *telemetry.Logger) error {
