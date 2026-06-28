@@ -44,6 +44,8 @@ const (
 	flagSkipNetwork      installFlag = "--skip-network"
 	flagStrict           installFlag = "--strict"
 	dotfilesRepository   string      = "https://github.com/agoodkind/.dotfiles.git"
+	promptMarkerStyle    string      = "\x1b[1;36m›\x1b[0m "
+	bulletMarkerStyle    string      = "\x1b[1;36m•\x1b[0m "
 )
 
 // Run executes the dotfiles install workflow with the given arguments.
@@ -120,7 +122,7 @@ func Run(ctx context.Context, args ...string) error {
 	configuredGit := false
 	pending := pendingGitConfig{}
 	if runner.HasCommand("git") {
-		if err := configureGit(ctx, useDefaults, pending); err != nil {
+		if err := configureGit(ctx, useDefaults, pendingGitConfig{}); err != nil {
 			return err
 		}
 		configuredGit = true
@@ -331,13 +333,13 @@ func logPrompt(_ context.Context, prompt string) {
 		fmt.Fprint(os.Stdout, "> ")
 		return
 	}
-	installLogger.PrintTTYLine(prompt, "\x1b[1;36m›\x1b[0m "+prompt)
+	installLogger.PrintTTYLine(prompt, promptMarkerStyle+prompt)
 	_, _ = fmt.Fprint(os.Stdout, "> ")
 }
 
 func logTTYLine(message string) {
 	if installLogger != nil {
-		installLogger.PrintTTYLine(message, "\x1b[1;36m•\x1b[0m "+message)
+		installLogger.PrintTTYLine(message, bulletMarkerStyle+message)
 		return
 	}
 	fmt.Fprintln(os.Stdout, message)
@@ -494,7 +496,7 @@ func resolveSigningKey(ctx context.Context, useDefaults bool, pending pendingGit
 	return signingKey, "", nil
 }
 
-func resolveSigningKeyPath(_ context.Context, useDefaults bool) (string, bool) {
+func resolveSigningKeyPath(ctx context.Context, useDefaults bool) (string, bool) {
 	candidates := sshPublicKeyCandidates()
 	if len(candidates) == 0 {
 		return "", false
@@ -506,7 +508,7 @@ func resolveSigningKeyPath(_ context.Context, useDefaults bool) (string, bool) {
 	for index, candidate := range candidates {
 		logTTYLine(fmt.Sprintf("%d. %s", index+1, displayPath(candidate)))
 	}
-	choice := readLine(context.Background(), "SSH key number")
+	choice := readLine(ctx, "SSH key number")
 	if choice == "" {
 		return "", true
 	}

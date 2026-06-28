@@ -32,6 +32,7 @@ bootstrap_repo_from_archive() {
     local tmpdir
     local archive_path
     local extracted_root
+    local dir_count
 
     if [ -e "$DOTDOTFILES" ] && [ ! -d "$DOTDOTFILES" ]; then
         echo "dotfiles bootstrap target exists and is not a directory: $DOTDOTFILES" >&2
@@ -55,7 +56,9 @@ bootstrap_repo_from_archive() {
     echo "dotfiles: downloading installer repository archive..." >&2
     download_file "$DOTFILES_ARCHIVE_URL" "$archive_path"
     tar -xzf "$archive_path" -C "$tmpdir"
-    if [ "$(find "$tmpdir" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" -ne 1 ]; then
+    dir_count="$(find "$tmpdir" -mindepth 1 -maxdepth 1 -type d | wc -l)"
+    dir_count="${dir_count##* }"
+    if [ "$dir_count" -ne 1 ]; then
         echo "dotfiles bootstrap archive must contain exactly one top-level directory" >&2
         return 1
     fi
