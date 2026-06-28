@@ -553,6 +553,7 @@ build_dots_binary() {
             return 1
         fi
     fi
+
     write_build_hash
 }
 

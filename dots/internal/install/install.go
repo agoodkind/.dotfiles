@@ -370,7 +370,7 @@ func acquireInstallLock() (*os.File, func(), bool, error) {
 		return nil, nil, false, fmt.Errorf("creating cache directory: %w", err)
 	}
 	lockPath := filepath.Join(cacheDir, "dotfiles_install.flock")
-	lockFile, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o666)
+	lockFile, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
 		return nil, nil, false, fmt.Errorf("opening install lock file: %w", err)
 	}
