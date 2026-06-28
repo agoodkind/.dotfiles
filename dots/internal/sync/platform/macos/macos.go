@@ -334,10 +334,11 @@ func (installer *Installer) ensureMacCaskTaps(ctx context.Context, cfg *catalog.
 func (installer *Installer) tapQualifiedCaskNames(cfg *catalog.PackageConfig) []string {
 	names := make([]string, 0, len(cfg.BrewCasks)+len(cfg.BrewCaskTaps))
 	for cask := range cfg.BrewCasks {
-		names = append(names, cask)
 		if tap := cfg.BrewCaskTaps[cask]; tap != "" {
 			names = append(names, tapQualifiedCaskName(tap, cask))
+			continue
 		}
+		names = append(names, cask)
 	}
 	return tapQualifiedNames(names)
 }
