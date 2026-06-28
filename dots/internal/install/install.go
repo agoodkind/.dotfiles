@@ -122,7 +122,7 @@ func Run(ctx context.Context, args ...string) error {
 	configuredGit := false
 	pending := pendingGitConfig{}
 	if runner.HasCommand("git") {
-		if err := configureGit(ctx, useDefaults, pending); err != nil {
+		if err := configureGit(ctx, useDefaults, nil); err != nil {
 			return err
 		}
 		configuredGit = true
@@ -141,7 +141,7 @@ func Run(ctx context.Context, args ...string) error {
 		installLogger.WarnContextWithErr(ctx, "Finishing archive bootstrap failed", err)
 	}
 	if !configuredGit && runner.HasCommand("git") {
-		if err := configureGit(ctx, useDefaults, pending); err != nil {
+		if err := configureGit(ctx, useDefaults, &pending); err != nil {
 			return err
 		}
 	}
@@ -161,7 +161,7 @@ func createSocketDir() error {
 	return nil
 }
 
-func configureGit(ctx context.Context, useDefaults bool, pending pendingGitConfig) error {
+func configureGit(ctx context.Context, useDefaults bool, pending *pendingGitConfig) error {
 	libPath := filepath.Join(dotfilesRoot(), "lib", ".gitconfig_incl")
 	if err := cmdexec.Run(ctx, "git", "config", "--global", "include.path", libPath); err != nil {
 		slog.WarnContext(ctx, "Failed to set git include path", "err", err)
@@ -172,14 +172,14 @@ func configureGit(ctx context.Context, useDefaults bool, pending pendingGitConfi
 
 	name := gitConfig(ctx, "user.name")
 	if name == "" {
-		if err := setOrPromptGitConfig(ctx, useDefaults, pending.name, "Skipping git user.name (use defaults mode)", "Enter your name for git (First Last): ", "user.name"); err != nil {
+		if err := setOrPromptGitConfig(ctx, useDefaults, pendingValue(pending, func(config pendingGitConfig) string { return config.name }), "Skipping git user.name (use defaults mode)", "Enter your name for git (First Last): ", "user.name"); err != nil {
 			return err
 		}
 	}
 
 	email := gitConfig(ctx, "user.email")
 	if email == "" {
-		if err := setOrPromptGitConfig(ctx, useDefaults, pending.email, "Skipping git user email (use defaults mode)", "Enter your git email: ", "user.email"); err != nil {
+		if err := setOrPromptGitConfig(ctx, useDefaults, pendingValue(pending, func(config pendingGitConfig) string { return config.email }), "Skipping git user email (use defaults mode)", "Enter your git email: ", "user.email"); err != nil {
 			return err
 		}
 	}
@@ -285,7 +285,7 @@ func setOrPromptGitConfig(ctx context.Context, useDefaults bool, existingValue, 
 	}
 	input := existingValue
 	if input == "" {
-		input = readLine(ctx, prompt)
+		input = readLine(prompt)
 	}
 	if input == "" {
 		return nil
@@ -302,8 +302,7 @@ func gitConfig(ctx context.Context, name string) string {
 	return output
 }
 
-func readLine(ctx context.Context, prompt string) string {
-	_ = ctx
+func readLine(prompt string) string {
 	logPrompt(prompt)
 	reader := bufio.NewReader(os.Stdin)
 	line, _ := reader.ReadString('\n')
@@ -436,8 +435,8 @@ func collectGitConfigInputs(ctx context.Context, useDefaults bool) (pendingGitCo
 	if useDefaults {
 		return pending, nil
 	}
-	pending.name = readLine(ctx, "Enter your name for git (First Last): ")
-	pending.email = readLine(ctx, "Enter your git email: ")
+	pending.name = readLine("Enter your name for git (First Last): ")
+	pending.email = readLine("Enter your git email: ")
 	signingKeyPath, foundKeys := resolveSigningKeyPath(ctx, useDefaults)
 	if signingKeyPath == "" {
 		if !foundKeys {
@@ -455,8 +454,8 @@ func collectGitConfigInputs(ctx context.Context, useDefaults bool) (pendingGitCo
 	return pending, nil
 }
 
-func resolveSigningKey(ctx context.Context, useDefaults bool, pending pendingGitConfig) (string, string, error) {
-	if pending.signingKey != "" {
+func resolveSigningKey(ctx context.Context, useDefaults bool, pending *pendingGitConfig) (string, string, error) {
+	if pending != nil && pending.signingKey != "" {
 		return pending.signingKey, pending.gpgSshDefaultKeyCommand, nil
 	}
 	sshAddOutput, _ := cmdexec.OutputTrimmed(ctx, "ssh-add", "-L")
@@ -511,7 +510,7 @@ func resolveSigningKeyPath(ctx context.Context, useDefaults bool) (string, bool)
 	for index, candidate := range candidates {
 		logTTYLine(fmt.Sprintf("%d. %s", index+1, displayPath(candidate)))
 	}
-	choice := readLine(ctx, "SSH key number, or press Enter to skip")
+	choice := readLine("SSH key number, or press Enter to skip: ")
 	if choice == "" {
 		return "", true
 	}
@@ -533,6 +532,13 @@ func readSigningKey(keyPath string) (string, error) {
 		return "", fmt.Errorf("read ssh public key: %w", err)
 	}
 	return strings.TrimSpace(string(keyRaw)), nil
+}
+
+func pendingValue(pending *pendingGitConfig, read func(pendingGitConfig) string) string {
+	if pending == nil {
+		return ""
+	}
+	return read(*pending)
 }
 
 func sshPublicKeyCandidates() []string {
