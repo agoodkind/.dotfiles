@@ -38,7 +38,7 @@ const (
 
 // ConfigureDefaultSlogFromEnv configures package-level slog output for helper packages.
 func ConfigureDefaultSlogFromEnv() {
-	level := slog.LevelInfo
+	level := slog.LevelWarn
 	rawLevel := environmentLogLevel(strings.ToLower(strings.TrimSpace(os.Getenv("DOTFILES_LOG_LEVEL"))))
 	switch rawLevel {
 	case environmentLogLevelDebug:
@@ -217,8 +217,15 @@ func (l *Logger) RawOutputContext(ctx context.Context, output string) {
 			l.log(ctx, "OUTPUT", slog.LevelDebug, line, l.stdout, "out", colorGray)
 			continue
 		}
+		if suppressInteractiveRawLine(line) {
+			continue
+		}
 		l.write(l.stdout, fmt.Sprintf("%s- %s%s", colorGray, line, colorReset))
 	}
+}
+
+func suppressInteractiveRawLine(line string) bool {
+	return strings.HasPrefix(line, "go: downloading ") || strings.HasPrefix(line, "go: finding module for package ")
 }
 
 func (l *Logger) log(

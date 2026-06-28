@@ -40,7 +40,6 @@ var appLogger *telemetry.Logger
 
 func main() {
 	telemetry.ConfigureDefaultSlogFromEnv()
-	slog.InfoContext(context.Background(), "dots process started")
 	slog.DebugContext(context.Background(), "dots debug logging enabled")
 	os.Exit(run(os.Args[1:]))
 }
@@ -61,8 +60,6 @@ func run(args []string) int {
 		appLogger = nil
 		runner.SetLogger(nil)
 	}()
-
-	logger.InfoContext(context.Background(), "dots command started")
 
 	if len(args) == 0 {
 		printUsage()

@@ -35,6 +35,11 @@ if ((!DOTFILES_INTERACTIVE)); then
     return 0 2>/dev/null || true
 fi
 
+if [[ -d ~/.cache/dotfiles_install.lock ]]; then
+    print -P "%F{blue}↻ dotfiles install is running in another terminal, so this shell is using minimal startup%f"
+    return 0 2>/dev/null || true
+fi
+
 # plugins.zsh uses plain source (zinit turbo mode stores scope references
 # that break when sourced inside a function). Timing is done inline instead.
 local _t0=$EPOCHREALTIME
