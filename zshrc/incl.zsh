@@ -25,22 +25,31 @@ if ((!DOTFILES_INTERACTIVE)); then
 fi
 
 if [[ -d ~/.cache/dotfiles_install.lock ]]; then
-    local _install_pid_file=~/.cache/dotfiles_install.lock/pid
+    local _install_status_dir=~/.cache/dotfiles_install.lock
+    local _install_flock=~/.cache/dotfiles_install.flock
+    local _install_pid_file=$_install_status_dir/pid
     local _install_pid=""
-    if [[ -r "$_install_pid_file" ]]; then
+
+    # The installer only creates this status directory after it acquires the
+    # install flock, so a busy flock means the install is still live.
+    if zmodload -F zsh/system b:zsystem 2>/dev/null; then
+        if ! zsystem flock -n "$_install_flock" -- true; then
+            print -P "%F{blue}↻ dotfiles install is running in another terminal, so this shell is using minimal startup%f"
+            return 0 2>/dev/null || true
+        fi
+    elif [[ -r "$_install_pid_file" ]]; then
+        # Fallback for shells without zsh/system: only trust the status
+        # directory when its recorded installer PID is still alive.
         _install_pid=$(<"$_install_pid_file")
-    fi
-    if [[ -n "$_install_pid" && "$_install_pid" == <-> ]] && kill -0 "$_install_pid" 2>/dev/null; then
-        local _install_cmd
-        local -a _install_parts
-        _install_cmd=$(ps -o command= -p "$_install_pid" 2>/dev/null || true)
-        _install_parts=("${(z)_install_cmd}")
-        if [[ "${_install_parts[1]:t}" == "install.sh" ]] || { [[ "${_install_parts[1]:t}" == "dots" ]] && [[ "${_install_parts[2]}" == "install" ]]; }; then
+        if [[ -n "$_install_pid" && "$_install_pid" == <-> ]] && kill -0 "$_install_pid" 2>/dev/null; then
             print -P "%F{blue}↻ dotfiles install is running in another terminal, so this shell is using minimal startup%f"
             return 0 2>/dev/null || true
         fi
     fi
-    rm -rf ~/.cache/dotfiles_install.lock 2>/dev/null || true
+
+    # If the flock is free, or the fallback PID is gone, the marker directory
+    # was left behind by an interrupted install and can be cleaned up.
+    rm -rf "$_install_status_dir" 2>/dev/null || true
 fi
 
 # plugins.zsh uses plain source (zinit turbo mode stores scope references
