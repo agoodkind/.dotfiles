@@ -293,12 +293,17 @@ func (l *Logger) writeLine(stream io.Writer, message string) {
 // icons). When interactive and ttyStyled is non-empty and NO_COLOR is unset, ttyStyled is
 // printed; otherwise plain is printed. The plain text is always recorded in the JSON log.
 func (l *Logger) PrintTTYLine(plain string, ttyStyled string) {
+	l.PrintTTYLineContext(context.Background(), plain, ttyStyled)
+}
+
+// PrintTTYLineContext writes one human-facing line and records the plain text in structured logs.
+func (l *Logger) PrintTTYLineContext(ctx context.Context, plain string, ttyStyled string) {
 	plain = strings.TrimSpace(plain)
 	if plain == "" {
 		return
 	}
 
-	l.logStructured(context.Background(), "TTY", slog.LevelInfo, plain, slog.String("stream", "stdout"))
+	l.logStructured(ctx, "TTY", slog.LevelInfo, plain, slog.String("stream", "stdout"))
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.interactive {

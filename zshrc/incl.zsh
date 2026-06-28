@@ -36,8 +36,22 @@ if ((!DOTFILES_INTERACTIVE)); then
 fi
 
 if [[ -d ~/.cache/dotfiles_install.lock ]]; then
-    print -P "%F{blue}↻ dotfiles install is running in another terminal, so this shell is using minimal startup%f"
-    return 0 2>/dev/null || true
+    local _install_pid_file=~/.cache/dotfiles_install.lock/pid
+    local _install_pid=""
+    if [[ -r "$_install_pid_file" ]]; then
+        _install_pid=$(<"$_install_pid_file")
+    fi
+    if [[ -n "$_install_pid" && "$_install_pid" == <-> ]] && kill -0 "$_install_pid" 2>/dev/null; then
+        local _install_cmd
+        local -a _install_parts
+        _install_cmd=$(ps -o command= -p "$_install_pid" 2>/dev/null || true)
+        _install_parts=("${(z)_install_cmd}")
+        if [[ "${_install_parts[1]:t}" == "install.sh" ]] || { [[ "${_install_parts[1]:t}" == "dots" ]] && [[ "${_install_parts[2]}" == "install" ]]; }; then
+            print -P "%F{blue}↻ dotfiles install is running in another terminal, so this shell is using minimal startup%f"
+            return 0 2>/dev/null || true
+        fi
+    fi
+    rm -rf ~/.cache/dotfiles_install.lock 2>/dev/null || true
 fi
 
 # plugins.zsh uses plain source (zinit turbo mode stores scope references
