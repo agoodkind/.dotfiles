@@ -11,3 +11,9 @@ The canonical Go module path is `goodkind.io/.dotfiles`, while the repository co
 ```sh
 ./install.sh
 ```
+
+Or run it without cloning first:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/agoodkind/.dotfiles/main/install.sh | bash
+```
