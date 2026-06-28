@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -28,7 +29,7 @@ type pendingGitConfig struct {
 	name                    string
 	email                   string
 	signingKey              string
-	gpgSshDefaultKeyCommand string
+	gpgSSHDefaultKeyCommand string
 }
 
 type installFlag string
@@ -66,19 +67,67 @@ func Run(ctx context.Context, args ...string) error {
 	_ = os.Setenv("DOTFILES_LOG", logPath)
 	done := logger.SectionContext(ctx, "Install")
 	defer done()
-	logInstallSummary()
+	logInstallSummary(ctx)
 
-	lockFile, releaseStatus, alreadyRunning, err := acquireInstallLock()
+	lockFile, releaseStatus, alreadyRunning, err := acquireInstallLock(ctx)
 	if err != nil {
 		return err
 	}
 	if alreadyRunning {
-		logTTYLine("Another dotfiles install is already running in a different terminal.")
+		logTTYLine(ctx, "Another dotfiles install is already running in a different terminal.")
 		return nil
 	}
 	defer releaseStatus()
 	defer lockFile.Close()
 
+	useDefaults, syncOpts, showHelp, err := parseInstallArgs(args)
+	if err != nil {
+		return err
+	}
+	if showHelp {
+		printInstallUsage(ctx)
+		return nil
+	}
+
+	if err := createSocketDir(); err != nil {
+		return err
+	}
+	primePrivilegeCredentials(ctx)
+	configuredGit := false
+	var pending pendingGitConfig
+	if runner.HasCommand("git") {
+		if err := configureGit(ctx, useDefaults, nil); err != nil {
+			return err
+		}
+		configuredGit = true
+	} else {
+		logTTYLine(ctx, "Git is not installed yet, so the installer will collect git details now and apply them after package setup.")
+		pending, err = collectGitConfigInputs(ctx, useDefaults)
+		if err != nil {
+			return err
+		}
+	}
+	if err := sync.Run(ctx, syncOpts); err != nil {
+		slog.WarnContext(ctx, "running sync", "err", err)
+		return fmt.Errorf("running sync: %w", err)
+	}
+	if err := ensureManagedRepository(ctx); err != nil {
+		installLogger.WarnContextWithErr(ctx, "Failed to convert archive installation to git repository", err)
+	}
+	if !configuredGit && runner.HasCommand("git") {
+		if err := configureGit(ctx, useDefaults, &pending); err != nil {
+			return err
+		}
+	}
+	ensureLoginShell(ctx)
+	return nil
+}
+
+func printInstallUsage(ctx context.Context) {
+	logInfo(ctx, "Usage: dots install [--use-defaults] [--quick] [--skip-git] [--skip-network] [--repair] [--strict]")
+}
+
+func parseInstallArgs(args []string) (bool, sync.Options, bool, error) {
 	useDefaults := false
 	syncOpts := sync.Options{
 		RepairMode:     false,
@@ -94,8 +143,7 @@ func Run(ctx context.Context, args ...string) error {
 	for _, arg := range args {
 		switch installFlag(arg) {
 		case flagHelp, flagHelpShort:
-			printInstallUsage(ctx)
-			return nil
+			return false, syncOpts, true, nil
 		case flagUseDefaults, flagUseDefaultsShort:
 			useDefaults = true
 			syncOpts.UseDefaults = true
@@ -110,47 +158,11 @@ func Run(ctx context.Context, args ...string) error {
 		case flagStrict:
 			syncOpts.StrictMode = true
 		default:
-			return fmt.Errorf("unsupported install flag: %s", arg)
+			return false, syncOpts, false, fmt.Errorf("unsupported install flag: %s", arg)
 		}
 	}
 	syncOpts.UseDefaults = useDefaults
-
-	if err := createSocketDir(); err != nil {
-		return err
-	}
-	primePrivilegeCredentials(ctx)
-	configuredGit := false
-	pending := pendingGitConfig{}
-	if runner.HasCommand("git") {
-		if err := configureGit(ctx, useDefaults, nil); err != nil {
-			return err
-		}
-		configuredGit = true
-	} else {
-		logTTYLine("Git is not installed yet, so the installer will collect git details now and apply them after package setup.")
-		pending, err = collectGitConfigInputs(ctx, useDefaults)
-		if err != nil {
-			return err
-		}
-	}
-	if err := sync.Run(ctx, syncOpts); err != nil {
-		slog.WarnContext(ctx, "running sync", "err", err)
-		return fmt.Errorf("running sync: %w", err)
-	}
-	if err := ensureManagedRepository(ctx); err != nil {
-		installLogger.WarnContextWithErr(ctx, "Finishing archive bootstrap failed", err)
-	}
-	if !configuredGit && runner.HasCommand("git") {
-		if err := configureGit(ctx, useDefaults, &pending); err != nil {
-			return err
-		}
-	}
-	ensureLoginShell(ctx)
-	return nil
-}
-
-func printInstallUsage(ctx context.Context) {
-	logInfo(ctx, "Usage: dots install [--use-defaults] [--quick] [--skip-git] [--skip-network] [--repair] [--strict]")
+	return useDefaults, syncOpts, false, nil
 }
 
 func createSocketDir() error {
@@ -285,7 +297,7 @@ func setOrPromptGitConfig(ctx context.Context, useDefaults bool, existingValue, 
 	}
 	input := existingValue
 	if input == "" {
-		input = readLine(prompt)
+		input = readLine(ctx, prompt)
 	}
 	if input == "" {
 		return nil
@@ -302,26 +314,26 @@ func gitConfig(ctx context.Context, name string) string {
 	return output
 }
 
-func readLine(prompt string) string {
-	logPrompt(prompt)
+func readLine(ctx context.Context, prompt string) string {
+	logPrompt(ctx, prompt)
 	reader := bufio.NewReader(os.Stdin)
 	line, _ := reader.ReadString('\n')
 	return strings.TrimSpace(line)
 }
 
-func logPrompt(prompt string) {
+func logPrompt(ctx context.Context, prompt string) {
 	if installLogger == nil {
 		fmt.Fprintln(os.Stdout, prompt)
 		fmt.Fprint(os.Stdout, "> ")
 		return
 	}
-	installLogger.PrintTTYLine(prompt, promptMarkerStyle+prompt)
+	installLogger.PrintTTYLineContext(ctx, prompt, promptMarkerStyle+prompt)
 	_, _ = fmt.Fprint(os.Stdout, "> ")
 }
 
-func logTTYLine(message string) {
+func logTTYLine(ctx context.Context, message string) {
 	if installLogger != nil {
-		installLogger.PrintTTYLine(message, bulletMarkerStyle+message)
+		installLogger.PrintTTYLineContext(ctx, message, bulletMarkerStyle+message)
 		return
 	}
 	fmt.Fprintln(os.Stdout, message)
@@ -347,45 +359,64 @@ func formatString(format string, args ...string) string {
 	return formatted
 }
 
-func logInstallSummary() {
-	logTTYLine("The installer will set up this machine, sync your dotfiles, and configure git as soon as git is available.")
+func logInstallSummary(ctx context.Context) {
+	logTTYLine(ctx, "The installer will set up this machine, sync your dotfiles, and configure git as soon as git is available.")
 }
 
 func primePrivilegeCredentials(ctx context.Context) {
 	if os.Geteuid() == 0 || !runner.HasCommand("sudo") {
 		return
 	}
-	logTTYLine("Checking sudo access now so setup does not pause later.")
+	logTTYLine(ctx, "Checking sudo access now so setup does not pause later.")
 	if common.HasSudoAccess(ctx, installLogger) {
-		logTTYLine("Sudo access is ready for the rest of install.")
+		logTTYLine(ctx, "Sudo access is ready for the rest of install.")
 		return
 	}
-	logTTYLine("Sudo access is not available right now, so privileged setup may fail later.")
+	logTTYLine(ctx, "Sudo access is not available right now, so privileged setup may fail later.")
 }
 
-func acquireInstallLock() (*os.File, func(), bool, error) {
+func acquireInstallLock(ctx context.Context) (*os.File, func(), bool, error) {
 	cacheDir := filepath.Clean(filepath.Join(os.Getenv("HOME"), ".cache"))
 	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		slog.WarnContext(ctx, "creating cache directory for install lock", "err", err)
 		return nil, nil, false, fmt.Errorf("creating cache directory: %w", err)
 	}
 	lockPath := filepath.Join(cacheDir, "dotfiles_install.flock")
 	lockFile, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
+		slog.WarnContext(ctx, "opening install lock file", "err", err)
 		return nil, nil, false, fmt.Errorf("opening install lock file: %w", err)
 	}
-	flockFdInt := int(lockFile.Fd())
+	flockFD := lockFile.Fd()
+	if flockFD > uintptr(math.MaxInt) {
+		_ = lockFile.Close()
+		err = fmt.Errorf("install lock file descriptor %d exceeds int bounds", flockFD)
+		slog.WarnContext(ctx, "checking install lock file descriptor bounds", "err", err)
+		return nil, nil, false, err
+	}
+	flockFdInt := int(flockFD)
 	if err := syscall.Flock(flockFdInt, syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		_ = lockFile.Close()
 		if errors.Is(err, syscall.EWOULDBLOCK) {
 			return nil, nil, true, nil
 		}
+		slog.WarnContext(ctx, "acquiring install lock", "err", err)
 		return nil, nil, false, fmt.Errorf("acquiring install lock: %w", err)
 	}
 	statusDir := filepath.Join(cacheDir, "dotfiles_install.lock")
 	if err := os.MkdirAll(statusDir, 0o755); err != nil {
 		_ = syscall.Flock(flockFdInt, syscall.LOCK_UN)
 		_ = lockFile.Close()
+		slog.WarnContext(ctx, "creating install status directory", "err", err)
 		return nil, nil, false, fmt.Errorf("creating install status directory: %w", err)
+	}
+	statusPIDPath := filepath.Join(statusDir, "pid")
+	statusPID := strconv.Itoa(os.Getpid())
+	if err := os.WriteFile(statusPIDPath, []byte(statusPID), 0o644); err != nil {
+		_ = syscall.Flock(flockFdInt, syscall.LOCK_UN)
+		_ = lockFile.Close()
+		slog.WarnContext(ctx, "writing install status pid", "err", err)
+		return nil, nil, false, fmt.Errorf("writing install status pid: %w", err)
 	}
 	release := func() {
 		_ = os.RemoveAll(statusDir)
@@ -399,34 +430,40 @@ func ensureManagedRepository(ctx context.Context) error {
 		return nil
 	}
 	if !runner.HasCommand("git") {
-		logTTYLine("Git is still unavailable, so this archive install will stay unmanaged until git is installed.")
+		logTTYLine(ctx, "Git is still unavailable, so this archive install will stay unmanaged until git is installed.")
 		return nil
 	}
-	logTTYLine("Finishing the archive bootstrap by turning " + displayPath(dotfiles) + " into a git checkout.")
+	logTTYLine(ctx, "Finishing the archive bootstrap by turning "+displayPath(dotfiles)+" into a git checkout.")
 	if err := cmdexec.RunWithLogger(ctx, installLogger, "git", "-C", dotfiles, "init", "-b", "main"); err != nil {
+		slog.WarnContext(ctx, "initializing git checkout", "err", err)
 		return fmt.Errorf("initializing git checkout: %w", err)
 	}
 	currentOrigin, _ := cmdexec.OutputTrimmed(ctx, "git", "-C", dotfiles, "config", "--local", "--get", "remote.origin.url")
 	switch {
 	case currentOrigin == "":
 		if err := cmdexec.Run(ctx, "git", "-C", dotfiles, "remote", "add", "origin", dotfilesRepository); err != nil {
+			slog.WarnContext(ctx, "adding git remote", "err", err)
 			return fmt.Errorf("adding git remote: %w", err)
 		}
 	case currentOrigin != dotfilesRepository:
 		if err := cmdexec.Run(ctx, "git", "-C", dotfiles, "remote", "set-url", "origin", dotfilesRepository); err != nil {
+			slog.WarnContext(ctx, "updating git remote", "err", err)
 			return fmt.Errorf("updating git remote: %w", err)
 		}
 	}
 	if err := cmdexec.RunWithLogger(ctx, installLogger, "git", "-C", dotfiles, "fetch", "origin", "main"); err != nil {
+		slog.WarnContext(ctx, "fetching dotfiles repository", "err", err)
 		return fmt.Errorf("fetching dotfiles repository: %w", err)
 	}
 	if err := cmdexec.RunWithLogger(ctx, installLogger, "git", "-C", dotfiles, "reset", "--hard", "origin/main"); err != nil {
+		slog.WarnContext(ctx, "resetting dotfiles repository", "err", err)
 		return fmt.Errorf("resetting dotfiles repository: %w", err)
 	}
 	if err := cmdexec.RunWithLogger(ctx, installLogger, "git", "-C", dotfiles, "submodule", "update", "--init", "--recursive"); err != nil {
+		slog.WarnContext(ctx, "initializing submodules", "err", err)
 		return fmt.Errorf("initializing submodules: %w", err)
 	}
-	logTTYLine("The dotfiles checkout can now update itself with git.")
+	logTTYLine(ctx, "The dotfiles checkout can now update itself with git.")
 	return nil
 }
 
@@ -435,17 +472,16 @@ func collectGitConfigInputs(ctx context.Context, useDefaults bool) (pendingGitCo
 	if useDefaults {
 		return pending, nil
 	}
-	pending.name = readLine("Enter your name for git (First Last): ")
-	pending.email = readLine("Enter your git email: ")
+	pending.name = readLine(ctx, "Enter your name for git (First Last): ")
+	pending.email = readLine(ctx, "Enter your git email: ")
 	signingKeyPath, foundKeys := resolveSigningKeyPath(ctx, useDefaults)
 	if signingKeyPath == "" {
 		if !foundKeys {
-			logTTYLine("No SSH public key was found in ~/.ssh, so git SSH signing will stay unset for now.")
-			logTTYLine("Run ssh-keygen after install, then rerun ./install.sh to enable signing.")
+			logNoSigningKeyFound(ctx)
 		}
 		return pending, nil
 	}
-	signingKey, err := readSigningKey(signingKeyPath)
+	signingKey, err := readSigningKey(ctx, signingKeyPath)
 	if err != nil {
 		return pending, err
 	}
@@ -456,7 +492,7 @@ func collectGitConfigInputs(ctx context.Context, useDefaults bool) (pendingGitCo
 
 func resolveSigningKey(ctx context.Context, useDefaults bool, pending *pendingGitConfig) (string, string, error) {
 	if pending != nil && pending.signingKey != "" {
-		return pending.signingKey, pending.gpgSshDefaultKeyCommand, nil
+		return pending.signingKey, pending.gpgSSHDefaultKeyCommand, nil
 	}
 	sshAddOutput, _ := cmdexec.OutputTrimmed(ctx, "ssh-add", "-L")
 	if signingKey, keyCommand, ok := detectSigningKeyFromAgent(sshAddOutput); ok {
@@ -465,12 +501,11 @@ func resolveSigningKey(ctx context.Context, useDefaults bool, pending *pendingGi
 	keyPath, foundKeys := resolveSigningKeyPath(ctx, useDefaults)
 	if keyPath == "" {
 		if !useDefaults && !foundKeys {
-			logTTYLine("No SSH public key was found in ~/.ssh, so git SSH signing will stay unset for now.")
-			logTTYLine("Run ssh-keygen after install, then rerun ./install.sh to enable signing.")
+			logNoSigningKeyFound(ctx)
 		}
 		return "", "", nil
 	}
-	signingKey, err := readSigningKey(keyPath)
+	signingKey, err := readSigningKey(ctx, keyPath)
 	if err != nil {
 		return "", "", err
 	}
@@ -506,32 +541,37 @@ func resolveSigningKeyPath(ctx context.Context, useDefaults bool) (string, bool)
 	if useDefaults || len(candidates) == 1 {
 		return candidates[0], true
 	}
-	logTTYLine("Choose an SSH public key for git signing.")
+	logTTYLine(ctx, "Choose an SSH public key for git signing.")
 	for index, candidate := range candidates {
-		logTTYLine(fmt.Sprintf("%d. %s", index+1, displayPath(candidate)))
+		logTTYLine(ctx, fmt.Sprintf("%d. %s", index+1, displayPath(candidate)))
 	}
-	choice := readLine("SSH key number, or press Enter to skip: ")
+	choice := readLine(ctx, "SSH key number, or press Enter to skip: ")
 	if choice == "" {
 		return "", true
 	}
 	selected, err := strconv.Atoi(choice)
 	if err != nil || selected < 1 || selected > len(candidates) {
-		logTTYLine("That SSH key selection was not valid, so git signing will stay unset for now.")
+		logTTYLine(ctx, "That SSH key selection was not valid, so git signing will stay unset for now.")
 		return "", true
 	}
 	return candidates[selected-1], true
 }
 
-func readSigningKey(keyPath string) (string, error) {
+func readSigningKey(ctx context.Context, keyPath string) (string, error) {
 	keyRaw, err := os.ReadFile(filepath.Clean(strings.TrimSpace(keyPath)))
 	if err != nil {
 		slog.Warn("Failed to read SSH public key", "err", err)
 		if installLogger != nil {
-			installLogger.WarnContextWithErr(context.Background(), "Failed to read SSH public key", err)
+			installLogger.WarnContextWithErr(ctx, "Failed to read SSH public key", err)
 		}
 		return "", fmt.Errorf("read ssh public key: %w", err)
 	}
 	return strings.TrimSpace(string(keyRaw)), nil
+}
+
+func logNoSigningKeyFound(ctx context.Context) {
+	logTTYLine(ctx, "No SSH public key was found in ~/.ssh, so git SSH signing will stay unset for now.")
+	logTTYLine(ctx, "Run ssh-keygen after install, then rerun ./install.sh to enable signing.")
 }
 
 func pendingValue(pending *pendingGitConfig, read func(pendingGitConfig) string) string {
