@@ -42,7 +42,7 @@ bootstrap_repo_from_archive() {
     # Refuse to copy an archive on top of an unrelated populated directory.
     # A partial dotfiles checkout is fine because we can complete it in place.
     local target_has_content=0
-    if [ -d "$DOTDOTFILES/.git" ] || [ -n "$(ls -A "$DOTDOTFILES" 2>/dev/null)" ]; then
+    if [ -d "$DOTDOTFILES/.git" ] || [ -n "$(find "$DOTDOTFILES" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
         target_has_content=1
     fi
     if [ -d "$DOTDOTFILES" ] && [ ! -f "$DOTDOTFILES/dots/bootstrap-go.sh" ] && [ "$target_has_content" -eq 1 ]; then
