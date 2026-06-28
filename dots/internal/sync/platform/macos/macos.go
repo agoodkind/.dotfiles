@@ -335,22 +335,29 @@ func (installer *Installer) tapQualifiedCaskNames(cfg *catalog.PackageConfig) []
 	seen := make(map[string]struct{}, len(cfg.BrewCasks))
 	names := make([]string, 0, len(cfg.BrewCasks))
 	for cask := range cfg.BrewCasks {
-		name := cask
 		tap := cfg.BrewCaskTaps[cask]
 		if tap != "" {
-			name = tapQualifiedCaskName(tap, cask)
-		}
-		if strings.Count(name, "/") != 2 {
-			if tap != "" || strings.Contains(cask, "/") {
-				slog.Warn("platform/macos: skipping brew cask trust for invalid cask name", "cask", cask, "resolved", name)
+			name := tapQualifiedCaskName(tap, cask)
+			if strings.Count(name, "/") != 2 {
+				slog.Warn("platform/macos: skipping brew cask trust for invalid tapped cask name", "cask", cask, "resolved", name)
+				continue
 			}
+			if _, ok := seen[name]; ok {
+				continue
+			}
+			seen[name] = struct{}{}
+			names = append(names, name)
 			continue
 		}
-		if _, ok := seen[name]; ok {
+
+		if strings.Count(cask, "/") != 2 {
 			continue
 		}
-		seen[name] = struct{}{}
-		names = append(names, name)
+		if _, ok := seen[cask]; ok {
+			continue
+		}
+		seen[cask] = struct{}{}
+		names = append(names, cask)
 	}
 	slices.Sort(names)
 	return names
@@ -377,7 +384,7 @@ func brewCaskTaps(cfg *catalog.PackageConfig) []string {
 	seen := make(map[string]struct{})
 	out := make([]string, 0, len(cfg.BrewCaskTaps))
 	for _, tap := range cfg.BrewCaskTaps {
-		if strings.Count(tap, "/") != 1 {
+		if !validTapName(tap) {
 			slog.Warn("platform/macos: ignoring invalid brew cask tap", "tap", tap)
 			continue
 		}
@@ -392,7 +399,7 @@ func brewCaskTaps(cfg *catalog.PackageConfig) []string {
 }
 
 func tapQualifiedCaskName(tap string, cask string) string {
-	if strings.Count(tap, "/") != 1 {
+	if !validTapName(tap) {
 		slog.Warn("platform/macos: ignoring invalid brew cask tap name", "tap", tap, "cask", cask)
 		return cask
 	}
@@ -401,6 +408,11 @@ func tapQualifiedCaskName(tap string, cask string) string {
 		return cask
 	}
 	return tap + "/" + cask
+}
+
+func validTapName(tap string) bool {
+	parts := strings.Split(tap, "/")
+	return len(parts) == 2 && parts[0] != "" && parts[1] != ""
 }
 
 func (installer *Installer) installMacFormulae(ctx context.Context, cfg *catalog.PackageConfig, strictMode bool, logger *telemetry.Logger) error {
