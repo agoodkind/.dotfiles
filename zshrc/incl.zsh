@@ -38,28 +38,16 @@ fi
 if [[ -d ~/.cache/dotfiles_install.lock ]]; then
     local _install_status_dir=~/.cache/dotfiles_install.lock
     local _install_flock=~/.cache/dotfiles_install.flock
-    local _install_pid_file=$_install_status_dir/pid
-    local _install_pid=""
 
     # The installer only creates this status directory after it acquires the
     # install flock, so a busy flock means the install is still live.
-    if zmodload -F zsh/system b:zsystem 2>/dev/null; then
-        if ! zsystem flock -n "$_install_flock" -- true; then
-            print -P "%F{blue}↻ dotfiles install is running in another terminal, so this shell is using minimal startup%f"
-            return 0 2>/dev/null || true
-        fi
-    elif [[ -r "$_install_pid_file" ]]; then
-        # Fallback for shells without zsh/system: only trust the status
-        # directory when its recorded installer PID is still alive.
-        _install_pid=$(<"$_install_pid_file")
-        if [[ "$_install_pid" == <-> ]] && kill -0 "$_install_pid" 2>/dev/null; then
-            print -P "%F{blue}↻ dotfiles install is running in another terminal, so this shell is using minimal startup%f"
-            return 0 2>/dev/null || true
-        fi
+    if zmodload -F zsh/system b:zsystem 2>/dev/null && ! zsystem flock -n "$_install_flock" -- true; then
+        print -P "%F{blue}↻ dotfiles install is running in another terminal, so this shell is using minimal startup%f"
+        return 0 2>/dev/null || true
     fi
 
-    # If the flock is free, or the fallback PID is gone, the marker directory
-    # was left behind by an interrupted install and can be cleaned up.
+    # If the flock is free, or zsh/system is unavailable, the marker directory
+    # is not enough on its own and can be cleaned up.
     rm -rf "$_install_status_dir" 2>/dev/null || true
 fi
 
