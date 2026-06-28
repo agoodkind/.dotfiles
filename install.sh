@@ -39,7 +39,7 @@ bootstrap_repo_from_archive() {
         return 1
     fi
 
-    if [ -d "$DOTDOTFILES" ] && [ -n "$(ls -A "$DOTDOTFILES" 2>/dev/null)" ]; then
+    if [ -d "$DOTDOTFILES" ] && [ ! -f "$DOTDOTFILES/dots/bootstrap-go.sh" ] && { [ -d "$DOTDOTFILES/.git" ] || [ -n "$(ls -A "$DOTDOTFILES" 2>/dev/null)" ]; }; then
         echo "dotfiles bootstrap target already exists but is not a checkout: $DOTDOTFILES" >&2
         return 1
     fi
