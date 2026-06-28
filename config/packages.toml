@@ -135,9 +135,6 @@ cargo_packages = []
 "pingplotter" = "PingPlotter"
 "cmux" = ""
 
-[packages.brew_cask_taps]
-"cmux" = "manaflow-ai/cmux"
-
 [packages.go_packages]
 lazygit = "github.com/jesseduffield/lazygit@latest"
 
