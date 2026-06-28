@@ -52,7 +52,7 @@ if [[ -d ~/.cache/dotfiles_install.lock ]]; then
         # Fallback for shells without zsh/system: only trust the status
         # directory when its recorded installer PID is still alive.
         _install_pid=$(<"$_install_pid_file")
-        if [[ -n "$_install_pid" && "$_install_pid" == <-> ]] && kill -0 "$_install_pid" 2>/dev/null; then
+        if [[ "$_install_pid" == <-> ]] && kill -0 "$_install_pid" 2>/dev/null; then
             print -P "%F{blue}↻ dotfiles install is running in another terminal, so this shell is using minimal startup%f"
             return 0 2>/dev/null || true
         fi
