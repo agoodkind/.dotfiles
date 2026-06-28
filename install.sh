@@ -39,6 +39,8 @@ bootstrap_repo_from_archive() {
         return 1
     fi
 
+    # Refuse to copy an archive on top of an unrelated populated directory.
+    # A partial dotfiles checkout is fine because we can complete it in place.
     local target_has_content=0
     if [ -d "$DOTDOTFILES/.git" ] || [ -n "$(ls -A "$DOTDOTFILES" 2>/dev/null)" ]; then
         target_has_content=1
@@ -59,6 +61,9 @@ bootstrap_repo_from_archive() {
 
     echo "dotfiles: downloading installer repository archive..." >&2
     download_file "$DOTFILES_ARCHIVE_URL" "$archive_path"
+
+    # GitHub source archives unpack into a single top-level directory. Validate
+    # that shape so the copy step only imports the expected repository tree.
     tar -xzf "$archive_path" -C "$tmpdir"
     dir_count="$(find "$tmpdir" -mindepth 1 -maxdepth 1 -type d | wc -l | awk '{print $1}')"
     if [ "$dir_count" -ne 1 ]; then
@@ -83,6 +88,8 @@ fi
 
 source "$DOTDOTFILES/dots/bootstrap-go.sh"
 if [ ! -d "$DOTDOTFILES/.git" ]; then
+    # Archive bootstraps do not have git metadata yet, so the first install run
+    # must skip git-backed steps until dots hydrates a managed checkout.
     set -- --skip-git "$@"
 fi
 bootstrap_and_run install "$@"
