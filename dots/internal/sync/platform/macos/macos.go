@@ -332,15 +332,24 @@ func (installer *Installer) ensureMacCaskTaps(ctx context.Context, cfg *catalog.
 }
 
 func (installer *Installer) tapQualifiedCaskNames(cfg *catalog.PackageConfig) []string {
-	names := make([]string, 0, len(cfg.BrewCasks)+len(cfg.BrewCaskTaps))
+	seen := make(map[string]struct{}, len(cfg.BrewCasks))
+	names := make([]string, 0, len(cfg.BrewCasks))
 	for cask := range cfg.BrewCasks {
+		name := cask
 		if tap := cfg.BrewCaskTaps[cask]; tap != "" {
-			names = append(names, tapQualifiedCaskName(tap, cask))
+			name = tapQualifiedCaskName(tap, cask)
+		}
+		if strings.Count(name, "/") != 2 {
 			continue
 		}
-		names = append(names, cask)
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		seen[name] = struct{}{}
+		names = append(names, name)
 	}
-	return tapQualifiedNames(names)
+	slices.Sort(names)
+	return names
 }
 
 func tapQualifiedNames(names []string) []string {
@@ -365,6 +374,7 @@ func brewCaskTaps(cfg *catalog.PackageConfig) []string {
 	out := make([]string, 0, len(cfg.BrewCaskTaps))
 	for _, tap := range cfg.BrewCaskTaps {
 		if strings.Count(tap, "/") != 1 {
+			slog.Warn("platform/macos: ignoring invalid brew cask tap", "tap", tap)
 			continue
 		}
 		if _, ok := seen[tap]; ok {
