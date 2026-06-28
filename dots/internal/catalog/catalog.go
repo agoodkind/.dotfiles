@@ -20,6 +20,7 @@ type PackageConfig struct {
 	SnapPackages     []string          `toml:"snap_packages"`
 	BrewSpecific     []string          `toml:"brew_specific"`
 	BrewCasks        map[string]string `toml:"brew_casks"`
+	BrewCaskTaps     map[string]string `toml:"brew_cask_taps"`
 	GoPackages       map[string]string `toml:"go_packages"`
 	CargoPackages    []string          `toml:"cargo_packages"`
 	CargoGitPackages map[string]string `toml:"cargo_git_packages"`
@@ -123,6 +124,7 @@ func DefaultPackageConfig() *PackageConfig {
 			SnapPackages:     nil,
 			BrewSpecific:     nil,
 			BrewCasks:        nil,
+			BrewCaskTaps:     nil,
 			GoPackages:       nil,
 			CargoPackages:    nil,
 			CargoGitPackages: nil,
@@ -137,10 +139,12 @@ func DefaultPackageConfig() *PackageConfig {
 		BrewSpecific:     append([]string{}, source.BrewSpecific...),
 		CargoPackages:    append([]string{}, source.CargoPackages...),
 		BrewCasks:        make(map[string]string, len(source.BrewCasks)),
+		BrewCaskTaps:     make(map[string]string, len(source.BrewCaskTaps)),
 		GoPackages:       make(map[string]string, len(source.GoPackages)),
 		CargoGitPackages: make(map[string]string, len(source.CargoGitPackages)),
 	}
 	maps.Copy(duplicated.BrewCasks, source.BrewCasks)
+	maps.Copy(duplicated.BrewCaskTaps, source.BrewCaskTaps)
 	maps.Copy(duplicated.GoPackages, source.GoPackages)
 	maps.Copy(duplicated.CargoGitPackages, source.CargoGitPackages)
 	return duplicated
