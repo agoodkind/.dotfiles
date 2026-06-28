@@ -530,7 +530,7 @@ run_dots_binary() {
 }
 
 build_dots_binary() {
-    echo "dots: preparing installer..." >&2
+    echo "dots: building installer binary..." >&2
     local toolchain
     local build_log
     toolchain="$(dots_go_toolchain)"

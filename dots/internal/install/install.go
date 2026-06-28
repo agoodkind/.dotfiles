@@ -25,10 +25,10 @@ import (
 var installLogger *telemetry.Logger
 
 type pendingGitConfig struct {
-	name              string
-	email             string
-	signingKey        string
-	defaultKeyCommand string
+	name                    string
+	email                   string
+	signingKey              string
+	gpgSshDefaultKeyCommand string
 }
 
 type installFlag string
@@ -122,7 +122,7 @@ func Run(ctx context.Context, args ...string) error {
 	configuredGit := false
 	pending := pendingGitConfig{}
 	if runner.HasCommand("git") {
-		if err := configureGit(ctx, useDefaults, pendingGitConfig{}); err != nil {
+		if err := configureGit(ctx, useDefaults, pending); err != nil {
 			return err
 		}
 		configuredGit = true
@@ -207,24 +207,6 @@ func configureGit(ctx context.Context, useDefaults bool, pending pendingGitConfi
 		return fmt.Errorf("running git config: %w", err)
 	}
 	return nil
-}
-
-func detectSigningKeyFromAgent(sshAddOutput string) (string, string, bool) {
-	for line := range strings.SplitSeq(strings.TrimSpace(sshAddOutput), "\n") {
-		if line == "" {
-			continue
-		}
-		if !strings.Contains(line, "ed25519") {
-			continue
-		}
-		fields := strings.Fields(line)
-		if len(fields) < 2 {
-			break
-		}
-		keyID := fields[1]
-		return line, fmt.Sprintf("ssh-add -L | grep '%s'", keyID), true
-	}
-	return "", "", false
 }
 
 func ensureLoginShell(ctx context.Context) {
@@ -321,13 +303,14 @@ func gitConfig(ctx context.Context, name string) string {
 }
 
 func readLine(ctx context.Context, prompt string) string {
-	logPrompt(ctx, prompt)
+	_ = ctx
+	logPrompt(prompt)
 	reader := bufio.NewReader(os.Stdin)
 	line, _ := reader.ReadString('\n')
 	return strings.TrimSpace(line)
 }
 
-func logPrompt(_ context.Context, prompt string) {
+func logPrompt(prompt string) {
 	if installLogger == nil {
 		fmt.Fprintln(os.Stdout, prompt)
 		fmt.Fprint(os.Stdout, "> ")
@@ -474,7 +457,7 @@ func collectGitConfigInputs(ctx context.Context, useDefaults bool) (pendingGitCo
 
 func resolveSigningKey(ctx context.Context, useDefaults bool, pending pendingGitConfig) (string, string, error) {
 	if pending.signingKey != "" {
-		return pending.signingKey, pending.defaultKeyCommand, nil
+		return pending.signingKey, pending.gpgSshDefaultKeyCommand, nil
 	}
 	sshAddOutput, _ := cmdexec.OutputTrimmed(ctx, "ssh-add", "-L")
 	if signingKey, keyCommand, ok := detectSigningKeyFromAgent(sshAddOutput); ok {
@@ -496,6 +479,26 @@ func resolveSigningKey(ctx context.Context, useDefaults bool, pending pendingGit
 	return signingKey, "", nil
 }
 
+// detectSigningKeyFromAgent returns the ssh public key line, the matching
+// gpg.ssh.defaultKeyCommand value, and whether an ed25519 key was found.
+func detectSigningKeyFromAgent(sshAddOutput string) (string, string, bool) {
+	for line := range strings.SplitSeq(strings.TrimSpace(sshAddOutput), "\n") {
+		if line == "" {
+			continue
+		}
+		if !strings.Contains(line, "ed25519") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			break
+		}
+		keyID := fields[1]
+		return line, fmt.Sprintf("ssh-add -L | grep '%s'", keyID), true
+	}
+	return "", "", false
+}
+
 func resolveSigningKeyPath(ctx context.Context, useDefaults bool) (string, bool) {
 	candidates := sshPublicKeyCandidates()
 	if len(candidates) == 0 {
@@ -504,11 +507,11 @@ func resolveSigningKeyPath(ctx context.Context, useDefaults bool) (string, bool)
 	if useDefaults || len(candidates) == 1 {
 		return candidates[0], true
 	}
-	logTTYLine("Choose an SSH public key for git signing, or press Enter to skip.")
+	logTTYLine("Choose an SSH public key for git signing.")
 	for index, candidate := range candidates {
 		logTTYLine(fmt.Sprintf("%d. %s", index+1, displayPath(candidate)))
 	}
-	choice := readLine(ctx, "SSH key number")
+	choice := readLine(ctx, "SSH key number, or press Enter to skip")
 	if choice == "" {
 		return "", true
 	}

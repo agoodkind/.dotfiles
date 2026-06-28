@@ -56,8 +56,7 @@ bootstrap_repo_from_archive() {
     echo "dotfiles: downloading installer repository archive..." >&2
     download_file "$DOTFILES_ARCHIVE_URL" "$archive_path"
     tar -xzf "$archive_path" -C "$tmpdir"
-    dir_count="$(find "$tmpdir" -mindepth 1 -maxdepth 1 -type d | wc -l)"
-    dir_count="${dir_count##* }"
+    dir_count="$(find "$tmpdir" -mindepth 1 -maxdepth 1 -type d | wc -l | awk '{print $1}')"
     if [ "$dir_count" -ne 1 ]; then
         echo "dotfiles bootstrap archive must contain exactly one top-level directory" >&2
         return 1
