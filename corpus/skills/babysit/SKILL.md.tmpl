@@ -134,10 +134,10 @@ Until merge, all of the following must hold:
 - Required review threads are resolved when `required_review_thread_resolution` is active (re-check each loop).
 - `mergeable` is not blocked by conflicts.
 
-When the only thing outstanding is CI time (no real failure, threads resolved, not draft), arm auto-merge once and stop re-running checks:
+When the only thing outstanding is CI time (no real failure, threads resolved, not draft), arm auto-merge once. Do not push or re-arm auto-merge to re-run checks; keep triaging threads until `MERGED` (see below).
 
 - **gt available** (`gt` on PATH and repo is `gt init`, or Graphite MCP loaded): arm merge-when-ready through {{.Skill "graphite"}} via `gt`. Never use `gh pr merge --auto`; GitHub native auto-merge conflicts with Graphite.
-- **gt unavailable and repo is not Graphite-initialized:** arm GitHub native auto-merge once with `gh pr merge --auto --merge` (or `--squash` per repo policy), then stop.
+- **gt unavailable and repo is not Graphite-initialized:** arm GitHub native auto-merge once with `gh pr merge --auto --merge` (or `--squash` per repo policy).
 - **gt unavailable and repo is Graphite-initialized:** do not use `gh pr merge --auto`. Merge manually with `gh pr merge --merge` (or `--squash`) bottom-up one PR at a time after all checks pass.
 
 After arming auto-merge, keep re-reading unresolved review threads each loop and resolve valid ones until the PR is `MERGED`.
