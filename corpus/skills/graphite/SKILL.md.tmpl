@@ -242,7 +242,7 @@ Graphite adds stack-specific state that plain PR babysitting misses.
 
 4. Re-read unresolved review threads on **every PR in the stack**. Copilot, Bugbot, and similar re-comment on every push, so new threads can appear after checks pass. When `required_review_thread_resolution` is active, unresolved threads block merge even when CI is green.
 
-5. When the only blocker is CI time (no real failure, threads resolved, not draft), arm merge-when-ready once from the stack tip (see **Auto-merge instead of a manual merge** below). Do not restack, re-submit, force-push, amend, or close/reopen just to re-run checks that are pending or already green.
+5. When the only blocker is CI time (no real failure, threads resolved, not draft), arm merge-when-ready once from the stack tip with `gt submit --stack --merge-when-ready --always` (see **Auto-merge instead of a manual merge** below). Do not restack, submit again, force-push, amend, or close/reopen just to re-run checks that are pending or already green.
 
 ### Trunk moved under you (other agents merged to main)
 
@@ -326,7 +326,7 @@ If lower PRs already merged and upper PRs are DIRTY, restack onto current trunk 
 
 ### Do not re-trigger CI to merge
 
-When only waiting on CI, arm `gt` merge-when-ready once and stop. Do not loop `gt merge`, restack, re-submit, force-push, amend, or close/reopen to re-run checks.
+When only waiting on CI, arm `gt` merge-when-ready once with `gt submit --stack --merge-when-ready --always`, then stop. Do not loop `gt merge`, restack, submit again, force-push, amend, or close/reopen to re-run checks.
 
 Re-runs cost CI credits. macOS bootstrap jobs are especially expensive. Merge-when-ready lands the stack when requirements are met without new check runs.
 
@@ -362,7 +362,7 @@ args: ["sync", "--no-interactive"]
 
 Default path when the user asks to babysit to merge and CI is still in flight with no real failure. This is the CLI equivalent of Graphite's web **Merge when ready** dialog with **Enable for downstack** (arm the whole stack from the tip).
 
-`gt submit` is idempotent and no-ops when nothing changed, so `--merge-when-ready` alone never arms on an unchanged stack. Add `--always` to force the push (same commits, same SHA) so the mark actually applies:
+`gt submit` is idempotent and no-ops when nothing changed, so `--merge-when-ready` alone never arms on an unchanged stack. Add `--always` to force the submit operation to run even when the stack is unchanged, so the merge-when-ready mark actually applies:
 
 ```text
 args: ["submit", "--stack", "--merge-when-ready", "--always", "--no-interactive"]
