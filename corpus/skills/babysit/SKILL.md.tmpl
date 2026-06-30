@@ -86,6 +86,8 @@ Read thread resolution state and stable thread IDs with GraphQL:
 
 Filter to unresolved threads first. Read only each comment body and the minimum location needed to act. Do not dump the full JSON payload.
 
+Automated reviewers (Copilot, Bugbot) re-comment on every push, so thread triage is recurring, not one-time. Each new push can add threads that block merge while `required_review_thread_resolution` is active. Re-read unresolved threads on every babysit loop.
+
 Validate automated review bot comments (for example Bugbot) before acting. Fix valid points. Reply and leave the thread open when you disagree or are unsure.
 
 ## 5. Resolve threads once addressed
@@ -123,11 +125,21 @@ Never edit CI workflows or unrelated code just to make failures pass. Report bac
 
 ## 7. Loop until merge-ready
 
-After each push, re-run steps 1 through 6 until all of the following hold:
+After each push, re-run steps 1 through 6 until the PR reaches `MERGED`, not merely when checks first go green. A CI-only watcher stalls: auto-merge holds on unresolved review threads even when CI passes.
+
+Until merge, all of the following must hold:
 
 - Required status checks are green.
 - `reviewDecision` satisfies the ruleset approval count and code-owner requirements.
-- Required review threads are resolved when `required_review_thread_resolution` is active.
+- Required review threads are resolved when `required_review_thread_resolution` is active (re-check each loop).
 - `mergeable` is not blocked by conflicts.
+
+When the only thing outstanding is CI time (no real failure, threads resolved, not draft), arm auto-merge once. Do not push or re-arm auto-merge to re-run checks; keep triaging threads until `MERGED` (see below).
+
+- **gt available** (`gt` on PATH and repo is `gt init`, or Graphite MCP loaded): arm merge-when-ready through {{.Skill "graphite"}} via `gt`. Never use `gh pr merge --auto`; GitHub native auto-merge conflicts with Graphite.
+- **gt unavailable and repo is not Graphite-initialized:** arm GitHub native auto-merge once with `gh pr merge --auto --merge` (or `--squash` per repo policy).
+- **gt unavailable and repo is Graphite-initialized:** do not use `gh pr merge --auto`. Merge manually with `gh pr merge --merge` (or `--squash`) bottom-up one PR at a time after all checks pass.
+
+After arming auto-merge, keep re-reading unresolved review threads each loop and resolve valid ones until the PR is `MERGED`.
 
 Report the final state: checks, review decision, unresolved threads, and anything that still blocks merge.
