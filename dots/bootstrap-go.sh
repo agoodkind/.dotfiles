@@ -534,8 +534,7 @@ build_dots_binary() {
     local toolchain
     local build_log
     toolchain="$(dots_go_toolchain)"
-    build_log="$(mktemp)"
-    if [ -z "$build_log" ]; then
+    if ! build_log="$(mktemp)"; then
         echo "dots: failed to create build log" >&2
         return 1
     fi
