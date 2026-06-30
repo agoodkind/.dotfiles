@@ -412,7 +412,7 @@ func acquireInstallLock(ctx context.Context) (*os.File, func(), bool, error) {
 	}
 	statusPIDPath := filepath.Join(statusDir, "pid")
 	statusPID := strconv.Itoa(os.Getpid())
-	if err := os.WriteFile(statusPIDPath, []byte(statusPID), 0o644); err != nil {
+	if err := os.WriteFile(statusPIDPath, []byte(statusPID), 0o600); err != nil {
 		_ = syscall.Flock(flockFdInt, syscall.LOCK_UN)
 		_ = lockFile.Close()
 		slog.WarnContext(ctx, "writing install status pid", "err", err)
@@ -468,7 +468,12 @@ func ensureManagedRepository(ctx context.Context) error {
 }
 
 func collectGitConfigInputs(ctx context.Context, useDefaults bool) (pendingGitConfig, error) {
-	pending := pendingGitConfig{}
+	pending := pendingGitConfig{
+		name:                    "",
+		email:                   "",
+		signingKey:              "",
+		gpgSSHDefaultKeyCommand: "",
+	}
 	if useDefaults {
 		return pending, nil
 	}
@@ -560,7 +565,7 @@ func resolveSigningKeyPath(ctx context.Context, useDefaults bool) (string, bool)
 func readSigningKey(ctx context.Context, keyPath string) (string, error) {
 	keyRaw, err := os.ReadFile(filepath.Clean(strings.TrimSpace(keyPath)))
 	if err != nil {
-		slog.Warn("Failed to read SSH public key", "err", err)
+		slog.WarnContext(ctx, "Failed to read SSH public key", "err", err)
 		if installLogger != nil {
 			installLogger.WarnContextWithErr(ctx, "Failed to read SSH public key", err)
 		}
