@@ -153,7 +153,7 @@ Architecture docs describe the system as it is now, and link to the code or test
 
 - One `overview.md` per area lives at `docs/<area>/overview.md`.
 - A short entry pointer in `README.md` or `AGENTS.md` links to each area overview.
-- Doc path segments are single words, so `docs/deadcode/overview.md`, never `docs/dead-code/`.
+- Doc path segments are single words. Use paths like `docs/deadcode/overview.md`, and never use paths like `docs/dead-code/overview.md`.
 - The overview states what the area does today, in present tense.
 - Each statement links to the source file, test, or doc that holds the truth.
 - The enforcing test or rule is the source of truth, and the doc never copies the invariant it enforces.
