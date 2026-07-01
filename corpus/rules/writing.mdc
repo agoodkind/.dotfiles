@@ -146,3 +146,17 @@ Links work best when another local source is the stable home for the detail.
 - Repeated detail creates drift.
 - Current behavior matters more than history.
 - Historical notes appear only when current work requires them.
+
+## Document architecture as current state
+
+Architecture docs describe the system as it is now, and link to the code or test that holds each detail, so the doc cannot drift from the code.
+
+- One `overview.md` per area lives at `docs/<area>/overview.md`.
+- A short entry pointer in `README.md` or `AGENTS.md` links to each area overview.
+- Doc path segments are single words. Use paths like `docs/deadcode/overview.md`, and never use paths like `docs/dead-code/overview.md`.
+- The overview states what the area does today, in present tense.
+- Each statement links to the source file, test, or doc that holds the truth.
+- The enforcing test or rule is the source of truth, and the doc never copies the invariant it enforces.
+- A copied detail drifts, so link to it instead of restating it.
+- The doc describes what is, not how the decision was reached.
+- Decision history stays out unless current work needs it.

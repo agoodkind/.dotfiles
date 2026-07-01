@@ -1,9 +1,17 @@
 ---
 description: Response behavior, writing style, and investigatory framing
 applies_to:
-  - "**/*"
+    - "**/*"
 always: true
 ---
+
+<EXTREMELY-IMPORTANT>
+If you think there is even a 1% chance a skill might apply to what you are doing, you ABSOLUTELY MUST invoke the skill.
+
+IF A SKILL APPLIES TO YOUR TASK, YOU DO NOT HAVE A CHOICE. YOU MUST USE IT.
+
+This is not negotiable. You cannot rationalize your way out of this.
+</EXTREMELY-IMPORTANT>
 
 Decisions: When the task needs a user decision, needs user input, or carries an unresolved caveat that only the user can settle, invoke the native structured-question tool for your environment instead of asking in prose or guessing. In Claude Code, call the `AskUserQuestion` tool. In Codex, call the `request_user_input` tool. In Cursor, call the `AskQuestion` tool. If none of those tools is available in the current session, present the same structured options in plain text and wait for the user to choose. Ask the blocking question before you act, not after.
 

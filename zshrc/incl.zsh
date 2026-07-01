@@ -2,17 +2,6 @@ export PATH="$PATH:$HOME/.cargo/bin"
 export PATH="$PATH:$HOME/go/bin"
 export NVM_LAZY_LOAD=true
 
-# Use local shared makefile checkouts so consumer repos pick up unpushed
-# pipeline changes immediately. Conditional so machines without a checkout
-# fall back to the network fetch path. Run `make smoke-fetch` in any
-# consumer repo to exercise the remote curl chain explicitly.
-if [[ -d "$HOME/Sites/go-makefile" ]]; then
-    export GO_MK_DEV_DIR="$HOME/Sites/go-makefile"
-fi
-if [[ -d "$HOME/Sites/swift-makefile" ]]; then
-    export SWIFT_MK_DEV_DIR="$HOME/Sites/swift-makefile"
-fi
-
 # shellcheck shell=bash
 source "$DOTDOTFILES/zshrc/core/perf.zsh"
 
