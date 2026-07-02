@@ -42,12 +42,12 @@ if resolve_allowed_identity_fields; then
         fi
 
         bad=""
-        while IFS= read -r author_line; do
-            if [[ -z "$author_line" ]]; then
+        while IFS= read -r commit_hash author_pair; do
+            if [[ -z "$author_pair" ]]; then
                 continue
             fi
-            if ! author_is_allowed "$author_line" "$allowed_authors"; then
-                bad+="$author_line"$'\n'
+            if ! author_is_allowed "$author_pair" "$allowed_authors"; then
+                bad+="$commit_hash $author_pair"$'\n'
             fi
         done < <(git log "$range" --format="%H %an <%ae>" 2>/dev/null)
 
