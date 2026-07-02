@@ -119,6 +119,6 @@ Report the result in this order:
 4. Name any verification performed by the host agent after the Codex response.
 5. State exact errors if the `codex exec` run failed.
 
-For failures, preserve exact CLI stderr and exit code. If a retry is appropriate, retry once with the same defaults (xhigh, config model, no sandbox), then report the observed result.
+For failures, preserve exact CLI stderr and exit code. If a retry is appropriate, retry once with adjusted parameters (try `-c model_reasoning_effort="high"` if xhigh was rejected, otherwise use the same defaults), then report the observed result.
 
 Avoid `-m gpt-5.5-codex` for ChatGPT-account Codex sessions unless the user has verified that model is supported for the account.
