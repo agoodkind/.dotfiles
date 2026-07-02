@@ -24,6 +24,23 @@ if ((!DOTFILES_INTERACTIVE)); then
     return 0 2>/dev/null || true
 fi
 
+local _install_status_dir=~/.cache/dotfiles_install.lock
+if [[ -d "$_install_status_dir" ]]; then
+    local _install_flock=~/.cache/dotfiles_install.flock
+
+    # The installer only creates this status directory after it acquires the
+    # install flock, so a busy flock means the install is still live.
+    zmodload -F zsh/system b:zsystem
+    if ! zsystem flock -n "$_install_flock" -- true; then
+        print -P "%F{blue}↻ dotfiles install is running in another terminal, so this shell is using minimal startup%f"
+        return 0 2>/dev/null || true
+    fi
+
+    # If the flock is free, the marker directory is not enough on its own and
+    # can be cleaned up.
+    rm -rf "$_install_status_dir" 2>/dev/null || true
+fi
+
 # plugins.zsh uses plain source (zinit turbo mode stores scope references
 # that break when sourced inside a function). Timing is done inline instead.
 local _t0=$EPOCHREALTIME
