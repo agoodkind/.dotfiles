@@ -45,10 +45,37 @@ Run through MCP before creating, adopting, or restacking:
 
 1. `["log", "short"]` for tracked branches and parent chain
 2. `["init"]` and `["auth"]` if the repo is new to Graphite
-3. Fetch trunk and confirm it is current. Stale local trunk blocks submit and restack
-4. `git worktree list` when multiple agents may share the repo
+3. `git -C <worktree> fetch origin` and compare the stack base to `origin/<trunk>`. Stale remote trunk blocks submit and restack. Do not move `refs/heads/<trunk>` when trunk is checked out in another worktree (see **Worktrees and trunk refs**).
+4. `git -C <worktree> worktree list` and record which checkout owns trunk. When multiple agents may share the repo, discover the default branch with `git -C <worktree> symbolic-ref --quiet refs/remotes/origin/HEAD` when it exists, or `git -C <worktree> remote show origin` as a fallback.
 
 **Untracked branches:** if git shows branches that `gt log` omits, they were created outside Graphite. Adopt before submit (see adopt workflow below).
+
+## Worktrees and trunk refs
+
+Use this section whenever stack work runs in a feature worktree while trunk stays checked out elsewhere (for example a banned primary checkout).
+
+### Hard rules
+
+1. **Never move a branch ref that is checked out in another worktree.** Banned when trunk is checked out elsewhere:
+   - `git update-ref refs/heads/<trunk> ...`
+   - `git branch -f <trunk> ...`
+   - `git reset --hard <trunk>` or any command that moves `refs/heads/<trunk>`
+2. **Snapshots use `refs/backup/*` only**, never `refs/heads/*`.
+3. **Compare and rebase against `origin/<trunk>`**, not local `<trunk>`, when the feature worktree is active and trunk lives in a different checkout.
+4. **All stack git/gt/gh/make writes** use an explicit worktree path (`run_gt_cmd` `cwd`, or `git -C <worktree>`). Shell cwd resets to the primary checkout between tool calls.
+
+Moving `refs/heads/<trunk>` out from under another checkout leaves that checkout's HEAD at the new commit while its index and working tree stay at the old one. `git status` there then reports the entire trunk diff as staged changes even though no file contents were edited.
+
+### Safe restack when trunk advanced
+
+```bash
+git -C <worktree> fetch origin
+# MCP from <worktree> cwd:
+# args: ["restack", "--branch", "<bottom-branch>", "--upstack", "--no-interactive"]
+# then: ["submit", "--stack", "--no-interactive"]
+```
+
+Use `["sync", "--no-interactive"]` only when trunk is checked out in the same worktree you are driving. Otherwise rely on `git fetch origin` plus scoped `gt restack`.
 
 ## Command Map
 
@@ -122,7 +149,7 @@ if [ -n "$SHA" ]; then
 fi
 ```
 
-2. **Sync trunk** via MCP: `["sync", "--no-interactive"]` or fast-forward trunk first.
+2. **Refresh remote trunk** with `git -C <worktree> fetch origin`. Use `["sync", "--no-interactive"]` only when trunk is checked out in `<worktree>`. Never `git update-ref refs/heads/<trunk>` when trunk is checked out elsewhere.
 
 3. **Bottom slice first.** Check out trunk, apply only that slice's files/hunks, stage, then:
 
@@ -248,8 +275,8 @@ Graphite adds stack-specific state that plain PR babysitting misses.
 
 When `mergeStateStatus` is `BEHIND` or trunk advanced while your stack is open:
 
-1. Prefer a **scoped restack** of your stack, not a repo-wide sync, when other worktrees are active.
-2. MCP: `["sync", "--no-interactive"]` only after confirming `git worktree list` shows no unrelated mid-flight work, or restack just your stack:
+1. Prefer a **scoped restack** of your stack, not a repo-wide sync, when other worktrees are active. Never `git update-ref refs/heads/<trunk>` or otherwise move the local trunk ref when trunk is checked out in another worktree.
+2. Run `git -C <worktree> fetch origin`, then MCP: `["sync", "--no-interactive"]` only after confirming `git worktree list` shows no unrelated mid-flight work and trunk is checked out in `<worktree>`. Otherwise restack just your stack:
 
 ```text
 args: ["restack", "--branch", "<bottom-branch>", "--upstack", "--no-interactive"]
@@ -420,7 +447,8 @@ Prefer `["continue"]` over `git rebase --continue`. Avoid `["abort"]` in agent s
 | submit without dry-run on existing PRs | duplicate PRs | dry-run first; expect Sync/New parent |
 | fresh stack from trunk when an open PR covers the work | orphans the PR number and review history | follow **Reuse before recreate** in {{.Skill "split-to-prs"}}, or ask |
 | ignore draft state after submit | Copilot and other bots skip drafts | `gh pr ready` on each PR |
-| stale trunk | submit and restack block | sync or fast-forward trunk first |
+| stale trunk | submit and restack block | `git fetch origin` plus scoped `gt restack`; never `git update-ref refs/heads/<trunk>` when trunk is checked out elsewhere |
+| `git update-ref refs/heads/<trunk>` while trunk checked out elsewhere | skews that checkout; entire trunk looks staged/dirty | `git fetch origin` plus `gt restack` onto `origin/<trunk>` |
 | repo-wide `gt sync` with shared worktrees | restacks or deletes other agents' branches | scoped restack; check worktree list |
 | `git branch -D` when user authorized `gt delete` | ghost Graphite metadata | `gt delete` or `gt sync` when safe |
 | manual rebase of one stack branch | desyncs upstack parents | `gt modify` or `gt restack` |
