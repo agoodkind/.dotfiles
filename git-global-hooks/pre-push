@@ -12,10 +12,10 @@ trap cleanup EXIT
 cat >"$stdin_file"
 export CHAIN_HOOK_STDIN_FILE="$stdin_file"
 
-identity=$(resolve_allowed_identity)
-if [[ -n "$identity" ]]; then
-    allowed_email=$(echo "$identity" | head -1)
-    allowed_name=$(echo "$identity" | tail -1)
+if resolve_allowed_identity_fields; then
+    allowed_email="$RESOLVED_ALLOWED_EMAIL"
+    allowed_name="$RESOLVED_ALLOWED_NAME"
+    allowed_authors="$(resolve_allowed_authors)"
 
     # Exclude default branches (push remote and upstream) from author check.
     # When pushing a branch based on upstream/master to a fork, only commits
@@ -41,14 +41,26 @@ if [[ -n "$identity" ]]; then
             range="$remote_oid..$local_oid$exclude_not"
         fi
 
-        bad=$(git log "$range" \
-            --format="%H %an <%ae>" 2>/dev/null |
-            grep -v "$allowed_name <$allowed_email>" ||
-            true)
+        bad=""
+        while IFS= read -r author_line; do
+            if [[ -z "$author_line" ]]; then
+                continue
+            fi
+            if ! author_is_allowed "$author_line" "$allowed_authors"; then
+                bad+="$author_line"$'\n'
+            fi
+        done < <(git log "$range" --format="%H %an <%ae>" 2>/dev/null)
 
         if [[ -n "$bad" ]]; then
             echo "error: push blocked, bad author"
-            echo "  allowed: $allowed_name <$allowed_email>"
+            echo "  allowed committer: $allowed_name <$allowed_email>"
+            echo "  allowed authors:"
+            while IFS= read -r allowed_author; do
+                if [[ -z "$allowed_author" ]]; then
+                    continue
+                fi
+                echo "    $allowed_author"
+            done <<<"$allowed_authors"
             echo "$bad" | while read -r line; do
                 echo "  $line"
             done
