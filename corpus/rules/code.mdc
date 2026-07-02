@@ -31,7 +31,7 @@ Use the remote-tracking ref (for example `origin/main`, or `upstream/master` whe
 
 Never move `refs/heads/<branch>` while that branch is checked out in another worktree. Use `origin/<branch>` for comparisons and `gt restack` for stack updates instead.
 
-Local refs can go stale when they are checked out elsewhere in worktrees.
+When a branch ref moves out from under another checkout, that checkout's index and working tree can stay at the old commit even though HEAD follows the new ref.
 
 ## Subagents
 
