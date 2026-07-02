@@ -9,13 +9,24 @@ Use `codex exec` when the user asks to delegate work to Codex. The CLI path give
 
 Assume `codex` is on PATH. This skill gives only CLI invocation instructions.
 
+## Defaults
+
+Every `codex exec` dispatch uses these flags unless the user overrides them:
+
+- **Reasoning:** `-c model_reasoning_effort="xhigh"`.
+- **Model:** omit `-m` unless the user names a model. The config default in `~/.codex/config.toml` tracks the latest supported model.
+- **Sandbox:** `--dangerously-bypass-approvals-and-sandbox` up front. Do not start with `-s read-only` or `-s workspace-write` and lift sandbox later. Sandboxed runs routinely fail on `.git` writes in linked worktrees and force cache or Makefile workarounds.
+
 ## Run codex exec
 
-Start a new read-only task with the prompt on stdin and the final answer written to a file:
+Start a new task with the prompt on stdin and the final answer written to a file:
 
 ```bash
 result_file="$(mktemp)"
-timeout 1500 codex exec -s read-only -m gpt-5.5 -o "$result_file" - <<'PROMPT'
+timeout 1500 codex exec \
+  --dangerously-bypass-approvals-and-sandbox \
+  -c model_reasoning_effort="xhigh" \
+  -o "$result_file" - <<'PROMPT'
 <bounded prompt>
 PROMPT
 ```
@@ -24,15 +35,18 @@ GNU `timeout` is required. On macOS, use `gtimeout` from coreutils when `timeout
 
 Permissions:
 
-- Use `-s read-only` for analysis, review, and search.
-- Use `-s workspace-write` only when the user grants edit permission for that work.
-- `codex exec` does not wait on stdin for approvals, but approval-elicitation stalls can still happen in edge cases, so polling and timeout remain mandatory.
+- Read-only analysis, review, and search: state "read-only" in the prompt and do not edit files.
+- Implementation: state "edit allowed" in the prompt when the user grants edit permission for that work.
+- The bypass flag removes the filesystem sandbox, so scope discipline lives in the prompt. Polling and timeout remain mandatory.
 
 Continue a prior session with `codex exec resume`:
 
 ```bash
 result_file="$(mktemp)"
-timeout 1500 codex exec resume <session-id> -s read-only -m gpt-5.5 -o "$result_file" - <<'PROMPT'
+timeout 1500 codex exec resume <session-id> \
+  --dangerously-bypass-approvals-and-sandbox \
+  -c model_reasoning_effort="xhigh" \
+  -o "$result_file" - <<'PROMPT'
 <follow-up prompt>
 PROMPT
 ```
@@ -105,6 +119,6 @@ Report the result in this order:
 4. Name any verification performed by the host agent after the Codex response.
 5. State exact errors if the `codex exec` run failed.
 
-For failures, preserve exact CLI stderr and exit code. If a retry is appropriate, retry once with no model override or with `-m gpt-5.5`, then report the observed result.
+For failures, preserve exact CLI stderr and exit code. If a retry is appropriate, retry once with the same defaults (xhigh, config model, no sandbox), then report the observed result.
 
 Avoid `-m gpt-5.5-codex` for ChatGPT-account Codex sessions unless the user has verified that model is supported for the account.
