@@ -132,7 +132,7 @@ After each push, re-run steps 1 through 6 until the PR is merge-ready. Merge-rea
 - Required review threads are resolved when `required_review_thread_resolution` is active (re-check each loop).
 - `mergeable` is not blocked by conflicts.
 
-When merge-ready, stop and report: checks, review decision, unresolved threads, and anything that still blocks merge. Do not arm auto-merge or merge unless the user explicitly asks (see section 8).
+When merge-ready, stop and report that the PR is ready to merge: required checks green, review decision satisfied, and required threads resolved. When not merge-ready yet, report checks, review decision, unresolved threads, and what still blocks merge. Do not arm auto-merge or merge unless the user explicitly asks (see section 8).
 
 When the session is ending and the PR is not merge-ready or terminal, run section 10 before stopping.
 
@@ -171,11 +171,11 @@ git worktree list
 
 **Cleanup sequence** (respect trunk worktree rules from {{.Skill "graphite"}} section Worktrees and trunk refs):
 
-1. **Record** `headRefName`, feature worktree path (if any), and which checkout owns trunk (`git worktree list`).
-2. **Remote branch:** delete if it still exists (`git push origin --delete <branch>` or `gh api` delete-ref).
+1. **Record** `headRefName`, feature worktree path (if any), PR `state`, and which checkout owns trunk (`git worktree list`).
+2. **Remote branch:** delete only when the PR is `MERGED` or superseded `CLOSED`. When the user asked to clean up while the PR is still `OPEN`, skip remote branch deletion unless the user explicitly confirmed abandoning the PR (deleting the remote branch closes an open PR). Use `git push origin --delete <branch>` or `gh api` delete-ref when deletion is allowed.
 3. **Local branch:**
    - Graphite-authorized repos: `gt delete <branch>` or scoped `gt sync --no-interactive` when trunk is checked out in the same worktree and no other agents are mid-stack.
-   - Plain git: `git branch -d <branch>` from a checkout that is not that branch (use `-D` only with explicit user approval).
+   - Plain git: `git branch -d <branch>` from a checkout that is not that branch when the PR is terminal or the user confirmed abandoning an open PR (use `-D` only with explicit user approval).
 4. **Reconcile trunk worktree:** from the checkout that **owns** trunk (never from a feature worktree):
    ```bash
    git -C <trunk-worktree> fetch origin
