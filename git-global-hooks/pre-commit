@@ -2,10 +2,9 @@
 source "$(dirname "$0")/email-guard.sh"
 source "$(dirname "$0")/chain-hook.sh"
 
-identity=$(resolve_allowed_identity)
-if [[ -n "$identity" ]]; then
-    allowed_email=$(echo "$identity" | head -1)
-    allowed_name=$(echo "$identity" | tail -1)
+if resolve_allowed_identity_fields; then
+    allowed_email="$RESOLVED_ALLOWED_EMAIL"
+    allowed_name="$RESOLVED_ALLOWED_NAME"
     current_email=$(git config user.email)
     current_name=$(git config user.name)
 
@@ -20,7 +19,7 @@ if [[ -n "$identity" ]]; then
             echo "  git config user.email $allowed_email"
         fi
         if [[ "$current_name" != "$allowed_name" ]]; then
-            echo "  git config user.name \"$allowed_name\""
+            printf '  git config user.name %q\n' "$allowed_name"
         fi
         exit 1
     fi
