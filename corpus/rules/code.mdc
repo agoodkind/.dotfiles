@@ -29,6 +29,8 @@ Fetch before any diff, merge-base, log range, or branch comparison.
 
 Use the remote-tracking ref (for example `origin/main`, or `upstream/master` when that is the upstream) rather than the local branch name.
 
+Never move `refs/heads/<branch>` while that branch is checked out in another worktree. Use `origin/<branch>` for comparisons and `gt restack` for stack updates instead.
+
 Local refs can go stale when they are checked out elsewhere in worktrees.
 
 ## Subagents

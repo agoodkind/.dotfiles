@@ -48,7 +48,7 @@ Only `active` rules are returned. Rules in `evaluate` or `disabled` enforcement 
 
 Resolve merge conflicts while preserving intent on both the PR branch and the base branch. If intents truly conflict, abort the merge and ask the user for clarification before continuing.
 
-If `mergeStateStatus` is `BEHIND`, update the branch from base before re-checking CI, since another PR may have already fixed a failing check.
+If `mergeStateStatus` is `BEHIND`, update the branch from base before re-checking CI, since another PR may have already fixed a failing check. When babysitting a Graphite stack in a feature worktree, restack via {{.Skill "graphite"}} (`gt restack` / `gt submit`). Never fast-forward or `update-ref` local `refs/heads/<trunk>` if trunk is checked out in another worktree.
 
 ## 4. Triage inline review comments
 
