@@ -1,11 +1,11 @@
 ---
 name: babysit
-description: Keep a PR merge-ready by triaging comments, resolving clear conflicts, and fixing CI in a loop.
+description: Keep a PR merge-ready by triaging comments, resolving conflicts, and fixing CI. Merge when the user asks. Clean up branches and worktrees after merge, supersession, or explicit cleanup request. On unresolved session end, back up to git, save durable memory, and remove the worktree.
 ---
 
 # Babysit PR
 
-Get this PR to a merge-ready state. Run the verification commands below, fix what is in scope, and loop until every ruleset requirement is satisfied.
+Get this PR to a merge-ready state. Run the verification commands below, fix what is in scope, and loop until every ruleset requirement is satisfied. Babysit alone stops at merge-ready. Merge, terminal cleanup, and unresolved handoff run only when the sections below say to.
 
 ## 1. Identify the PR and read merge state
 
@@ -125,21 +125,105 @@ Never edit CI workflows or unrelated code just to make failures pass. Report bac
 
 ## 7. Loop until merge-ready
 
-After each push, re-run steps 1 through 6 until the PR reaches `MERGED`, not merely when checks first go green. A CI-only watcher stalls: auto-merge holds on unresolved review threads even when CI passes.
-
-Until merge, all of the following must hold:
+After each push, re-run steps 1 through 6 until the PR is merge-ready. Merge-ready means all of the following hold:
 
 - Required status checks are green.
 - `reviewDecision` satisfies the ruleset approval count and code-owner requirements.
 - Required review threads are resolved when `required_review_thread_resolution` is active (re-check each loop).
 - `mergeable` is not blocked by conflicts.
 
-When the only thing outstanding is CI time (no real failure, threads resolved, not draft), arm auto-merge once. Do not push or re-arm auto-merge to re-run checks; keep triaging threads until `MERGED` (see below).
+When merge-ready, stop and report: checks, review decision, unresolved threads, and anything that still blocks merge. Do not arm auto-merge or merge unless the user explicitly asks (see section 8).
 
-- **gt available** (`gt` on PATH and repo is `gt init`, or Graphite MCP loaded): arm merge-when-ready through {{.Skill "graphite"}} via `gt`. Never use `gh pr merge --auto`; GitHub native auto-merge conflicts with Graphite.
-- **gt unavailable and repo is not Graphite-initialized:** arm GitHub native auto-merge once with `gh pr merge --auto --merge` (or `--squash` per repo policy).
+When the session is ending and the PR is not merge-ready or terminal, run section 10 before stopping.
+
+## 8. Merge when the user asks
+
+Run this section only when the user explicitly asks to merge (for example "merge", "land", "ship", or "babysit and merge").
+
+**Preconditions:** section 7 requirements are satisfied, or only CI time remains with no real failure and threads resolved.
+
+**Paths:**
+
+- **gt available** (`gt` on PATH and repo is `gt init`, or Graphite MCP loaded): follow {{.Skill "graphite"}} **Task: Merge a Graphite stack**. Dry-run then `gt merge`, or `gt submit --stack --merge-when-ready --always` when only CI is pending. Never use `gh pr merge --auto`; GitHub native auto-merge conflicts with Graphite.
+- **gt unavailable and repo is not Graphite-initialized:** `gh pr merge --merge` or `--squash` per repo policy when fully green; `gh pr merge --auto` only when the sole blocker is CI time.
 - **gt unavailable and repo is Graphite-initialized:** do not use `gh pr merge --auto`. Merge manually with `gh pr merge --merge` (or `--squash`) bottom-up one PR at a time after all checks pass.
 
-After arming auto-merge, keep re-reading unresolved review threads each loop and resolve valid ones until the PR is `MERGED`.
+Loop `gh pr view --json state` until `state` is `MERGED` or superseded `CLOSED` (see section 9). When auto-merge is armed, keep triaging new review threads on each loop.
 
-Report the final state: checks, review decision, unresolved threads, and anything that still blocks merge.
+When merge completes or the PR is superseded, run section 9.
+
+## 9. Clean up after merged, superseded, or when the user asks
+
+Run after section 8 completes, when babysit discovers the PR is already terminal, or when the user explicitly asks to clean up (even if the PR is still open).
+
+**Triggers:**
+
+- `MERGED` (normal land)
+- `CLOSED` with no `mergedAt` when the work was **superseded** (another PR landed the same changes, or the user closed it after confirming the branch is obsolete)
+- **User explicitly asks** to clean up branches and/or the worktree (for example "clean up", "remove the worktree", "we're done here")
+
+Detect terminal PR state with:
+
+```bash
+gh pr view --json state,mergedAt,headRefName,baseRefName
+git worktree list
+```
+
+**Cleanup sequence** (respect trunk worktree rules from {{.Skill "graphite"}} section Worktrees and trunk refs):
+
+1. **Record** `headRefName`, feature worktree path (if any), and which checkout owns trunk (`git worktree list`).
+2. **Remote branch:** delete if it still exists (`git push origin --delete <branch>` or `gh api` delete-ref).
+3. **Local branch:**
+   - Graphite-authorized repos: `gt delete <branch>` or scoped `gt sync --no-interactive` when trunk is checked out in the same worktree and no other agents are mid-stack.
+   - Plain git: `git branch -d <branch>` from a checkout that is not that branch (use `-D` only with explicit user approval).
+4. **Reconcile trunk worktree:** from the checkout that **owns** trunk (never from a feature worktree):
+   ```bash
+   git -C <trunk-worktree> fetch origin
+   git -C <trunk-worktree> merge --ff-only origin/<trunk>
+   ```
+   Do not `git update-ref refs/heads/<trunk>` when trunk is checked out elsewhere.
+5. **Remove feature worktree** when babysitting ran in a dedicated worktree and no open branches still need it:
+   ```bash
+   git worktree remove <path>
+   ```
+   Use `--force` only when the tree is dirty and the user approved.
+
+**Graphite stacks:** repeat for every merged or closed branch in the stack (bottom-up order), then one trunk reconcile from the trunk-owning worktree.
+
+Report: PR URL(s), branches deleted (remote/local), trunk commit after reconcile, worktree removed (or skipped and why).
+
+## 10. Session end with no resolution
+
+Run when the babysit session is ending and the PR is **not** terminal: not `MERGED`, not superseded `CLOSED`, and not merge-ready with a clear path forward. Typical signals: context compaction, the user says they are stopping for now, or an agent turn limit is imminent.
+
+**Goal:** preserve recoverable state in git and durable memory, then remove the feature worktree so it does not linger. Do **not** delete the PR branch on remote or local in this path; the work is still in flight.
+
+**Sequence:**
+
+1. **Capture git state** in the feature worktree:
+   - If the tree is dirty, commit WIP on the PR branch with a message like `babysit handoff WIP` (stage only in-scope files; no `git add .`).
+   - Create a backup ref under `refs/backup/` only (never `refs/heads/`), matching split-to-prs and graphite conventions:
+     ```bash
+     git update-ref "refs/backup/babysit-$(git branch --show-current | tr / -)-$(date +%s)" HEAD
+     ```
+   - Push the PR branch and the backup ref to `origin` when the branch has not been pushed or the backup should survive locally-only loss:
+     ```bash
+     git push -u origin HEAD
+     git push origin "refs/backup/babysit-..."
+     ```
+
+2. **Record durable memory** so a future session can resume without relying on the compaction summary. Write one handoff block with: repo, PR number and URL, branch name, worktree path, last known blockers (CI, threads, conflicts), backup ref name, and the next concrete babysit step.
+
+   | Host capability | Action |
+   | --- | --- |
+   | Cursor (`cursor_dialog` available) | Upsert a user rule titled `Babysit handoff: <owner/repo> PR #<n>` with the handoff block as `content`. List existing rules first; `update` when the title matches, otherwise `add`. |
+   | Cursor memory unavailable | State once that durable memory could not be saved; point the user at the backup ref and PR URL for manual recovery. |
+   | Other agents | The pushed branch, backup ref, and clyde transcript (per {{.Skill "reorient"}}) are the durable record; include the handoff block in the final user-visible report. |
+
+3. **Clean up the feature worktree** only (branches stay):
+   ```bash
+   git worktree remove <path>
+   ```
+   Use `--force` only when the tree is dirty after the WIP commit step failed and the user approved.
+
+Report: PR URL, branch name, backup ref, whether memory was saved, worktree path removed, and the single next step for the next babysit session.

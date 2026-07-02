@@ -309,9 +309,9 @@ When the user asks to merge a stack, finish babysit first, then follow **Task: M
 
 ### Babysit exit criteria (stack-aware)
 
-The loop ends when every targeted PR shows `MERGED` on GitHub, not when checks first go green. A CI-only watcher stalls: merge-when-ready holds on unresolved review threads even when CI passes.
+Babysit alone stops when every targeted PR is merge-ready, not when checks first go green. When the user asks to merge, loop until every targeted PR shows `MERGED` on GitHub, then run {{.Skill "babysit"}} section 9 for cleanup. A CI-only watcher stalls: merge-when-ready holds on unresolved review threads even when CI passes.
 
-Until merge, each open PR in the stack must satisfy:
+Until merge-ready (or until `MERGED` when the user asked to merge), each open PR in the stack must satisfy:
 
 - not draft
 - required checks green
@@ -419,6 +419,7 @@ To merge only the bottom N PRs and leave the rest open:
 
 - Confirm each targeted PR shows `MERGED` on GitHub.
 - MCP: `["log", "short"]` should show only remaining open branches, or trunk only if the whole stack landed.
+- Run {{.Skill "babysit"}} section 9 for branch, trunk, and worktree cleanup.
 - Report merged PR URLs and any branches still open.
 
 ---
