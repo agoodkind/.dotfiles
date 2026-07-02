@@ -45,6 +45,8 @@ Example: `[AGENCY-11267] Add plaid relink URL (PR 2/3)`
 - Never discard user work. No destructive git commands (`reset --hard`, `clean -fdx`, branch deletion, force-push, history rewrite) without explicit approval.
 - A recoverable snapshot preserves work. It does not require leaving an existing open PR untouched after a split request.
 - Always save a recoverable snapshot before moving work around. This often starts from dirty work on `main`, so do not assume there is already a safe branch.
+- When work happens in a feature worktree, record the primary checkout path and treat local `refs/heads/<trunk>` as read-only. Never move trunk refs from the feature worktree when trunk is checked out elsewhere.
+- Snapshot refs must stay under `refs/backup/`, never `refs/heads/`.
 - Stage only named files or hunks. No `git add .` or `git add -A`.
 - Every PR title and body comes from {{.Skill "pr"}}, reviewed with the user per PR. Do not use ad hoc text or default commit-message bodies.
 
@@ -65,6 +67,14 @@ For each PR number returned, run `gh pr view <number> --json body,title,url,stat
 Record every open PR number, branch, and URL. If the user mentioned a PR by number, confirm it with `gh pr view <number>`.
 
 Note whether Graphite is available (see above).
+
+When `git worktree list` shows more than one checkout, record which path owns trunk before proposing slices:
+
+```bash
+git worktree list
+```
+
+For trunk and ref safety during Graphite execution, follow **Worktrees and trunk refs** in {{.Skill "graphite"}}.
 
 ## 2. Propose the split
 
