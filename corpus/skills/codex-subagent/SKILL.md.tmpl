@@ -13,9 +13,9 @@ Assume `codex` is on PATH. This skill gives only CLI invocation instructions.
 
 Every `codex exec` dispatch uses these flags unless the user overrides them:
 
-- **Reasoning:** `-c model_reasoning_effort="xhigh"`.
-- **Model:** omit `-m` unless the user names a model. The default model comes from `~/.codex/config.toml` on the host machine.
-- **Sandbox:** `--dangerously-bypass-approvals-and-sandbox` up front when the user has delegated work to Codex through this skill. Do not start with `-s read-only` or `-s workspace-write` and lift sandbox later. Sandboxed runs routinely fail on `.git` writes in linked worktrees and force cache or Makefile workarounds. Scope limits ("read-only" vs "edit allowed") live in the prompt.
+- **Reasoning:** `-c model_reasoning_effort="xhigh"`. If `codex exec` rejects `xhigh` for the default model, retry with `-c model_reasoning_effort="high"` or drop the override.
+- **Model:** omit `-m` unless the user names a model. The default model comes from host configuration (for example `~/.codex/config.toml` when present) or Codex's built-in default.
+- **Sandbox:** `--dangerously-bypass-approvals-and-sandbox` up front when the user has delegated work to Codex through this skill. This bypasses approval prompts and the filesystem sandbox. Do not start with `-s read-only` or `-s workspace-write` and lift sandbox later. Sandboxed runs routinely fail on `.git` writes in linked worktrees and force cache or Makefile workarounds. Scope limits ("read-only" vs "edit allowed") live in the prompt.
 
 ## Run codex exec
 
@@ -37,7 +37,7 @@ Permissions:
 
 - Read-only analysis, review, and search: state "read-only" in the prompt and do not edit files.
 - Implementation: state "edit allowed" in the prompt when the user grants edit permission for that work.
-- The bypass flag removes the filesystem sandbox, so scope discipline lives in the prompt. Polling and timeout remain mandatory.
+- The bypass flag removes approval prompts and the filesystem sandbox, so scope discipline lives in the prompt. Polling and timeout remain mandatory.
 
 Continue a prior session with `codex exec resume`:
 
