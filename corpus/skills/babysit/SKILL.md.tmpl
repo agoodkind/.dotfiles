@@ -144,7 +144,7 @@ Run this section only when the user explicitly asks to merge (for example "merge
 
 **Paths:**
 
-- **gt available** (`gt` on PATH and repo passes Graphite init detection in {{.Skill "graphite"}}, or Graphite MCP loaded): follow {{.Skill "graphite"}} **Task: Merge a Graphite stack**. Dry-run then `gt merge`, or `gt submit --stack --merge-when-ready --always` when only CI is pending. Never use `gh pr merge --auto`; GitHub native auto-merge conflicts with Graphite.
+- **gt available** (`gt` on PATH and `gt state` output identifies the trunk branch per {{.Skill "graphite"}}, or Graphite MCP loaded): follow {{.Skill "graphite"}} **Task: Merge a Graphite stack**. Dry-run then `gt merge`, or `gt submit --stack --merge-when-ready --always` when only CI is pending. Never use `gh pr merge --auto`; GitHub native auto-merge conflicts with Graphite.
 - **gt unavailable and repo is not Graphite-initialized:** `gh pr merge --merge` or `--squash` per repo policy when fully green; `gh pr merge --auto` only when the sole blocker is CI time.
 - **gt unavailable and repo is Graphite-initialized:** do not use `gh pr merge --auto`. Merge manually with `gh pr merge --merge` (or `--squash`) bottom-up one PR at a time after all checks pass.
 
