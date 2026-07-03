@@ -14,7 +14,7 @@ When Graphite is available, prefer a stacked split over plain git branches.
 Graphite is available when any of these hold:
 
 - the Graphite MCP `run_gt_cmd` tool is loaded in the session
-- `gt` is on PATH and the repo has been initialized with `gt init`
+- `gt` is on PATH and the repo passes Graphite init detection in {{.Skill "graphite"}} (`gt state` output identifies the trunk branch)
 
 For planning, stay in this skill. For execution, follow {{.Skill "graphite"}} task **Split work into a Graphite stack**. That skill owns MCP usage, `gt create`, dry-run submit, draft-ready handling, and stack verification.
 

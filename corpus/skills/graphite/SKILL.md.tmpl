@@ -39,14 +39,37 @@ Do **not** use `git commit`, `git push`, `git branch -D`, or manual rebases for 
 
 PR titles and bodies are owned by {{.Skill "pr"}}, not by `gt submit` defaults.
 
+## Graphite init detection
+
+Run this before declaring a repo "not gt init" or falling back to plain-git stacks.
+
+### Hard rules
+
+- **When this skill is invoked**, stack work goes through Graphite MCP. Do not fall back to plain-git branches, manual `git push`, or "PR2 base = PR1 branch" workflows unless the user explicitly opts out after a failed detection sequence.
+- **Canonical init probe (gt command):** MCP `["state", "--no-interactive"]` from the target worktree `cwd`. `gt state` displays repository state. Success means the output identifies the trunk branch (for example a line or entry naming `main` with trunk metadata). That means Graphite is enabled, even when there are no stacked branches yet.
+- **Non-mutating file probe (shell fallback only):** when MCP is unavailable and the agent must avoid auto-init side effects:
+
+```bash
+test -f "$(git -C <worktree> rev-parse --git-common-dir)/.graphite_repo_config"
+```
+
+That file is where `gt init` stores trunk config. Use `--git-common-dir` so linked worktrees resolve correctly.
+
+- **`gt log short` is not an init check.** It visualizes stacks. A Graphite-enabled repo with no stacks still prints only trunk (`◉  main`). That is normal.
+- **`gt trunk` is not the init probe.** It requires a tracked branch context and can error on untracked branches. Use `gt state` instead.
+- **Banned init heuristics:** repo-root `.graphite_repo_config`, `git rev-parse --git-path graphite_repo_config` (wrong filename), worktree `--git-dir` for config lookup, branch-count in `gt log`, or declaring "not gt init" without `gt state` output.
+- **When not initialized:** run `["init", "--trunk", "<trunk>", "--no-interactive"]`, then `["auth"]` if needed, then re-run `["state", "--no-interactive"]`. Most `gt` commands (including `gt state`) auto-init uninitialized repos; explicit `gt init` is still preferred when the agent knows init is required.
+- **User override:** if the user names Graphite, `gt`, or invokes this skill, treat Graphite as required. Never announce "not gt init" and switch to plain git in the same turn without showing `gt state` output first.
+
 ## Preflight (every task)
 
 Run through MCP before creating, adopting, or restacking:
 
-1. `["log", "short"]` for tracked branches and parent chain
-2. `["init"]` and `["auth"]` if the repo is new to Graphite
-3. `git -C <worktree> fetch origin` and compare the stack base to `origin/<trunk>`. Stale remote trunk blocks submit and restack. Do not move `refs/heads/<trunk>` when trunk is checked out in another worktree (see **Worktrees and trunk refs**).
-4. `git -C <worktree> worktree list` and record which checkout owns trunk. When multiple agents may share the repo, discover the default branch with `git -C <worktree> symbolic-ref --quiet refs/remotes/origin/HEAD` when it exists, or `git -C <worktree> remote show origin` as a fallback.
+1. **Repo state probe:** MCP `["state", "--no-interactive"]` from `<worktree>`. Confirm the output identifies the trunk branch. Record tracked branches and `needs_restack` flags while here.
+2. **If step 1 fails** or the output shows no trunk: `["init", "--trunk", "<trunk>", "--no-interactive"]`, then `["auth"]` if needed, then re-run `["state", "--no-interactive"]`.
+3. **Stack visualization (optional):** MCP `["log", "short"]` from `<worktree>` when a human-readable tree helps. Do not use log output to decide init state.
+4. `git -C <worktree> fetch origin` and compare the stack base to `origin/<trunk>`. Stale remote trunk blocks submit and restack. Do not move `refs/heads/<trunk>` when trunk is checked out in another worktree (see **Worktrees and trunk refs**).
+5. `git -C <worktree> worktree list` and record which checkout owns trunk. When multiple agents may share the repo, discover the default branch with `git -C <worktree> symbolic-ref --quiet refs/remotes/origin/HEAD` when it exists, or `git -C <worktree> remote show origin` as a fallback.
 
 **Untracked branches:** if git shows branches that `gt log` omits, they were created outside Graphite. Adopt before submit (see adopt workflow below).
 
@@ -81,6 +104,7 @@ Use `["sync", "--no-interactive"]` only when trunk is checked out in the same wo
 
 | Task | MCP `args` |
 | --- | --- |
+| probe repo init and state | `["state", "--no-interactive"]` |
 | inspect stack | `["log", "short"]` or `["log"]` |
 | new slice on current branch | `["create", "--message", "..."]` |
 | amend tip and restack upstack | `["modify", "--all"]` |
@@ -193,8 +217,10 @@ Use when branches and GitHub PRs already exist but Graphite metadata is missing 
 
 - `gt log` shows an old unrelated stack or only trunk
 - branches were created with `git worktree`, `git switch`, or subagents
-- repo has no `.graphite_repo_config`
+- `gt state` fails or its output shows no trunk **and** `$(git -C <worktree> rev-parse --git-common-dir)/.graphite_repo_config` is missing
 - open PRs already form a correct parent chain on GitHub
+
+Absence of repo-root `.graphite_repo_config` is normal on initialized repos and is not a symptom. Config lives in the common git dir (`.git/.graphite_repo_config`), not the repo root or worktree git-dir.
 
 ### Steps
 
@@ -465,6 +491,13 @@ Prefer `["continue"]` over `git rebase --continue`. Avoid `["abort"]` in agent s
 | `gh pr merge` on a Graphite stack | skips Graphite merge orchestration; DIRTY upstack PRs | `gt merge` or Graphite UI after babysit |
 | merge before dry-run | wrong PRs may merge | `gt merge --dry-run` first |
 | auto-generated PR bodies from submit | reviewers get commit-message stubs | {{.Skill "pr"}} per PR before marking ready |
+| checking repo-root `.graphite_repo_config` | false negative; config is in common git dir | MCP `gt state` or `git-common-dir` file probe |
+| using `gt log` shape as init check | empty stack looks like "no graphite" | `gt state` for init; `gt log` for visualization |
+| using `gt trunk` as init probe | fails on untracked branches; wrong tool | `gt state` |
+| `git rev-parse --git-path graphite_repo_config` | wrong filename (missing leading dot) | `$(git -C <worktree> rev-parse --git-common-dir)/.graphite_repo_config` |
+| declaring "not gt init" without `gt state` output | repo may already be enabled | run `gt state`, cite output that identifies trunk |
+| plain-git manual stack after `/graphite` | violates skill mandate | Graphite MCP create/submit |
+| running `gt init` when `gt state` already shows trunk | duplicates metadata risk | skip init when state probe succeeds |
 
 ---
 
@@ -474,6 +507,7 @@ When MCP is unavailable:
 
 ```bash
 cd /absolute/path/to/repo
+gt state --no-interactive
 gt log short
 gt submit --stack --dry-run --no-interactive
 gt submit --stack --no-interactive
