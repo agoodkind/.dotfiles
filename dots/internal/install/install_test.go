@@ -1,9 +1,12 @@
 package install
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -41,4 +44,96 @@ func TestDisplayPathUsesTildeForHome(t *testing.T) {
 	if got != "~/.ssh/id_ed25519.pub" {
 		t.Fatalf("displayPath() = %q, want %q", got, "~/.ssh/id_ed25519.pub")
 	}
+}
+
+func TestRunHelpSkipsInstallLockAndSummary(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	if err := Run(context.Background(), "--help"); err != nil {
+		t.Fatalf("Run(--help) returned error: %v", err)
+	}
+
+	logPath := filepath.Join(home, ".cache", "dotfiles", "install.log")
+	logBytes, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("reading install log: %v", err)
+	}
+	logText := string(logBytes)
+	if !strings.Contains(logText, "Usage: dots install") {
+		t.Fatalf("install log did not include usage output:\n%s", logText)
+	}
+	if strings.Contains(logText, "The installer will set up this machine") {
+		t.Fatalf("install log unexpectedly included install summary:\n%s", logText)
+	}
+
+	lockPath := filepath.Join(home, ".cache", "dotfiles_install.flock")
+	if _, err := os.Stat(lockPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("install help should not create %s, got err=%v", lockPath, err)
+	}
+
+	statusPath := filepath.Join(home, ".cache", "dotfiles_install.lock")
+	if _, err := os.Stat(statusPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("install help should not create %s, got err=%v", statusPath, err)
+	}
+}
+
+func TestRunHelpIgnoresActiveInstallLock(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	lockFile, releaseStatus, alreadyRunning, err := acquireInstallLock(context.Background())
+	if err != nil {
+		t.Fatalf("acquireInstallLock() returned error: %v", err)
+	}
+	if alreadyRunning {
+		t.Fatal("acquireInstallLock() reported already running for a fresh temp home")
+	}
+	defer releaseStatus()
+	defer lockFile.Close()
+
+	if err := Run(context.Background(), "--help"); err != nil {
+		t.Fatalf("Run(--help) returned error: %v", err)
+	}
+
+	logPath := filepath.Join(home, ".cache", "dotfiles", "install.log")
+	logBytes, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("reading install log: %v", err)
+	}
+	logText := string(logBytes)
+	if !strings.Contains(logText, "Usage: dots install") {
+		t.Fatalf("install log did not include usage output:\n%s", logText)
+	}
+	if strings.Contains(logText, "Another dotfiles install is already running in a different terminal.") {
+		t.Fatalf("install help unexpectedly respected the active install lock:\n%s", logText)
+	}
+	if strings.Contains(logText, "The installer will set up this machine") {
+		t.Fatalf("install log unexpectedly included install summary:\n%s", logText)
+	}
+}
+
+func TestInstallScriptGuardsMissingTargetDirectoryBeforeFind(t *testing.T) {
+	repoRoot := repoRootFromInstallTests(t)
+	scriptPath := filepath.Join(repoRoot, "install.sh")
+	scriptBytes, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("reading install.sh: %v", err)
+	}
+	scriptText := string(scriptBytes)
+	if !strings.Contains(scriptText, `if [ -d "$DOTDOTFILES" ]; then`) {
+		t.Fatalf("install.sh should guard missing target directories before running find:\n%s", scriptText)
+	}
+	if !strings.Contains(scriptText, `find "$DOTDOTFILES"`) {
+		t.Fatalf("install.sh no longer contains the target directory probe this test expects:\n%s", scriptText)
+	}
+}
+
+func repoRootFromInstallTests(t *testing.T) string {
+	t.Helper()
+	workingDirectory, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getting working directory: %v", err)
+	}
+	return filepath.Clean(filepath.Join(workingDirectory, "..", "..", ".."))
 }

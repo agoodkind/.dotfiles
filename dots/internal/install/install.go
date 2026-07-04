@@ -67,7 +67,15 @@ func Run(ctx context.Context, args ...string) error {
 	_ = os.Setenv("DOTFILES_LOG", logPath)
 	done := logger.SectionContext(ctx, "Install")
 	defer done()
-	logInstallSummary(ctx)
+
+	useDefaults, syncOpts, showHelp, err := parseInstallArgs(args)
+	if err != nil {
+		return err
+	}
+	if showHelp {
+		printInstallUsage(ctx)
+		return nil
+	}
 
 	lockFile, releaseStatus, alreadyRunning, err := acquireInstallLock(ctx)
 	if err != nil {
@@ -79,15 +87,7 @@ func Run(ctx context.Context, args ...string) error {
 	}
 	defer releaseStatus()
 	defer lockFile.Close()
-
-	useDefaults, syncOpts, showHelp, err := parseInstallArgs(args)
-	if err != nil {
-		return err
-	}
-	if showHelp {
-		printInstallUsage(ctx)
-		return nil
-	}
+	logInstallSummary(ctx)
 
 	if err := createSocketDir(); err != nil {
 		return err
