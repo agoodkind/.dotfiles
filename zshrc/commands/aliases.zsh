@@ -22,7 +22,16 @@ function pbcopy() {
 }
 
 function _uuid() {
-    print -r -- ${(L)$(uuidgen)}
+    if command -v uuidgen >/dev/null 2>&1; then
+        uuidgen | tr '[:upper:]' '[:lower:]'
+        return 0
+    fi
+    if [[ -r /proc/sys/kernel/random/uuid ]]; then
+        tr -d '\n' </proc/sys/kernel/random/uuid
+        return 0
+    fi
+    echo "_uuid: uuidgen not found; install uuid-runtime (Debian/Ubuntu) or util-linux" >&2
+    return 127
 }
 
 # thefuck wrapper: lazy load on first use
