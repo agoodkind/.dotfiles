@@ -21,6 +21,10 @@ function pbcopy() {
     fi
 }
 
+function _uuid() {
+    print -r -- ${(L)$(uuidgen)}
+}
+
 # thefuck wrapper: lazy load on first use
 function fuck() {
     unfunction fuck
