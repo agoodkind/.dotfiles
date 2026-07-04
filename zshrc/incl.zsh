@@ -24,6 +24,8 @@ if ((!DOTFILES_INTERACTIVE)); then
     return 0 2>/dev/null || true
 fi
 
+# Keep startup minimal while install owns the flock so partially written shell
+# state does not load in new terminals.
 local _install_status_dir=~/.cache/dotfiles_install.lock
 if [[ -d "$_install_status_dir" ]]; then
     local _install_flock=~/.cache/dotfiles_install.flock

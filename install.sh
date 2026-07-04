@@ -6,6 +6,7 @@ set -o pipefail
 DOTDOTFILES="${DOTDOTFILES:-$HOME/.dotfiles}"
 DOTFILES_ARCHIVE_URL="${DOTFILES_ARCHIVE_URL:-https://codeload.github.com/agoodkind/.dotfiles/tar.gz/refs/heads/main}"
 
+# Fresh-host bootstrap needs a tiny dependency probe before the repo is present.
 check_command() {
     command -v "$1" >/dev/null 2>&1
 }
@@ -28,6 +29,8 @@ download_file() {
     return 1
 }
 
+# When the checkout is missing entirely, pull down a source archive first so we
+# can reach dots/bootstrap-go.sh without requiring git on the host yet.
 bootstrap_repo_from_archive() {
     local tmpdir
     local archive_path
@@ -55,7 +58,12 @@ bootstrap_repo_from_archive() {
         return 1
     fi
 
-    tmpdir="$(mktemp -d)"
+    # Older bash can keep running after a failed assignment under set -e, so
+    # guard mktemp before deriving archive paths or installing the cleanup trap.
+    if ! tmpdir="$(mktemp -d)"; then
+        echo "dotfiles bootstrap could not create a temporary directory" >&2
+        return 1
+    fi
     archive_path="$tmpdir/dotfiles.tar.gz"
     trap 'rm -rf "$tmpdir"' EXIT
 
