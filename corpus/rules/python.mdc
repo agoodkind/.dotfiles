@@ -2,7 +2,7 @@
 description: Python code style, typing, toolchain, and project conventions
 applies_to:
   - "*.py"
-always: false
+always: true
 ---
 
 Python version: Use the latest stable Python release for all repos. Set `requires-python`, `mypy python_version`, `basedpyright pythonVersion`, and `ruff target-version` to match in `pyproject.toml`.
