@@ -86,3 +86,23 @@ func TestDebianPrivilegedCommand(t *testing.T) {
 		t.Fatalf("args = %#v, want sudo apt-get update args", args)
 	}
 }
+
+func TestSudoersNopasswdEntry(t *testing.T) {
+	t.Parallel()
+
+	got := SudoersNopasswdEntry("agoodkind")
+	want := "agoodkind ALL=(ALL) NOPASSWD: ALL\n"
+	if got != want {
+		t.Fatalf("SudoersNopasswdEntry = %q, want %q", got, want)
+	}
+}
+
+func TestSudoersDropInPath(t *testing.T) {
+	t.Parallel()
+
+	got := SudoersDropInPath("agoodkind")
+	want := "/etc/sudoers.d/agoodkind-nopasswd"
+	if got != want {
+		t.Fatalf("SudoersDropInPath = %q, want %q", got, want)
+	}
+}

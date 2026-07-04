@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -119,6 +120,75 @@ func HasSudoAccess(ctx context.Context, logger *telemetry.Logger) bool {
 		return true
 	}
 	return cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "sudo", "-v") == nil
+}
+
+// SudoersNopasswdEntry returns the sudoers drop-in line granting username
+// passwordless sudo access.
+func SudoersNopasswdEntry(username string) string {
+	return username + " ALL=(ALL) NOPASSWD: ALL\n"
+}
+
+// SudoersDropInPath returns the /etc/sudoers.d path for username's passwordless entry.
+func SudoersDropInPath(username string) string {
+	return filepath.Join("/etc/sudoers.d", username+"-nopasswd")
+}
+
+// EnsurePasswordlessSudo grants the current user NOPASSWD sudo access by
+// installing a /etc/sudoers.d drop-in, so later bootstrap steps and the
+// background dots dispatch never block on an interactive sudo password
+// prompt. It is a no-op when sudo is unavailable, the process is already
+// root, or passwordless sudo already works. The drop-in is validated with
+// `visudo -c` before being installed, so a malformed entry never reaches
+// /etc/sudoers.d, and installing it still goes through `sudo`, which prompts
+// once interactively the first time this runs in a real terminal.
+func EnsurePasswordlessSudo(ctx context.Context, logger *telemetry.Logger, group string) error {
+	if !runner.HasCommand("sudo") {
+		return nil
+	}
+	if os.Geteuid() == 0 {
+		return nil
+	}
+	if HasSudoAccess(ctx, logger) {
+		return nil
+	}
+
+	currentUser, err := user.Current()
+	if err != nil {
+		slog.WarnContext(ctx, "common: resolving current user for passwordless sudo", "err", err)
+		return fmt.Errorf("resolving current user: %w", err)
+	}
+
+	tempFile, err := os.CreateTemp("", "sudoers-nopasswd-*")
+	if err != nil {
+		slog.WarnContext(ctx, "common: creating sudoers temp file", "err", err)
+		return fmt.Errorf("creating sudoers temp file: %w", err)
+	}
+	tempPath := tempFile.Name()
+	defer os.Remove(tempPath)
+
+	if _, err := tempFile.WriteString(SudoersNopasswdEntry(currentUser.Username)); err != nil {
+		tempFile.Close()
+		slog.WarnContext(ctx, "common: writing sudoers temp file", "err", err)
+		return fmt.Errorf("writing sudoers temp file: %w", err)
+	}
+	if err := tempFile.Close(); err != nil {
+		slog.WarnContext(ctx, "common: closing sudoers temp file", "err", err)
+		return fmt.Errorf("closing sudoers temp file: %w", err)
+	}
+
+	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "visudo", "-c", "-f", tempPath); err != nil {
+		slog.WarnContext(ctx, "common: sudoers drop-in failed validation", "err", err)
+		return fmt.Errorf("validating sudoers drop-in: %w", err)
+	}
+
+	dropInPath := SudoersDropInPath(currentUser.Username)
+	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "sudo", "install", "-m", "0440", "-o", "root", "-g", group, tempPath, dropInPath); err != nil {
+		slog.WarnContext(ctx, "common: installing sudoers drop-in", "err", err)
+		return fmt.Errorf("installing sudoers drop-in: %w", err)
+	}
+
+	InfoContext(ctx, logger, "  enabled passwordless sudo for "+currentUser.Username)
+	return nil
 }
 
 // DebianPrivilegePrefix returns the command prefix required for Debian package operations.
