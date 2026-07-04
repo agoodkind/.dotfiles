@@ -292,9 +292,6 @@ func (installer *Installer) installMacPackages(ctx context.Context, strictMode b
 	}
 
 	installer.trustMacTapPackages(ctx, cfg)
-	if err := installer.ensureMacCaskTaps(ctx, cfg, strictMode, logger); err != nil {
-		return err
-	}
 
 	if err := installer.installMacFormulae(ctx, cfg, strictMode, logger); err != nil {
 		return err
@@ -312,54 +309,13 @@ func (installer *Installer) trustMacTapPackages(ctx context.Context, cfg *catalo
 		installer.deps.Commands.CommandSucceeds(ctx, "brew", "trust", "--formula", name)
 	}
 
-	for _, name := range installer.tapQualifiedCaskNames(cfg) {
+	caskNames := make([]string, 0, len(cfg.BrewCasks))
+	for cask := range cfg.BrewCasks {
+		caskNames = append(caskNames, cask)
+	}
+	for _, name := range tapQualifiedNames(caskNames) {
 		installer.deps.Commands.CommandSucceeds(ctx, "brew", "trust", "--cask", name)
 	}
-}
-
-func (installer *Installer) ensureMacCaskTaps(ctx context.Context, cfg *catalog.PackageConfig, strictMode bool, logger *telemetry.Logger) error {
-	for _, tap := range brewCaskTaps(cfg) {
-		if err := installer.deps.Commands.RunWithLogger(ctx, logger, "brew", "tap", tap); err != nil {
-			common.WarnContextf(ctx, logger, "  failed to tap cask source %s", tap)
-			if strictMode {
-				slog.WarnContext(ctx, "running brew tap", "tap", tap, "err", err)
-				return fmt.Errorf("running brew tap %s: %w", tap, err)
-			}
-		}
-	}
-
-	return nil
-}
-
-func (installer *Installer) tapQualifiedCaskNames(cfg *catalog.PackageConfig) []string {
-	seen := make(map[string]struct{}, len(cfg.BrewCasks))
-	names := make([]string, 0, len(cfg.BrewCasks))
-	for cask := range cfg.BrewCasks {
-		tap := cfg.BrewCaskTaps[cask]
-		if tap != "" {
-			name, ok := tapQualifiedCaskName(tap, cask)
-			if !ok {
-				continue
-			}
-			if _, ok := seen[name]; ok {
-				continue
-			}
-			seen[name] = struct{}{}
-			names = append(names, name)
-			continue
-		}
-
-		if !validTapQualifiedCaskName(cask) {
-			continue
-		}
-		if _, ok := seen[cask]; ok {
-			continue
-		}
-		seen[cask] = struct{}{}
-		names = append(names, cask)
-	}
-	slices.Sort(names)
-	return names
 }
 
 func tapQualifiedNames(names []string) []string {
@@ -377,51 +333,6 @@ func tapQualifiedNames(names []string) []string {
 	}
 	slices.Sort(out)
 	return out
-}
-
-func brewCaskTaps(cfg *catalog.PackageConfig) []string {
-	seen := make(map[string]struct{})
-	out := make([]string, 0, len(cfg.BrewCaskTaps))
-	for _, tap := range cfg.BrewCaskTaps {
-		if !validTapName(tap) {
-			slog.Warn("platform/macos: ignoring invalid brew cask tap", "tap", tap)
-			continue
-		}
-		if _, ok := seen[tap]; ok {
-			continue
-		}
-		seen[tap] = struct{}{}
-		out = append(out, tap)
-	}
-	slices.Sort(out)
-	return out
-}
-
-func tapQualifiedCaskName(tap string, cask string) (string, bool) {
-	if !validTapName(tap) {
-		slog.Warn("platform/macos: ignoring invalid brew cask tap name", "tap", tap, "cask", cask)
-		return "", false
-	}
-	if cask == "" || strings.Contains(cask, "/") {
-		slog.Warn("platform/macos: ignoring invalid brew cask name for tap", "tap", tap, "cask", cask)
-		return "", false
-	}
-	name := tap + "/" + cask
-	if !validTapQualifiedCaskName(name) {
-		slog.Warn("platform/macos: skipping brew cask trust for invalid tapped cask name", "cask", cask, "resolved", name)
-		return "", false
-	}
-	return name, true
-}
-
-func validTapName(tap string) bool {
-	parts := strings.Split(tap, "/")
-	return len(parts) == 2 && parts[0] != "" && parts[1] != ""
-}
-
-func validTapQualifiedCaskName(name string) bool {
-	parts := strings.Split(name, "/")
-	return len(parts) == 3 && parts[0] != "" && parts[1] != "" && parts[2] != ""
 }
 
 func (installer *Installer) installMacFormulae(ctx context.Context, cfg *catalog.PackageConfig, strictMode bool, logger *telemetry.Logger) error {

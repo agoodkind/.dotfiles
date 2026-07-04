@@ -284,9 +284,9 @@ func TestInstallMacPackagesTrustsTapQualifiedCasks(t *testing.T) {
 
 	commands := &fakeCommands{
 		succeeds: map[string]bool{
-			commandKey("brew", "trust", "--help"):           true,
-			commandKey("brew", "list", "--cask", "ghostty"): true,
-			commandKey("brew", "list", "--cask", "cmux"):    true,
+			commandKey("brew", "trust", "--help"):                               true,
+			commandKey("brew", "list", "--cask", "ghostty"):                     true,
+			commandKey("brew", "list", "--cask", "someuser/some-tap/some-cask"): true,
 		},
 	}
 	installer := &Installer{
@@ -298,10 +298,9 @@ func TestInstallMacPackagesTrustsTapQualifiedCasks(t *testing.T) {
 			Catalog: fakeCatalog{
 				packageConfig: &catalog.PackageConfig{
 					BrewCasks: map[string]string{
-						"ghostty": "Ghostty",
-						"cmux":    "",
+						"ghostty":                     "Ghostty",
+						"someuser/some-tap/some-cask": "",
 					},
-					BrewCaskTaps: map[string]string{"cmux": "someuser/some-tap"},
 				},
 			},
 		},
@@ -311,46 +310,11 @@ func TestInstallMacPackagesTrustsTapQualifiedCasks(t *testing.T) {
 		t.Fatalf("installMacPackages() returned error: %v", err)
 	}
 
-	if !containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--cask", "someuser/some-tap/cmux"}) {
-		t.Fatal("expected brew trust --cask someuser/some-tap/cmux")
+	if !containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--cask", "someuser/some-tap/some-cask"}) {
+		t.Fatal("expected brew trust --cask someuser/some-tap/some-cask")
 	}
 	if containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--cask", "ghostty"}) {
 		t.Fatal("did not expect brew trust for core cask ghostty")
-	}
-}
-
-func TestInstallMacPackagesTapsConfiguredCasksBeforeInstall(t *testing.T) {
-	t.Parallel()
-
-	commands := &fakeCommands{
-		succeeds: map[string]bool{
-			commandKey("brew", "trust", "--help"): true,
-		},
-	}
-	installer := &Installer{
-		deps: Deps{
-			Commands: commands,
-			Lookup: fakeLookup{commands: map[string]bool{
-				"brew": true,
-			}},
-			Catalog: fakeCatalog{
-				packageConfig: &catalog.PackageConfig{
-					BrewCasks:    map[string]string{"cmux": ""},
-					BrewCaskTaps: map[string]string{"cmux": "manaflow-ai/cmux"},
-				},
-			},
-		},
-	}
-
-	if err := installer.installMacPackages(context.Background(), false, nil); err != nil {
-		t.Fatalf("installMacPackages() returned error: %v", err)
-	}
-
-	if !containsCommandCall(commands.runCalls, "brew", []string{"tap", "manaflow-ai/cmux"}) {
-		t.Fatal("expected brew tap manaflow-ai/cmux")
-	}
-	if !containsCommandCall(commands.runCalls, "brew", []string{"install", "--cask", "cmux"}) {
-		t.Fatal("expected brew install --cask cmux")
 	}
 }
 
