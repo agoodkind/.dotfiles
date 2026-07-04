@@ -106,6 +106,7 @@ func (installer *Installer) Install(ctx context.Context, request platform.Reques
 	if err := common.EnsurePasswordlessSudo(ctx, request.Logger, "root"); err != nil {
 		slog.WarnContext(ctx, "platform/debian: enable passwordless sudo", "err", err)
 		common.WarnContext(ctx, request.Logger, "  failed to enable passwordless sudo; continuing without it")
+		_ = telemetry.Notify("warn", "failed to enable passwordless sudo", common.SyncLogPath(), telemetry.RunID(ctx))
 	}
 	if err := installer.installDebianPackages(ctx, request.Host, request.Logger); err != nil {
 		return err

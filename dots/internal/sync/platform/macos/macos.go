@@ -119,6 +119,7 @@ func (installer *Installer) Install(ctx context.Context, request platform.Reques
 	if err := common.EnsurePasswordlessSudo(ctx, request.Logger, "wheel"); err != nil {
 		slog.WarnContext(ctx, "platform/macos: enable passwordless sudo", "err", err)
 		common.WarnContext(ctx, request.Logger, "  failed to enable passwordless sudo; continuing without it")
+		_ = telemetry.Notify("warn", "failed to enable passwordless sudo", common.SyncLogPath(), telemetry.RunID(ctx))
 	}
 	if err := installer.ensureHomebrewInstalled(ctx, request.Logger); err != nil {
 		return err
