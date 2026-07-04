@@ -133,6 +133,7 @@ cargo_packages = []
 "stats" = "Stats"
 "xcodes-app" = "Xcodes"
 "pingplotter" = "PingPlotter"
+"cmux" = "cmux"
 
 [packages.go_packages]
 lazygit = "github.com/jesseduffield/lazygit@latest"
