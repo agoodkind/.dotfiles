@@ -22,8 +22,10 @@ function pbcopy() {
 }
 
 function _uuid() {
+    local uuid
     if command -v uuidgen >/dev/null 2>&1; then
-        uuidgen | tr '[:upper:]' '[:lower:]'
+        uuid=$(command uuidgen) || return $?
+        print -r -- ${(L)uuid}
         return 0
     fi
     if [[ -r /proc/sys/kernel/random/uuid ]]; then
