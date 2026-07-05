@@ -151,6 +151,7 @@ function dotfiles_changed_hash() {
         "$DOTDOTFILES/zshrc/core/prefer.zsh" \
         "$DOTDOTFILES/zshrc/commands/prefer-decls.zsh" \
         "$DOTDOTFILES/zshrc/commands/editors.zsh" \
+        "$DOTDOTFILES/zshrc/commands/aliases.zsh" \
         "$DOTDOTFILES/zshrc/integrations/zoxide.zsh"; do
         if zstat -A file_stat +mtime "$f" 2>/dev/null; then
             if ((file_stat[1] > max_mtime)); then

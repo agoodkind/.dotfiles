@@ -21,6 +21,19 @@ function pbcopy() {
     fi
 }
 
+function _uuid() {
+    local uuid
+    if (($+commands[uuidgen])); then
+        uuid=$(command uuidgen) || return $?
+    elif [[ -r /proc/sys/kernel/random/uuid ]]; then
+        uuid=$(</proc/sys/kernel/random/uuid) || return $?
+    else
+        echo "_uuid: uuidgen not found; install uuid-runtime (Debian/Ubuntu) or util-linux" >&2
+        return 127
+    fi
+    print -r -- "${uuid:l}"
+}
+
 # thefuck wrapper: lazy load on first use
 function fuck() {
     unfunction fuck
