@@ -99,3 +99,20 @@ func TestWithRunMintsStableRunID(t *testing.T) {
 		t.Fatal("RunID returned non-empty for a context without a run")
 	}
 }
+
+func TestSuppressInteractiveRawLine(t *testing.T) {
+	tests := []struct {
+		line string
+		want bool
+	}{
+		{line: "go: downloading charm.land/bubbles/v2 v2.1.0", want: true},
+		{line: "go: finding module for package example.com/foo", want: true},
+		{line: "Already up to date.", want: false},
+	}
+
+	for _, test := range tests {
+		if got := suppressInteractiveRawLine(test.line); got != test.want {
+			t.Fatalf("suppressInteractiveRawLine(%q) = %v, want %v", test.line, got, test.want)
+		}
+	}
+}
