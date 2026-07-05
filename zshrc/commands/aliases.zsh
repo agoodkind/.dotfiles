@@ -27,7 +27,7 @@ function _uuid() {
         return 0
     fi
     if [[ -r /proc/sys/kernel/random/uuid ]]; then
-        tr -d '\n' </proc/sys/kernel/random/uuid
+        cat /proc/sys/kernel/random/uuid
         return 0
     fi
     echo "_uuid: uuidgen not found; install uuid-runtime (Debian/Ubuntu) or util-linux" >&2
