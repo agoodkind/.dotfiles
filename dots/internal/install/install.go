@@ -23,13 +23,17 @@ import (
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
-var installLogger *telemetry.Logger
+var (
+	installLogger *telemetry.Logger
+	stdinReader   *bufio.Reader
+)
 
 type pendingGitConfig struct {
 	name                    string
 	email                   string
 	signingKey              string
 	gpgSSHDefaultKeyCommand string
+	signingKeyResolved      bool
 }
 
 type installFlag string
@@ -65,6 +69,7 @@ func Run(ctx context.Context, args ...string) error {
 	}()
 	runner.SetLogger(logger)
 	_ = os.Setenv("DOTFILES_LOG", logPath)
+	stdinReader = bufio.NewReader(os.Stdin)
 	done := logger.SectionContext(ctx, "Install")
 	defer done()
 
@@ -85,8 +90,8 @@ func Run(ctx context.Context, args ...string) error {
 		logTTYLine(ctx, "Another dotfiles install is already running in a different terminal.")
 		return nil
 	}
-	defer releaseStatus()
 	defer lockFile.Close()
+	defer releaseStatus()
 	logInstallSummary(ctx)
 
 	if err := createSocketDir(); err != nil {
@@ -102,10 +107,7 @@ func Run(ctx context.Context, args ...string) error {
 		configuredGit = true
 	} else {
 		logTTYLine(ctx, "Git is not installed yet, so the installer will collect git details now and apply them after package setup.")
-		pending, err = collectGitConfigInputs(ctx, useDefaults)
-		if err != nil {
-			return err
-		}
+		pending = collectGitConfigInputs(ctx, useDefaults)
 	}
 	if err := sync.Run(ctx, syncOpts); err != nil {
 		slog.WarnContext(ctx, "running sync", "err", err)
@@ -201,10 +203,7 @@ func configureGit(ctx context.Context, useDefaults bool, pending *pendingGitConf
 		return nil
 	}
 
-	signingKey, keyCommand, err := resolveSigningKey(ctx, useDefaults, pending)
-	if err != nil {
-		return err
-	}
+	signingKey, keyCommand := resolveSigningKey(ctx, useDefaults, pending)
 	if signingKey == "" {
 		return nil
 	}
@@ -316,8 +315,10 @@ func gitConfig(ctx context.Context, name string) string {
 
 func readLine(ctx context.Context, prompt string) string {
 	logPrompt(ctx, prompt)
-	reader := bufio.NewReader(os.Stdin)
-	line, _ := reader.ReadString('\n')
+	if stdinReader == nil {
+		stdinReader = bufio.NewReader(os.Stdin)
+	}
+	line, _ := stdinReader.ReadString('\n')
 	return strings.TrimSpace(line)
 }
 
@@ -467,55 +468,57 @@ func ensureManagedRepository(ctx context.Context) error {
 	return nil
 }
 
-func collectGitConfigInputs(ctx context.Context, useDefaults bool) (pendingGitConfig, error) {
+func collectGitConfigInputs(ctx context.Context, useDefaults bool) pendingGitConfig {
 	pending := pendingGitConfig{
 		name:                    "",
 		email:                   "",
 		signingKey:              "",
 		gpgSSHDefaultKeyCommand: "",
+		signingKeyResolved:      false,
 	}
 	if useDefaults {
-		return pending, nil
+		return pending
 	}
 	pending.name = readLine(ctx, "Enter your name for git (First Last): ")
 	pending.email = readLine(ctx, "Enter your git email: ")
 	signingKeyPath, foundKeys := resolveSigningKeyPath(ctx, useDefaults)
+	pending.signingKeyResolved = true
 	if signingKeyPath == "" {
 		if !foundKeys {
 			logNoSigningKeyFound(ctx)
 		}
-		return pending, nil
+		return pending
 	}
 	signingKey, err := readSigningKey(ctx, signingKeyPath)
 	if err != nil {
-		return pending, err
+		return pending
 	}
 	pending.signingKey = signingKey
 	logInfof(ctx, "Using SSH public key for git signing: %s", displayPath(signingKeyPath))
-	return pending, nil
+	return pending
 }
 
-func resolveSigningKey(ctx context.Context, useDefaults bool, pending *pendingGitConfig) (string, string, error) {
-	if pending != nil && pending.signingKey != "" {
-		return pending.signingKey, pending.gpgSSHDefaultKeyCommand, nil
+func resolveSigningKey(ctx context.Context, useDefaults bool, pending *pendingGitConfig) (string, string) {
+	if pending != nil && pending.signingKeyResolved {
+		return pending.signingKey, pending.gpgSSHDefaultKeyCommand
 	}
 	sshAddOutput, _ := cmdexec.OutputTrimmed(ctx, "ssh-add", "-L")
 	if signingKey, keyCommand, ok := detectSigningKeyFromAgent(sshAddOutput); ok {
-		return signingKey, keyCommand, nil
+		return signingKey, keyCommand
 	}
 	keyPath, foundKeys := resolveSigningKeyPath(ctx, useDefaults)
 	if keyPath == "" {
 		if !useDefaults && !foundKeys {
 			logNoSigningKeyFound(ctx)
 		}
-		return "", "", nil
+		return "", ""
 	}
 	signingKey, err := readSigningKey(ctx, keyPath)
 	if err != nil {
-		return "", "", err
+		return "", ""
 	}
 	logInfof(ctx, "Using SSH public key for git signing: %s", displayPath(keyPath))
-	return signingKey, "", nil
+	return signingKey, ""
 }
 
 // detectSigningKeyFromAgent returns the ssh public key line, the matching

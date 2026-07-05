@@ -16,12 +16,17 @@ download_file() {
     local destination="$2"
 
     if check_command curl; then
-        curl --location --silent --show-error --fail "$url" --output "$destination"
+        curl --location --silent --show-error --fail \
+            --connect-timeout "${DOTS_DOWNLOAD_CONNECT_TIMEOUT:-20}" \
+            --max-time "${DOTS_DOWNLOAD_MAX_TIME:-600}" \
+            "$url" --output "$destination"
         return $?
     fi
 
     if check_command wget; then
-        wget --quiet --output-document "$destination" "$url"
+        wget --quiet --tries=2 \
+            --timeout="${DOTS_DOWNLOAD_CONNECT_TIMEOUT:-20}" \
+            --output-document "$destination" "$url"
         return $?
     fi
 
