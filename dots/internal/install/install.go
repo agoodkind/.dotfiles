@@ -90,8 +90,8 @@ func Run(ctx context.Context, args ...string) error {
 		logTTYLine(ctx, "Another dotfiles install is already running in a different terminal.")
 		return nil
 	}
-	defer lockFile.Close()
 	defer releaseStatus()
+	defer lockFile.Close()
 	logInstallSummary(ctx)
 
 	if err := createSocketDir(); err != nil {
@@ -414,12 +414,20 @@ func acquireInstallLock(ctx context.Context) (*os.File, func(), bool, error) {
 	statusPIDPath := filepath.Join(statusDir, "pid")
 	statusPID := strconv.Itoa(os.Getpid())
 	if err := os.WriteFile(statusPIDPath, []byte(statusPID), 0o600); err != nil {
+		_ = os.RemoveAll(statusDir)
 		_ = syscall.Flock(flockFdInt, syscall.LOCK_UN)
 		_ = lockFile.Close()
 		slog.WarnContext(ctx, "writing install status pid", "err", err)
 		return nil, nil, false, fmt.Errorf("writing install status pid: %w", err)
 	}
 	release := func() {
+		statusPIDBytes, err := os.ReadFile(statusPIDPath)
+		if err != nil {
+			return
+		}
+		if strings.TrimSpace(string(statusPIDBytes)) != statusPID {
+			return
+		}
 		_ = os.RemoveAll(statusDir)
 	}
 	return lockFile, release, false, nil

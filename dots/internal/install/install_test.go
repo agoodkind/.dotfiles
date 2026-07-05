@@ -114,6 +114,56 @@ func TestRunHelpIgnoresActiveInstallLock(t *testing.T) {
 	}
 }
 
+func TestAcquireInstallLockReleaseRemovesMatchingStatusDir(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	lockFile, releaseStatus, alreadyRunning, err := acquireInstallLock(context.Background())
+	if err != nil {
+		t.Fatalf("acquireInstallLock() returned error: %v", err)
+	}
+	if alreadyRunning {
+		t.Fatal("acquireInstallLock() reported already running for a fresh temp home")
+	}
+
+	if err := lockFile.Close(); err != nil {
+		t.Fatalf("closing lock file: %v", err)
+	}
+	releaseStatus()
+
+	statusPath := filepath.Join(home, ".cache", "dotfiles_install.lock")
+	if _, err := os.Stat(statusPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("releaseStatus() should remove %s, got err=%v", statusPath, err)
+	}
+}
+
+func TestAcquireInstallLockReleasePreservesReplacedStatusDir(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	lockFile, releaseStatus, alreadyRunning, err := acquireInstallLock(context.Background())
+	if err != nil {
+		t.Fatalf("acquireInstallLock() returned error: %v", err)
+	}
+	if alreadyRunning {
+		t.Fatal("acquireInstallLock() reported already running for a fresh temp home")
+	}
+
+	statusPath := filepath.Join(home, ".cache", "dotfiles_install.lock")
+	statusPIDPath := filepath.Join(statusPath, "pid")
+	if err := os.WriteFile(statusPIDPath, []byte("999999"), 0o600); err != nil {
+		t.Fatalf("rewriting status pid: %v", err)
+	}
+	if err := lockFile.Close(); err != nil {
+		t.Fatalf("closing lock file: %v", err)
+	}
+	releaseStatus()
+
+	if _, err := os.Stat(statusPath); err != nil {
+		t.Fatalf("releaseStatus() should preserve a replaced status dir, got err=%v", err)
+	}
+}
+
 func TestReadLineReusesBufferedStdin(t *testing.T) {
 	originalReader := stdinReader
 	stdinReader = bufio.NewReader(strings.NewReader("first line\nsecond line\n"))
