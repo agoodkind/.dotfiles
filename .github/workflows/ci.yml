@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   go:
-    uses: agoodkind/go-makefile/.github/workflows/_ci.yml@main
+    uses: agoodkind/go-makefile/.github/workflows/_ci.yml@033f704db6d21ff71b25cd2299a457f4db78b5a2
     permissions:
       contents: read
       id-token: write
