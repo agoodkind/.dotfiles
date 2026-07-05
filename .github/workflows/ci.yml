@@ -9,12 +9,14 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
+  attestations: write
   contents: read
 
 jobs:
   go:
     uses: agoodkind/go-makefile/.github/workflows/_ci.yml@main
     permissions:
+      attestations: write
       contents: read
       id-token: write
     with:
