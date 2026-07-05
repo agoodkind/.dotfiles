@@ -31,7 +31,7 @@ function _uuid() {
         echo "_uuid: uuidgen not found; install uuid-runtime (Debian/Ubuntu) or util-linux" >&2
         return 127
     fi
-    print -r -- ${uuid:l}
+    print -r -- "${uuid:l}"
 }
 
 # thefuck wrapper: lazy load on first use
