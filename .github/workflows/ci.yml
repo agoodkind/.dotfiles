@@ -16,7 +16,6 @@ jobs:
   go:
     uses: agoodkind/go-makefile/.github/workflows/_ci.yml@main
     permissions:
-      attestations: write
       contents: read
       id-token: write
       attestations: write
