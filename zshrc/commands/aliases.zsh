@@ -25,15 +25,13 @@ function _uuid() {
     local uuid
     if command -v uuidgen >/dev/null 2>&1; then
         uuid=$(command uuidgen) || return $?
-        print -r -- ${(L)uuid}
-        return 0
+    elif [[ -r /proc/sys/kernel/random/uuid ]]; then
+        uuid=$(</proc/sys/kernel/random/uuid) || return $?
+    else
+        echo "_uuid: uuidgen not found; install uuid-runtime (Debian/Ubuntu) or util-linux" >&2
+        return 127
     fi
-    if [[ -r /proc/sys/kernel/random/uuid ]]; then
-        cat /proc/sys/kernel/random/uuid
-        return 0
-    fi
-    echo "_uuid: uuidgen not found; install uuid-runtime (Debian/Ubuntu) or util-linux" >&2
-    return 127
+    print -r -- ${uuid:l}
 }
 
 # thefuck wrapper: lazy load on first use
