@@ -10,6 +10,7 @@ function _dotfiles_load_secrets() {
 
     setopt local_options null_glob
 
+    local seen_secret_names=""
     local secret_file base secret_name secret_value
     for secret_file in "$secrets_dir"/*; do
         if [[ ! -f $secret_file ]]; then
@@ -34,11 +35,34 @@ function _dotfiles_load_secrets() {
             continue
         fi
 
-        secret_value="$(<"$secret_file")"
+        case "$secret_name" in
+            HOME | PATH | LD_PRELOAD | DYLD_INSERT_LIBRARIES)
+                continue
+                ;;
+        esac
+
+        case " $seen_secret_names " in
+            *" $secret_name "*)
+                continue
+                ;;
+        esac
+
+        if [[ ! -r $secret_file ]]; then
+            continue
+        fi
+        if ! secret_value="$(<"$secret_file" 2>/dev/null)"; then
+            continue
+        fi
+        secret_value="${secret_value%$'\r'}"
+        if [[ -z $secret_value ]]; then
+            continue
+        fi
+
         export "${secret_name}=${secret_value}"
+        seen_secret_names="$seen_secret_names $secret_name"
     done
 
-    if [[ -n ${GH_TOKEN:-} ]]; then
+    if [[ -n ${GH_TOKEN:-} && -z ${GITHUB_TOKEN+x} ]]; then
         export GITHUB_TOKEN="$GH_TOKEN"
     fi
 }
