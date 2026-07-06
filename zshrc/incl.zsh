@@ -17,7 +17,12 @@ _source "$DOTDOTFILES/zshrc/core/utils.zsh"
 # Machine-local overrides load for every shell and before the interactive gate,
 # so wrappers like claude/codex exist in agent and non-TTY shells too.
 if [[ -f "$DOTDOTFILES/.zshrc.local" ]]; then
-    _source "$DOTDOTFILES/.zshrc.local"
+    local _zl_t0=$EPOCHREALTIME
+    if source "$DOTDOTFILES/.zshrc.local" 2>/dev/null; then
+        local _zl_ms=$(((EPOCHREALTIME - _zl_t0) * 1000))
+        _PROFILE_TIMES['.zshrc.local']=$_zl_ms
+        _PERF_TREE+=("$((_SOURCE_DEPTH + 2)):.zshrc.local:${_zl_ms}")
+    fi
 fi
 
 # Agents and non-TTY shells need none of the interactive machinery, so they apply
@@ -53,7 +58,7 @@ _source "$DOTDOTFILES/zshrc/integrations/zoxide.zsh"
 _source "$DOTDOTFILES/zshrc/commands/prefer-decls.zsh"
 
 # Background maintenance; _async backgrounds it and records a dispatch node.
-_async _dots_dispatch
+_async dots_dispatch
 
 _source "$DOTDOTFILES/zshrc/integrations/motd.zsh"
 

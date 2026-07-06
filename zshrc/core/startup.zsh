@@ -59,7 +59,13 @@ function _dotfiles_show_notifications() {
         return 0
     fi
 
-    local created_at level logfile runid idtag msg line
+    local notify_staged="${notify_file}.$$"
+    if ! mv "$notify_file" "$notify_staged" 2>/dev/null; then
+        return 0
+    fi
+    notify_file="$notify_staged"
+
+    local created_at level logfile runid idtag msg line display_msg
     while IFS= read -r line; do
         level="${line%%|*}"
         line="${line#*|}"
@@ -75,22 +81,28 @@ function _dotfiles_show_notifications() {
         esac
         logfile="${line%%|*}"
         line="${line#*|}"
-        runid="${line%%|*}"
-        msg="${line#*|}"
+        if [[ "$line" != *'|'* ]]; then
+            msg="$line"
+            runid=""
+        else
+            runid="${line%%|*}"
+            msg="${line#*|}"
+        fi
+        msg="${msg//\%/%%}"
         idtag=""
         if [[ -n "$runid" ]]; then
             idtag="%F{242}[#${runid[1,12]}]%f "
         fi
         if [[ -n "$created_at" ]]; then
-            msg="%F{242}${created_at}%f ${idtag}${msg}"
+            display_msg="%F{242}${created_at}%f ${idtag}${msg}"
         else
-            msg="${idtag}${msg}"
+            display_msg="${idtag}${msg}"
         fi
         case "$level" in
-            success) print -P "%F{green}✓ ${msg}%f" ;;
-            info) print -P "%F{blue}↻ ${msg}%f" ;;
-            warn) print -P "%F{yellow}⚠  ${msg}%f" ;;
-            error) print -P "%F{red}✗ ${msg}%f" ;;
+            success) print -P "%F{green}✓ ${display_msg}%f" ;;
+            info) print -P "%F{blue}↻ ${display_msg}%f" ;;
+            warn) print -P "%F{yellow}⚠  ${display_msg}%f" ;;
+            error) print -P "%F{red}✗ ${display_msg}%f" ;;
         esac
         if [[ -n "$logfile" && -f "$logfile" ]]; then
             print -P "  %F{242}log: ${logfile}%f"

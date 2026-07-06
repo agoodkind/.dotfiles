@@ -210,7 +210,7 @@ function _dots_exec() {
 # Kick off background maintenance (updater, cache rebuilds, ssh key load) through
 # the same bash bootstrap _dots_exec uses. The name gives the perf tree a
 # dispatch node instead of a raw bash node, and the callsite wraps it in _async.
-function _dots_dispatch() {
+function dots_dispatch() {
     _dots_exec dispatch
 }
 
