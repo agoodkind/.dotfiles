@@ -334,6 +334,72 @@ func TestRenderRuleFiles(t *testing.T) {
 	}
 }
 
+func TestRenderSkillDirsRuleBodyTransclusion(t *testing.T) {
+	root := t.TempDir()
+	rulesDir := filepath.Join(root, "rules")
+	writeTestFile(t, filepath.Join(rulesDir, "writing.mdc"), strings.Join([]string{
+		"---",
+		"description: Writing rules",
+		"---",
+		"",
+		"# Writing rule",
+		"",
+		"See {{.Skill \"make-readable\"}} for help.",
+		"",
+		"Anti-hardcode guidance lives here.",
+	}, "\n"))
+	skillsDir := filepath.Join(root, "skills")
+	writeTestFile(
+		t,
+		filepath.Join(skillsDir, "enforce-rules", "SKILL.md.tmpl"),
+		"---\nname: enforce-rules\ndescription: d\n---\n\n## Writing\n\n{{.RuleBody \"writing\"}}\n",
+	)
+	dst := filepath.Join(t.TempDir(), "skills")
+	if err := RenderSkillDirs(skillsDir, dst, SkillRefMDC); err != nil {
+		t.Fatalf("RenderSkillDirs: %v", err)
+	}
+	rendered, err := os.ReadFile(filepath.Join(dst, "enforce-rules", "SKILL.md"))
+	if err != nil {
+		t.Fatalf("reading rendered skill: %v", err)
+	}
+	got := string(rendered)
+	if !strings.Contains(got, "# Writing rule") {
+		t.Errorf("rendered skill missing inlined rule heading:\n%s", got)
+	}
+	if !strings.Contains(got, "Anti-hardcode guidance lives here.") {
+		t.Errorf("rendered skill missing inlined rule body:\n%s", got)
+	}
+	wantSkillLink := "See [make-readable](../make-readable/SKILL.md) for help."
+	if !strings.Contains(got, wantSkillLink) {
+		t.Errorf("rendered skill missing rewritten skill link\nwant substring:\n%s\ngot:\n%s", wantSkillLink, got)
+	}
+	if strings.Count(got, GeneratedAgentHTMLMarker) != 1 {
+		t.Errorf("expected exactly one generated marker, got %d in:\n%s", strings.Count(got, GeneratedAgentHTMLMarker), got)
+	}
+	if strings.Contains(got, "{{") {
+		t.Errorf("rendered skill still contains unexpanded token:\n%s", got)
+	}
+}
+
+func TestRenderSkillDirsRuleBodyMissing(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "rules", "code.mdc"), "---\ndescription: c\n---\ncode body\n")
+	skillsDir := filepath.Join(root, "skills")
+	writeTestFile(
+		t,
+		filepath.Join(skillsDir, "broken", "SKILL.md.tmpl"),
+		"---\nname: broken\ndescription: d\n---\n\n{{.RuleBody \"missing\"}}\n",
+	)
+	dst := filepath.Join(t.TempDir(), "skills")
+	err := RenderSkillDirs(skillsDir, dst, SkillRefMDC)
+	if err == nil {
+		t.Fatal("expected RenderSkillDirs to fail on missing rule body, got nil")
+	}
+	if !strings.Contains(err.Error(), "missing") {
+		t.Errorf("expected missing rule name in error, got: %v", err)
+	}
+}
+
 func TestRenderRulesForUpload(t *testing.T) {
 	srcRoot := t.TempDir()
 	writeTestFile(t, filepath.Join(srcRoot, "writing.mdc"),

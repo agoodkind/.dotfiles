@@ -383,7 +383,8 @@ func RenderSkillDirs(src string, dst string, refStyle SkillRefStyle) error {
 	if err := os.MkdirAll(dst, 0o755); err != nil {
 		return fmt.Errorf("creating directory %s: %w", dst, err)
 	}
-	ruleNames, err := ruleBaseNames(filepath.Join(filepath.Dir(src), "rules"))
+	rulesDir := filepath.Join(filepath.Dir(src), "rules")
+	ruleNames, err := ruleBaseNames(rulesDir)
 	if err != nil {
 		return err
 	}
@@ -404,7 +405,7 @@ func RenderSkillDirs(src string, dst string, refStyle SkillRefStyle) error {
 		if isSymlink(target) {
 			_ = os.Remove(target)
 		}
-		if err := renderSkillDir(source, target, refStyle, ruleNames, &conflicts); err != nil {
+		if err := renderSkillDir(source, target, refStyle, rulesDir, ruleNames, &conflicts); err != nil {
 			return err
 		}
 	}
@@ -414,7 +415,7 @@ func RenderSkillDirs(src string, dst string, refStyle SkillRefStyle) error {
 	return skillRenderConflictsError(conflicts)
 }
 
-func renderSkillDir(src string, dst string, refStyle SkillRefStyle, ruleNames []string, conflicts *[]string) error {
+func renderSkillDir(src string, dst string, refStyle SkillRefStyle, rulesDir string, ruleNames []string, conflicts *[]string) error {
 	entries, err := os.ReadDir(src)
 	if err != nil {
 		slog.Warn("compilation: renderSkillDir ReadDir failed", "src", src, "err", err)
@@ -427,7 +428,7 @@ func renderSkillDir(src string, dst string, refStyle SkillRefStyle, ruleNames []
 		source := filepath.Join(src, entry.Name())
 		target := filepath.Join(dst, entry.Name())
 		if entry.IsDir() {
-			if err := renderSkillDir(source, target, refStyle, ruleNames, conflicts); err != nil {
+			if err := renderSkillDir(source, target, refStyle, rulesDir, ruleNames, conflicts); err != nil {
 				return err
 			}
 			continue
@@ -443,7 +444,7 @@ func renderSkillDir(src string, dst string, refStyle SkillRefStyle, ruleNames []
 		if base, ok := strings.CutSuffix(entry.Name(), ".tmpl"); ok {
 			outputName = base
 			fromTemplate = true
-			rendered, tmplErr := renderSkillTemplate(string(content), refStyle, ruleNames, entry.Name())
+			rendered, tmplErr := renderSkillTemplate(string(content), refStyle, rulesDir, ruleNames, entry.Name())
 			if tmplErr != nil {
 				return tmplErr
 			}
@@ -524,10 +525,12 @@ func skillRenderConflictsError(conflicts []string) error {
 }
 
 // skillTemplateData exposes corpus reference helpers to a skill template as the
-// "{{.Rules}}", "{{.Rule \"name\"}}", and "{{.Skill \"name\"}}" methods.
+// "{{.Rules}}", "{{.Rule \"name\"}}", "{{.RuleBody \"name\"}}", and "{{.Skill \"name\"}}" methods.
 type skillTemplateData struct {
 	style     SkillRefStyle
+	rulesDir  string
 	ruleNames []string
+	execErr   *error
 }
 
 // Rules renders the full rule list for the active style.
@@ -539,22 +542,70 @@ func (d skillTemplateData) Rule(name string) string { return renderRuleLink(d.st
 // Skill renders a sibling skill link for the active style.
 func (d skillTemplateData) Skill(name string) string { return renderSkillSiblingLink(name) }
 
+// RuleBody inlines a corpus rule body, expanding any skill references inside it.
+func (d skillTemplateData) RuleBody(name string) string {
+	path := filepath.Join(d.rulesDir, name+".mdc")
+	content, err := os.ReadFile(path)
+	if err != nil {
+		if d.execErr != nil {
+			*d.execErr = fmt.Errorf("reading rule body %q: %w", name, err)
+		}
+		return ""
+	}
+	rule, parseErr := ParseRuleSource(string(content))
+	if parseErr != nil {
+		if d.execErr != nil {
+			*d.execErr = fmt.Errorf("parsing rule body %q: %w", name, parseErr)
+		}
+		return ""
+	}
+	body := strings.TrimSpace(rule.Body)
+	if !strings.Contains(body, "{{") {
+		return body
+	}
+	parsed, parseErr := template.New(name + ".mdc").Parse(body)
+	if parseErr != nil {
+		if d.execErr != nil {
+			*d.execErr = fmt.Errorf("parsing rule body template %q: %w", name, parseErr)
+		}
+		return ""
+	}
+	buf := bytes.NewBuffer(nil)
+	if execErr := parsed.Execute(buf, d); execErr != nil {
+		if d.execErr != nil {
+			*d.execErr = fmt.Errorf("executing rule body template %q: %w", name, execErr)
+		}
+		return ""
+	}
+	return strings.TrimSpace(buf.String())
+}
+
 func renderSkillSiblingLink(name string) string {
 	skillPath := filepath.ToSlash(filepath.Join("..", name, "SKILL.md"))
 	return fmt.Sprintf("[%s](%s)", name, skillPath)
 }
 
 // renderSkillTemplate renders one skill template through text/template.
-func renderSkillTemplate(content string, refStyle SkillRefStyle, ruleNames []string, name string) (string, error) {
+func renderSkillTemplate(content string, refStyle SkillRefStyle, rulesDir string, ruleNames []string, name string) (string, error) {
 	parsed, err := template.New(name).Parse(content)
 	if err != nil {
 		slog.Warn("compilation: renderSkillTemplate parse failed", "name", name, "err", err)
 		return "", fmt.Errorf("parsing skill template %s: %w", name, err)
 	}
+	var execErr error
 	buf := bytes.NewBuffer(nil)
-	if err := parsed.Execute(buf, skillTemplateData{style: refStyle, ruleNames: ruleNames}); err != nil {
+	data := skillTemplateData{
+		style:     refStyle,
+		rulesDir:  rulesDir,
+		ruleNames: ruleNames,
+		execErr:   &execErr,
+	}
+	if err := parsed.Execute(buf, data); err != nil {
 		slog.Warn("compilation: renderSkillTemplate execute failed", "name", name, "err", err)
 		return "", fmt.Errorf("executing skill template %s: %w", name, err)
+	}
+	if execErr != nil {
+		return "", execErr
 	}
 	return injectSkillMarker(buf.String()), nil
 }
