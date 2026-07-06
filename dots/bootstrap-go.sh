@@ -32,6 +32,17 @@ DOTS_BUILD_TIMEOUT_SECONDS="${DOTS_BUILD_TIMEOUT_SECONDS:-600}"
 # in bootstrap_go instead of hanging a login shell on every connection.
 DOTS_DOWNLOAD_CONNECT_TIMEOUT="${DOTS_DOWNLOAD_CONNECT_TIMEOUT:-20}"
 DOTS_DOWNLOAD_MAX_TIME="${DOTS_DOWNLOAD_MAX_TIME:-600}"
+DOTS_DOWNLOAD_RETRY_COUNT="${DOTS_DOWNLOAD_RETRY_COUNT:-3}"
+DOTS_DOWNLOAD_RETRY_DELAY_SECONDS="${DOTS_DOWNLOAD_RETRY_DELAY_SECONDS:-2}"
+# Coerce the retry knobs to safe integers so a non-numeric override cannot spin
+# download_file forever (the -ge guard would never fire) or abort bootstrap under
+# `set -e` when `sleep` rejects the value.
+if [[ ! $DOTS_DOWNLOAD_RETRY_COUNT =~ ^[0-9]+$ ]] || [[ $DOTS_DOWNLOAD_RETRY_COUNT -lt 1 ]]; then
+    DOTS_DOWNLOAD_RETRY_COUNT=3
+fi
+if [[ ! $DOTS_DOWNLOAD_RETRY_DELAY_SECONDS =~ ^[0-9]+$ ]]; then
+    DOTS_DOWNLOAD_RETRY_DELAY_SECONDS=2
+fi
 DEFAULT_GO_BOOTSTRAP_VERSION="${DEFAULT_GO_BOOTSTRAP_VERSION:-go1.22.7}"
 GO_DARWIN11_BOOTSTRAP_VERSION="${GO_DARWIN11_BOOTSTRAP_VERSION:-go1.24.13}"
 
@@ -285,24 +296,41 @@ emit_warning_if_legacy_bash() {
 download_file() {
     local url="$1"
     local destination="$2"
+    local attempt_count=1
 
-    if check_command curl; then
-        curl --location --silent --show-error --fail \
-            --connect-timeout "$DOTS_DOWNLOAD_CONNECT_TIMEOUT" \
-            --max-time "$DOTS_DOWNLOAD_MAX_TIME" \
-            "$url" --output "$destination"
-        return $?
+    if ! require_tools rm sleep; then
+        echo "bootstrap prerequisites missing: rm and sleep are required" >&2
+        return 1
     fi
 
-    if check_command wget; then
-        wget --quiet --tries=2 \
-            --timeout="$DOTS_DOWNLOAD_CONNECT_TIMEOUT" \
-            --output-document "$destination" "$url"
-        return $?
-    fi
+    while true; do
+        rm -f "$destination"
 
-    echo "missing curl or wget for bootstrap download" >&2
-    return 1
+        if check_command curl; then
+            if curl --location --silent --show-error --fail \
+                --connect-timeout "$DOTS_DOWNLOAD_CONNECT_TIMEOUT" \
+                --max-time "$DOTS_DOWNLOAD_MAX_TIME" \
+                "$url" --output "$destination"; then
+                return 0
+            fi
+        elif check_command wget; then
+            if wget --quiet --tries=1 \
+                --timeout="$DOTS_DOWNLOAD_CONNECT_TIMEOUT" \
+                --output-document "$destination" "$url"; then
+                return 0
+            fi
+        else
+            echo "missing curl or wget for bootstrap download" >&2
+            return 1
+        fi
+
+        if [ "$attempt_count" -ge "$DOTS_DOWNLOAD_RETRY_COUNT" ]; then
+            return 1
+        fi
+
+        attempt_count=$((attempt_count + 1))
+        sleep "$DOTS_DOWNLOAD_RETRY_DELAY_SECONDS"
+    done
 }
 
 fetch_go_version() {
