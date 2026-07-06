@@ -400,6 +400,46 @@ func TestRenderSkillDirsRuleBodyMissing(t *testing.T) {
 	}
 }
 
+func TestRenderSkillDirsRuleBodyRejectsTraversal(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "rules", "code.mdc"), "---\ndescription: c\n---\ncode body\n")
+	skillsDir := filepath.Join(root, "skills")
+	writeTestFile(
+		t,
+		filepath.Join(skillsDir, "broken", "SKILL.md.tmpl"),
+		"---\nname: broken\ndescription: d\n---\n\n{{.RuleBody \"../secrets\"}}\n",
+	)
+	dst := filepath.Join(t.TempDir(), "skills")
+	err := RenderSkillDirs(skillsDir, dst, SkillRefMDC)
+	if err == nil {
+		t.Fatal("expected RenderSkillDirs to fail on traversal rule name, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid rule body name") {
+		t.Errorf("expected invalid rule body name in error, got: %v", err)
+	}
+}
+
+func TestRenderSkillDirsRuleBodyRejectsCycles(t *testing.T) {
+	root := t.TempDir()
+	rulesDir := filepath.Join(root, "rules")
+	writeTestFile(t, filepath.Join(rulesDir, "loop-a.mdc"), "---\ndescription: a\n---\n{{.RuleBody \"loop-b\"}}\n")
+	writeTestFile(t, filepath.Join(rulesDir, "loop-b.mdc"), "---\ndescription: b\n---\n{{.RuleBody \"loop-a\"}}\n")
+	skillsDir := filepath.Join(root, "skills")
+	writeTestFile(
+		t,
+		filepath.Join(skillsDir, "broken", "SKILL.md.tmpl"),
+		"---\nname: broken\ndescription: d\n---\n\n{{.RuleBody \"loop-a\"}}\n",
+	)
+	dst := filepath.Join(t.TempDir(), "skills")
+	err := RenderSkillDirs(skillsDir, dst, SkillRefMDC)
+	if err == nil {
+		t.Fatal("expected RenderSkillDirs to fail on cyclic rule body transclusion, got nil")
+	}
+	if !strings.Contains(err.Error(), "cyclic rule body transclusion") {
+		t.Errorf("expected cyclic transclusion in error, got: %v", err)
+	}
+}
+
 func TestRenderRulesForUpload(t *testing.T) {
 	srcRoot := t.TempDir()
 	writeTestFile(t, filepath.Join(srcRoot, "writing.mdc"),

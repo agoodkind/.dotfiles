@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"text/template"
@@ -531,6 +532,26 @@ type skillTemplateData struct {
 	rulesDir  string
 	ruleNames []string
 	execErr   *error
+	expanding *map[string]struct{}
+}
+
+func (d skillTemplateData) setExecErr(err error) {
+	if d.execErr != nil && *d.execErr == nil {
+		*d.execErr = err
+	}
+}
+
+func (d skillTemplateData) validRuleBodyName(name string) error {
+	if name == "" || name == "." || name == ".." {
+		return fmt.Errorf("invalid rule body name %q", name)
+	}
+	if strings.Contains(name, "/") || strings.Contains(name, string(filepath.Separator)) {
+		return fmt.Errorf("invalid rule body name %q", name)
+	}
+	if !slices.Contains(d.ruleNames, name) {
+		return fmt.Errorf("unknown rule body %q", name)
+	}
+	return nil
 }
 
 // Rules renders the full rule list for the active style.
@@ -544,19 +565,27 @@ func (d skillTemplateData) Skill(name string) string { return renderSkillSibling
 
 // RuleBody inlines a corpus rule body, expanding any skill references inside it.
 func (d skillTemplateData) RuleBody(name string) string {
+	if err := d.validRuleBodyName(name); err != nil {
+		d.setExecErr(err)
+		return ""
+	}
+	if d.expanding != nil {
+		if _, ok := (*d.expanding)[name]; ok {
+			d.setExecErr(fmt.Errorf("cyclic rule body transclusion for %q", name))
+			return ""
+		}
+		(*d.expanding)[name] = struct{}{}
+		defer delete(*d.expanding, name)
+	}
 	path := filepath.Join(d.rulesDir, name+".mdc")
 	content, err := os.ReadFile(path)
 	if err != nil {
-		if d.execErr != nil {
-			*d.execErr = fmt.Errorf("reading rule body %q: %w", name, err)
-		}
+		d.setExecErr(fmt.Errorf("reading rule body %q: %w", name, err))
 		return ""
 	}
 	rule, parseErr := ParseRuleSource(string(content))
 	if parseErr != nil {
-		if d.execErr != nil {
-			*d.execErr = fmt.Errorf("parsing rule body %q: %w", name, parseErr)
-		}
+		d.setExecErr(fmt.Errorf("parsing rule body %q: %w", name, parseErr))
 		return ""
 	}
 	body := strings.TrimSpace(rule.Body)
@@ -565,16 +594,12 @@ func (d skillTemplateData) RuleBody(name string) string {
 	}
 	parsed, parseErr := template.New(name + ".mdc").Parse(body)
 	if parseErr != nil {
-		if d.execErr != nil {
-			*d.execErr = fmt.Errorf("parsing rule body template %q: %w", name, parseErr)
-		}
+		d.setExecErr(fmt.Errorf("parsing rule body template %q: %w", name, parseErr))
 		return ""
 	}
 	buf := bytes.NewBuffer(nil)
 	if execErr := parsed.Execute(buf, d); execErr != nil {
-		if d.execErr != nil {
-			*d.execErr = fmt.Errorf("executing rule body template %q: %w", name, execErr)
-		}
+		d.setExecErr(fmt.Errorf("executing rule body template %q: %w", name, execErr))
 		return ""
 	}
 	return strings.TrimSpace(buf.String())
@@ -593,19 +618,21 @@ func renderSkillTemplate(content string, refStyle SkillRefStyle, rulesDir string
 		return "", fmt.Errorf("parsing skill template %s: %w", name, err)
 	}
 	var execErr error
+	expanding := make(map[string]struct{})
 	buf := bytes.NewBuffer(nil)
 	data := skillTemplateData{
 		style:     refStyle,
 		rulesDir:  rulesDir,
 		ruleNames: ruleNames,
 		execErr:   &execErr,
+		expanding: &expanding,
 	}
 	if err := parsed.Execute(buf, data); err != nil {
 		slog.Warn("compilation: renderSkillTemplate execute failed", "name", name, "err", err)
 		return "", fmt.Errorf("executing skill template %s: %w", name, err)
 	}
 	if execErr != nil {
-		return "", execErr
+		return "", fmt.Errorf("executing skill template %s: %w", name, execErr)
 	}
 	return injectSkillMarker(buf.String()), nil
 }
