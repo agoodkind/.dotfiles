@@ -167,12 +167,12 @@ Architecture docs describe the system as it is now, stating behavior first and l
 
 **Bad** (hardcoded symbol and path):
 
-> `formatOverloadMessage` in `internal/api/errors.go` and its test hold the enforced wording.
+> `saveSettings` in `src/settings/store.ts` and its test hold the enforced wording.
 
 **Good** (behavior and contract):
 
-> The ingress returns every upstream failure as an HTTP 400 with an `invalid_request_error` body, so the real reason reaches the chat.
+> Saving settings shows a confirmation message once the write succeeds, so the user knows it was stored.
 
 **Good** (reworded, link only if truly needed):
 
-> The ingress rewords upstream capacity sheds into a plain message, and a test locks that wording so it cannot regress.
+> Saving settings confirms success with a short message, and a test locks that wording so it cannot regress.
