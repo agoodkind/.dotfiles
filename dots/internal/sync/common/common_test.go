@@ -86,3 +86,52 @@ func TestDebianPrivilegedCommand(t *testing.T) {
 		t.Fatalf("args = %#v, want sudo apt-get update args", args)
 	}
 }
+
+func TestSudoersNopasswdEntry(t *testing.T) {
+	t.Parallel()
+
+	got := SudoersNopasswdEntry("agoodkind")
+	want := "agoodkind ALL=(ALL) NOPASSWD: ALL\n"
+	if got != want {
+		t.Fatalf("SudoersNopasswdEntry = %q, want %q", got, want)
+	}
+}
+
+func TestSudoersDropInPath(t *testing.T) {
+	t.Parallel()
+
+	got := SudoersDropInPath("agoodkind")
+	want := "/etc/sudoers.d/agoodkind-nopasswd"
+	if got != want {
+		t.Fatalf("SudoersDropInPath = %q, want %q", got, want)
+	}
+}
+
+func TestIsValidSudoersUsername(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		username string
+		want     bool
+	}{
+		{name: "empty", username: "", want: false},
+		{name: "simple", username: "agoodkind", want: true},
+		{name: "space", username: "ago odkind", want: false},
+		{name: "tab", username: "ago\todkind", want: false},
+		{name: "newline", username: "agoodkind\nALL=(ALL) NOPASSWD: ALL", want: false},
+		{name: "forward slash", username: "../etc/passwd", want: false},
+		{name: "backslash", username: "ago\\odkind", want: false},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := isValidSudoersUsername(test.username); got != test.want {
+				t.Fatalf("isValidSudoersUsername(%q) = %v, want %v", test.username, got, test.want)
+			}
+		})
+	}
+}
