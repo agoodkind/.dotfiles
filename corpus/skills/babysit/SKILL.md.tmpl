@@ -88,11 +88,13 @@ Filter to unresolved threads first. Read only each comment body and the minimum 
 
 Automated reviewers (Copilot, Bugbot) re-comment on every push, so thread triage is recurring, not one-time. Each new push can add threads that block merge while `required_review_thread_resolution` is active. Re-read unresolved threads on every babysit loop.
 
+Do not delay a verified review fix to avoid restarting CI or triggering another automated review pass. A local fix that has not been published cannot receive CI or reviewer feedback, so prompt publication is part of the babysit loop. Use the repository-specific push command from local instructions when publishing.
+
 Validate automated review bot comments (for example Bugbot) before acting. Fix valid points. Reply and leave the thread open when you disagree or are unsure.
 
 ## 5. Resolve threads once addressed
 
-After a requested change is made and pushed, resolve the thread with GraphQL. REST has no resolve endpoint. Use the `PRRT_...` thread `id` from `reviewThreads`, not a comment ID.
+After a requested change is made, locally verified, and pushed, resolve the thread with GraphQL. REST has no resolve endpoint. Use the `PRRT_...` thread `id` from `reviewThreads`, not a comment ID.
 
 Reply first when a short explanation helps:
 
@@ -119,7 +121,7 @@ Resolve only after the change is genuinely addressed. When `required_review_thre
 
 ## 6. Fix CI within PR scope
 
-Fix CI failures caused by changes within this PR's scope. Push scoped fixes and re-run `gh pr checks`.
+Fix CI failures caused by changes within this PR's scope. Publish each scoped CI or review-thread fix as soon as it is locally verified, then re-run `gh pr checks`. Use the repository-specific push command from local instructions, such as `config push` when a repo requires it. Batch only the threads already present in the current poll. Do not hold a completed fix for possible future comments.
 
 Never edit CI workflows or unrelated code just to make failures pass. Report back when that would be required.
 
