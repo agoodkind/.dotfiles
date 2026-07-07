@@ -11,6 +11,7 @@ typeset -gi _ZSHRC_TREE_IDX=$((${#_PERF_TREE} + 1))
 _PERF_TREE+=("1:.zshrc:0")
 
 _source "$DOTDOTFILES/zshrc/core/utils.zsh"
+_source "$DOTDOTFILES/zshrc/core/env.zsh"
 
 # Everything below is only needed for interactive human terminal sessions.
 # Agents (CLAUDECODE, CURSOR_AGENT, CODEX_CI, GEMINI_CLI) and non-TTY shells
