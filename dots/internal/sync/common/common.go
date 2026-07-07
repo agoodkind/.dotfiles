@@ -146,12 +146,20 @@ func SudoersDropInPath(username string) string {
 // isValidSudoersUsername reports whether username is safe to embed verbatim in
 // a sudoers file and a /etc/sudoers.d file name. It rejects whitespace,
 // newlines, and path separators, so a malformed username can neither corrupt
-// the sudoers entry nor let SudoersDropInPath escape /etc/sudoers.d.
+// the sudoers entry nor let SudoersDropInPath escape /etc/sudoers.d. It also
+// rejects a leading % or #, which sudoers reads as a group (%group) or numeric
+// uid (#uid) rather than a plain user name.
 func isValidSudoersUsername(username string) bool {
 	if username == "" {
 		return false
 	}
-	return !strings.ContainsAny(username, " \t\n\r/\\")
+	if strings.ContainsAny(username, " \t\n\r/\\") {
+		return false
+	}
+	if strings.HasPrefix(username, "%") || strings.HasPrefix(username, "#") {
+		return false
+	}
+	return true
 }
 
 // EnsurePasswordlessSudo grants the current user NOPASSWD sudo access by
@@ -201,8 +209,15 @@ func EnsurePasswordlessSudo(ctx context.Context, logger *telemetry.Logger, group
 	// A `visudo -c -f <file>` check can enforce sudoers ownership/mode on some
 	// platforms, which a user-owned 0600 temp file would fail; stdin has no such
 	// file to check, so the syntax check works on every platform.
-	if _, err := cmdexec.CombinedOutputWithInput(ctx, nil, strings.NewReader(entry), "visudo", "-c", "-f", "-"); err != nil {
-		slog.WarnContext(ctx, "common: sudoers drop-in failed validation", "err", err)
+	//
+	// visudo lives in /usr/sbin (or /sbin) on Debian-family systems, which is
+	// often absent from a login-shell PATH, so add those dirs for this call to
+	// avoid a spurious "executable file not found". The captured output is logged
+	// on failure so a real syntax error is diagnosable.
+	visudoEnv := map[string]string{"PATH": os.Getenv("PATH") + ":/usr/sbin:/sbin"}
+	visudoOutput, err := cmdexec.CombinedOutputWithInput(ctx, visudoEnv, strings.NewReader(entry), "visudo", "-c", "-f", "-")
+	if err != nil {
+		slog.WarnContext(ctx, "common: sudoers drop-in failed validation", "err", err, "visudo_output", strings.TrimSpace(visudoOutput))
 		return fmt.Errorf("validating sudoers drop-in: %w", err)
 	}
 
@@ -227,6 +242,14 @@ func EnsurePasswordlessSudo(ctx context.Context, logger *telemetry.Logger, group
 	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "sudo", "install", "-m", "0440", "-o", "root", "-g", group, tempPath, dropInPath); err != nil {
 		slog.WarnContext(ctx, "common: installing sudoers drop-in", "err", err)
 		return fmt.Errorf("installing sudoers drop-in: %w", err)
+	}
+
+	// Confirm the drop-in actually took effect, since a sudoers.d include rule or
+	// an unusable file could leave passwordless sudo inactive even after a clean
+	// install, and later background work would then still block on a prompt.
+	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "sudo", "-k", "-n", "true"); err != nil {
+		slog.WarnContext(ctx, "common: installed sudoers drop-in but passwordless sudo is still inactive", "path", dropInPath, "err", err)
+		return fmt.Errorf("installed sudoers drop-in at %s but passwordless sudo is still inactive: %w", dropInPath, err)
 	}
 
 	InfoContext(ctx, logger, "  enabled passwordless sudo for "+currentUser.Username)
