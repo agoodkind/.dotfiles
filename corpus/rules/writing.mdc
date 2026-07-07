@@ -149,7 +149,7 @@ Links work best when another local source is the stable home for the detail.
 
 ## Document architecture as current state
 
-Architecture docs describe the system as it is now, and link to the code or test that holds each detail, so the doc cannot drift from the code.
+Architecture docs describe the system as it is now, stating behavior first and linking to the code or test that holds a detail only where a reader needs to verify it, so the doc cannot drift from the code.
 
 - One `overview.md` per area lives at `docs/<area>/overview.md`.
 - A short entry pointer in `README.md` or `AGENTS.md` links to each area overview.
@@ -167,7 +167,7 @@ Architecture docs describe the system as it is now, and link to the code or test
 
 **Bad** (hardcoded symbol and path):
 
-> `anthropicOverloadedClientMessage` in `internal/adapter/anthropic_provider_dispatch.go` and its test hold the enforced wording.
+> `formatOverloadMessage` in `internal/api/errors.go` and its test hold the enforced wording.
 
 **Good** (behavior and contract):
 
@@ -175,4 +175,4 @@ Architecture docs describe the system as it is now, and link to the code or test
 
 **Good** (reworded, link only if truly needed):
 
-> The ingress rewords Anthropic capacity sheds into a plain message, and a test locks that wording so it cannot regress.
+> The ingress rewords upstream capacity sheds into a plain message, and a test locks that wording so it cannot regress.
