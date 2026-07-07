@@ -53,7 +53,7 @@ A detail belongs when it helps the reviewer understand, verify, or ship safely.
 - Implementation detail stays at the system level.
 - The prose explains behavior before naming code.
 - Prose should not narrate literal code.
-- Code anchors appear only when they help the reader orient.
+- Code anchors appear only when they help the reader orient, not on every statement.
 - The code carries line-level detail.
 
 ## Order information
@@ -149,14 +149,30 @@ Links work best when another local source is the stable home for the detail.
 
 ## Document architecture as current state
 
-Architecture docs describe the system as it is now, and link to the code or test that holds each detail, so the doc cannot drift from the code.
+Architecture docs describe the system as it is now, stating behavior first and linking to the code or test that holds a detail only where a reader needs to verify it. Linking to the source that way keeps the doc easy to verify and reduces drift from the code.
 
 - One `overview.md` per area lives at `docs/<area>/overview.md`.
 - A short entry pointer in `README.md` or `AGENTS.md` links to each area overview.
 - Doc path segments are single words. Use paths like `docs/deadcode/overview.md`, and never use paths like `docs/dead-code/overview.md`.
 - The overview states what the area does today, in present tense.
-- Each statement links to the source file, test, or doc that holds the truth.
+- Each statement describes current behavior first, and adds a durable doc or test link only where a reader needs to verify it.
+- A behavior doc is not an index of code locations, so do not append a symbol name or file path to every statement.
+- Name a code symbol or file path only when it is the shortest way to help a reader orient, never as the default.
 - The enforcing test or rule is the source of truth, and the doc never copies the invariant it enforces.
 - A copied detail drifts, so link to it instead of restating it.
 - The doc describes what is, not how the decision was reached.
 - Decision history stays out unless current work needs it.
+
+### Examples
+
+**Bad** (hardcoded symbol and path):
+
+> `saveSettings` in `src/settings/store.ts` and its test hold the enforced wording.
+
+**Good** (behavior and contract):
+
+> Saving settings shows a confirmation message once the write succeeds, so the user knows it was stored.
+
+**Good** (reworded, link only if truly needed):
+
+> Saving settings confirms success with a short message, and a test locks that wording so it cannot regress.
