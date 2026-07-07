@@ -20,5 +20,6 @@ source_files = [
     "$DOTDOTFILES/zshrc/core/prefer.zsh",
     "$DOTDOTFILES/zshrc/commands/prefer-decls.zsh",
     "$DOTDOTFILES/zshrc/commands/editors.zsh",
+    "$DOTDOTFILES/zshrc/commands/aliases.zsh",
     "$DOTDOTFILES/zshrc/integrations/zoxide.zsh",
 ]

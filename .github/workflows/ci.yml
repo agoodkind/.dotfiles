@@ -9,6 +9,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
+  attestations: write
   contents: read
 
 jobs:
@@ -17,6 +18,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      attestations: write
+    secrets: inherit
     with:
       apt_packages: zsh
       go_version_file: dots/go.mod

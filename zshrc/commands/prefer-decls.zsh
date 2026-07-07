@@ -31,6 +31,7 @@ prefer npm pnpm
 
 # ssh helper
 prefer sshrm ssh-keygen -R
+prefer uuid _uuid
 
 # Editor: nvim > vim > vi (with sudoedit wrappers)
 if isinstalled nvim; then

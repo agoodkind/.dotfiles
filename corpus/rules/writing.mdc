@@ -4,7 +4,7 @@ applies_to:
   - "*.md"
   - "*.mdc"
   - "*.txt"
-always: false
+always: true
 ---
 
 # Technical documentation writing

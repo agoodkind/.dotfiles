@@ -33,13 +33,6 @@ dest       = ".claude/rules"
 rule_ext   = ".md"
 skill_dest = ".claude/skills"
 
-[[output]]
-provider   = "claude"
-kind       = "instruction-doc"
-dest       = ".claude/CLAUDE.md"
-title      = "Claude Memory"
-skill_dest = ".claude/skills"
-
 # Shared cross-agent directory (read by Zed, VSCode, and Codex)
 [[output]]
 provider  = "agents"

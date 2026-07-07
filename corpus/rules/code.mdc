@@ -10,7 +10,7 @@ applies_to:
   - "*.zsh"
   - "*.bash"
   - "*.go"
-always: false
+always: true
 ---
 
 # Code style
