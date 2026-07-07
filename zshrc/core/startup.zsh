@@ -51,53 +51,37 @@ function _dotfiles_show_dispatch_banner() {
 }
 
 # Display all queued notifications from background processes, one per line.
-# Format on disk: timestamp|level|logfile|runid|message
-# Legacy formats without a runid or timestamp are still accepted.
+# Format on disk, written only by telemetry.Notify: timestamp|level|logfile|runid|message
+# The message is the final field and may itself contain '|'.
 function _dotfiles_show_notifications() {
     local notify_file="$HOME/.cache/dotfiles/notifications"
     if [[ ! -f "$notify_file" ]]; then
         return 0
     fi
 
+    # Move the file aside before reading, so a concurrent writer's new lines land
+    # in a fresh file instead of being dropped by the rm below.
     local notify_staged="${notify_file}.$$"
     if ! mv "$notify_file" "$notify_staged" 2>/dev/null; then
         return 0
     fi
-    notify_file="$notify_staged"
 
-    local created_at level logfile runid idtag msg line display_msg
+    local created_at level logfile runid msg rest line idtag display_msg
     while IFS= read -r line; do
-        level="${line%%|*}"
-        line="${line#*|}"
-        case "$level" in
-            success | info | warn | error)
-                created_at=""
-                ;;
-            *)
-                created_at="$level"
-                level="${line%%|*}"
-                line="${line#*|}"
-                ;;
-        esac
-        logfile="${line%%|*}"
-        line="${line#*|}"
-        if [[ "$line" != *'|'* ]]; then
-            msg="$line"
-            runid=""
-        else
-            runid="${line%%|*}"
-            msg="${line#*|}"
-        fi
+        created_at="${line%%|*}"
+        rest="${line#*|}"
+        level="${rest%%|*}"
+        rest="${rest#*|}"
+        logfile="${rest%%|*}"
+        rest="${rest#*|}"
+        runid="${rest%%|*}"
+        msg="${rest#*|}"
         msg="${msg//\%/%%}"
         idtag=""
         if [[ -n "$runid" ]]; then
             idtag="%F{242}[#${runid[1,12]}]%f "
         fi
-        if [[ -n "$created_at" ]]; then
-            display_msg="%F{242}${created_at}%f ${idtag}${msg}"
-        else
-            display_msg="${idtag}${msg}"
-        fi
+        display_msg="%F{242}${created_at}%f ${idtag}${msg}"
         case "$level" in
             success) print -P "%F{green}✓ ${display_msg}%f" ;;
             info) print -P "%F{blue}↻ ${display_msg}%f" ;;
@@ -105,8 +89,8 @@ function _dotfiles_show_notifications() {
             error) print -P "%F{red}✗ ${display_msg}%f" ;;
         esac
         if [[ -n "$logfile" && -f "$logfile" ]]; then
-            print -P "  %F{242}log: ${logfile}%f"
+            print -P "  %F{242}log: ${logfile//\%/%%}%f"
         fi
-    done <"$notify_file"
-    rm -f "$notify_file"
+    done <"$notify_staged"
+    rm -f "$notify_staged"
 }

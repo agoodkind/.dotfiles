@@ -94,7 +94,7 @@ The sync logic in the Go sync implementation:
 
 **Format**: `timestamp|level|logfile|runid|message` (one notification per line)
 
-Legacy lines without a timestamp or runid are still accepted.
+The message is the final field and may itself contain `|`.
 
 - `level`: `success`, `info`, `warn`, `error`
 - `logfile`: path to the log file that produced this notification (may be empty)

@@ -1,5 +1,8 @@
 # PATH additions and lazy-load knobs apply to every shell, so they run first.
-export PATH="$PATH:$HOME/.cargo/bin:$HOME/go/bin"
+# typeset -U keeps the path array deduplicated, so re-sourcing (nested shells,
+# manual `source ~/.zshrc`) cannot grow PATH with repeated entries.
+typeset -U path
+path+=("$HOME/.cargo/bin" "$HOME/go/bin")
 export NVM_LAZY_LOAD=true
 
 # shellcheck shell=bash
@@ -18,7 +21,7 @@ _source "$DOTDOTFILES/zshrc/core/utils.zsh"
 # so wrappers like claude/codex exist in agent and non-TTY shells too.
 if [[ -f "$DOTDOTFILES/.zshrc.local" ]]; then
     local _zl_t0=$EPOCHREALTIME
-    if source "$DOTDOTFILES/.zshrc.local" 2>/dev/null; then
+    if source "$DOTDOTFILES/.zshrc.local"; then
         local _zl_ms=$(((EPOCHREALTIME - _zl_t0) * 1000))
         _PROFILE_TIMES['.zshrc.local']=$_zl_ms
         _PERF_TREE+=("$((_SOURCE_DEPTH + 2)):.zshrc.local:${_zl_ms}")
