@@ -1,57 +1,53 @@
-export PATH="$PATH:$HOME/.cargo/bin"
-export PATH="$PATH:$HOME/go/bin"
+# PATH additions and lazy-load knobs apply to every shell, so they run first.
+# typeset -U keeps the path array deduplicated, so re-sourcing (nested shells,
+# manual `source ~/.zshrc`) cannot grow PATH with repeated entries.
+typeset -U path
+path+=("$HOME/.cargo/bin" "$HOME/go/bin")
 export NVM_LAZY_LOAD=true
 
 # shellcheck shell=bash
+# perf.zsh defines _source/_async and must be a plain top-level source, since it
+# is the harness every later call depends on.
 source "$DOTDOTFILES/zshrc/core/perf.zsh"
 
-# Structural header: all _source/_async calls below become depth-2 children.
-# ms is 0 here; .zshrc epilogue patches it with the actual total.
+# Structural header: every _source/_async below is a depth-2 child of this node.
+# ms is 0 here; the .zshrc epilogue patches it with the real total.
 typeset -gi _ZSHRC_TREE_IDX=$((${#_PERF_TREE} + 1))
 _PERF_TREE+=("1:.zshrc:0")
 
 _source "$DOTDOTFILES/zshrc/core/utils.zsh"
 _source "$DOTDOTFILES/zshrc/core/env.zsh"
 
-# Everything below is only needed for interactive human terminal sessions.
-# Agents (CLAUDECODE, CURSOR_AGENT, CODEX_CI, GEMINI_CLI) and non-TTY shells
-# skip plugins, aliases, completion, dispatch, and motd entirely.
+# Machine-local overrides load for every shell and before the interactive gate,
+# so wrappers like claude/codex exist in agent and non-TTY shells too.
+if [[ -f "$DOTDOTFILES/.zshrc.local" ]]; then
+    local _zl_t0=$EPOCHREALTIME
+    if source "$DOTDOTFILES/.zshrc.local"; then
+        local _zl_ms=$(((EPOCHREALTIME - _zl_t0) * 1000))
+        _PROFILE_TIMES['.zshrc.local']=$_zl_ms
+        _PERF_TREE+=("$((_SOURCE_DEPTH + 2)):.zshrc.local:${_zl_ms}")
+    fi
+fi
+
+# Agents and non-TTY shells need none of the interactive machinery, so they apply
+# agent shell options if requested and then stop here.
 if ((!DOTFILES_INTERACTIVE)); then
-    if [[ "$DOTFILES_AGENT_SHELL" -eq 1 ]]; then
-        if (($+functions[dotfiles_apply_agent_shell_options])); then
-            dotfiles_apply_agent_shell_options
-        fi
+    if ((DOTFILES_AGENT_SHELL)) && (($+functions[dotfiles_apply_agent_shell_options])); then
+        dotfiles_apply_agent_shell_options
     fi
     return 0 2>/dev/null || true
 fi
 
-# Keep startup minimal while install owns the flock so partially written shell
-# state does not load in new terminals.
-local _install_status_dir=~/.cache/dotfiles_install.lock
-if [[ -d "$_install_status_dir" ]]; then
-    local _install_flock=~/.cache/dotfiles_install.flock
-    local _install_lock_fd=-1
+# Interactive-only startup below.
+_source "$DOTDOTFILES/zshrc/core/startup.zsh"
 
-    if [[ ! -e "$_install_flock" ]]; then
-        rm -rf "$_install_status_dir" 2>/dev/null || true
-    else
-        # The installer only creates this status directory after it acquires the
-        # install flock, so a busy flock means the install is still live.
-        zmodload -F zsh/system b:zsystem
-        if ! zsystem flock -t 0 -f _install_lock_fd "$_install_flock"; then
-            print -P "%F{blue}↻ dotfiles install is running in another terminal, so this shell is using minimal startup%f"
-            return 0 2>/dev/null || true
-        fi
-        zsystem flock -u $_install_lock_fd
-
-        # If the flock is free, the marker directory is not enough on its own and
-        # can be cleaned up.
-        rm -rf "$_install_status_dir" 2>/dev/null || true
-    fi
+# A live install may be writing shell state, so fall back to minimal startup.
+if _dotfiles_install_in_progress; then
+    return 0 2>/dev/null || true
 fi
 
-# plugins.zsh uses plain source (zinit turbo mode stores scope references
-# that break when sourced inside a function). Timing is done inline instead.
+# plugins.zsh must be a top-level plain source: zinit turbo stores scope
+# references that break inside a function, so timing stays inline.
 local _t0=$EPOCHREALTIME
 source "$DOTDOTFILES/zshrc/core/plugins.zsh"
 local _pms=$(((EPOCHREALTIME - _t0) * 1000))
@@ -64,66 +60,11 @@ _source "$DOTDOTFILES/zshrc/commands/remote.zsh"
 _source "$DOTDOTFILES/zshrc/commands/aliases.zsh"
 _source "$DOTDOTFILES/zshrc/integrations/zoxide.zsh"
 _source "$DOTDOTFILES/zshrc/commands/prefer-decls.zsh"
-_async bash -lc "builtin cd \"$DOTDOTFILES/dots\" && source \"$DOTDOTFILES/dots/bootstrap-go.sh\" && run_dots_go_command dispatch"
+
+# Background maintenance; _async backgrounds it and records a dispatch node.
+_async dots_dispatch
+
 _source "$DOTDOTFILES/zshrc/integrations/motd.zsh"
-if [[ -f "$DOTDOTFILES/.zshrc.local" ]]; then
-    _source "$DOTDOTFILES/.zshrc.local"
-fi
 
-# Show transient "running now" state from background dispatch
-if [[ -d ~/.cache/dotfiles_dispatch.lock ]]; then
-    local _update_type=""
-    if [[ -f ~/.cache/dotfiles_dispatch.lock/status ]]; then
-        _update_type=$(<~/.cache/dotfiles_dispatch.lock/status)
-    fi
-    if [[ "$_update_type" == "weekly" ]]; then
-        print -P "%F{blue}↻ weekly update running in background%f"
-    elif [[ "$_update_type" == "sync" ]]; then
-        print -P "%F{blue}↻ dotfiles sync running in background%f"
-    fi
-fi
-
-# Display all queued notifications from background processes, one per line.
-# Format on disk: timestamp|level|logfile|runid|message
-# Legacy formats without a runid or timestamp are still accepted.
-local _notify_file="$HOME/.cache/dotfiles/notifications"
-if [[ -f "$_notify_file" ]]; then
-    local _created_at _level _logfile _runid _idtag _msg _line
-    while IFS= read -r _line; do
-        _level="${_line%%|*}"
-        _line="${_line#*|}"
-        case "$_level" in
-            success | info | warn | error)
-                _created_at=""
-                ;;
-            *)
-                _created_at="$_level"
-                _level="${_line%%|*}"
-                _line="${_line#*|}"
-                ;;
-        esac
-        _logfile="${_line%%|*}"
-        _line="${_line#*|}"
-        _runid="${_line%%|*}"
-        _msg="${_line#*|}"
-        _idtag=""
-        if [[ -n "$_runid" ]]; then
-            _idtag="%F{242}[#${_runid[1,12]}]%f "
-        fi
-        if [[ -n "$_created_at" ]]; then
-            _msg="%F{242}${_created_at}%f ${_idtag}${_msg}"
-        else
-            _msg="${_idtag}${_msg}"
-        fi
-        case "$_level" in
-            success) print -P "%F{green}✓ ${_msg}%f" ;;
-            info) print -P "%F{blue}↻ ${_msg}%f" ;;
-            warn) print -P "%F{yellow}⚠  ${_msg}%f" ;;
-            error) print -P "%F{red}✗ ${_msg}%f" ;;
-        esac
-        if [[ -n "$_logfile" && -f "$_logfile" ]]; then
-            print -P "  %F{242}log: ${_logfile}%f"
-        fi
-    done <"$_notify_file"
-    rm -f "$_notify_file"
-fi
+_dotfiles_show_dispatch_banner
+_dotfiles_show_notifications
