@@ -195,6 +195,17 @@ func EnsurePasswordlessSudo(ctx context.Context, logger *telemetry.Logger, group
 		return fmt.Errorf("sudoers drop-in path %q escaped /etc/sudoers.d", dropInPath)
 	}
 
+	entry := SudoersNopasswdEntry(currentUser.Username)
+
+	// Check the entry by feeding it to visudo on stdin (-f -), not a temp file.
+	// A `visudo -c -f <file>` check can enforce sudoers ownership/mode on some
+	// platforms, which a user-owned 0600 temp file would fail; stdin has no such
+	// file to check, so the syntax check works on every platform.
+	if _, err := cmdexec.CombinedOutputWithInput(ctx, nil, strings.NewReader(entry), "visudo", "-c", "-f", "-"); err != nil {
+		slog.WarnContext(ctx, "common: sudoers drop-in failed validation", "err", err)
+		return fmt.Errorf("validating sudoers drop-in: %w", err)
+	}
+
 	tempFile, err := os.CreateTemp("", "sudoers-nopasswd-*")
 	if err != nil {
 		slog.WarnContext(ctx, "common: creating sudoers temp file", "err", err)
@@ -203,7 +214,7 @@ func EnsurePasswordlessSudo(ctx context.Context, logger *telemetry.Logger, group
 	tempPath := tempFile.Name()
 	defer os.Remove(tempPath)
 
-	if _, err := tempFile.WriteString(SudoersNopasswdEntry(currentUser.Username)); err != nil {
+	if _, err := tempFile.WriteString(entry); err != nil {
 		tempFile.Close()
 		slog.WarnContext(ctx, "common: writing sudoers temp file", "err", err)
 		return fmt.Errorf("writing sudoers temp file: %w", err)
@@ -211,11 +222,6 @@ func EnsurePasswordlessSudo(ctx context.Context, logger *telemetry.Logger, group
 	if err := tempFile.Close(); err != nil {
 		slog.WarnContext(ctx, "common: closing sudoers temp file", "err", err)
 		return fmt.Errorf("closing sudoers temp file: %w", err)
-	}
-
-	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "visudo", "-c", "-f", tempPath); err != nil {
-		slog.WarnContext(ctx, "common: sudoers drop-in failed validation", "err", err)
-		return fmt.Errorf("validating sudoers drop-in: %w", err)
 	}
 
 	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "sudo", "install", "-m", "0440", "-o", "root", "-g", group, tempPath, dropInPath); err != nil {
