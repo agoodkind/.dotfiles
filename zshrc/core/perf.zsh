@@ -207,6 +207,13 @@ function _dots_exec() {
     command bash -lc 'source "$0" && run_dots_go_command "$@"' "$DOTDOTFILES/dots/bootstrap-go.sh" "$@"
 }
 
+# Kick off background maintenance (updater, cache rebuilds, ssh key load) through
+# the same bash bootstrap _dots_exec uses. The name gives the perf tree a
+# dispatch node instead of a raw bash node, and the callsite wraps it in _async.
+function dots_dispatch() {
+    _dots_exec dispatch
+}
+
 function zsh_perf() {
     _dots_exec perf "$@"
 }

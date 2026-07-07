@@ -92,13 +92,16 @@ The sync logic in the Go sync implementation:
 
 **File**: `~/.cache/dotfiles/notifications`
 
-**Format**: `level|logfile|message` (one notification per line)
+**Format**: `timestamp|level|logfile|runid|message` (one notification per line)
+
+The message is the final field and may itself contain `|`.
 
 - `level`: `success`, `info`, `warn`, `error`
 - `logfile`: path to the log file that produced this notification (may be empty)
+- `runid`: optional background run identifier (may be empty)
 - `message`: human-readable text (may contain `|` characters)
 
-`dotfiles_notify` writes to this file. At next interactive login, `incl.zsh`
+`dotfiles_notify` writes to this file. At next interactive login, `startup.zsh`
 reads and displays each notification with color coding and shows the log
 file path if available, then deletes the file.
 
