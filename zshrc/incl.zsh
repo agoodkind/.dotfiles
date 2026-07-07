@@ -16,6 +16,7 @@ typeset -gi _ZSHRC_TREE_IDX=$((${#_PERF_TREE} + 1))
 _PERF_TREE+=("1:.zshrc:0")
 
 _source "$DOTDOTFILES/zshrc/core/utils.zsh"
+_source "$DOTDOTFILES/zshrc/core/env.zsh"
 
 # Machine-local overrides load for every shell and before the interactive gate,
 # so wrappers like claude/codex exist in agent and non-TTY shells too.
