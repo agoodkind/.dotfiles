@@ -63,7 +63,7 @@ func runCustomTools(ctx context.Context, strictMode bool, logger *telemetry.Logg
 		}
 		if err := installCustomTool(ctx, tool, strictMode, logger); err != nil {
 			failed = append(failed, tool.ID)
-			_ = telemetry.Notify("warn", "tool install/upgrade failed: "+tool.ID, getSyncLogPath(), telemetry.RunID(ctx))
+			_ = telemetry.Notify("warn", "tool install/upgrade failed: "+tool.ID, common.SyncLogPath(), telemetry.RunID(ctx))
 			common.WarnContextf(ctx, logger, "  %s: failed: %s", tool.ID, err.Error())
 			logger.WarnContextWithErr(ctx, "  "+tool.ID+": failed", err)
 		}
@@ -555,13 +555,6 @@ func copyExecutable(src, dst string) error {
 		return fmt.Errorf("setting permissions on %s: %w", dst, err)
 	}
 	return nil
-}
-
-func getSyncLogPath() string {
-	if path := os.Getenv("DOTFILES_LOG"); path != "" {
-		return path
-	}
-	return filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "sync.log")
 }
 
 // DownloadToTempFile downloads fileURL to a temporary file and returns its path.

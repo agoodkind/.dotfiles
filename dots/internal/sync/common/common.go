@@ -173,7 +173,9 @@ func EnsurePasswordlessSudo(ctx context.Context, logger *telemetry.Logger, group
 	if os.Geteuid() == 0 {
 		return nil
 	}
-	if cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "sudo", "-n", "true") == nil {
+	// -k resets any cached sudo timestamp before the -n probe, so a recently
+	// entered password cannot make this look like NOPASSWD is already set.
+	if cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "sudo", "-k", "-n", "true") == nil {
 		return nil
 	}
 
