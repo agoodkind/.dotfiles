@@ -149,7 +149,7 @@ Links work best when another local source is the stable home for the detail.
 
 ## Document architecture as current state
 
-Architecture docs describe the system as it is now, stating behavior first and linking to the code or test that holds a detail only where a reader needs to verify it, so the doc cannot drift from the code.
+Architecture docs describe the system as it is now, stating behavior first and linking to the code or test that holds a detail only where a reader needs to verify it. Linking to the source that way keeps the doc easy to verify and reduces drift from the code.
 
 - One `overview.md` per area lives at `docs/<area>/overview.md`.
 - A short entry pointer in `README.md` or `AGENTS.md` links to each area overview.
@@ -163,7 +163,7 @@ Architecture docs describe the system as it is now, stating behavior first and l
 - The doc describes what is, not how the decision was reached.
 - Decision history stays out unless current work needs it.
 
-## Examples
+### Examples
 
 **Bad** (hardcoded symbol and path):
 
