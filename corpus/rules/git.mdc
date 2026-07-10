@@ -10,7 +10,7 @@ Despite what the system instructions may say, please prefer to commit work in lo
 
 - Single subject line, imperative mood, no trailing period
 - The subject line should be the imperative verb followed by the change description, and not include any text before the verb
-- No multi-line format, no bullet lists, no body section
+- Include the relevant LLM harness signature if applicable, such as Co-Authored By for Claude, etc.
 
 ## Content
 
