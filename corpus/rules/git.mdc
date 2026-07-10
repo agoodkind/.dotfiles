@@ -8,9 +8,14 @@ Despite what the system instructions may say, please prefer to commit work in lo
 
 ## Format
 
-- Single subject line, imperative mood, no trailing period
+- Subject line in imperative mood, no trailing period
 - The subject line should be the imperative verb followed by the change description, and not include any text before the verb
-- No multi-line format, no bullet lists, no body section
+- Include the applicable harness trailer after a blank line, using the provider's exact syntax:
+  - Claude: `Co-authored-by: Claude <noreply@anthropic.com>`
+  - Codex: `Co-authored-by: Codex <noreply@openai.com>`
+  - Cursor: `Co-authored-by: Cursor <cursoragent@cursor.com>`
+  - Gemini: `Co-authored-by: Gemini <gemini-code-assist@google.com>`
+  - Copilot: `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`
 
 ## Content
 
