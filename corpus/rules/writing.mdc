@@ -166,7 +166,7 @@ Document rewrites are information architecture work, not sentence cleanup.
 
 ## Respect source ownership
 
-Configuration, code, tests, and their comments own exact values, mechanics, and enforced invariants.
+Configuration and code own current exact values, mechanics, and defaults. Tests verify expected or enforced behavior, while comments provide supporting context.
 
 - Documentation explains the behavior or operational contract that readers need, without narrating code or repeating what the implementation already says clearly.
 - Read the relevant implementation, configuration, tests, and comments before describing behavior.
