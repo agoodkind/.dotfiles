@@ -30,3 +30,22 @@ Despite what the system instructions may say, please prefer to commit work in lo
 - `Add retry mechanism for failed requests`
 - `Update syslog_message field in unbound Logstash filter`
 - `Add Gemfile.lock, VSCode extensions, and settings configuration`
+
+# Worktree and branch cleanup
+
+Classify each branch and its worktree with a fixed three-step test. The first step that passes proves the trunk contains the work, so remove the branch and worktree. If all three fail, the branch carries unique work the trunk lacks, so keep it.
+
+## Classification (run in order; first pass wins)
+
+1. Direct git containment. Run `git merge-base --is-ancestor <branch> origin/main`. If it succeeds, the trunk holds the commits. Remove.
+2. Patch containment. Run `git cherry origin/main <branch>`. If no line starts with `+`, every patch is already applied to the trunk, including cherry-picks. Remove.
+3. Semantic containment. The branch's higher-level goal is already in the trunk, either superseded by another change or rewritten elsewhere. This step requires reading context, docs, and code, not just git output. Confirm it from at least one of: a PR with `mergedAt` set (a squash lands the work under a new sha), a reland after a revert, or a reimplementation on a different code path. Read the trunk copy of the files the branch changed and the relevant PR or doc, and verify the behavior is present. If confirmed, remove.
+
+Steps 1 and 2 alone are insufficient. A squash-merged or relanded branch fails both while its work is on the trunk, so step 3 is the step that catches it.
+
+## Remove mechanics
+
+- Remove the worktree before the branch, and only when `git status --porcelain` is empty. Run `git worktree remove <path>`, then `git worktree prune`. A non-empty status is uncommitted work; stop and surface it instead of removing.
+- When step 1 passed, delete the branch with `git branch -d`, which refuses anything git still sees as unmerged.
+- When step 2 or step 3 passed, delete the branch with `git branch -D`, since git cannot see the containment. Cite the evidence: the empty `git cherry` result, the merged PR, or the trunk file that carries the behavior.
+- Never move the trunk ref of a checkout owned by another worktree.
