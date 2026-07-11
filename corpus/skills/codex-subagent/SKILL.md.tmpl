@@ -14,8 +14,27 @@ Assume `codex` is on PATH. This skill gives only CLI invocation instructions.
 Every `codex exec` dispatch uses these flags unless the user overrides them:
 
 - **Reasoning:** `-c model_reasoning_effort="xhigh"`. If `codex exec` rejects `xhigh` for the default model, retry with `-c model_reasoning_effort="high"` or drop the override.
-- **Model:** omit `-m` unless the user names a model. The default model comes from host configuration (for example `~/.codex/config.toml` when present) or Codex's built-in default.
+- **Model:** omit `-m` by default. When the user names a model or you need a non-default model, follow **Model selection** and pass `-m` only with a slug from `codex debug models`.
 - **Sandbox:** `--dangerously-bypass-approvals-and-sandbox` up front when the user has delegated work to Codex through this skill. This bypasses approval prompts and the filesystem sandbox. Do not start with `-s read-only` or `-s workspace-write` and lift sandbox later. Sandboxed runs routinely fail on `.git` writes in linked worktrees and force cache or Makefile workarounds. Scope limits ("read-only" vs "edit allowed") live in the prompt.
+
+## Model selection
+
+- **Never invent model slugs.** Do not derive slugs from the product name Codex, from host agent model names, or from patterns like `gpt-<version>-codex`. Slugs like `gpt-5.5-codex` and `gpt-5.6-codex` are invalid unless they appear in the catalog.
+- **List before you pick.** Before passing `-m`, run `codex debug models` and read `models[].slug` from the JSON output. Use only slugs present in that list.
+- **Default path.** When the user does not name a model, omit `-m` and let `~/.codex/config.toml` `model` (or Codex built-in default) apply.
+- **User-named model.** When the user names a model vaguely ("codex", "gpt-5.5", "latest", "cheaper"):
+  - List the catalog first.
+  - Match to the closest `slug` or `display_name` in the catalog.
+  - State which slug you chose and why.
+  - If no reasonable match, omit `-m` and report that you used the configured default.
+- **API exec filter.** For `codex exec`, prefer slugs where `supported_in_api` is true. Do not pass `-m` for catalog entries that are not API-supported (for example `gpt-5.3-codex-spark` on current builds).
+- **Cheaper subagent heuristic.** When the user wants a cheaper second pass, pick a lower-priority API-supported slug from the catalog (for example `gpt-5.4-mini`) rather than inventing a name.
+- **Invalid model errors.** If `codex exec` rejects `-m`, re-run `codex debug models`, pick a valid slug (or omit `-m`), retry once, and report the stderr.
+
+```bash
+codex debug models > /tmp/codex-models.json
+# Read models[].slug; pass -m only with an exact catalog slug
+```
 
 ## Run codex exec
 
@@ -119,6 +138,4 @@ Report the result in this order:
 4. Name any verification performed by the host agent after the Codex response.
 5. State exact errors if the `codex exec` run failed.
 
-For failures, preserve exact CLI stderr and exit code. If a retry is appropriate, retry once with adjusted parameters (try `-c model_reasoning_effort="high"` if xhigh was rejected, otherwise use the same defaults), then report the observed result.
-
-Avoid `-m gpt-5.5-codex` for ChatGPT-account Codex sessions unless the user has verified that model is supported for the account.
+For failures, preserve exact CLI stderr and exit code. If a retry is appropriate, retry once with adjusted parameters (try `-c model_reasoning_effort="high"` if xhigh was rejected, otherwise use the same defaults). If stderr mentions an unknown or unsupported model, treat it as a model-selection failure and follow **Model selection** before retrying. Then report the observed result.
