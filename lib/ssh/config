@@ -1,4 +1,4 @@
-Include /Users/agoodkind/.ssh/conductor_config
+Include ~/.ssh/conductor_config
 
 Include ~/.dotfiles/.ssh_config.local
 # Include ~/.ssh/ssh_config.local

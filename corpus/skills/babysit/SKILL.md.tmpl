@@ -175,20 +175,21 @@ git worktree list
 
 1. **Record** `headRefName`, feature worktree path (if any), PR `state`, and which checkout owns trunk (`git worktree list`).
 2. **Remote branch:** delete only when the PR is `MERGED` or superseded `CLOSED`. When the user asked to clean up while the PR is still `OPEN`, skip remote branch deletion unless the user explicitly confirmed abandoning the PR (deleting the remote branch closes an open PR). Use `git push origin --delete <branch>` or `gh api` delete-ref when deletion is allowed.
-3. **Local branch:**
+3. **Remove feature worktree** when babysitting ran in a dedicated worktree, `git status --porcelain` is empty, and no open branches still need it:
+   ```bash
+   git worktree remove <path>
+   git worktree prune
+   ```
+   Use `--force` only when the tree is dirty and the user approved. Stop and surface uncommitted work instead of removing a dirty tree.
+4. **Local branch:**
    - Graphite-authorized repos: `gt delete <branch>` or scoped `gt sync --no-interactive` when trunk is checked out in the same worktree and no other agents are mid-stack.
    - Plain git: `git branch -d <branch>` from a checkout that is not that branch when the PR is terminal or the user confirmed abandoning an open PR (use `-D` only with explicit user approval).
-4. **Reconcile trunk worktree:** from the checkout that **owns** trunk (never from a feature worktree):
+5. **Reconcile trunk worktree:** from the checkout that **owns** trunk (never from a feature worktree):
    ```bash
    git -C <trunk-worktree> fetch origin
    git -C <trunk-worktree> merge --ff-only origin/<trunk>
    ```
    Do not `git update-ref refs/heads/<trunk>` when trunk is checked out elsewhere.
-5. **Remove feature worktree** when babysitting ran in a dedicated worktree and no open branches still need it:
-   ```bash
-   git worktree remove <path>
-   ```
-   Use `--force` only when the tree is dirty and the user approved.
 
 **Graphite stacks:** repeat for every merged or closed branch in the stack (bottom-up order), then one trunk reconcile from the trunk-owning worktree.
 
