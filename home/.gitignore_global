@@ -9,3 +9,11 @@ node_modules
 .halo-lite-ns
 .claude
 .codex
+.superpowers/
+.build/
+DerivedData/
+Derived/
+Packages/checkouts/
+dist/
+target/
+build/
