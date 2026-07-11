@@ -37,7 +37,7 @@ A clear page or pull request (PR) description starts with the result.
 - The title names the task, topic, or change.
 - The summary sentence states the behavior or qualitative result.
 - The `Overview` section gives only the context needed to start.
-- Each later section answers one reviewer question.
+- Each later section carries one idea whose meaning, purpose, or operational scope is clear on its own.
 - Each task heading starts with an action verb.
 - Numbered steps describe ordered work.
 - Notes appear beside the step they clarify.
@@ -146,6 +146,55 @@ Links work best when another local source is the stable home for the detail.
 - Repeated detail creates drift.
 - Current behavior matters more than history.
 - Historical notes appear only when current work requires them.
+- Before adding or preserving a link, determine whether the reader needs it to understand, verify, or act.
+- Remove links that only decorate prose, repeat navigation, or expose implementation detail without helping the reader.
+- Use the fewest links that preserve clear navigation and verification.
+
+## Plan document architecture from meaning
+
+Document rewrites are information architecture work, not sentence cleanup.
+
+- Read the relevant document set before changing page boundaries or layout.
+- Identify each page's meaning, purpose, scope, and relationship to the surrounding document set.
+- Derive paths, headings, merges, and splits from the content's meaning, conceptual boundaries, operational function, and place in the larger system, not filenames or bulk patterns.
+- Preserve useful existing structure unless the content supports a clearer replacement.
+- Treat prose, document placement, consolidation, and links as one design problem.
+- Keep one durable home for each fact.
+- Make overview pages explain the area before linking to deeper pages.
+- Reject file inventories, annotated directory listings, and headings that merely enumerate code locations.
+- Use tables only for genuine comparisons or exact mappings, never as a default index or prose substitute.
+
+## Respect source ownership
+
+Configuration, code, tests, and their comments own exact values, mechanics, and enforced invariants.
+
+- Documentation explains the behavior or operational contract that readers need, without narrating code or repeating what the implementation already says clearly.
+- Read the relevant implementation, configuration, tests, and comments before describing behavior.
+- Do not infer behavior from filenames, symbols, stale prose, or assumptions when the source can establish it directly.
+- Historical narration stays out unless current operation depends on it.
+
+## Rewrite with fidelity
+
+A rewrite must preserve load-bearing operational knowledge, examples, and recovery steps.
+
+- Remove obsolete material, weak headings, unsuitable filenames, and unnecessary tables carefully.
+- Plan corpus-wide changes from a semantic review, and avoid sweeping transformations that treat different documents as interchangeable.
+- Every page requires a full semantic read before editing and a full read-back after editing.
+- Compare the source and rewritten document before and after.
+- Account for every removed or changed claim, and confirm that no factual fidelity, semantic meaning, constraint, exception, or operational instruction was lost or altered.
+
+## Workflow for document rewrites
+
+Apply this workflow before generating or restructuring documentation:
+
+1. Read the relevant document set and map its existing structure, meaning, duplication, and navigation.
+2. Read the implementation, configuration, tests, and comments that establish the documented behavior. Separate facts the docs must explain from details the source already explains well.
+3. State each page's meaning, purpose, scope, canonical facts, and relationship to nearby pages.
+4. Decide what stays, moves, merges, splits, or disappears from the content itself. Plan structural changes before applying them across the corpus.
+5. Rewrite the behavioral and operational meaning without narrating code. Preserve examples, constraints, exceptions, and recovery knowledge that readers still need.
+6. Review every link with two questions: Does the reader need this link, and can the document set use fewer links without losing navigation or verifiability?
+7. Compare the source and rewritten document before and after. Account for every removed or changed claim, and confirm that no factual fidelity, semantic meaning, constraint, exception, or operational instruction was lost or altered.
+8. Read the result as one document set and verify structure, navigation, source ownership, duplication, fidelity, and prose.
 
 ## Document architecture as current state
 
@@ -176,3 +225,19 @@ Architecture docs describe the system as it is now, stating behavior first and l
 **Good** (reworded, link only if truly needed):
 
 > Saving settings confirms success with a short message, and a test locks that wording so it cannot regress.
+
+**Bad** (file-index overview):
+
+> This area contains `overview.md`, `operations.md`, `install.md`, and `daemon/wedge.md`.
+
+**Good** (overview that explains system shape):
+
+> This area documents the out-of-band daemon that runs on OPNsense. The daemon exposes a virtio-serial channel for host-side management commands, and the install and operations pages cover deployment and steady-state use.
+
+**Bad** (filename-derived rename):
+
+> `operational-notes.md` becomes `notes.md` because the filename is shorter.
+
+**Good** (content-based grouping):
+
+> Router BGP, gateway, and NAT foot-guns belong in `operations.md` because they describe how the production OPNsense router is operated. Daemon install and upgrade steps belong under `daemon/` because they describe a separate component.
