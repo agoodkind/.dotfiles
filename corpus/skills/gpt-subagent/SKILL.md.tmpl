@@ -32,7 +32,8 @@ Every `codex exec` dispatch uses these flags unless the user overrides them:
 - **Invalid model errors.** If `codex exec` rejects `-m`, re-run `codex debug models`, pick a valid slug (or omit `-m`), retry once, and report the stderr.
 
 ```bash
-codex debug models > /tmp/codex-models.json
+models_file="$(mktemp)"
+codex debug models >"$models_file"
 # Read models[].slug; pass -m only with an exact catalog slug
 ```
 
@@ -42,10 +43,11 @@ Start a new task with the prompt on stdin and the final answer written to a file
 
 ```bash
 result_file="$(mktemp)"
+stderr_file="$(mktemp)"
 timeout 1500 codex exec \
   --dangerously-bypass-approvals-and-sandbox \
   -c model_reasoning_effort="high" \
-  -o "$result_file" - <<'PROMPT'
+  -o "$result_file" 2>"$stderr_file" - <<'PROMPT'
 <bounded prompt>
 PROMPT
 ```
@@ -62,10 +64,11 @@ Continue a prior session with `codex exec resume`:
 
 ```bash
 result_file="$(mktemp)"
+stderr_file="$(mktemp)"
 timeout 1500 codex exec resume <session-id> \
   --dangerously-bypass-approvals-and-sandbox \
   -c model_reasoning_effort="high" \
-  -o "$result_file" - <<'PROMPT'
+  -o "$result_file" 2>"$stderr_file" - <<'PROMPT'
 <follow-up prompt>
 PROMPT
 ```
@@ -108,7 +111,7 @@ YOU MUST poll the background job on a fixed interval. This is mandatory, not opt
 After launching the background job, arm a periodic check-in loop that fires on a fixed cadence. On every tick:
 
 1. Read the streaming stdout from the background shell.
-2. Read `$result_file` if it exists.
+2. Read `$result_file` and `$stderr_file` if they exist.
 3. Compare each snapshot to the previous one to detect no progress.
 4. Treat exit code 124 from `timeout` as a time-limit breach. That may mean the session is still healthy but needs more time, or that progress has stalled. Read stdout and `$result_file` before restarting or resuming.
 5. Steer with `codex exec resume <session-id>` or restart the run the moment progress stops.
@@ -138,4 +141,4 @@ Report the result in this order:
 4. Name any verification performed by the host agent after the GPT response.
 5. State exact errors if the `codex exec` run failed.
 
-For failures, preserve exact CLI stderr and exit code. If a retry is appropriate, retry once with adjusted parameters (drop `model_reasoning_effort` if `high` was rejected, otherwise use the same defaults). If stderr mentions an unknown or unsupported model, treat it as a model-selection failure and follow **Model selection** before retrying. Then report the observed result.
+For failures, preserve exact CLI stderr from `$stderr_file` and the exit code. Retry only for pre-execution parameter failures (for example rejected `model_reasoning_effort` or an unknown model slug). After execution may have started, inspect the workspace and diff before resuming. Do not replay an edit-allowed prompt blindly. If stderr mentions an unknown or unsupported model, treat it as a model-selection failure and follow **Model selection** before retrying. Then report the observed result.
