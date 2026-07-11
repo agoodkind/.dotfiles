@@ -183,6 +183,16 @@ A rewrite must preserve load-bearing operational knowledge, examples, and recove
 - Compare the source and rewritten document before and after.
 - Account for every removed or changed claim, and confirm that no factual fidelity, semantic meaning, constraint, exception, or operational instruction was lost or altered.
 
+## Verify accuracy
+
+An accuracy pass checks every claim against the current sources after the rewrite is complete.
+
+- Verify behavioral claims against the implementation and tests.
+- Verify exact names, values, commands, paths, and defaults against the source that owns them.
+- Remove unsupported claims and correct stale claims instead of preserving them for apparent completeness.
+- Confirm that links resolve to the intended current source.
+- Keep the accuracy pass separate from the fidelity comparison. Fidelity preserves meaning from the original document, while accuracy checks that preserved meaning against the system as it exists now.
+
 ## Workflow for document rewrites
 
 Apply this workflow before generating or restructuring documentation:
@@ -194,7 +204,8 @@ Apply this workflow before generating or restructuring documentation:
 5. Rewrite the behavioral and operational meaning without narrating code. Preserve examples, constraints, exceptions, and recovery knowledge that readers still need.
 6. Review every link with two questions: Does the reader need this link, and can the document set use fewer links without losing navigation or verifiability?
 7. Compare the source and rewritten document before and after. Account for every removed or changed claim, and confirm that no factual fidelity, semantic meaning, constraint, exception, or operational instruction was lost or altered.
-8. Read the result as one document set and verify structure, navigation, source ownership, duplication, fidelity, and prose.
+8. Run the accuracy pass against the implementation, configuration, tests, comments, commands, paths, and links that establish each claim.
+9. Read the result as one document set and verify structure, navigation, source ownership, duplication, fidelity, accuracy, and prose.
 
 ## Document architecture as current state
 
@@ -212,7 +223,7 @@ Architecture docs describe the system as it is now, stating behavior first and l
 - The doc describes what is, not how the decision was reached.
 - Decision history stays out unless current work needs it.
 
-### Examples
+### Content examples
 
 **Bad** (hardcoded symbol and path):
 
@@ -226,6 +237,8 @@ Architecture docs describe the system as it is now, stating behavior first and l
 
 > Saving settings confirms success with a short message, and a test locks that wording so it cannot regress.
 
+### Structure examples
+
 **Bad** (file-index overview):
 
 > This area contains `overview.md`, `operations.md`, `install.md`, and `daemon/wedge.md`.
@@ -233,6 +246,8 @@ Architecture docs describe the system as it is now, stating behavior first and l
 **Good** (overview that explains system shape):
 
 > This area documents the out-of-band daemon that runs on OPNsense. The daemon exposes a virtio-serial channel for host-side management commands, and the install and operations pages cover deployment and steady-state use.
+
+### Organization examples
 
 **Bad** (filename-derived rename):
 
