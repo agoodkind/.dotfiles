@@ -1,11 +1,11 @@
 ---
-name: codex-subagent
-description: Use Codex as a subagent through the codex exec CLI. Use when the user asks to delegate work to Codex, run a Codex review, have Codex perform a second pass, continue a Codex session, or compare host and Codex answers.
+name: gpt-subagent
+description: Use GPT through the codex exec CLI as a subagent. Use when the user asks to delegate work to Codex or GPT, run a Codex review, have GPT perform a second pass, continue a Codex session, or compare host and GPT answers.
 ---
 
-# Codex Subagent
+# GPT Subagent
 
-Use `codex exec` when the user asks to delegate work to Codex. The CLI path gives observable progress, a hard timeout, and session continuation via `resume`. Do not use the Codex MCP server for subagent delegation.
+Use `codex exec` when the user asks to delegate work to GPT through Codex. The CLI path gives observable progress, a hard timeout, and session continuation via `resume`. Do not use the Codex MCP server for subagent delegation.
 
 Assume `codex` is on PATH. This skill gives only CLI invocation instructions.
 
@@ -13,7 +13,7 @@ Assume `codex` is on PATH. This skill gives only CLI invocation instructions.
 
 Every `codex exec` dispatch uses these flags unless the user overrides them:
 
-- **Reasoning:** `-c model_reasoning_effort="xhigh"`. If `codex exec` rejects `xhigh` for the default model, retry with `-c model_reasoning_effort="high"` or drop the override.
+- **Reasoning:** `-c model_reasoning_effort="high"`. If `codex exec` rejects `high` for the default model, drop the override.
 - **Model:** omit `-m` by default. When the user names a model or you need a non-default model, follow **Model selection** and pass `-m` only with a slug from `codex debug models`.
 - **Sandbox:** `--dangerously-bypass-approvals-and-sandbox` up front when the user has delegated work to Codex through this skill. This bypasses approval prompts and the filesystem sandbox. Do not start with `-s read-only` or `-s workspace-write` and lift sandbox later. Sandboxed runs routinely fail on `.git` writes in linked worktrees and force cache or Makefile workarounds. Scope limits ("read-only" vs "edit allowed") live in the prompt.
 
@@ -44,7 +44,7 @@ Start a new task with the prompt on stdin and the final answer written to a file
 result_file="$(mktemp)"
 timeout 1500 codex exec \
   --dangerously-bypass-approvals-and-sandbox \
-  -c model_reasoning_effort="xhigh" \
+  -c model_reasoning_effort="high" \
   -o "$result_file" - <<'PROMPT'
 <bounded prompt>
 PROMPT
@@ -64,7 +64,7 @@ Continue a prior session with `codex exec resume`:
 result_file="$(mktemp)"
 timeout 1500 codex exec resume <session-id> \
   --dangerously-bypass-approvals-and-sandbox \
-  -c model_reasoning_effort="xhigh" \
+  -c model_reasoning_effort="high" \
   -o "$result_file" - <<'PROMPT'
 <follow-up prompt>
 PROMPT
@@ -89,7 +89,7 @@ Per host:
 Send Codex a bounded prompt with the task, scope, permissions, expected output, and verification requirement.
 
 ```text
-You are running as a Codex subagent through codex exec.
+You are running as a GPT subagent through codex exec.
 Task: <specific task>
 Scope: <files, repo, question, or artifact boundaries>
 Permissions: <read-only, edit allowed, test allowed, network allowed>
@@ -121,12 +121,12 @@ The host agent stays the owner. It must still consume the final result and repor
 
 ## Delegation rules
 
-- Ask Codex for independent analysis when the user wants a second pass, adversarial review, broad code search, or a cheaper subagent.
-- Ask Codex for implementation only when the user has granted edit permission for that work.
-- Keep the host agent responsible for the final answer. Summarize what Codex returned, cite the session id, and separate Codex's result from the host agent's own observations.
-- Treat Codex output as evidence to inspect, not as automatically true. Verify high-risk claims with source, tests, logs, or direct reads.
+- Ask GPT for independent analysis when the user wants a second pass, adversarial review, broad code search, or a cheaper subagent.
+- Ask GPT for implementation only when the user has granted edit permission for that work.
+- Keep the host agent responsible for the final answer. Summarize what GPT returned, cite the session id, and separate GPT's result from the host agent's own observations.
+- Treat GPT output as evidence to inspect, not as automatically true. Verify high-risk claims with source, tests, logs, or direct reads.
 - Do not send large private logs, secrets, credentials, or unrelated personal context to Codex.
-- If Codex edits files through `codex exec`, inspect the resulting diff before reporting success.
+- If GPT edits files through `codex exec`, inspect the resulting diff before reporting success.
 
 ## Reporting
 
@@ -134,8 +134,8 @@ Report the result in this order:
 
 1. State whether the host agent successfully ran `codex exec`.
 2. Include the Codex session id and exit code (0 for clean completion, 124 for timeout).
-3. Quote or summarize the Codex response from `$result_file`, depending on what the user asked for.
-4. Name any verification performed by the host agent after the Codex response.
+3. Quote or summarize the GPT response from `$result_file`, depending on what the user asked for.
+4. Name any verification performed by the host agent after the GPT response.
 5. State exact errors if the `codex exec` run failed.
 
-For failures, preserve exact CLI stderr and exit code. If a retry is appropriate, retry once with adjusted parameters (try `-c model_reasoning_effort="high"` if xhigh was rejected, otherwise use the same defaults). If stderr mentions an unknown or unsupported model, treat it as a model-selection failure and follow **Model selection** before retrying. Then report the observed result.
+For failures, preserve exact CLI stderr and exit code. If a retry is appropriate, retry once with adjusted parameters (drop `model_reasoning_effort` if `high` was rejected, otherwise use the same defaults). If stderr mentions an unknown or unsupported model, treat it as a model-selection failure and follow **Model selection** before retrying. Then report the observed result.

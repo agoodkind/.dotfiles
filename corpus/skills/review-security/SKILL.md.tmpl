@@ -7,7 +7,7 @@ description: Review code changes with a read-only security-focused review subage
 
 Use this skill when the user asks for a security-focused code review.
 
-Launch one read-only review subagent focused on security. Use the host's task or subagent mechanism: in Claude Code the `Task` tool with an appropriate subagent; in Codex a Codex subagent run (see [codex-subagent/SKILL.md](../codex-subagent/SKILL.md)); in Cursor the `Task` tool with a review subagent.
+Launch one read-only review subagent focused on security. Use the host's task or subagent mechanism: in Claude Code the `Task` tool with an appropriate subagent; in Codex a GPT subagent run (see [gpt-subagent/SKILL.md](../gpt-subagent/SKILL.md)); in Cursor the `Task` tool with a review subagent.
 
 The review subagent computes the local diff from the repository path, so do not compute the diff yourself before launching it. The repository path should be the active workspace or repository root for the code the user wants reviewed.
 
