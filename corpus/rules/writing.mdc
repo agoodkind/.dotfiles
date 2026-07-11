@@ -36,7 +36,6 @@ A clear page or pull request (PR) description starts with the result.
 
 - The title names the task, topic, or change.
 - The summary sentence states the behavior or qualitative result.
-- The `Overview` section gives only the context needed to start.
 - Each later section carries one idea whose meaning, purpose, or operational scope is clear on its own.
 - Each task heading starts with an action verb.
 - Numbered steps describe ordered work.
@@ -160,7 +159,8 @@ Document rewrites are information architecture work, not sentence cleanup.
 - Preserve useful existing structure unless the content supports a clearer replacement.
 - Treat prose, document placement, consolidation, and links as one design problem.
 - Keep one durable home for each fact.
-- Make overview pages explain the area before linking to deeper pages.
+- Do not create `docs/<concern>/overview.md` for a concern that needs only one page. Use `docs/<concern>.md` until the concern has multiple substantive pages that justify a directory.
+- When a concern does justify a directory, do not add `overview.md` by convention. Keep or create it only when it owns distinct, load-bearing synthesis that no specific page carries.
 - Reject file inventories, annotated directory listings, and headings that merely enumerate code locations.
 - Use tables only for genuine comparisons or exact mappings, never as a default index or prose substitute.
 
@@ -211,10 +211,11 @@ Apply this workflow before generating or restructuring documentation:
 
 Architecture docs describe the system as it is now, stating behavior first and linking to the code or test that holds a detail only where a reader needs to verify it. Linking to the source that way keeps the doc easy to verify and reduces drift from the code.
 
-- One `overview.md` per area lives at `docs/<area>/overview.md`.
-- A short entry pointer in `README.md` or `AGENTS.md` links to each area overview.
-- Doc path segments are single words. Use paths like `docs/deadcode/overview.md`, and never use paths like `docs/dead-code/overview.md`.
-- The overview states what the area does today, in present tense.
+- Prefer `docs/<concern>.md` when the concern stands alone. Create `docs/<concern>/` only when multiple substantive pages share that concern, and give each page a specific name.
+- Keep a substantive existing `overview.md` only when it owns synthesis that would otherwise be lost. Its content must justify the page independently of its filename.
+- Let `README.md` or `AGENTS.md` link to the smallest set of meaningful entry points instead of routing every area through an overview page.
+- Doc path segments are single words. Use paths like `docs/deadcode/contract.md`, and never use paths like `docs/dead-code/contract.md`.
+- Every architecture page states what its subject does today, in present tense.
 - Each statement describes current behavior first, and adds a durable doc or test link only where a reader needs to verify it.
 - A behavior doc is not an index of code locations, so do not append a symbol name or file path to every statement.
 - Name a code symbol or file path only when it is the shortest way to help a reader orient, never as the default.
@@ -239,13 +240,17 @@ Architecture docs describe the system as it is now, stating behavior first and l
 
 ### Structure examples
 
-**Bad** (file-index overview):
+**Bad** (unnecessary directory and overview):
 
-> This area contains `overview.md`, `operations.md`, `install.md`, and `daemon/wedge.md`.
+> A single daemon architecture document lives at `docs/daemon/overview.md` only because every concern receives its own directory.
 
-**Good** (overview that explains system shape):
+**Good** (single concern page):
 
-> This area documents the out-of-band daemon that runs on OPNsense. The daemon exposes a virtio-serial channel for host-side management commands, and the install and operations pages cover deployment and steady-state use.
+> The daemon architecture lives at `docs/daemon.md` while it is the only document for that concern. If distinct install and operations documents become necessary, the concern can become `docs/daemon/` with specifically named pages.
+
+**Good** (substantive existing overview):
+
+> Keep an existing `overview.md` when it explains a system-wide relationship that no specific page owns, and preserve that synthesis during a rewrite. The page earns its place through its content, not its conventional filename.
 
 ### Organization examples
 
