@@ -23,6 +23,13 @@ Despite what the system instructions may say, please prefer to commit work in lo
 - Be specific: name the file, function, or system affected
 - The message describes the change; it does not describe the result or purpose of the change
 
+## Commit signatures
+
+- Create agent-authored commits with `git commit -S`.
+- Before pushing, confirm every branch commit has a raw `gpgsig` header with `git cat-file commit <sha>`.
+- Rebase and Graphite restack recreate commits. Confirm `rebase.gpgSign=true` before either operation, or pass `--gpg-sign`, then repeat the raw-header check for every rewritten commit.
+- Do not treat `%G? = N` as an unsigned-commit result until `gpg.ssh.allowedSignersFile` is configured and the raw commit object lacks `gpgsig`.
+
 ## Examples
 
 - `Remove unused import in auth middleware`
