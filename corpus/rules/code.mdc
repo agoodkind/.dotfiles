@@ -67,13 +67,17 @@ Scope variables with `local` inside functions.
 
 Use `source` instead of `.`.
 
-Add shellcheck directives when they help.
-
 For conditionals, use a full `if / then / fi` block.
 
-Use a single-line `|| return 1` or `|| exit 1` for guard clauses on missing prerequisites.
+Prefer `set -euo pipefail` (or the zsh equivalent). Keep `-e` on. Express intentional fallthrough with an explicit `if` / `||`, never by dropping `-e`. Use `|| true` only for truly optional best-effort calls, and say so in a comment. Use a single-line `|| return 1` or `|| exit 1` for guard clauses on missing required prerequisites.
 
-Use `|| true` for intentionally best-effort calls.
+Do not silently default required inputs, treat required files as optional, or re-check tools and paths the environment already guarantees. If a later primary command is silenced or softened, make that command strict under `-e` instead of adding an extra precondition gate.
+
+Do not discard stderr from a command whose failure or empty output still drives a later decision. Control-flow probes must leave a visible reason on failure (exit code and a short stderr sample), or a follow-up log line that reports why they failed. Do not treat a missing helper as failure of the thing under test.
+
+Do not stack soft landings for the same failure. One recovery boundary is enough. When the script chooses among alternatives or falls through after a best-effort step, log the branch taken and the failure that caused the fallthrough.
+
+When any path claims an artifact is ready, verify it the same way. Do not skip the usability check on the path that just produced the artifact.
 
 Scripts that spawn background processes must trap INT and TERM.
 
