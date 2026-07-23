@@ -9,10 +9,12 @@ ZINIT[OPTIMIZE_OUT_DISK_ACCESSES]=1
 
 typeset -ga _PERF_TREE_DEFERRED=()
 
-# Tab: accept the zsh-autosuggestion if one is showing, otherwise call the
-# fzf-tab completion menu. POSTDISPLAY is set by zsh-autosuggestions to the
-# grayed-out suggestion text. The widget and bindkey lines are installed in
-# tier 2, after fzf-tab has registered fzf-tab-complete.
+# Tab or Right Arrow: accept the zsh-autosuggestion if one is showing; Tab alone
+# falls through to the fzf-tab completion menu when there is no suggestion.
+# POSTDISPLAY is set by zsh-autosuggestions to the grayed-out suggestion text.
+# The Tab widget and bindkey lines are installed in tier 2, after fzf-tab has
+# registered fzf-tab-complete. Right Arrow is wired via ZSH_AUTOSUGGEST_ACCEPT_WIDGETS
+# when the plugin loads in tier 1.
 function _dotfiles_tab_accept_or_complete() {
     if [[ -n "$POSTDISPLAY" ]]; then
         zle autosuggest-accept
@@ -55,9 +57,16 @@ function _load_tier1() {
     zicdreplay
     _ready_mark 2 compinit
 
-    # Drop forward-char and vi-forward-char from the accept-widget list BEFORE
-    # the plugin loads, so its single bind pass picks up the trimmed list.
-    typeset -ga ZSH_AUTOSUGGEST_ACCEPT_WIDGETS=(end-of-line vi-end-of-line vi-add-eol)
+    # Accept widgets for zsh-autosuggestions. forward-char / vi-forward-char make
+    # Right Arrow accept the grayed-out suggestion (same as Tab when one is
+    # showing). Set BEFORE the plugin loads so its single bind pass picks this up.
+    typeset -ga ZSH_AUTOSUGGEST_ACCEPT_WIDGETS=(
+        forward-char
+        end-of-line
+        vi-forward-char
+        vi-end-of-line
+        vi-add-eol
+    )
     zinit light zsh-users/zsh-autosuggestions
     _zsh_autosuggest_start
     _ready_mark 2 autosuggestions
