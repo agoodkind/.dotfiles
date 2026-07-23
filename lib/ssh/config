@@ -37,6 +37,9 @@ Host mini
   HostName mini.home.goodkind.io
   User agoodkind
 
+Host m1
+  HostName 3d06:bad:b01:a::7
+
 Host berylax
   HostName berylax.goodkind.io
   User root

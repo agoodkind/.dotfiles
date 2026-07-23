@@ -17,3 +17,5 @@ Packages/checkouts/
 dist/
 target/
 build/
+.derived_data
+.worktrees
