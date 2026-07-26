@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-var requiredSmokeSubmodules = []string{"lib/zinit", "lib/zsh-defer"}
+var requiredSmokeSubmodules = []string{"lib/zinit", "lib/zsh-defer", "lib/Claude-Opus-5-tools"}
 
 // HasCommand reports whether command is findable via [exec.LookPath].
 func HasCommand(command string) bool {
