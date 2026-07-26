@@ -16,6 +16,7 @@ import (
 	"goodkind.io/.dotfiles/internal/runner"
 	syncer "goodkind.io/.dotfiles/internal/sync"
 	"goodkind.io/.dotfiles/internal/sync/compilation"
+	"goodkind.io/.dotfiles/internal/sync/corpus"
 	"goodkind.io/.dotfiles/internal/telemetry"
 	uninstaller "goodkind.io/.dotfiles/internal/uninstall"
 )
@@ -193,9 +194,13 @@ func runCursorSync(args []string) int {
 	if dotfiles == "" {
 		dotfiles = filepath.Join(os.Getenv("HOME"), ".dotfiles")
 	}
-	source := compilation.ResolveCorpusSource(dotfiles)
+	sourceSet, err := corpus.LoadSourceSet(dotfiles)
+	if err != nil {
+		logError("loading corpus for cursor upload", err)
+		return 1
+	}
 	style := compilation.RuleRenderStyle{SkillsRelDir: "../skills"}
-	rules, err := compilation.RenderRulesForUpload(source.Rules, style)
+	rules, err := compilation.RenderRulesForUploadFromSourceSet(sourceSet, style)
 	if err != nil {
 		logError("rendering corpus rules for cursor upload", err)
 		return 1
