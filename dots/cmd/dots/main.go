@@ -123,6 +123,7 @@ func runSync(args []string) int {
 		QuickMode:      *quickMode,
 		SkipGit:        *skipGit,
 		SkipNetwork:    *skipNetwork,
+		SkipCorpusSync: false,
 		SkipCursorSync: *skipCursorSync,
 		DryRun:         *dryRun,
 		UseDefaults:    *useDefaults,

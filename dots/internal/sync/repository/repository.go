@@ -4,9 +4,11 @@ package repository
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -82,7 +84,10 @@ func runDotfilesUpdate(ctx context.Context, dotfiles string, logger *telemetry.L
 	logger.InfoContext(ctx, "  remote status: "+remoteStatus)
 	switch remoteStatusCode(remoteStatus) {
 	case remoteStatusUpToDate:
-		_ = syncDotfilesSubmodules(ctx, dotfiles, logger)
+		if err := syncDotfilesSubmodules(ctx, dotfiles, logger); err != nil {
+			slog.WarnContext(ctx, "repository: syncing submodules", "err", err)
+			return "", fmt.Errorf("syncing submodules: %w", err)
+		}
 		return "", nil
 	case remoteStatusDiverged:
 		return "", fmt.Errorf("local history diverged from origin/main, needs manual fix")
@@ -110,21 +115,66 @@ func runDotfilesUpdate(ctx context.Context, dotfiles string, logger *telemetry.L
 	if err != nil {
 		return "", err
 	}
-	if hasChanges {
-		if restoreErr := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "stash", "pop"); restoreErr != nil {
-			slog.ErrorContext(ctx, "repository: runDotfilesUpdate: stash pop failed", "err", restoreErr)
-			return "", fmt.Errorf("stash pop failed after pull, repository restored: %w", restoreErr)
-		}
-	}
 	postPullHead, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "rev-parse", "HEAD")
 	if err != nil {
+		if hasChanges {
+			_ = restoreStashedChanges(ctx, dotfiles, logger)
+		}
 		return "", fmt.Errorf("running git rev-parse HEAD: %w", err)
 	}
-	if strings.TrimSpace(prePullHead) != strings.TrimSpace(postPullHead) {
-		_ = syncDotfilesSubmodules(ctx, dotfiles, logger)
+	pulled := strings.TrimSpace(prePullHead) != strings.TrimSpace(postPullHead)
+	if pulled {
+		if err := syncPulledSubmodules(ctx, dotfiles, strings.TrimSpace(prePullHead), hasChanges, logger); err != nil {
+			return "", err
+		}
+	}
+	if hasChanges {
+		if err := restoreStashedChanges(ctx, dotfiles, logger); err != nil {
+			return "", err
+		}
+	}
+	if pulled {
 		return "pulled:" + strings.TrimSpace(prePullHead) + ":" + strings.TrimSpace(postPullHead), nil
 	}
 	return "", nil
+}
+
+func syncPulledSubmodules(ctx context.Context, dotfiles string, prePullHead string, hadChanges bool, logger *telemetry.Logger) error {
+	if err := syncDotfilesSubmodules(ctx, dotfiles, logger); err != nil {
+		slog.WarnContext(ctx, "repository: syncing submodules after pull", "err", err)
+		rollbackErr := rollbackRepositoryUpdate(ctx, dotfiles, prePullHead, logger)
+		if hadChanges {
+			rollbackErr = firstError(rollbackErr, restoreStashedChanges(ctx, dotfiles, logger))
+		}
+		if rollbackErr != nil {
+			return fmt.Errorf("syncing submodules after pull: %w; rollback failed: %w", err, rollbackErr)
+		}
+		return fmt.Errorf("syncing submodules after pull: %w", err)
+	}
+	return nil
+}
+
+func restoreStashedChanges(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
+	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "stash", "pop"); err != nil {
+		slog.ErrorContext(ctx, "repository: restoring stashed changes", "err", err)
+		return fmt.Errorf("restoring stashed changes: %w", err)
+	}
+	return nil
+}
+
+func rollbackRepositoryUpdate(ctx context.Context, dotfiles string, head string, logger *telemetry.Logger) error {
+	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "reset", "--hard", head); err != nil {
+		slog.WarnContext(ctx, "repository: resetting parent repository", "head", head, "err", err)
+		return fmt.Errorf("resetting parent repository to %s: %w", head, err)
+	}
+	return restoreSubmoduleWorktrees(ctx, dotfiles, logger)
+}
+
+func firstError(current error, candidate error) error {
+	if current != nil {
+		return current
+	}
+	return candidate
 }
 
 func checkDotfilesGitHealth(ctx context.Context, dotfiles string, logger *telemetry.Logger) string {
@@ -241,28 +291,74 @@ func updateWithRevert(ctx context.Context, dotfiles string, hadChanges bool, log
 }
 
 func syncDotfilesSubmodules(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
-	_ = cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "submodule", "update", "--init")
-	subs := []string{"lib/zinit", "lib/zsh-defer"}
+	subs, err := declaredSubmodulePaths(ctx, dotfiles, logger)
+	if err != nil {
+		return err
+	}
+	if len(subs) == 0 {
+		return nil
+	}
+	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "submodule", "update", "--init", "--recursive"); err != nil {
+		slog.WarnContext(ctx, "repository: initializing submodules", "err", err)
+		return fmt.Errorf("initializing submodules: %w", err)
+	}
 	for _, sub := range subs {
 		if err := syncOneSubmodule(ctx, dotfiles, sub, logger); err != nil {
+			if restoreErr := restoreSubmoduleWorktrees(ctx, dotfiles, logger); restoreErr != nil {
+				return fmt.Errorf("%w; restoring submodules failed: %w", err, restoreErr)
+			}
 			return err
 		}
 	}
 
 	cachedDiff, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "diff", "--cached", "--name-only", "--ignore-submodules")
-	if err == nil && strings.TrimSpace(cachedDiff) != "" {
+	if err != nil {
+		return fmt.Errorf("checking staged parent changes: %w", err)
+	}
+	if strings.TrimSpace(cachedDiff) != "" {
 		return nil
 	}
 
 	pointerDirty := false
 	for _, sub := range subs {
 		if !gitCommandSucceeds(ctx, dotfiles, "diff", "--quiet", "--", sub) {
-			pointerDirty = true
-			_ = cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "add", "--", sub)
+			if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "add", "--", sub); err != nil {
+				_ = unstageSubmodulePointers(ctx, dotfiles, subs, logger)
+				return fmt.Errorf("staging submodule pointer %s: %w", sub, err)
+			}
+			if !gitCommandSucceeds(ctx, dotfiles, "diff", "--cached", "--quiet", "--", sub) {
+				pointerDirty = true
+			}
 		}
 	}
 	if pointerDirty {
-		_ = cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "commit", "-m", "Update submodule pointers", "--", "lib/zinit", "lib/zsh-defer")
+		commitArgs := []string{"-C", dotfiles, "commit", "-m", "Update submodule pointers", "--"}
+		commitArgs = append(commitArgs, subs...)
+		if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", commitArgs...); err != nil {
+			unstageErr := unstageSubmodulePointers(ctx, dotfiles, subs, logger)
+			if unstageErr != nil {
+				return fmt.Errorf("committing submodule pointers: %w; unstaging failed: %w", err, unstageErr)
+			}
+			return fmt.Errorf("committing submodule pointers: %w", err)
+		}
+	}
+	return nil
+}
+
+func restoreSubmoduleWorktrees(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
+	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "submodule", "update", "--init", "--recursive"); err != nil {
+		slog.WarnContext(ctx, "repository: restoring submodule worktrees", "err", err)
+		return fmt.Errorf("restoring submodule worktrees: %w", err)
+	}
+	return nil
+}
+
+func unstageSubmodulePointers(ctx context.Context, dotfiles string, subs []string, logger *telemetry.Logger) error {
+	args := []string{"-C", dotfiles, "reset", "--"}
+	args = append(args, subs...)
+	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", args...); err != nil {
+		slog.WarnContext(ctx, "repository: unstaging submodule pointers", "err", err)
+		return fmt.Errorf("unstaging submodule pointers: %w", err)
 	}
 	return nil
 }
@@ -272,12 +368,15 @@ func syncOneSubmodule(ctx context.Context, dotfiles string, subPath string, logg
 	if _, err := os.Stat(filepath.Clean(filepath.Join(subAbs, ".git"))); err != nil {
 		if !os.IsNotExist(err) {
 			logger.WarnContextWithErr(ctx, "stat submodule .git", err)
+			slog.WarnContext(ctx, "repository: stat submodule .git", "submodule", subPath, "err", err)
 			return fmt.Errorf("stat submodule .git: %w", err)
 		}
 		return nil
 	}
-	branch, _ := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "config", "-f", filepath.Join(dotfiles, ".gitmodules"), "--get", "submodule."+subPath+".branch")
-	branch = strings.TrimSpace(branch)
+	branch, err := declaredSubmoduleBranch(ctx, dotfiles, subPath, logger)
+	if err != nil {
+		return err
+	}
 	if branch == "" {
 		switch {
 		case gitCommandSucceeds(ctx, subAbs, "rev-parse", "-q", "--verify", "origin/main"):
@@ -288,13 +387,203 @@ func syncOneSubmodule(ctx context.Context, dotfiles string, subPath string, logg
 			branch = "main"
 		}
 	}
-	_ = cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "fetch")
-	_ = cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "checkout", branch)
+	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "fetch"); err != nil {
+		logger.WarnContextWithErr(ctx, "fetch submodule "+subPath, err)
+		return fmt.Errorf("fetching submodule %s: %w", subPath, err)
+	}
+	current, err := submoduleBranchIsCurrent(ctx, subAbs, branch, logger)
+	if err != nil {
+		return fmt.Errorf("checking submodule %s branch %s: %w", subPath, branch, err)
+	}
+	if current {
+		return nil
+	}
+	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "checkout", branch); err != nil {
+		logger.WarnContextWithErr(ctx, "checkout submodule "+subPath, err)
+		return fmt.Errorf("checking out submodule %s branch %s: %w", subPath, branch, err)
+	}
 	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "pull", "--rebase", "origin", branch); err != nil {
 		_ = cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "rebase", "--abort")
-		logger.WarnContext(ctx, "  pull --rebase failed in "+subPath)
+		logger.WarnContextWithErr(ctx, "pull --rebase failed in "+subPath, err)
+		return fmt.Errorf("pulling submodule %s branch %s: %w", subPath, branch, err)
 	}
 	return nil
+}
+
+func submoduleBranchIsCurrent(
+	ctx context.Context,
+	submodule string,
+	branch string,
+	logger *telemetry.Logger,
+) (bool, error) {
+	currentBranch, err := cmdexec.OutputWithLoggerAndEnv(
+		ctx,
+		logger,
+		nil,
+		"git",
+		"-C",
+		submodule,
+		"branch",
+		"--show-current",
+	)
+	if err != nil {
+		slog.WarnContext(ctx, "repository: reading current submodule branch", "submodule", submodule, "err", err)
+		return false, fmt.Errorf("reading current branch: %w", err)
+	}
+	if strings.TrimSpace(currentBranch) != branch {
+		return false, nil
+	}
+	return isMergeBaseAncestor(ctx, submodule, "origin/"+branch, "HEAD"), nil
+}
+
+type declaredSubmodule struct {
+	Path   string
+	Branch string
+}
+
+type submoduleConfigKey string
+
+const (
+	submoduleConfigPath   submoduleConfigKey = "path"
+	submoduleConfigBranch submoduleConfigKey = "branch"
+)
+
+func declaredSubmodulePaths(
+	ctx context.Context,
+	dotfiles string,
+	logger *telemetry.Logger,
+) ([]string, error) {
+	submodules, err := declaredSubmodules(ctx, dotfiles, logger)
+	if err != nil {
+		return nil, err
+	}
+	paths := make([]string, 0, len(submodules))
+	for _, submodule := range submodules {
+		paths = append(paths, submodule.Path)
+	}
+	return paths, nil
+}
+
+func declaredSubmoduleBranch(
+	ctx context.Context,
+	dotfiles string,
+	subPath string,
+	logger *telemetry.Logger,
+) (string, error) {
+	submodules, err := declaredSubmodules(ctx, dotfiles, logger)
+	if err != nil {
+		return "", err
+	}
+	for _, submodule := range submodules {
+		if submodule.Path == subPath {
+			return submodule.Branch, nil
+		}
+	}
+	return "", nil
+}
+
+func declaredSubmodules(
+	ctx context.Context,
+	dotfiles string,
+	logger *telemetry.Logger,
+) ([]declaredSubmodule, error) {
+	gitmodulesPath := filepath.Join(dotfiles, ".gitmodules")
+	if _, err := os.Stat(filepath.Clean(gitmodulesPath)); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
+		slog.WarnContext(ctx, "repository: checking .gitmodules", "path", gitmodulesPath, "err", err)
+		return nil, fmt.Errorf("checking .gitmodules: %w", err)
+	}
+	output, err := cmdexec.OutputWithLoggerAndEnv(
+		ctx,
+		logger,
+		nil,
+		"git",
+		"-C",
+		dotfiles,
+		"config",
+		"--null",
+		"--file",
+		gitmodulesPath,
+		"--get-regexp",
+		`^submodule\..*\.(path|branch)$`,
+	)
+	if err != nil {
+		var exitError *exec.ExitError
+		if errors.As(err, &exitError) && exitError.ExitCode() == 1 {
+			return nil, nil
+		}
+		slog.WarnContext(ctx, "repository: reading .gitmodules", "path", gitmodulesPath, "err", err)
+		return nil, fmt.Errorf("reading .gitmodules: %w", err)
+	}
+
+	orderedSections := make([]string, 0)
+	bySection := make(map[string]declaredSubmodule)
+	for record := range strings.SplitSeq(output, "\x00") {
+		configName, value, ok := strings.Cut(record, "\n")
+		if !ok {
+			continue
+		}
+		section, key, ok := parseSubmoduleConfigName(configName)
+		if !ok {
+			continue
+		}
+		current, exists := bySection[section]
+		if !exists {
+			orderedSections = append(orderedSections, section)
+			current = declaredSubmodule{Path: "", Branch: ""}
+		}
+		switch key {
+		case submoduleConfigPath:
+			current.Path = value
+		case submoduleConfigBranch:
+			current.Branch = value
+		}
+		bySection[section] = current
+	}
+
+	submodules := make([]declaredSubmodule, 0, len(orderedSections))
+	for _, section := range orderedSections {
+		current := bySection[section]
+		if current.Path == "" {
+			continue
+		}
+		validated, validationErr := validateSubmodulePath(dotfiles, current.Path)
+		if validationErr != nil {
+			return nil, validationErr
+		}
+		current.Path = validated
+		submodules = append(submodules, current)
+	}
+	return submodules, nil
+}
+
+func parseSubmoduleConfigName(name string) (string, submoduleConfigKey, bool) {
+	for _, key := range []submoduleConfigKey{submoduleConfigPath, submoduleConfigBranch} {
+		suffix := "." + string(key)
+		section, ok := strings.CutSuffix(name, suffix)
+		if ok && strings.HasPrefix(section, "submodule.") {
+			return section, key, true
+		}
+	}
+	return "", "", false
+}
+
+func validateSubmodulePath(dotfiles string, subPath string) (string, error) {
+	cleanRoot := filepath.Clean(dotfiles)
+	cleanPath := filepath.Clean(subPath)
+	if filepath.IsAbs(cleanPath) {
+		return "", fmt.Errorf("submodule path %q escapes repository root %s", subPath, cleanRoot)
+	}
+	if cleanPath == "." {
+		return "", fmt.Errorf("submodule path %q must be below repository root %s", subPath, cleanRoot)
+	}
+	joined := filepath.Clean(filepath.Join(cleanRoot, cleanPath))
+	if !strings.HasPrefix(joined, cleanRoot+string(os.PathSeparator)) {
+		return "", fmt.Errorf("submodule path %q escapes repository root %s", subPath, cleanRoot)
+	}
+	return cleanPath, nil
 }
 
 func gitCommandSucceeds(ctx context.Context, worktree string, args ...string) bool {
