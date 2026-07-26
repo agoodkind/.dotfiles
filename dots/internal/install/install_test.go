@@ -9,6 +9,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	syncer "goodkind.io/.dotfiles/internal/sync"
 )
 
 func TestSSHPublicKeyCandidatesPrefersDefaultKey(t *testing.T) {
@@ -243,6 +245,39 @@ func TestResolveSigningKeyReadErrorIsNonFatal(t *testing.T) {
 	}
 	if keyCommand != "" {
 		t.Fatalf("resolveSigningKey() keyCommand = %q, want empty on read failure", keyCommand)
+	}
+}
+
+func TestDeferRepositoryDependentSyncsSkipsCorpusAndCursor(t *testing.T) {
+	options := deferRepositoryDependentSyncs(syncer.Options{})
+
+	if !options.SkipCorpusSync {
+		t.Fatal("deferRepositoryDependentSyncs() did not skip corpus sync")
+	}
+	if !options.SkipCursorSync {
+		t.Fatal("deferRepositoryDependentSyncs() did not skip Cursor sync")
+	}
+}
+
+func TestRunDeferredAgentSyncRunsCorpusBeforeCursor(t *testing.T) {
+	calls := make([]string, 0, 2)
+
+	err := runDeferredAgentSync(
+		context.Background(),
+		func(context.Context) error {
+			calls = append(calls, "corpus")
+			return nil
+		},
+		func(context.Context) error {
+			calls = append(calls, "cursor")
+			return nil
+		},
+	)
+	if err != nil {
+		t.Fatalf("runDeferredAgentSync() returned error: %v", err)
+	}
+	if !slices.Equal(calls, []string{"corpus", "cursor"}) {
+		t.Fatalf("runDeferredAgentSync() calls = %v, want corpus then cursor", calls)
 	}
 }
 

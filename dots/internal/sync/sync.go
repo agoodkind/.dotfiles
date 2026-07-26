@@ -30,6 +30,7 @@ type Options struct {
 	QuickMode      bool
 	SkipGit        bool
 	SkipNetwork    bool
+	SkipCorpusSync bool
 	SkipCursorSync bool
 	DryRun         bool
 	UseDefaults    bool
@@ -218,6 +219,10 @@ func runLinkSteps(options Options, dotfiles string, logger *telemetry.Logger, st
 
 func runConfigSteps(options Options, dotfiles string, logger *telemetry.Logger, step syncStep) error {
 	if err := step("Syncing agent corpus", false, func(ctx context.Context) error {
+		if options.SkipCorpusSync {
+			logger.InfoContext(ctx, "  skipping agent corpus sync")
+			return nil
+		}
 		return corpus.Sync(ctx, dotfiles, logger)
 	}); err != nil {
 		return err
