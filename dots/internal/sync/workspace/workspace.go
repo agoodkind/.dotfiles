@@ -22,6 +22,7 @@ import (
 	"goodkind.io/.dotfiles/internal/runner"
 	"goodkind.io/.dotfiles/internal/sync/common"
 	"goodkind.io/.dotfiles/internal/sync/compilation"
+	"goodkind.io/.dotfiles/internal/sync/corpus"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
@@ -242,9 +243,13 @@ func SyncCursorUserRules(ctx context.Context, dotfiles string, logger *telemetry
 		return fmt.Errorf("checking cursor state.vscdb: %w", err)
 	}
 	logging.ConfigureWithLogger(logger)
-	source := compilation.ResolveCorpusSource(dotfiles)
+	sourceSet, err := corpus.LoadSourceSet(dotfiles)
+	if err != nil {
+		slog.WarnContext(ctx, "workspace: loading corpus for cursor upload", "err", err)
+		return fmt.Errorf("loading corpus for cursor upload: %w", err)
+	}
 	style := compilation.RuleRenderStyle{SkillsRelDir: "../skills"}
-	rules, err := compilation.RenderRulesForUpload(source.Rules, style)
+	rules, err := compilation.RenderRulesForUploadFromSourceSet(sourceSet, style)
 	if err != nil {
 		slog.WarnContext(ctx, "workspace: rendering corpus rules for cursor upload", "err", err)
 		return fmt.Errorf("rendering corpus rules for cursor upload: %w", err)

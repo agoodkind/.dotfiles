@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pelletier/go-toml/v2"
 	"gopkg.in/yaml.v3"
 )
 
@@ -187,5 +188,244 @@ func TestSyncRendersProviderFrontmatter(t *testing.T) {
 	}
 	if frontmatterStringField(t, string(copilotRule), "applyTo") != "*.md" {
 		t.Errorf("copilot applyTo mismatch:\n%s", string(copilotRule))
+	}
+}
+
+func TestSyncRendersImportedAgentsAndFallbackSkills(t *testing.T) {
+	dotfiles := t.TempDir()
+	importedRoot := filepath.Join(dotfiles, "lib", "reliability")
+	writeFile(t, filepath.Join(importedRoot, "working-agreements.md"), "# Agreements\n\n```text\nVerify the premise.\n```\n")
+	writeFile(t, filepath.Join(importedRoot, "skills", "trace", "SKILL.md"), "---\nname: trace-the-chain\ndescription: Trace evidence.\n---\n\nTrace body.\n")
+	writeFile(t, filepath.Join(importedRoot, "agents", "code.md"), "---\nname: code-implementer\ndescription: Implement settled designs.\n---\n\nImplement body.\n")
+	writeFile(t, filepath.Join(importedRoot, "agents", "evidence.md"), "---\nname: evidence-gatherer\ndescription: Gather cited evidence.\n---\n\nGather body.\n")
+	writeFile(t, filepath.Join(dotfiles, "corpus", ManifestName), `[[source]]
+name = "reliability"
+kind = "submodule-import"
+root = "lib/reliability"
+working_agreement = "working-agreements.md"
+skills = ["skills/trace/SKILL.md"]
+agents = ["agents/code.md", "agents/evidence.md"]
+read_only_agents = ["evidence-gatherer"]
+
+[[output]]
+provider = "agents"
+kind = "skills"
+dest = ".agents/skills"
+ref_style = "md"
+
+[[output]]
+provider = "claude"
+kind = "agents"
+dest = ".claude/agents"
+
+[[output]]
+provider = "cursor"
+kind = "agents"
+dest = ".cursor/agents"
+
+[[output]]
+provider = "gemini"
+kind = "agents"
+dest = ".gemini/agents"
+
+[[output]]
+provider = "codex"
+kind = "agents"
+dest = ".codex/agents"
+
+[[output]]
+provider = "copilot"
+kind = "agents"
+dest = ".copilot/agents"
+`)
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := Sync(context.Background(), dotfiles, nil); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+
+	assertions := map[string]string{
+		filepath.Join(home, ".agents", "skills", "trace-the-chain", "SKILL.md"):         "Trace body.",
+		filepath.Join(home, ".agents", "skills", "agent-code-implementer", "SKILL.md"):  "does not provide prompt-bearing subagent isolation",
+		filepath.Join(home, ".agents", "skills", "agent-evidence-gatherer", "SKILL.md"): "This fallback is read-only.",
+		filepath.Join(home, ".claude", "agents", "code-implementer.md"):                 "Implement body.",
+		filepath.Join(home, ".cursor", "agents", "evidence-gatherer.md"):                "readonly: true",
+		filepath.Join(home, ".gemini", "agents", "code-implementer.md"):                 "Implement body.",
+		filepath.Join(home, ".codex", "agents", "evidence-gatherer.toml"):               "Gather body.",
+		filepath.Join(home, ".copilot", "agents", "code-implementer.agent.md"):          "Implement body.",
+	}
+	for path, expected := range assertions {
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("reading %s: %v", path, err)
+		}
+		if !strings.Contains(string(content), expected) {
+			t.Errorf("%s missing %q:\n%s", path, expected, string(content))
+		}
+	}
+	codexPath := filepath.Join(home, ".codex", "agents", "evidence-gatherer.toml")
+	codexContent, err := os.ReadFile(codexPath)
+	if err != nil {
+		t.Fatalf("reading %s: %v", codexPath, err)
+	}
+	var codexAgent struct {
+		SandboxMode string `toml:"sandbox_mode"`
+	}
+	if err := toml.Unmarshal(codexContent, &codexAgent); err != nil {
+		t.Fatalf("decoding %s: %v", codexPath, err)
+	}
+	if codexAgent.SandboxMode != "read-only" {
+		t.Fatalf("Codex sandbox_mode = %q, want read-only", codexAgent.SandboxMode)
+	}
+}
+
+func TestSyncValidationFailurePreservesExistingOutputs(t *testing.T) {
+	dotfiles := t.TempDir()
+	importedRoot := filepath.Join(dotfiles, "lib", "reliability")
+	writeFile(t, filepath.Join(importedRoot, "agents", "broken.md"), "missing front matter\n")
+	writeFile(t, filepath.Join(dotfiles, "corpus", ManifestName), `[[source]]
+name = "reliability"
+kind = "submodule-import"
+root = "lib/reliability"
+agents = ["agents/broken.md"]
+
+[[output]]
+provider = "claude"
+kind = "agents"
+dest = ".claude/agents"
+`)
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	existingPath := filepath.Join(home, ".claude", "agents", "code-implementer.md")
+	const existingContent = "existing managed output\n"
+	writeFile(t, existingPath, existingContent)
+
+	if err := Sync(context.Background(), dotfiles, nil); err == nil {
+		t.Fatal("Sync expected validation error, got nil")
+	}
+	content, err := os.ReadFile(existingPath)
+	if err != nil {
+		t.Fatalf("reading existing output: %v", err)
+	}
+	if string(content) != existingContent {
+		t.Errorf("existing output changed after validation failure:\n%s", string(content))
+	}
+}
+
+func TestSyncPreflightUsesExistingDestinations(t *testing.T) {
+	dotfiles := t.TempDir()
+	importedRoot := filepath.Join(dotfiles, "lib", "reliability")
+	writeFile(t, filepath.Join(importedRoot, "agents", "code.md"), "---\nname: code-implementer\ndescription: Implement code.\n---\n\nImplement.\n")
+	writeFile(t, filepath.Join(dotfiles, "corpus", "skills", "conflict", "SKILL.md"), "---\nname: conflict\ndescription: Conflict.\n---\n")
+	writeFile(t, filepath.Join(dotfiles, "corpus", ManifestName), `[[source]]
+name = "reliability"
+kind = "submodule-import"
+root = "lib/reliability"
+agents = ["agents/code.md"]
+
+[[output]]
+provider = "claude"
+kind = "agents"
+dest = ".claude/agents"
+
+[[output]]
+provider = "claude"
+kind = "skills"
+dest = ".claude/skills"
+ref_style = "md"
+`)
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	agentPath := filepath.Join(home, ".claude", "agents", "code-implementer.md")
+	const existingAgent = "existing agent\n"
+	writeFile(t, agentPath, existingAgent)
+	conflictPath := filepath.Join(home, ".claude", "skills", "conflict", "SKILL.md")
+	writeFile(t, conflictPath, "user-owned skill\n")
+
+	err := Sync(context.Background(), dotfiles, nil)
+	if err == nil {
+		t.Fatal("Sync() returned nil, want existing destination conflict")
+	}
+	if !strings.Contains(err.Error(), "conflict") {
+		t.Fatalf("Sync() error = %v, want conflict", err)
+	}
+	content, readErr := os.ReadFile(agentPath)
+	if readErr != nil {
+		t.Fatalf("reading existing agent: %v", readErr)
+	}
+	if string(content) != existingAgent {
+		t.Fatalf("earlier output changed before conflict: %s", content)
+	}
+}
+
+func TestSyncRejectsEscapingOutputDestination(t *testing.T) {
+	dotfiles := t.TempDir()
+	writeFile(t, filepath.Join(dotfiles, "corpus", ManifestName), "[[output]]\nprovider=\"claude\"\nkind=\"agents\"\ndest=\"../outside\"\n")
+	writeFile(t, filepath.Join(dotfiles, "corpus", "rules", "general.mdc"), "---\ndescription: General\napplies_to:\n  - \"**/*\"\nalways: true\n---\nGeneral body\n")
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	err := Sync(context.Background(), dotfiles, nil)
+	if err == nil {
+		t.Fatal("Sync() returned nil, want output destination error")
+	}
+	if !strings.Contains(err.Error(), "escapes home directory") {
+		t.Fatalf("Sync() error = %v, want destination containment failure", err)
+	}
+}
+
+func TestResolveOutputDestRejectsHomeDirectory(t *testing.T) {
+	home := t.TempDir()
+	for _, destination := range []string{"", "."} {
+		t.Run(destination, func(t *testing.T) {
+			_, err := resolveOutputDest(home, destination)
+			if err == nil {
+				t.Fatalf("resolveOutputDest(%q) returned nil, want strict descendant error", destination)
+			}
+			if !strings.Contains(err.Error(), "must name a path below") {
+				t.Fatalf("resolveOutputDest(%q) error = %v, want strict descendant failure", destination, err)
+			}
+		})
+	}
+}
+
+func TestResolveOutputDestRejectsSymlinkEscape(t *testing.T) {
+	home := t.TempDir()
+	outside := t.TempDir()
+	linkPath := filepath.Join(home, "linked")
+	if err := os.Symlink(outside, linkPath); err != nil {
+		t.Fatalf("creating destination symlink: %v", err)
+	}
+
+	_, err := resolveOutputDest(home, filepath.Join("linked", "agents"))
+	if err == nil {
+		t.Fatal("resolveOutputDest() returned nil, want symlink containment error")
+	}
+	if !strings.Contains(err.Error(), "resolves outside home directory") {
+		t.Fatalf("resolveOutputDest() error = %v, want resolved containment failure", err)
+	}
+}
+
+func TestResolveOutputDestRejectsDestinationSymlinkEscape(t *testing.T) {
+	home := t.TempDir()
+	outside := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(home, ".codex"), 0o755); err != nil {
+		t.Fatalf("creating provider directory: %v", err)
+	}
+	destination := filepath.Join(home, ".codex", "agents")
+	if err := os.Symlink(outside, destination); err != nil {
+		t.Fatalf("creating destination symlink: %v", err)
+	}
+
+	_, err := resolveOutputDest(home, filepath.Join(".codex", "agents"))
+	if err == nil {
+		t.Fatal("resolveOutputDest() returned nil, want destination symlink error")
+	}
+	if !strings.Contains(err.Error(), "resolves outside home directory") {
+		t.Fatalf("resolveOutputDest() error = %v, want destination symlink failure", err)
 	}
 }

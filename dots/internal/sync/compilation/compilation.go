@@ -8,8 +8,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"slices"
-	"sort"
 	"strings"
 	"text/template"
 
@@ -148,51 +146,6 @@ type RenderedRule struct {
 	Body  string
 }
 
-// RenderRuleFiles writes each .mdc rule file from src into dst as a marker-stamped
-// generated file with the given extension (for example ".mdc" or ".md").
-func RenderRuleFiles(src string, dst string, ext string, format RuleTargetFormat, style RuleRenderStyle) error {
-	files, err := sortedMdcFiles(src)
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(dst, 0o755); err != nil {
-		return fmt.Errorf("creating directory %s: %w", dst, err)
-	}
-	activeFiles := make(map[string]struct{}, len(files))
-	for _, file := range files {
-		base := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
-		targetName := base + ext
-		activeFiles[targetName] = struct{}{}
-
-		content, readErr := os.ReadFile(file)
-		if readErr != nil {
-			slog.Warn("compilation: RenderRuleFiles read failed", "file", file, "err", readErr)
-			return fmt.Errorf("reading file %s: %w", file, readErr)
-		}
-		rule, parseErr := ParseRuleSource(string(content))
-		if parseErr != nil {
-			return fmt.Errorf("parsing rule source %s: %w", file, parseErr)
-		}
-		renderedBody, renderErr := renderRuleTemplate(strings.TrimSpace(rule.Body), style, filepath.Base(file))
-		if renderErr != nil {
-			return fmt.Errorf("rendering rule template %s: %w", file, renderErr)
-		}
-		rule.Body = renderedBody
-		rendered, renderErr := rule.RenderForTarget(format)
-		if renderErr != nil {
-			return fmt.Errorf("rendering rule %s for format %q: %w", file, format, renderErr)
-		}
-		target := filepath.Join(dst, targetName)
-		if isSymlink(target) {
-			_ = os.Remove(target)
-		}
-		if err := writeFileIfChanged(target, []byte(injectSkillMarker(rendered))); err != nil {
-			return err
-		}
-	}
-	return removeMissingManagedFiles(dst, ext, activeFiles)
-}
-
 // ruleTemplateData exposes skill reference helpers to a rule template as the
 // "{{.Skill \"name\"}}" method for the active RuleRenderStyle.
 type ruleTemplateData struct {
@@ -237,125 +190,6 @@ func renderSkillLink(style RuleRenderStyle, name string) string {
 	return fmt.Sprintf("[%s](%s)", name, skillPath)
 }
 
-// RenderRulesAsInstructionDoc concatenates .mdc rule files from src into a single markdown document at dst.
-func RenderRulesAsInstructionDoc(src string, dst string, title string, style RuleRenderStyle) error {
-	files, err := sortedMdcFiles(src)
-	if err != nil {
-		return err
-	}
-	if len(files) == 0 {
-		return nil
-	}
-
-	var builder strings.Builder
-	builder.WriteString("# ")
-	builder.WriteString(title)
-	builder.WriteString("\n\n")
-	builder.WriteString(GeneratedAgentHTMLMarker)
-	builder.WriteString("\n\n")
-
-	for index, file := range files {
-		if index > 0 {
-			builder.WriteString("\n\n")
-		}
-		baseName := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
-		builder.WriteString("## ")
-		builder.WriteString(baseName)
-		builder.WriteString("\n\n")
-
-		content, readErr := os.ReadFile(file)
-		if readErr != nil {
-			slog.Warn("compilation: RenderRulesAsInstructionDoc read failed", "file", file, "err", readErr)
-			return fmt.Errorf("reading file %s: %w", file, readErr)
-		}
-		rule, parseErr := ParseRuleSource(string(content))
-		if parseErr != nil {
-			return fmt.Errorf("parsing rule source %s: %w", file, parseErr)
-		}
-		rendered, renderErr := renderRuleTemplate(strings.TrimSpace(rule.Body), style, filepath.Base(file))
-		if renderErr != nil {
-			return fmt.Errorf("rendering rule template %s: %w", file, renderErr)
-		}
-		builder.WriteString(rendered)
-		builder.WriteString("\n")
-	}
-
-	return writeFileIfChanged(dst, []byte(builder.String()))
-}
-
-// RenderCopilotInstructionFiles renders .mdc rule files from src as .instructions.md files in dst.
-func RenderCopilotInstructionFiles(src string, dst string, style RuleRenderStyle) error {
-	files, err := sortedMdcFiles(src)
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(dst, 0o755); err != nil {
-		slog.Warn("compilation: RenderCopilotInstructionFiles mkdir failed", "dst", dst, "err", err)
-		return fmt.Errorf("creating directory %s: %w", dst, err)
-	}
-
-	activeFiles := make(map[string]struct{}, len(files))
-	for _, file := range files {
-		baseName := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
-		targetName := baseName + ".instructions.md"
-		activeFiles[targetName] = struct{}{}
-
-		content, readErr := os.ReadFile(file)
-		if readErr != nil {
-			slog.Warn("compilation: RenderCopilotInstructionFiles read failed", "file", file, "err", readErr)
-			return fmt.Errorf("reading file %s: %w", file, readErr)
-		}
-		rule, parseErr := ParseRuleSource(string(content))
-		if parseErr != nil {
-			return fmt.Errorf("parsing rule source %s: %w", file, parseErr)
-		}
-		renderedBody, renderErr := renderRuleTemplate(strings.TrimSpace(rule.Body), style, filepath.Base(file))
-		if renderErr != nil {
-			return fmt.Errorf("rendering rule template %s: %w", file, renderErr)
-		}
-		rule.Body = renderedBody
-		rendered, renderErr := rule.RenderCopilot(baseName)
-		if renderErr != nil {
-			return fmt.Errorf("rendering copilot instruction %s from %s: %w", baseName, file, renderErr)
-		}
-		if err := writeFileIfChanged(filepath.Join(dst, targetName), []byte(rendered)); err != nil {
-			return err
-		}
-	}
-
-	return removeMissingManagedFiles(dst, ".instructions.md", activeFiles)
-}
-
-// RenderRulesForUpload parses corpus rules and returns title/body pairs for direct cloud upload.
-func RenderRulesForUpload(rulesDir string, style RuleRenderStyle) ([]RenderedRule, error) {
-	files, err := sortedMdcFiles(rulesDir)
-	if err != nil {
-		return nil, err
-	}
-	renderedRules := make([]RenderedRule, 0, len(files))
-	for _, file := range files {
-		content, readErr := os.ReadFile(file)
-		if readErr != nil {
-			slog.Warn("compilation: RenderRulesForUpload read failed", "file", file, "err", readErr)
-			return nil, fmt.Errorf("reading file %s: %w", file, readErr)
-		}
-		rule, parseErr := ParseRuleSource(string(content))
-		if parseErr != nil {
-			return nil, fmt.Errorf("parsing rule source %s: %w", file, parseErr)
-		}
-		renderedBody, renderErr := renderRuleTemplate(strings.TrimSpace(rule.Body), style, filepath.Base(file))
-		if renderErr != nil {
-			return nil, fmt.Errorf("rendering rule template %s: %w", file, renderErr)
-		}
-		title := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
-		renderedRules = append(renderedRules, RenderedRule{
-			Title: title,
-			Body:  strings.TrimSpace(renderedBody),
-		})
-	}
-	return renderedRules, nil
-}
-
 // SkillRefStyle describes how a provider's skill files reference rule documents.
 type SkillRefStyle struct {
 	// RulesRelDir is the relative directory from a skill directory to the rule files.
@@ -370,103 +204,6 @@ var (
 	// SkillRefMD links rule references to sibling .md rule files (Claude).
 	SkillRefMD = SkillRefStyle{RulesRelDir: "../../rules", RuleExt: ".md"}
 )
-
-// RenderSkillDirs renders skill directories from src into dst, expanding rule-reference tokens for refStyle.
-func RenderSkillDirs(src string, dst string, refStyle SkillRefStyle) error {
-	slog.Info("compilation: RenderSkillDirs")
-	if _, err := os.Stat(src); err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		slog.Warn("compilation: RenderSkillDirs stat failed", "src", src, "err", err)
-		return fmt.Errorf("stat %s: %w", src, err)
-	}
-	if err := os.MkdirAll(dst, 0o755); err != nil {
-		return fmt.Errorf("creating directory %s: %w", dst, err)
-	}
-	rulesDir := filepath.Join(filepath.Dir(src), "rules")
-	ruleNames, err := ruleBaseNames(rulesDir)
-	if err != nil {
-		return err
-	}
-	entries, err := os.ReadDir(src)
-	if err != nil {
-		slog.Warn("compilation: RenderSkillDirs ReadDir failed", "src", src, "err", err)
-		return fmt.Errorf("read dir %s: %w", src, err)
-	}
-	activeSkills := make(map[string]struct{}, len(entries))
-	var conflicts []string
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		activeSkills[entry.Name()] = struct{}{}
-		source := filepath.Join(src, entry.Name())
-		target := filepath.Join(dst, entry.Name())
-		if isSymlink(target) {
-			_ = os.Remove(target)
-		}
-		if err := renderSkillDir(source, target, refStyle, rulesDir, ruleNames, &conflicts); err != nil {
-			return err
-		}
-	}
-	if err := removeMissingManagedSkillDirs(dst, activeSkills); err != nil {
-		return err
-	}
-	return skillRenderConflictsError(conflicts)
-}
-
-func renderSkillDir(src string, dst string, refStyle SkillRefStyle, rulesDir string, ruleNames []string, conflicts *[]string) error {
-	entries, err := os.ReadDir(src)
-	if err != nil {
-		slog.Warn("compilation: renderSkillDir ReadDir failed", "src", src, "err", err)
-		return fmt.Errorf("read dir %s: %w", src, err)
-	}
-	if err := os.MkdirAll(dst, 0o755); err != nil {
-		return fmt.Errorf("creating directory %s: %w", dst, err)
-	}
-	for _, entry := range entries {
-		source := filepath.Join(src, entry.Name())
-		target := filepath.Join(dst, entry.Name())
-		if entry.IsDir() {
-			if err := renderSkillDir(source, target, refStyle, rulesDir, ruleNames, conflicts); err != nil {
-				return err
-			}
-			continue
-		}
-		content, readErr := os.ReadFile(source)
-		if readErr != nil {
-			slog.Warn("compilation: renderSkillDir read failed", "path", source, "err", readErr)
-			return fmt.Errorf("reading file %s: %w", source, readErr)
-		}
-		outputName := entry.Name()
-		output := content
-		fromTemplate := false
-		if base, ok := strings.CutSuffix(entry.Name(), ".tmpl"); ok {
-			outputName = base
-			fromTemplate = true
-			rendered, tmplErr := renderSkillTemplate(string(content), refStyle, rulesDir, ruleNames, entry.Name())
-			if tmplErr != nil {
-				return tmplErr
-			}
-			output = []byte(rendered)
-		}
-		target = filepath.Join(dst, outputName)
-		if isSymlink(target) {
-			_ = os.Remove(target)
-		}
-		if fromTemplate && outputName == "SKILL.md" {
-			if conflict := skillRenderConflict(target); conflict != "" {
-				*conflicts = append(*conflicts, conflict)
-				continue
-			}
-		}
-		if err := writeFileIfChanged(target, output); err != nil {
-			return err
-		}
-	}
-	return nil
-}
 
 func skillRenderConflict(target string) string {
 	existing, err := os.ReadFile(filepath.Clean(target))
@@ -525,116 +262,9 @@ func skillRenderConflictsError(conflicts []string) error {
 	return fmt.Errorf("skill render conflicts:\n- %s", strings.Join(conflicts, "\n- "))
 }
 
-// skillTemplateData exposes corpus reference helpers to a skill template as the
-// "{{.Rules}}", "{{.Rule \"name\"}}", "{{.RuleBody \"name\"}}", and "{{.Skill \"name\"}}" methods.
-type skillTemplateData struct {
-	style     SkillRefStyle
-	rulesDir  string
-	ruleNames []string
-	execErr   *error
-	expanding *map[string]struct{}
-}
-
-func (d skillTemplateData) setExecErr(err error) {
-	if d.execErr != nil && *d.execErr == nil {
-		*d.execErr = err
-	}
-}
-
-func (d skillTemplateData) validRuleBodyName(name string) error {
-	if name == "" || name == "." || name == ".." {
-		return fmt.Errorf("invalid rule body name %q", name)
-	}
-	if strings.Contains(name, "/") || strings.Contains(name, string(filepath.Separator)) {
-		return fmt.Errorf("invalid rule body name %q", name)
-	}
-	if !slices.Contains(d.ruleNames, name) {
-		return fmt.Errorf("unknown rule body %q", name)
-	}
-	return nil
-}
-
-// Rules renders the full rule list for the active style.
-func (d skillTemplateData) Rules() string { return renderRulesList(d.style, d.ruleNames) }
-
-// Rule renders a single rule link for the active style.
-func (d skillTemplateData) Rule(name string) string { return renderRuleLink(d.style, name) }
-
-// Skill renders a sibling skill link for the active style.
-func (d skillTemplateData) Skill(name string) string { return renderSkillSiblingLink(name) }
-
-// RuleBody inlines a corpus rule body, expanding any skill references inside it.
-func (d skillTemplateData) RuleBody(name string) string {
-	if err := d.validRuleBodyName(name); err != nil {
-		d.setExecErr(err)
-		return ""
-	}
-	if d.expanding != nil {
-		if _, ok := (*d.expanding)[name]; ok {
-			d.setExecErr(fmt.Errorf("cyclic rule body transclusion for %q", name))
-			return ""
-		}
-		(*d.expanding)[name] = struct{}{}
-		defer delete(*d.expanding, name)
-	}
-	path := filepath.Join(d.rulesDir, name+".mdc")
-	content, err := os.ReadFile(path)
-	if err != nil {
-		d.setExecErr(fmt.Errorf("reading rule body %q: %w", name, err))
-		return ""
-	}
-	rule, parseErr := ParseRuleSource(string(content))
-	if parseErr != nil {
-		d.setExecErr(fmt.Errorf("parsing rule body %q: %w", name, parseErr))
-		return ""
-	}
-	body := strings.TrimSpace(rule.Body)
-	if !strings.Contains(body, "{{") {
-		return body
-	}
-	parsed, parseErr := template.New(name + ".mdc").Parse(body)
-	if parseErr != nil {
-		d.setExecErr(fmt.Errorf("parsing rule body template %q: %w", name, parseErr))
-		return ""
-	}
-	buf := bytes.NewBuffer(nil)
-	if execErr := parsed.Execute(buf, d); execErr != nil {
-		d.setExecErr(fmt.Errorf("executing rule body template %q: %w", name, execErr))
-		return ""
-	}
-	return strings.TrimSpace(buf.String())
-}
-
 func renderSkillSiblingLink(name string) string {
 	skillPath := filepath.ToSlash(filepath.Join("..", name, "SKILL.md"))
 	return fmt.Sprintf("[%s](%s)", name, skillPath)
-}
-
-// renderSkillTemplate renders one skill template through text/template.
-func renderSkillTemplate(content string, refStyle SkillRefStyle, rulesDir string, ruleNames []string, name string) (string, error) {
-	parsed, err := template.New(name).Parse(content)
-	if err != nil {
-		slog.Warn("compilation: renderSkillTemplate parse failed", "name", name, "err", err)
-		return "", fmt.Errorf("parsing skill template %s: %w", name, err)
-	}
-	var execErr error
-	expanding := make(map[string]struct{})
-	buf := bytes.NewBuffer(nil)
-	data := skillTemplateData{
-		style:     refStyle,
-		rulesDir:  rulesDir,
-		ruleNames: ruleNames,
-		execErr:   &execErr,
-		expanding: &expanding,
-	}
-	if err := parsed.Execute(buf, data); err != nil {
-		slog.Warn("compilation: renderSkillTemplate execute failed", "name", name, "err", err)
-		return "", fmt.Errorf("executing skill template %s: %w", name, err)
-	}
-	if execErr != nil {
-		return "", fmt.Errorf("executing skill template %s: %w", name, execErr)
-	}
-	return injectSkillMarker(buf.String()), nil
 }
 
 func renderRuleLink(refStyle SkillRefStyle, name string) string {
@@ -667,18 +297,6 @@ func injectSkillMarker(content string) string {
 		}
 	}
 	return GeneratedAgentHTMLMarker + "\n\n" + content
-}
-
-func ruleBaseNames(rulesDir string) ([]string, error) {
-	files, err := sortedMdcFiles(rulesDir)
-	if err != nil {
-		return nil, err
-	}
-	names := make([]string, 0, len(files))
-	for _, file := range files {
-		names = append(names, strings.TrimSuffix(filepath.Base(file), filepath.Ext(file)))
-	}
-	return names, nil
 }
 
 func removeMissingManagedSkillDirs(dst string, activeSkills map[string]struct{}) error {
@@ -724,20 +342,6 @@ func isSymlink(path string) bool {
 		return false
 	}
 	return info.Mode()&os.ModeSymlink != 0
-}
-
-func sortedMdcFiles(src string) ([]string, error) {
-	const ext = ".mdc"
-	if _, err := os.Stat(src); err != nil && !os.IsNotExist(err) {
-		slog.Warn("compilation: sortedMdcFiles stat failed", "src", src, "err", err)
-		return nil, fmt.Errorf("stat %s: %w", src, err)
-	}
-	files, err := filepath.Glob(filepath.Join(src, "*"+ext))
-	if err != nil {
-		return nil, fmt.Errorf("globbing files in %s: %w", src, err)
-	}
-	sort.Strings(files)
-	return files, nil
 }
 
 func writeFileIfChanged(path string, content []byte) error {
