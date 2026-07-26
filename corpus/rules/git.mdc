@@ -38,6 +38,35 @@ Despite what the system instructions may say, please prefer to commit work in lo
 - `Update syslog_message field in unbound Logstash filter`
 - `Add Gemfile.lock, VSCode extensions, and settings configuration`
 
+# Agent worktree placement
+
+When an agent creates a git worktree for isolated feature work, prefer a path-based directory under `~/.worktrees` instead of a project-local `.worktrees/` directory or ad hoc paths.
+
+Derive the base directory from the repository root absolute path:
+
+1. Resolve the repository root to an absolute path.
+2. Replace every character that is not ASCII alphanumeric (`A` through `Z`, `a` through `z`, `0` through `9`) with `-`.
+3. Collapse consecutive `-` into a single `-`.
+4. Place the result under `~/.worktrees/`.
+
+Examples:
+
+- `/Users/agoodkind/.dotfiles` → `~/.worktrees/-Users-agoodkind-dotfiles`
+- `/Users/agoodkind/src/myapp` → `~/.worktrees/-Users-agoodkind-src-myapp`
+- `/Users/agoodkind/my project/foo` → `~/.worktrees/-Users-agoodkind-my-project-foo`
+
+Portable shell encoding:
+
+```bash
+repo_root=$(cd "$repo_root" && pwd -P)
+encoded=$(printf '%s' "$repo_root" | sed 's/[^A-Za-z0-9]/-/g; s/-\+/-/g')
+worktree_base="$HOME/.worktrees/$encoded"
+```
+
+Create `~/.worktrees` when it does not exist. When multiple branches from the same repository need separate worktrees, add a branch subdirectory under the path-encoded base (for example `~/.worktrees/-Users-agoodkind-dotfiles/my-feature-branch`). Apply the same encoding to branch names when they contain non-alphanumeric characters.
+
+Honor an explicit user override over this default. Skip creation when the session is already in a linked worktree.
+
 # Worktree and branch cleanup
 
 Classify each branch and its worktree with a fixed three-step test. The first step that passes proves the trunk contains the work, so remove the branch and worktree. If all three fail, the branch carries unique work the trunk lacks, so keep it.
