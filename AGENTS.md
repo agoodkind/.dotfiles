@@ -162,6 +162,16 @@ All other git read operations (`git status`, `git diff`, `git log`, etc.) work
 normally when run from inside `~/.dotfiles`; only push (and any operation that
 writes to the remote) requires `config`.
 
+### Agent worktree placement
+
+When creating a git worktree for isolated work, prefer a path-based directory
+under `~/.worktrees`. Encode the repository root absolute path in a
+path-safe form: replace every non-alphanumeric character with `-`, collapse
+runs of `-`, then place the result under `~/.worktrees/` (for example
+`/Users/agoodkind/.dotfiles` becomes
+`~/.worktrees/-Users-agoodkind-dotfiles`). Add a branch subdirectory when
+multiple worktrees from the same repository are needed.
+
 ## Smoke Testing zsh Startup
 
 To accurately test that zsh loads without errors on a remote host, allocate a real PTY,
