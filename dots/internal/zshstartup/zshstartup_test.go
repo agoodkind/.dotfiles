@@ -132,12 +132,12 @@ source "$DOTDOTFILES/zshrc/core/plugins.zsh"
 
 _load_tier1
 _require_function _zsh_autosuggest_start
-if [[ -n ${ZSH_AUTOSUGGEST_ACCEPT_WIDGETS[(r)forward-char]} ]]; then
-    print -r -- "forward-char stayed in ZSH_AUTOSUGGEST_ACCEPT_WIDGETS"
+if [[ -z ${ZSH_AUTOSUGGEST_ACCEPT_WIDGETS[(r)forward-char]} ]]; then
+    print -r -- "forward-char is missing from ZSH_AUTOSUGGEST_ACCEPT_WIDGETS"
     exit 1
 fi
-if [[ -n ${ZSH_AUTOSUGGEST_ACCEPT_WIDGETS[(r)vi-forward-char]} ]]; then
-    print -r -- "vi-forward-char stayed in ZSH_AUTOSUGGEST_ACCEPT_WIDGETS"
+if [[ -z ${ZSH_AUTOSUGGEST_ACCEPT_WIDGETS[(r)vi-forward-char]} ]]; then
+    print -r -- "vi-forward-char is missing from ZSH_AUTOSUGGEST_ACCEPT_WIDGETS"
     exit 1
 fi
 
