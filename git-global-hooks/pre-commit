@@ -2,6 +2,43 @@
 source "$(dirname "$0")/email-guard.sh"
 source "$(dirname "$0")/chain-hook.sh"
 
+protected_branch_names() {
+    printf '%s\n' main
+
+    local remote_name remote_head configured_default
+    while IFS= read -r remote_name; do
+        remote_head="$(git symbolic-ref --quiet "refs/remotes/$remote_name/HEAD" 2>/dev/null || true)"
+        if [[ "$remote_head" == "refs/remotes/$remote_name/"* ]]; then
+            printf '%s\n' "${remote_head#"refs/remotes/$remote_name/"}"
+        fi
+    done < <(git remote)
+
+    configured_default="$(git config --get init.defaultBranch 2>/dev/null || true)"
+    if [[ -n "$configured_default" ]]; then
+        printf '%s\n' "$configured_default"
+    fi
+}
+
+is_protected_branch() {
+    local branch_name="$1"
+    local protected_branch
+
+    while IFS= read -r protected_branch; do
+        if [[ "$branch_name" == "$protected_branch" ]]; then
+            return 0
+        fi
+    done < <(protected_branch_names)
+
+    return 1
+}
+
+current_branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+if [[ -n "$current_branch" ]] && is_protected_branch "$current_branch"; then
+    printf 'error: commit blocked on protected branch %q\n' "$current_branch"
+    printf '%s\n' '  make all changes in a worktree and merge via GitHub.'
+    exit 1
+fi
+
 if resolve_allowed_identity_fields; then
     allowed_email="$RESOLVED_ALLOWED_EMAIL"
     allowed_name="$RESOLVED_ALLOWED_NAME"
