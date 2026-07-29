@@ -1,19 +1,19 @@
 ---
 name: gpt-subagent
-description: Use GPT through the codex exec CLI as a subagent. Use when the user asks to delegate work to Codex or GPT, run a Codex review, have GPT perform a second pass, or compare host and GPT answers.
+description: Use GPT through the codex exec CLI as a subagent. Use when the user asks to delegate work to Codex or GPT, run a Codex review, have GPT perform a second pass, continue an existing Codex edit session, or compare host and GPT answers.
 ---
 
 # GPT Subagent
 
-Use `codex exec` when the user asks to delegate work to GPT through Codex. The CLI path gives observable progress and a hard timeout. Do not use the Codex MCP server for subagent delegation.
+Use `codex exec` when the user asks to delegate work to GPT through Codex. The CLI path gives observable progress, a hard timeout, and ephemeral continuation of an existing edit session. Do not use the Codex MCP server for subagent delegation.
 
 Assume `codex` is on PATH. This skill gives only CLI invocation instructions.
 
 ## Defaults
 
-Every `codex exec` dispatch must include `--ephemeral`. All other defaults apply unless the user overrides them:
+Every `codex exec` dispatch, including `codex exec resume`, must include `--ephemeral`. All other defaults apply unless the user overrides them:
 
-- **Ephemeral session:** `--ephemeral`. This prevents Codex from persisting session files. Do not use `codex exec resume` or `--last`, because ephemeral runs cannot be resumed.
+- **Ephemeral session:** `--ephemeral`. This prevents Codex from persisting session files. A session created with `--ephemeral` is unavailable to resume. A resumed recorded session must still include `--ephemeral` so the continuation is not persisted.
 - **Reasoning:** `-c model_reasoning_effort="high"`. If `codex exec` rejects `high` for the default model, drop the override.
 - **Model:** omit `-m` by default. When the user names a model or you need a non-default model, follow **Model selection** and pass `-m` only with a slug from `codex debug models`.
 - **Review sandbox:** use `-s read-only` for review, analysis, and search.
@@ -71,9 +71,28 @@ timeout 1500 codex exec \
 PROMPT
 ```
 
+Continue an existing recorded edit session with the resume subcommand:
+
+```bash
+result_file="$(mktemp)"
+stderr_file="$(mktemp)"
+timeout 1500 codex exec resume \
+  --ephemeral \
+  --dangerously-bypass-approvals-and-sandbox \
+  -c model_reasoning_effort="high" \
+  --json \
+  -o "$result_file" <session-id> - 2>"$stderr_file" <<'PROMPT'
+<follow-up prompt>
+PROMPT
+```
+
+Use `--last` only when the user identifies the most recent recorded session as the intended edit session.
+
 State "read-only" in review prompts, and state "edit allowed" only when the user authorized the implementation. The bypass flag removes approval prompts and the filesystem sandbox, so scope discipline lives in the prompt. Polling and timeout remain mandatory.
 
-Set `-C <dir>` when the task is scoped to a specific repository or directory.
+Start reviews as new tasks because `codex exec resume` does not accept `-s read-only`.
+
+Set `-C <dir>` only on new tasks. The resume subcommand does not accept `-C`, so run it from the intended working directory.
 
 ## Run in the background
 
