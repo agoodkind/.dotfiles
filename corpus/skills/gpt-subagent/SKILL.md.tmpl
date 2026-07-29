@@ -1,11 +1,11 @@
 ---
 name: gpt-subagent
-description: Use GPT through the codex exec CLI as a subagent. Use when the user asks to delegate work to Codex or GPT, run a Codex review, have GPT perform a second pass, continue a Codex session, or compare host and GPT answers.
+description: Use GPT through the codex exec CLI as a subagent. Use when the user asks to delegate work to Codex or GPT, run a Codex review, have GPT perform a second pass, or compare host and GPT answers.
 ---
 
 # GPT Subagent
 
-Use `codex exec` when the user asks to delegate work to GPT through Codex. The CLI path gives observable progress, a hard timeout, and session continuation via `resume`. Do not use the Codex MCP server for subagent delegation.
+Use `codex exec` when the user asks to delegate work to GPT through Codex. The CLI path gives observable progress and a hard timeout. Do not use the Codex MCP server for subagent delegation.
 
 Assume `codex` is on PATH. This skill gives only CLI invocation instructions.
 
@@ -13,9 +13,11 @@ Assume `codex` is on PATH. This skill gives only CLI invocation instructions.
 
 Every `codex exec` dispatch uses these flags unless the user overrides them:
 
+- **Ephemeral session:** `--ephemeral`. This prevents Codex from persisting session files. Do not use `codex exec resume` or `--last`, because ephemeral runs cannot be resumed.
 - **Reasoning:** `-c model_reasoning_effort="high"`. If `codex exec` rejects `high` for the default model, drop the override.
 - **Model:** omit `-m` by default. When the user names a model or you need a non-default model, follow **Model selection** and pass `-m` only with a slug from `codex debug models`.
-- **Sandbox:** `--dangerously-bypass-approvals-and-sandbox` up front when the user has delegated work to Codex through this skill. This bypasses approval prompts and the filesystem sandbox. Do not start with `-s read-only` or `-s workspace-write` and lift sandbox later. Sandboxed runs routinely fail on `.git` writes in linked worktrees and force cache or Makefile workarounds. Scope limits ("read-only" vs "edit allowed") live in the prompt.
+- **Review sandbox:** use `-s read-only` for review, analysis, and search.
+- **Edit sandbox:** use `--dangerously-bypass-approvals-and-sandbox` only for user-authorized edit tasks. This bypasses approval prompts and the filesystem sandbox.
 
 ## Model selection
 
@@ -39,13 +41,14 @@ codex debug models >"$models_file"
 
 ## Run codex exec
 
-Start a new task with the prompt on stdin and the final answer written to a file:
+For review, analysis, and search, start a new read-only task with the prompt on stdin and the final answer written to a file:
 
 ```bash
 result_file="$(mktemp)"
 stderr_file="$(mktemp)"
 timeout 1500 codex exec \
-  --dangerously-bypass-approvals-and-sandbox \
+  --ephemeral \
+  -s read-only \
   -c model_reasoning_effort="high" \
   -o "$result_file" 2>"$stderr_file" - <<'PROMPT'
 <bounded prompt>
@@ -54,26 +57,21 @@ PROMPT
 
 GNU `timeout` is required. On macOS, use `gtimeout` from coreutils when `timeout` is not on PATH.
 
-Permissions:
-
-- Read-only analysis, review, and search: state "read-only" in the prompt and do not edit files.
-- Implementation: state "edit allowed" in the prompt when the user grants edit permission for that work.
-- The bypass flag removes approval prompts and the filesystem sandbox, so scope discipline lives in the prompt. Polling and timeout remain mandatory.
-
-Continue a prior session with `codex exec resume`:
+For user-authorized edits, use the bypass flag instead:
 
 ```bash
 result_file="$(mktemp)"
 stderr_file="$(mktemp)"
-timeout 1500 codex exec resume <session-id> \
+timeout 1500 codex exec \
+  --ephemeral \
   --dangerously-bypass-approvals-and-sandbox \
   -c model_reasoning_effort="high" \
   -o "$result_file" 2>"$stderr_file" - <<'PROMPT'
-<follow-up prompt>
+<bounded prompt>
 PROMPT
 ```
 
-Use `codex exec resume --last` when the session id is unknown and the most recent session is the right one.
+State "read-only" in review prompts, and state "edit allowed" only when the user authorized the implementation. The bypass flag removes approval prompts and the filesystem sandbox, so scope discipline lives in the prompt. Polling and timeout remain mandatory.
 
 Set `-C <dir>` when the task is scoped to a specific repository or directory.
 
@@ -113,8 +111,8 @@ After launching the background job, arm a periodic check-in loop that fires on a
 1. Read the streaming stdout from the background shell.
 2. Read `$result_file` and `$stderr_file` if they exist.
 3. Compare each snapshot to the previous one to detect no progress.
-4. Treat exit code 124 from `timeout` as a time-limit breach. That may mean the session is still healthy but needs more time, or that progress has stalled. Read stdout and `$result_file` before restarting or resuming.
-5. Steer with `codex exec resume <session-id>` or restart the run the moment progress stops.
+4. Treat exit code 124 from `timeout` as a time-limit breach. That may mean the run needs more time, or that progress has stalled. Read stdout and `$result_file` before restarting.
+5. Restart the run with a new ephemeral invocation when progress stops.
 
 Add `--json` when JSONL event streaming makes progress easier to parse.
 
@@ -126,7 +124,7 @@ The host agent stays the owner. It must still consume the final result and repor
 
 - Ask GPT for independent analysis when the user wants a second pass, adversarial review, broad code search, or a cheaper subagent.
 - Ask GPT for implementation only when the user has granted edit permission for that work.
-- Keep the host agent responsible for the final answer. Summarize what GPT returned, cite the session id, and separate GPT's result from the host agent's own observations.
+- Keep the host agent responsible for the final answer. Summarize what GPT returned and separate GPT's result from the host agent's own observations.
 - Treat GPT output as evidence to inspect, not as automatically true. Verify high-risk claims with source, tests, logs, or direct reads.
 - Do not send large private logs, secrets, credentials, or unrelated personal context to Codex.
 - If GPT edits files through `codex exec`, inspect the resulting diff before reporting success.
@@ -136,9 +134,9 @@ The host agent stays the owner. It must still consume the final result and repor
 Report the result in this order:
 
 1. State whether the host agent successfully ran `codex exec`.
-2. Include the Codex session id and exit code (0 for clean completion, 124 for timeout).
+2. Include the exit code (0 for clean completion, 124 for timeout).
 3. Quote or summarize the GPT response from `$result_file`, depending on what the user asked for.
 4. Name any verification performed by the host agent after the GPT response.
 5. State exact errors if the `codex exec` run failed.
 
-For failures, preserve exact CLI stderr from `$stderr_file` and the exit code. Retry only for pre-execution parameter failures (for example rejected `model_reasoning_effort` or an unknown model slug). After execution may have started, inspect the workspace and diff before resuming. Do not replay an edit-allowed prompt blindly. If stderr mentions an unknown or unsupported model, treat it as a model-selection failure and follow **Model selection** before retrying. Then report the observed result.
+For failures, preserve exact CLI stderr from `$stderr_file` and the exit code. Retry only for pre-execution parameter failures (for example rejected `model_reasoning_effort` or an unknown model slug). After execution may have started, inspect the workspace and diff before starting another ephemeral run. Do not replay an edit-allowed prompt blindly. If stderr mentions an unknown or unsupported model, treat it as a model-selection failure and follow **Model selection** before retrying. Then report the observed result.
