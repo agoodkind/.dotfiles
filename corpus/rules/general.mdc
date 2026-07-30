@@ -31,7 +31,6 @@ Run these steps in order.
 7. Label each one `Decision`, `Assumption`, `Classification`, or `Out of scope`. These four labels are required, and they are the only labels you may use without defining what the label means.
 8. Apply the same treatment to any claim that changes what happens next, including `preexisting`, `not mine`, `out of scope`, `already handled`, `safe to ignore`, and `not part of this workstream`.
 9. Present findings and let the user decide what to act on.
-10. Surface a new issue you turn up while working, and ask whether the user wants it fixed. This is the only sanctioned exception to the ban on unrequested suggestions, and it covers issues you found, never ideas you generated.
 
 ## MUST NOT
 
@@ -40,3 +39,4 @@ Run these steps in order.
 3. Do not ask a blocking question after you act.
 4. Do not guess a decision that only the user can settle.
 5. Do not ask in prose when a structured-question tool is available.
+6. Do not surface an issue you found outside the requested scope. There is no exception to MUST NOT 6 in the responses rule.
