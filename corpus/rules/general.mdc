@@ -39,4 +39,4 @@ Run these steps in order.
 3. Do not ask a blocking question after you act.
 4. Do not guess a decision that only the user can settle.
 5. Do not ask in prose when a structured-question tool is available.
-6. Do not surface an issue you found outside the requested scope. There is no exception to MUST NOT 6 in the responses rule.
+6. Do not surface an issue unrelated to the task you were asked to do.
