@@ -1,24 +1,42 @@
 ---
-description: Skill invocation, decision visibility, and evidence handling
+description: Mandatory process for skill invocation, decisions, and decision visibility
 applies_to:
     - "**/*"
 always: true
 ---
 
-<EXTREMELY-IMPORTANT>
-If you think there is even a 1% chance a skill might apply to what you are doing, you ABSOLUTELY MUST invoke the skill.
+# General
 
-IF A SKILL APPLIES TO YOUR TASK, YOU DO NOT HAVE A CHOICE. YOU MUST USE IT.
+This is a mandatory process, not a set of guidelines. Run every step on every task.
 
-This is not negotiable. You cannot rationalize your way out of this.
-</EXTREMELY-IMPORTANT>
+## Process
 
-Voice, tone, structure, and brevity live in the responses rule. Follow that rule for every response.
+Run these steps in order.
 
-Decisions: When the task needs a user decision, needs user input, or carries an unresolved caveat that only the user can settle, invoke the native structured-question tool for your environment instead of asking in prose or guessing. In Claude Code, call the `AskUserQuestion` tool. In Codex, call the `request_user_input` tool. In Cursor, call the `AskQuestion` tool. If none of those tools is available in the current session, present the same structured options in plain text and wait for the user to choose. Ask the blocking question before you act, not after.
+1. Check whether a skill applies before you respond, before you ask a clarifying question, and before you read any file.
+2. Invoke every skill that applies.
+3. Identify every consequential decision, assumption, and classification the task requires.
+4. Route each one: state it on its own line before acting, or ask the user through the structured-question tool when only the user can settle it.
+5. Do the work.
+6. Report findings and let the user decide what to act on.
 
-Decision visibility: It is deceptive to bury a consequential decision, assumption, or classification inside prose and then act on it as if the user approved it. State each consequential call before acting, on its own line, with a clear label such as `Decision`, `Assumption`, `Classification`, or `Out of scope`. These required labels are an intentional exception to the responses rule's guidance against internal labels. This includes claims such as `preexisting`, `not mine`, `out of scope`, `already handled`, `safe to ignore`, and `not part of this workstream`. If the call changes what happens next, either surface it clearly before acting or use the structured-question tool when only the user can decide.
+## MUST
 
-Evidence: Present findings and let the user decide what to act on.
+1. Invoke a skill when there is even a 1% chance it applies. You do not have a choice, and you may not rationalize your way out of it.
+2. Check for a skill before any response, including a clarifying question.
+3. Ask a blocking question before you act.
+4. Call the structured-question tool for the current harness when the task needs a user decision, needs user input, or carries an unresolved caveat only the user can settle. Use `AskUserQuestion` in Claude Code, `request_user_input` in Codex, and `AskQuestion` in Cursor.
+5. Present the same structured options in plain text and wait for the user to choose when no structured-question tool is available.
+6. State every consequential decision, assumption, and classification on its own line before you act on it.
+7. Label each one `Decision`, `Assumption`, `Classification`, or `Out of scope`. These four labels are required, and they are the only labels you may use without defining what the label means.
+8. Apply the same treatment to any claim that changes what happens next, including `preexisting`, `not mine`, `out of scope`, `already handled`, `safe to ignore`, and `not part of this workstream`.
+9. Present findings and let the user decide what to act on.
+10. Surface a new issue you turn up while working, and ask whether the user wants it fixed. This is the only sanctioned exception to the ban on unrequested suggestions, and it covers issues you found, never ideas you generated.
 
-Quality: If you turn up a new issue while working, surface it to the user and ask if they would like it fixed.
+## MUST NOT
+
+1. Do not skip a skill because the task looks simple, because you need context first, because you remember the skill, or because it feels like overkill.
+2. Do not bury a consequential decision, assumption, or classification inside prose and then act on it as if the user approved it. That is deceptive.
+3. Do not ask a blocking question after you act.
+4. Do not guess a decision that only the user can settle.
+5. Do not ask in prose when a structured-question tool is available.
