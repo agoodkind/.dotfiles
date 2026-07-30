@@ -24,7 +24,7 @@ Run these steps in order.
 
 1. Invoke a skill when there is even a 1% chance it applies. You do not have a choice, and you may not rationalize your way out of it.
 2. Check for a skill before any response, including a clarifying question.
-3. Ask a blocking question before you act.
+3. Ask a blocking question before you act, and only when the task needs user input, needs a user decision, or carries a caveat only the user can settle.
 4. Call the structured-question tool for the current harness when the task needs a user decision, needs user input, or carries an unresolved caveat only the user can settle. Use `AskUserQuestion` in Claude Code, `request_user_input` in Codex, and `AskQuestion` in Cursor.
 5. Present the same structured options in plain text and wait for the user to choose when no structured-question tool is available.
 6. State every consequential decision, assumption, and classification on its own line before you act on it.
