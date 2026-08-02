@@ -54,6 +54,10 @@ export SAVEHIST=10000000
 setopt appendhistory
 setopt extended_history
 setopt share_history
+if ((DOTFILES_AGENT_SHELL)); then
+    unset HISTFILE
+    unsetopt appendhistory share_history
+fi
 setopt interactive_comments
 setopt auto_cd
 setopt auto_pushd
