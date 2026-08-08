@@ -323,24 +323,24 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 
 ### Structure examples
 
-**Bad** (unnecessary directory and overview):
+**Bad** (unnecessary directory and overview; path quoted without a link):
 
 > A single daemon architecture document lives at `docs/daemon/overview.md` only because every concern receives its own directory.
 
-**Good** (single concern page):
+**Good** (single concern page; path is a clickable link):
 
-> The daemon architecture lives at `docs/daemon.md` while it is the only document for that concern. If distinct install and operations documents become necessary, the concern can become `docs/daemon/` with specifically named pages.
+> The daemon architecture lives at [docs/daemon.md](docs/daemon.md) while it is the only document for that concern. If distinct install and operations documents become necessary, the concern can become [docs/daemon/](docs/daemon/) with specifically named pages.
 
-**Good** (substantive existing overview):
+**Good** (substantive existing overview; path is a clickable link):
 
-> Keep an existing `overview.md` when it explains a system-wide relationship that no specific page owns, and preserve that synthesis during a rewrite. The page earns its place through its content, not its conventional filename.
+> Keep an existing [overview.md](overview.md) when it explains a system-wide relationship that no specific page owns, and preserve that synthesis during a rewrite. The page earns its place through its content, not its conventional filename.
 
 ### Organization examples
 
-**Bad** (filename-derived rename):
+**Bad** (filename-derived rename; paths quoted without links):
 
 > `operational-notes.md` becomes `notes.md` because the filename is shorter.
 
-**Good** (content-based grouping):
+**Good** (content-based grouping; paths are clickable links):
 
-> Router BGP, gateway, and NAT foot-guns belong in `operations.md` because they describe how the production OPNsense router is operated. Daemon install and upgrade steps belong under `daemon/` because they describe a separate component.
+> Router BGP, gateway, and NAT foot-guns belong in [operations.md](operations.md) because they describe how the production OPNsense router is operated. Daemon install and upgrade steps belong under [daemon/](daemon/) because they describe a separate component.
