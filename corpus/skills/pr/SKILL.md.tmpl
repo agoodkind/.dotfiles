@@ -128,8 +128,7 @@ Writing rules:
 - Include only details that help the reviewer understand, verify, or safely ship the PR.
 - Do not narrate literal code changes, the PR description provides high-level context for the change, and the PR diff carries the code change.
 - Do not add irrelevant adjacent context just because it is available.
-- Include a `## Testing` section only when actual material verification was run. Material verification includes meaningful commands, simulator checks, deployed checks, screenshots or videos, smoke tests, and other concrete evidence. If you are unsure whether the evidence is material, ask before adding `## Testing`.
-- Do not add non-material checks like "lints passed", "rg found x", or anything that isn't directly related to the behavior of the change itself.
+- Include a `## Testing` section only when actual material verification was run. Material verification includes meaningful commands, simulator checks, deployed checks, screenshots or videos, smoke tests, and other concrete evidence. If you are unsure whether the evidence is material, ask before adding `## Testing`. DO NOT ADD non-material checks like "lints passed", "rg found x", or anything that isn't directly related to the behavior of the change itself.
 - Do not mention unavailable test output, unrun tests, or missing verification unless it materially changes review risk.
 - Keep implementation detail at the system level, not line-by-line.
 
@@ -238,20 +237,12 @@ If creation or update fails, report the error and stop.
 
 ## Step 8: Return The Final Output
 
-After the GitHub change succeeds, return exactly this shape:
+After the GitHub change succeeds, output only the Slack message. Do not add operational preamble, status narration, separate PR URL blocks, fences, headings, or any other text.
 
-**1. Slack message** is a human one-liner for the code review channel. It must start with a capital letter and end with the PR URL. Use single backticks around unlinked symbols and code-like terms.
+The Slack message is a human one-liner for the code review channel. It must start with a capital letter and end with the PR URL. Use single backticks around unlinked symbols and code-like terms.
 
-`````
-Fix duplicate `silver` entries by resetting `list_state` https://github.com/...
-`````
+Example:
 
-**2. PR URL** is the bare URL on its own line inside a four-backtick fence:
-
-````
-https://github.com/...
-````
-
-**3. PR URL again** is the bare URL on its own line with no fence and no Markdown:
-
-https://github.com/...
+```text
+Strengthen `pr` skill discouragement of non-material `## Testing` sections https://github.com/example-org/example-repo/pull/123
+```
