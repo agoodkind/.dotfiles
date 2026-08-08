@@ -104,6 +104,7 @@ func runSyncOnly(ctx context.Context, dotfiles string, dispatchLogger *telemetry
 		DryRun:         false,
 		UseDefaults:    true,
 		StrictMode:     false,
+		AllowWorktree:  false,
 	})
 	if runErr != nil {
 		dispatchLogger.WarnContextWithErr(ctx, "updater: sync exited with non-zero status", runErr)
@@ -128,6 +129,7 @@ func doWeeklyUpdate(ctx context.Context, dotfiles, weeklyMarkerPath string, disp
 		DryRun:         false,
 		UseDefaults:    true,
 		StrictMode:     false,
+		AllowWorktree:  false,
 	})
 	if runErr != nil {
 		dispatchLogger.WarnContextWithErr(ctx, "updater: weekly sync exited with non-zero status", runErr)

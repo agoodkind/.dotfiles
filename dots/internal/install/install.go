@@ -184,6 +184,7 @@ func parseInstallArgs(args []string) (bool, sync.Options, bool, error) {
 		DryRun:         false,
 		UseDefaults:    false,
 		StrictMode:     false,
+		AllowWorktree:  false,
 	}
 
 	for _, arg := range args {

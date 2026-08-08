@@ -19,6 +19,7 @@ import (
 	"goodkind.io/.dotfiles/internal/cmdexec"
 	"goodkind.io/.dotfiles/internal/cursor/logging"
 	"goodkind.io/.dotfiles/internal/cursor/syncer"
+	"goodkind.io/.dotfiles/internal/gitdir"
 	"goodkind.io/.dotfiles/internal/runner"
 	"goodkind.io/.dotfiles/internal/sync/common"
 	"goodkind.io/.dotfiles/internal/sync/compilation"
@@ -96,16 +97,12 @@ func LinkDotfiles(ctx context.Context, dotfiles string, logger *telemetry.Logger
 			return nil
 		}
 
-		if _, err := os.Lstat(filepath.Clean(homeFile)); err == nil {
-			backupDest := filepath.Join(backupPath, rel+".bak")
-			if !strings.HasPrefix(filepath.Clean(backupDest), filepath.Clean(backupPath)) {
-				slog.WarnContext(ctx, "workspace: skipping backup, path traversal detected", "rel", rel)
-			} else if mkErr := os.MkdirAll(filepath.Dir(backupDest), 0o755); mkErr != nil {
-				slog.WarnContext(ctx, "workspace: creating backup directory, skipping backup", "err", mkErr)
-			} else if err := cmdexec.RunWithLogger(ctx, logger, "cp", "-HpR", homeFile, backupDest); err == nil {
-				backed++
-			}
-			_ = os.RemoveAll(filepath.Clean(homeFile))
+		backedUp, pathIsFree := clearExistingHomeFile(ctx, homeFile, backupPath, rel, logger)
+		if backedUp {
+			backed++
+		}
+		if !pathIsFree {
+			return nil
 		}
 
 		if err := os.MkdirAll(filepath.Dir(filepath.Clean(homeFile)), 0o755); err != nil {
@@ -126,6 +123,55 @@ func LinkDotfiles(ctx context.Context, dotfiles string, logger *telemetry.Logger
 	}
 	common.InfoContextf(ctx, logger, "  Linked: %s Skipped: %s Backed up: %s", strconv.Itoa(linked), strconv.Itoa(skipped), strconv.Itoa(backed))
 	return nil
+}
+
+// isWithinDir reports whether target is root itself or a descendant of root.
+//
+// A plain [strings.HasPrefix] on the cleaned paths is not enough: it treats
+// /tmp/backup-evil as contained within /tmp/backup, since the check compares
+// raw characters rather than path segments.
+func isWithinDir(root string, target string) bool {
+	cleanRoot := filepath.Clean(root)
+	cleanTarget := filepath.Clean(target)
+	if cleanTarget == cleanRoot {
+		return true
+	}
+	return strings.HasPrefix(cleanTarget, cleanRoot+string(filepath.Separator))
+}
+
+// clearExistingHomeFile backs up whatever already occupies homeFile and then
+// removes it, so the caller can put a symlink there.
+//
+// It reports whether a backup was taken, and whether the path is now free. A
+// real file whose backup failed is left in place and reported as not free,
+// since removing it would destroy the only copy. A symlink carries no content
+// of its own, so it is always safe to replace.
+func clearExistingHomeFile(ctx context.Context, homeFile string, backupPath string, rel string, logger *telemetry.Logger) (bool, bool) {
+	existing, err := os.Lstat(filepath.Clean(homeFile))
+	if err != nil {
+		return false, true
+	}
+
+	backedUp := false
+	backupDest := filepath.Join(backupPath, rel+".bak")
+	switch {
+	case !isWithinDir(backupPath, backupDest):
+		slog.WarnContext(ctx, "workspace: skipping backup, path traversal detected", "rel", rel)
+	default:
+		if mkErr := os.MkdirAll(filepath.Dir(backupDest), 0o755); mkErr != nil {
+			slog.WarnContext(ctx, "workspace: creating backup directory, skipping backup", "err", mkErr)
+		} else if cpErr := cmdexec.RunWithLogger(ctx, logger, "cp", "-HpR", homeFile, backupDest); cpErr == nil {
+			backedUp = true
+		}
+	}
+
+	isSymlink := existing.Mode()&os.ModeSymlink != 0
+	if !backedUp && !isSymlink {
+		slog.WarnContext(ctx, "workspace: backup failed, leaving existing file in place", "path", homeFile)
+		return false, false
+	}
+	_ = os.RemoveAll(filepath.Clean(homeFile))
+	return backedUp, true
 }
 
 // SyncSSHConfig installs the SSH config symlink into ~/.ssh/config.
@@ -265,7 +311,6 @@ func SyncCursorUserRules(ctx context.Context, dotfiles string, logger *telemetry
 func SyncGitHooks(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
 	slog.InfoContext(ctx, "workspace: SyncGitHooks")
 	hooksPath := filepath.Join(dotfiles, ".githooks")
-	destination := filepath.Join(dotfiles, ".git", "hooks")
 	if _, err := os.Stat(hooksPath); err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -273,6 +318,13 @@ func SyncGitHooks(ctx context.Context, dotfiles string, logger *telemetry.Logger
 		slog.WarnContext(ctx, "workspace: checking git hooks dir", "err", err)
 		return fmt.Errorf("checking git hooks dir: %w", err)
 	}
+	// Hooks live in the shared git directory, which every worktree uses. In a
+	// linked worktree <root>/.git is a file, so joining onto it fails.
+	gitCommonDir := filepath.Join(dotfiles, ".git")
+	if layout, err := gitdir.Resolve(ctx, dotfiles, logger); err == nil {
+		gitCommonDir = layout.CommonDir
+	}
+	destination := filepath.Join(gitCommonDir, "hooks")
 	if err := os.MkdirAll(destination, 0o755); err != nil {
 		slog.WarnContext(ctx, "workspace: creating git hooks destination", "err", err)
 		return fmt.Errorf("creating git hooks destination: %w", err)
@@ -288,7 +340,9 @@ func SyncGitHooks(ctx context.Context, dotfiles string, logger *telemetry.Logger
 		}
 		target := filepath.Join(destination, entry.Name())
 		_ = os.Remove(target)
-		if err := os.Symlink(filepath.Join("..", "..", ".githooks", entry.Name()), target); err != nil {
+		// An absolute link target stays correct wherever the shared git
+		// directory sits relative to the working tree.
+		if err := os.Symlink(filepath.Join(hooksPath, entry.Name()), target); err != nil {
 			slog.WarnContext(ctx, "workspace: creating hook symlink", "err", err)
 			return fmt.Errorf("creating hook symlink %s: %w", target, err)
 		}
