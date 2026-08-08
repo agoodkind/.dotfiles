@@ -218,8 +218,11 @@ func RunWorkers(ctx context.Context, selectedWorkers []string) error {
 
 	logPath := util.ResolveConfigPath(dispatchConfig.LogPath, dotfiles)
 	if logPath == "" {
-		logPath = filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles_dispatch.log")
+		logPath = filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "dispatch.log")
 	}
+	// A sync the updater starts runs inside this process and holds this log
+	// open, so it must know which log it cannot rotate.
+	_ = os.Setenv("DOTFILES_DISPATCH_LOG", logPath)
 	dispatchLogger, err := telemetry.NewLogger(logPath)
 	if err != nil {
 		return fmt.Errorf("creating dispatch logger: %w", err)
@@ -236,7 +239,7 @@ func RunWorkers(ctx context.Context, selectedWorkers []string) error {
 	}
 	lockPath := util.ResolveConfigPath(dispatchConfig.LockFile, dotfiles)
 	if lockPath == "" {
-		lockPath = filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles_dispatch.flock")
+		lockPath = filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "dispatch.flock")
 	}
 	lockFile, err := os.OpenFile(filepath.Clean(lockPath), os.O_CREATE|os.O_RDWR, 0o666)
 	if err != nil {
@@ -257,7 +260,7 @@ func RunWorkers(ctx context.Context, selectedWorkers []string) error {
 
 	statusDir := util.ResolveConfigPath(dispatchConfig.StatusDir, dotfiles)
 	if statusDir == "" {
-		statusDir = filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles_dispatch.lock")
+		statusDir = filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "dispatch.lock")
 	}
 	if err := os.MkdirAll(filepath.Clean(statusDir), 0o755); err != nil {
 		return fmt.Errorf("creating status directory: %w", err)
@@ -305,7 +308,7 @@ func logWorkersStart(ctx context.Context, workers []workerEntry, logger *telemet
 
 func notifyDispatchLogPath(logPath string) string {
 	if logPath == "" {
-		return filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles_dispatch.log")
+		return filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "dispatch.log")
 	}
 	return logPath
 }

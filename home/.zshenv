@@ -120,21 +120,28 @@ _PERF_LAP=$EPOCHREALTIME
 # Capture system snapshot at startup for diagnosing pre-zshrc slowness.
 # Runs in a subshell so it never blocks the shell startup path.
 # Outer { } 2>/dev/null suppresses nice(5) and mkdir errors in sandboxed envs.
-{
-    (
-        snap_file="${HOME}/.cache/zsh_startup/.syssnap_$$"
-        mkdir -p "${HOME}/.cache/zsh_startup"
-        {
-            printf "# syssnap pid=%d time=%s\n" "$$" "$(date '+%Y-%m-%d %H:%M:%S.%3N %Z')"
-            printf "\n## top CPU processes\n"
-            ps -Ao pid,pcpu,pmem,comm -r 2>/dev/null | head -15
-            printf "\n## load average\n"
-            sysctl -n vm.loadavg 2>/dev/null || uptime
-            printf "\n## disk activity (iostat)\n"
-            iostat -d disk0 2>/dev/null | head -6
-            printf "\n## path_helper entries\n"
-            ls /etc/paths.d/ 2>/dev/null
-            printf "\n## TERM_PROGRAM=%s\n" "${TERM_PROGRAM:-unset}"
-        } > "$snap_file" 2>/dev/null
-    ) &!
-} 2>/dev/null
+#
+# The gate below must stay identical to the one in _write_startup_log
+# (zshrc/core/perf.zsh), which is the only code that reads this file and deletes
+# it. A shell that writes a snapshot the consumer will never look at leaves it
+# behind forever, so any drift between the two tests leaks one file per shell.
+if [[ -t 1 || "${ZSH_PERF:-}" == "1" ]]; then
+    {
+        (
+            snap_file="${HOME}/.cache/zsh_startup/.syssnap_$$"
+            mkdir -p "${HOME}/.cache/zsh_startup"
+            {
+                printf "# syssnap pid=%d time=%s\n" "$$" "$(date '+%Y-%m-%d %H:%M:%S.%3N %Z')"
+                printf "\n## top CPU processes\n"
+                ps -Ao pid,pcpu,pmem,comm -r 2>/dev/null | head -15
+                printf "\n## load average\n"
+                sysctl -n vm.loadavg 2>/dev/null || uptime
+                printf "\n## disk activity (iostat)\n"
+                iostat -d disk0 2>/dev/null | head -6
+                printf "\n## path_helper entries\n"
+                ls /etc/paths.d/ 2>/dev/null
+                printf "\n## TERM_PROGRAM=%s\n" "${TERM_PROGRAM:-unset}"
+            } > "$snap_file" 2>/dev/null
+        ) &!
+    } 2>/dev/null
+fi

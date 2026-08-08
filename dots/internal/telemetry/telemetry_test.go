@@ -9,6 +9,41 @@ import (
 	"time"
 )
 
+// TestKnownLogPathsHonorsDotfilesDispatchLog confirms KnownLogPaths reports
+// the dispatch process's real log path when DOTFILES_DISPATCH_LOG names it,
+// rather than reconstructing a default that can point somewhere else. Dispatch
+// resolves its own log path from config, not from this default, so the
+// default is only a fallback for when no dispatch process is running.
+func TestKnownLogPathsHonorsDotfilesDispatchLog(t *testing.T) {
+	homeDirectory := t.TempDir()
+	t.Setenv("HOME", homeDirectory)
+	t.Setenv("XDG_CACHE_HOME", filepath.Join(homeDirectory, ".cache"))
+
+	configured := filepath.Join(homeDirectory, "elsewhere", "dispatch.log")
+	t.Setenv("DOTFILES_DISPATCH_LOG", configured)
+
+	paths := KnownLogPaths()
+	if paths[0] != configured {
+		t.Fatalf("KnownLogPaths()[0] = %s, want %s", paths[0], configured)
+	}
+}
+
+// TestKnownLogPathsFallsBackWithoutDotfilesDispatchLog confirms the default
+// construction still applies when no dispatch process is running.
+func TestKnownLogPathsFallsBackWithoutDotfilesDispatchLog(t *testing.T) {
+	homeDirectory := t.TempDir()
+	t.Setenv("HOME", homeDirectory)
+	cacheDir := filepath.Join(homeDirectory, ".cache")
+	t.Setenv("XDG_CACHE_HOME", cacheDir)
+	t.Setenv("DOTFILES_DISPATCH_LOG", "")
+
+	paths := KnownLogPaths()
+	want := filepath.Join(cacheDir, "dotfiles", "dispatch.log")
+	if paths[0] != want {
+		t.Fatalf("KnownLogPaths()[0] = %s, want %s", paths[0], want)
+	}
+}
+
 func TestNotifyWritesTimestampedNotification(t *testing.T) {
 	homeDirectory := t.TempDir()
 	logPath := filepath.Join(homeDirectory, ".cache", "dotfiles", "sync.log")
