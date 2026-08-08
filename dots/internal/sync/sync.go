@@ -11,6 +11,7 @@ import (
 	"strings"
 	"syscall"
 
+	"goodkind.io/.dotfiles/internal/gitdir"
 	"goodkind.io/.dotfiles/internal/runner"
 	"goodkind.io/.dotfiles/internal/sync/compilation"
 	"goodkind.io/.dotfiles/internal/sync/corpus"
@@ -35,6 +36,7 @@ type Options struct {
 	DryRun         bool
 	UseDefaults    bool
 	StrictMode     bool
+	AllowWorktree  bool
 }
 
 var commandLogger *telemetry.Logger
@@ -57,13 +59,10 @@ func Run(ctx context.Context, options Options) error {
 	runner.SetLogger(commandLogger)
 	_ = os.Setenv("DOTFILES_LOG", logPath)
 
-	notify := func(level string, message string) {
-		if err := telemetry.Notify(level, message, logPath, telemetry.RunID(ctx)); err != nil {
-			logger.WarnContextWithErr(ctx, "notification write failed", err)
-		}
-		if level == "warn" || level == "error" {
-			logger.WarnContext(ctx, message)
-		}
+	notify := newNotifier(ctx, logger, logPath)
+
+	if err := refuseLinkedWorktree(ctx, dotfiles, options, logger, notify); err != nil {
+		return err
 	}
 
 	lockFile, flockFdInt, alreadyRunning, err := acquireSyncLock(ctx, logger)
@@ -125,6 +124,44 @@ func Run(ctx context.Context, options Options) error {
 
 	logger.SuccessContext(ctx, "Dotfiles synced")
 	return nil
+}
+
+// newNotifier returns the function sync steps use to queue a notification for
+// the next interactive login, mirroring warnings and errors into the log.
+func newNotifier(ctx context.Context, logger *telemetry.Logger, logPath string) func(string, string) {
+	return func(level string, message string) {
+		if err := telemetry.Notify(level, message, logPath, telemetry.RunID(ctx)); err != nil {
+			logger.WarnContextWithErr(ctx, "notification write failed", err)
+		}
+		if level == "warn" || level == "error" {
+			logger.WarnContext(ctx, message)
+		}
+	}
+}
+
+// refuseLinkedWorktree stops a sync whose resolved root is a linked git
+// worktree rather than the canonical checkout.
+//
+// Sync rewrites the user's home directory from <root>/home, so running it from
+// a worktree repoints every managed dotfile at that worktree's branch. Every
+// step that does so is non-critical, so such a run otherwise reports success.
+// A root that is not a git checkout at all is left alone, since an archive
+// install has no git.
+func refuseLinkedWorktree(ctx context.Context, dotfiles string, options Options, logger *telemetry.Logger, notify func(string, string)) error {
+	if options.AllowWorktree {
+		return nil
+	}
+	layout, isWorktree := gitdir.LinkedWorktree(ctx, dotfiles, logger)
+	if !isWorktree {
+		return nil
+	}
+	refusal := fmt.Errorf("refusing to sync from linked worktree %s (canonical: %s); pass --allow-worktree to override", layout.Root, layout.MainWorktree())
+	logger.ErrorContextWithErr(ctx, "FATAL: refusing to sync from a linked worktree", refusal)
+	logger.InfoContext(ctx, "  root:       "+layout.Root)
+	logger.InfoContext(ctx, "  common dir: "+layout.CommonDir)
+	logger.InfoContext(ctx, "  canonical:  "+layout.MainWorktree())
+	notify("error", "sync refused: run from a linked worktree, not the canonical checkout")
+	return refusal
 }
 
 func resolveDotfilesEnv() string {
