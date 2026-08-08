@@ -188,18 +188,6 @@ portable find/test expressions.
 | `dots perf history`      | Show startup performance history                                                    |
 
 
-## Git Operations on This Repository
-
-**Do not use `git push` to push changes in this repository.** The dotfiles repo
-uses a bare-repo / worktree setup where the working tree is `~/.dotfiles` but
-the git directory is stored elsewhere. The `config` shell alias wraps the
-correct `git --git-dir` invocation.
-
-Use `config push` instead of `git push` for any push operation on `.dotfiles`.
-All other git read operations (`git status`, `git diff`, `git log`, etc.) work
-normally when run from inside `~/.dotfiles`; only push (and any operation that
-writes to the remote) requires `config`.
-
 ### Agent worktree placement
 
 When creating a git worktree for isolated work, prefer a path-based directory
