@@ -47,7 +47,7 @@ A detail belongs when it helps the reviewer understand, verify, or ship safely.
 
 - Nonessential context stays out of the document.
 - Unasked recommendations stay out of review prose.
-- Repeated detail creates drift and should become a link or disappear.
+- Repeated detail creates drift. Keep one durable home. Delete or consolidate every other copy. Do not add a link as a way to keep the duplicate.
 - Adjacent context belongs only when it changes risk or review.
 - Implementation detail stays at the system level.
 - The prose explains behavior before naming code.
@@ -135,25 +135,65 @@ Neutral error text helps the reader recover.
 - Error text avoids alarmist language such as `Fatal Error!`.
 - Error codes appear with a plain solution.
 
+## One durable home
+
+When the same fact, procedure, or ownership claim appears or could appear in more than one place, apply this order:
+
+1. Delete the copy that is not the durable home.
+2. Consolidate into the one page that owns the fact; merge useful unique material there, then remove the rest.
+3. Link once only if this page must point the reader at another page that carries material this page deliberately omits, and that material changes what the reader understands, verifies, or does.
+4. Never keep a second prose home for convenience, and never use repeated links as a substitute for consolidation.
+
 ## Use durable links
 
-Links work best when another local source is the stable home for the detail.
+Default is no link.
 
+- Before adding or keeping any link, search the surrounding document set for the same fact, procedure, or ownership claim.
+- If a sibling doc already owns it, delete or consolidate this page's copy. Do not leave both and paper over with a link.
+- Link a given destination at most once per page. Later mentions use plain names or backticks, not a second link.
+- Link only when the destination carries material this page does not already give the reader, and that material changes what the reader understands, verifies, or does.
+- Do not link a source file only to prove ownership or to point at values the reader can find by reading the codebase.
+- Do not link sibling docs for navigation decoration when the current page already carries the needed fact, or when the fact should instead move into one home.
 - Link text stays free of backticks.
-- Local sources carry load-bearing details when possible.
-- Stable local files are better than copied detail.
-- Repeated detail creates drift.
+- Prefer local durable homes over copied detail when a link is justified.
 - Current behavior matters more than history.
 - Historical notes appear only when current work requires them.
-- Before adding or preserving a link, determine whether the reader needs it to understand, verify, or act.
-- Remove links that only decorate prose, repeat navigation, or expose implementation detail without helping the reader.
-- Use the fewest links that preserve clear navigation and verification.
+
+### Link examples
+
+**Bad** (same target linked repeatedly; links only name ownership):
+
+> Guest ids live in [service_mapping.yml](...). Bridge addresses live in [networks.tf](...). Guest addresses also live in [service_mapping.yml](...). The [suburban module](...) owns the rest. Watchdog addresses come from [service_mapping.yml](...).
+
+**Good** (behavior first; one justified link, or none):
+
+> Guest identities, hostnames, and addresses share one inventory file, so a renumber changes one line. Bridge names and VLAN ids live in the suburban OpenTofu networks file. What this page adds is the behavior each bridge carries.
+
+**Bad** (link when the destination adds no extra material):
+
+> Prefix sizes are set in [group_vars/...](...).
+
+**Good** (prose carries the operational fact, or omits the code-owned detail):
+
+> Prefix delegation sizes match production, and NPT translates the first `/60` of each delegation.
+
+### Duplication examples
+
+**Bad** (two docs both carry the same gotcha; each links to the other):
+
+> Page A and page B both explain the cloud-init datastore rule and link to each other.
+
+**Good** (one durable home; the other page deletes the copy):
+
+> The gotcha lives only in the suburban operations page. The testbed page does not restate it and does not link unless the reader must leave this page to act on that gotcha.
 
 ## Plan document architecture from meaning
 
 Document rewrites are information architecture work, not sentence cleanup.
 
 - Read the relevant document set before changing page boundaries or layout.
+- Search the document set for overlapping facts, procedures, commands, paths, and ownership claims before writing or rewriting a page.
+- Treat every overlap as a consolidation decision: one durable home stays; every other copy is deleted or merged into that home.
 - Identify each page's meaning, purpose, scope, and relationship to the surrounding document set.
 - Derive paths, headings, merges, and splits from the content's meaning, conceptual boundaries, operational function, and place in the larger system, not filenames or bulk patterns.
 - Preserve useful existing structure unless the content supports a clearer replacement.
@@ -170,6 +210,8 @@ Configuration and code own current exact values, mechanics, and defaults. Tests 
 
 - Documentation explains the behavior or operational contract that readers need, without narrating code or repeating what the implementation already says clearly.
 - Read the relevant implementation, configuration, tests, and comments before describing behavior.
+- Facts that live clearly in code, config, or tests stay there. Docs do not mirror them for convenience, because that copy goes stale.
+- A page that only restates another page or the codebase fails the rewrite until the duplicate material is removed.
 - Do not infer behavior from filenames, symbols, stale prose, or assumptions when the source can establish it directly.
 - Historical narration stays out unless current operation depends on it.
 
@@ -191,36 +233,38 @@ An accuracy pass checks every claim against the current sources after the rewrit
 - Verify exact names, values, commands, paths, and defaults against the source that owns them.
 - Remove unsupported claims and correct stale claims instead of preserving them for apparent completeness.
 - Confirm that links resolve to the intended current source.
+- Confirm no stale cross-doc duplicates remain.
+- Confirm each remaining link appears at most once on the page and passes the materiality test.
 - Keep the accuracy pass separate from the fidelity comparison. Fidelity preserves meaning from the original document, while accuracy checks that preserved meaning against the system as it exists now.
 
 ## Workflow for document rewrites
 
 Apply this workflow before generating or restructuring documentation:
 
-1. Read the relevant document set and map its existing structure, meaning, duplication, and navigation.
-2. Read the implementation, configuration, tests, and comments that establish the documented behavior. Separate facts the docs must explain from details the source already explains well.
-3. State each page's meaning, purpose, scope, canonical facts, and relationship to nearby pages.
-4. Decide what stays, moves, merges, splits, or disappears from the content itself. Plan structural changes before applying them across the corpus.
-5. Rewrite the behavioral and operational meaning without narrating code. Preserve examples, constraints, exceptions, and recovery knowledge that readers still need.
-6. Review every link with two questions: Does the reader need this link, and can the document set use fewer links without losing navigation or verifiability?
-7. Compare the source and rewritten document before and after. Account for every removed or changed claim, and confirm that no factual fidelity, semantic meaning, constraint, exception, or operational instruction was lost or altered.
-8. Run the accuracy pass against the implementation, configuration, tests, comments, commands, paths, and links that establish each claim.
-9. Read the result as one document set and verify structure, navigation, source ownership, duplication, fidelity, accuracy, and prose.
+1. Read and search the surrounding document set for the same facts, procedures, commands, paths, and ownership claims this page would carry. Map every overlap before drafting.
+2. Read the implementation, configuration, tests, and comments that establish the documented behavior. Separate facts the docs must explain from details the source already explains well. Anything the codebase already owns clearly is a delete candidate in the docs, not a link candidate.
+3. State each page's meaning, purpose, scope, canonical facts, and relationship to nearby pages. Name the single durable home for each overlapping fact.
+4. Decide what stays, moves, merges, splits, or disappears. Prefer delete and consolidate over keep-and-link. Plan structural changes before applying them across the corpus.
+5. Rewrite the behavioral and operational meaning without narrating code. Preserve examples, constraints, exceptions, and recovery knowledge that readers still need, and only in the durable home.
+6. Inventory every markdown link on the page. Fail the rewrite if any destination appears more than once, if any link fails the materiality test, or if any linked sibling still duplicates material this page also carries. Remove, consolidate, or collapse until the page passes.
+7. Compare the source and rewritten document before and after. Account for every removed or changed claim, and confirm no load-bearing operational knowledge was lost when duplicates were deleted.
+8. Run the accuracy pass against the implementation, configuration, tests, comments, commands, paths, and remaining links.
+9. Read the result as one document set and verify structure, navigation, source ownership, absence of stale duplicates, link uniqueness, materiality, fidelity, accuracy, and prose.
 
 ## Document architecture as current state
 
-Architecture docs describe the system as it is now, stating behavior first and linking to the code or test that holds a detail only where a reader needs to verify it. Linking to the source that way keeps the doc easy to verify and reduces drift from the code.
+Architecture docs describe the system as it is now, stating behavior first. Link to the code or test that holds a detail only where a reader must leave this page for material it deliberately omits.
 
 - Prefer `docs/<concern>.md` when the concern stands alone. Create `docs/<concern>/` only when multiple substantive pages share that concern, and give each page a specific name.
 - Keep a substantive existing `overview.md` only when it owns synthesis that would otherwise be lost. Its content must justify the page independently of its filename.
 - Let `README.md` or `AGENTS.md` link to the smallest set of meaningful entry points instead of routing every area through an overview page.
 - Doc path segments are single words. Use paths like `docs/deadcode/contract.md`, and never use paths like `docs/dead-code/contract.md`.
 - Every architecture page states what its subject does today, in present tense.
-- Each statement describes current behavior first, and adds a durable doc or test link only where a reader needs to verify it.
+- Each statement describes current behavior first, and adds a durable doc or test link only where a reader must leave this page for material it deliberately omits.
 - A behavior doc is not an index of code locations, so do not append a symbol name or file path to every statement.
 - Name a code symbol or file path only when it is the shortest way to help a reader orient, never as the default.
 - The enforcing test or rule is the source of truth, and the doc never copies the invariant it enforces.
-- A copied detail drifts, so link to it instead of restating it.
+- Keep one durable home for each fact. Delete other copies. Link once only when the reader must leave this page for material it deliberately omits.
 - The doc describes what is, not how the decision was reached.
 - Decision history stays out unless current work needs it.
 
