@@ -182,15 +182,19 @@ Default is no link.
 
 > Prefix delegation sizes match production, and NPT translates the first `/60` of each delegation.
 
-**Good** (filename allowed because the reader must edit it, and the name is a markdown link):
+**Good** (relative in-repo link when the reader must edit that file):
 
-> Set `initialization.datastore_id` to `local-zfs` in the [guest OpenTofu definition](../../opentofu/suburban/vms.tf), or cloud-init drive regen fails with storage unavailable.
+> Set `initialization.datastore_id` to `local-zfs` in [opentofu/suburban/vms.tf](../../opentofu/suburban/vms.tf), or cloud-init drive regen fails with storage unavailable.
+
+**Good** (absolute out-of-repo link when the artifact is outside this repository):
+
+> WireGuard handshake and cryptography steps follow the [WireGuard protocol](https://www.wireguard.com/protocol/).
 
 **Bad** (filename quoted without a markdown link):
 
 > Edit `service_mapping.yml` and renumber the guest.
 
-**Good** (same step, filename is a clickable link):
+**Good** (same edit step, relative markdown link):
 
 > Edit [service_mapping.yml](../../ansible/inventory/group_vars/all/service_mapping.yml) and renumber the guest.
 
@@ -212,6 +216,7 @@ Default is no filename, path, module path, or inventory basename in prose.
 - A filename, path, or symbol appears only when the reader must open, edit, or run that exact artifact to complete a documented step.
 - Replacing a link with a backtick path, plain path, or "the X file" ownership phrase is the same failure as the original link litter.
 - Prefer everyday system nouns ("guest inventory", "bridge layout", "suburban module") over basenames when a referent is needed at all.
+- Do not write ownership narration such as "belong in", "live in", "lives at", or "to find X, see Y". State the behavior, or name the file only as part of an open, edit, or run step.
 - When a filename or path does appear after those gates, it MUST be a clickable markdown link. A bare backtick path, a bare path, or plain text that names the file fails the rewrite.
 - Link in-repo artifacts with a relative path from the current page. Link out-of-repo artifacts with an absolute URL. Do not leave an unlinked basename for the reader to hunt.
 
@@ -327,13 +332,17 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 
 > A single daemon architecture document lives at `docs/daemon/overview.md` only because every concern receives its own directory.
 
-**Good** (single concern page; path is a clickable link):
+**Good** (single concern page; relative links):
 
-> The daemon architecture lives at [docs/daemon.md](docs/daemon.md) while it is the only document for that concern. If distinct install and operations documents become necessary, the concern can become [docs/daemon/](docs/daemon/) with specifically named pages.
+> A single-concern daemon page is [docs/daemon.md](docs/daemon.md). Separate install and operations pages use specifically named files under [docs/daemon/](docs/daemon/).
 
-**Good** (substantive existing overview; path is a clickable link):
+**Good** (substantive overview; relative link):
 
-> Keep an existing [overview.md](overview.md) when it explains a system-wide relationship that no specific page owns, and preserve that synthesis during a rewrite. The page earns its place through its content, not its conventional filename.
+> An [overview.md](overview.md) page stands alone when it owns system-wide synthesis that no specific page carries.
+
+**Good** (out-of-repo durable home; absolute link):
+
+> FreeBSD serial console behavior follows the [FreeBSD Handbook serial communications chapter](https://docs.freebsd.org/en/books/handbook/serialcomms/).
 
 ### Organization examples
 
@@ -341,6 +350,14 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 
 > `operational-notes.md` becomes `notes.md` because the filename is shorter.
 
-**Good** (content-based grouping; paths are clickable links):
+**Bad** (ownership narration that sends the reader hunting):
 
-> Router BGP, gateway, and NAT foot-guns belong in [operations.md](operations.md) because they describe how the production OPNsense router is operated. Daemon install and upgrade steps belong under [daemon/](daemon/) because they describe a separate component.
+> Router BGP, gateway, and NAT foot-guns belong in `operations.md`. Daemon install steps live under `daemon/`.
+
+**Good** (content-based grouping; no ownership pointing):
+
+> Production OPNsense router BGP, gateway, and NAT foot-guns share one operations concern. Daemon install and upgrade steps are a separate concern.
+
+**Good** (same concerns named only for an edit step, with relative links):
+
+> Update production OPNsense router BGP, gateway, and NAT recovery steps in [operations.md](operations.md). Update daemon install and upgrade steps under [daemon/](daemon/).
