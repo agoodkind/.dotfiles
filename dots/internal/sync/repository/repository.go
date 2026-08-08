@@ -11,8 +11,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"goodkind.io/.dotfiles/internal/clock"
 	"goodkind.io/.dotfiles/internal/cmdexec"
+	"goodkind.io/.dotfiles/internal/gitdir"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
@@ -70,11 +73,14 @@ func UpdateGitRepoSync(ctx context.Context, skipGit bool, logger *telemetry.Logg
 }
 
 func runDotfilesUpdate(ctx context.Context, dotfiles string, logger *telemetry.Logger) (string, error) {
-	reason := checkDotfilesGitHealth(ctx, dotfiles, logger)
+	layout, layoutErr := gitdir.Resolve(ctx, dotfiles, logger)
+	reason := checkDotfilesGitHealth(ctx, dotfiles, layout, logger)
 	if reason != "" {
 		return "", fmt.Errorf("skip: %s", reason)
 	}
-	clearGitLocks(dotfiles)
+	if layoutErr == nil {
+		clearStaleGitLocks(ctx, layout, logger)
+	}
 
 	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "fetch", "origin", "--prune"); err != nil {
 		return "fetch failed", fmt.Errorf("running git fetch: %w", err)
@@ -177,7 +183,7 @@ func firstError(current error, candidate error) error {
 	return candidate
 }
 
-func checkDotfilesGitHealth(ctx context.Context, dotfiles string, logger *telemetry.Logger) string {
+func checkDotfilesGitHealth(ctx context.Context, dotfiles string, layout gitdir.Info, logger *telemetry.Logger) string {
 	branch, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "symbolic-ref", "-q", "HEAD")
 	if err != nil || strings.TrimSpace(branch) == "" {
 		return "detached HEAD"
@@ -185,10 +191,16 @@ func checkDotfilesGitHealth(ctx context.Context, dotfiles string, logger *teleme
 	if gitCommandSucceeds(ctx, dotfiles, "rev-parse", "-q", "--verify", "MERGE_HEAD") {
 		return "merge in progress"
 	}
-	if _, err := os.Stat(filepath.Clean(filepath.Join(dotfiles, ".git", "rebase-merge"))); err == nil {
+	// Rebase state is per-worktree, so it lives in the worktree git directory
+	// rather than the shared one.
+	gitDirPath := layout.GitDir
+	if gitDirPath == "" {
+		gitDirPath = filepath.Join(dotfiles, ".git")
+	}
+	if _, err := os.Stat(filepath.Clean(filepath.Join(gitDirPath, "rebase-merge"))); err == nil {
 		return "rebase in progress"
 	}
-	if _, err := os.Stat(filepath.Clean(filepath.Join(dotfiles, ".git", "rebase-apply"))); err == nil {
+	if _, err := os.Stat(filepath.Clean(filepath.Join(gitDirPath, "rebase-apply"))); err == nil {
 		return "rebase in progress"
 	}
 	if output, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "ls-files", "-u"); err == nil && strings.TrimSpace(output) != "" {
@@ -197,15 +209,91 @@ func checkDotfilesGitHealth(ctx context.Context, dotfiles string, logger *teleme
 	return ""
 }
 
-func clearGitLocks(dotfiles string) {
-	slog.Info("repository: clearGitLocks")
-	paths := []string{
-		filepath.Join(dotfiles, ".git", "index.lock"),
-		filepath.Join(dotfiles, ".git", "objects", "info", "commit-graph-chain.lock"),
+// staleLockAge is how old a git lock file must be before it is treated as
+// abandoned. No real git operation holds a lock for anything close to this, so
+// a lock older than this belongs to a process that died without cleaning up.
+const staleLockAge = time.Hour
+
+// gitLockNames are the lock files git creates inside a git directory. Any one
+// of them left behind by a crashed process blocks later operations.
+var gitLockNames = []string{
+	"index.lock",
+	"HEAD.lock",
+	"config.lock",
+	"shallow.lock",
+	"packed-refs.lock",
+	filepath.Join("objects", "info", "commit-graph-chain.lock"),
+}
+
+// clearStaleGitLocks removes abandoned lock files from the shared git
+// directory and from every submodule git directory beneath it.
+//
+// Submodule git directories live under <common dir>/modules, so a lock left
+// there fails `git checkout` inside the submodule while the parent repository
+// looks healthy. Locks are removed only once they are older than
+// [staleLockAge], since removing a lock a live git still holds would corrupt
+// that operation.
+func clearStaleGitLocks(ctx context.Context, layout gitdir.Info, logger *telemetry.Logger) {
+	removed := make([]string, 0)
+	for _, gitDir := range gitDirsToScan(layout) {
+		for _, lockName := range gitLockNames {
+			lockPath := filepath.Clean(filepath.Join(gitDir, lockName))
+			lockInfo, err := os.Stat(lockPath)
+			if err != nil {
+				continue
+			}
+			age := clock.Now().Sub(lockInfo.ModTime())
+			if age < staleLockAge {
+				continue
+			}
+			if err := os.Remove(lockPath); err != nil {
+				slog.WarnContext(ctx, "repository: clearStaleGitLocks: removing stale lock", "path", lockPath, "err", err)
+				continue
+			}
+			removed = append(removed, fmt.Sprintf("%s (age %s)", lockPath, age.Round(time.Minute)))
+		}
 	}
-	for _, path := range paths {
-		_ = os.Remove(filepath.Clean(path))
+	if len(removed) > 0 && logger != nil {
+		logger.InfoContext(ctx, "  cleared stale git locks: "+strings.Join(removed, ", "))
 	}
+}
+
+// gitDirsToScan returns the shared git directory plus every submodule git
+// directory under it.
+//
+// Git nests a submodule's git directory by the submodule's path, so `lib/zinit`
+// lands at <modules>/lib/zinit. The depth therefore varies with the submodule
+// path and the tree must be walked rather than listed.
+func gitDirsToScan(layout gitdir.Info) []string {
+	gitDirs := make([]string, 0, 1)
+	if layout.CommonDir != "" {
+		gitDirs = append(gitDirs, layout.CommonDir)
+	}
+	modules := layout.ModulesDir()
+	if modules == "" {
+		return gitDirs
+	}
+	return append(gitDirs, subdirectories(filepath.Clean(modules))...)
+}
+
+// subdirectories returns every directory beneath root, at any depth. An
+// unreadable directory contributes nothing rather than failing the caller,
+// since a lock sweep is best effort.
+func subdirectories(root string) []string {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return nil
+	}
+	found := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		child := filepath.Join(root, entry.Name())
+		found = append(found, child)
+		found = append(found, subdirectories(child)...)
+	}
+	return found
 }
 
 func getRemoteStatus(ctx context.Context, dotfiles string, remoteRef string, logger *telemetry.Logger) string {
@@ -297,6 +385,11 @@ func syncDotfilesSubmodules(ctx context.Context, dotfiles string, logger *teleme
 	}
 	if len(subs) == 0 {
 		return nil
+	}
+	// A lock abandoned in a submodule git directory fails every later checkout
+	// there, and nothing else in this flow would ever clear it.
+	if layout, layoutErr := gitdir.Resolve(ctx, dotfiles, logger); layoutErr == nil {
+		clearStaleGitLocks(ctx, layout, logger)
 	}
 	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "submodule", "update", "--init", "--recursive"); err != nil {
 		slog.WarnContext(ctx, "repository: initializing submodules", "err", err)
