@@ -155,7 +155,7 @@ func doWeeklyUpdate(ctx context.Context, dotfiles, weeklyMarkerPath string, disp
 
 	now := strconv.FormatInt(clock.Now().Unix(), 10)
 	if weeklyMarkerPath == "" {
-		weeklyMarkerPath = filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles_weekly_update")
+		weeklyMarkerPath = filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "weekly_update")
 	}
 	_ = os.WriteFile(filepath.Clean(weeklyMarkerPath), []byte(now), 0o600)
 	return nil

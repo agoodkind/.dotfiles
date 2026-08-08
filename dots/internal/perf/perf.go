@@ -210,14 +210,14 @@ func runHistory(args []string) error {
 		return fmt.Errorf("parse perf history flags: %w", err)
 	}
 
-	records, err := loadRecords()
+	decodeLimit := 0
+	if !*showAll && *last > 0 {
+		decodeLimit = *last
+	}
+	records, total, err := loadRecords(decodeLimit)
 	if err != nil {
 		slog.Error("load startup records", "err", err)
 		return err
-	}
-	total := len(records)
-	if !*showAll && *last > 0 && len(records) > *last {
-		records = records[:*last]
 	}
 
 	if *slowOnly {
@@ -366,7 +366,7 @@ func printUsage() {
 }
 
 func selectRecord(useGlobal bool) (startupRecord, error) {
-	records, err := loadRecords()
+	records, _, err := loadRecords(maxRecordsScanned)
 	if err != nil {
 		return startupRecord{}, err
 	}
@@ -388,20 +388,38 @@ func selectRecord(useGlobal bool) (startupRecord, error) {
 	return records[0], nil
 }
 
-func loadRecords() ([]startupRecord, error) {
+// maxRecordsScanned bounds how many startup logs a single-record lookup will
+// read. The startup directory holds one file per shell, so reading all of them
+// to answer a question about the newest few is wasted work.
+const maxRecordsScanned = 100
+
+// candidate pairs a startup log path with its modification time, so the set can
+// be ordered before any file is read.
+type candidate struct {
+	path    string
+	modTime time.Time
+}
+
+// loadRecords returns the newest startup logs, most recent first, along with
+// how many logs exist in total.
+//
+// Ordering happens on modification time alone, so only the logs the caller
+// actually needs are read and decoded. A limit of zero or less reads all of
+// them.
+func loadRecords(limit int) ([]startupRecord, int, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		slog.Error("resolve home directory", "err", err)
-		return nil, fmt.Errorf("resolve home directory: %w", err)
+		return nil, 0, fmt.Errorf("resolve home directory: %w", err)
 	}
 	pattern := filepath.Join(home, ".cache", "zsh_startup", "*.json")
 	paths, err := filepath.Glob(pattern)
 	if err != nil {
 		slog.Error("list startup logs", "err", err)
-		return nil, fmt.Errorf("list startup logs: %w", err)
+		return nil, 0, fmt.Errorf("list startup logs: %w", err)
 	}
 
-	records := make([]startupRecord, 0, len(paths))
+	candidates := make([]candidate, 0, len(paths))
 	for _, path := range paths {
 		if filepath.Base(path) == "latest.json" {
 			continue
@@ -410,7 +428,23 @@ func loadRecords() ([]startupRecord, error) {
 		if err != nil {
 			continue
 		}
-		raw, err := os.ReadFile(path)
+		candidates = append(candidates, candidate{path: path, modTime: info.ModTime()})
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		if candidates[i].modTime.Equal(candidates[j].modTime) {
+			return candidates[i].path > candidates[j].path
+		}
+		return candidates[i].modTime.After(candidates[j].modTime)
+	})
+
+	total := len(candidates)
+	if limit > 0 && total > limit {
+		candidates = candidates[:limit]
+	}
+
+	records := make([]startupRecord, 0, len(candidates))
+	for _, item := range candidates {
+		raw, err := os.ReadFile(item.path)
 		if err != nil {
 			continue
 		}
@@ -419,20 +453,13 @@ func loadRecords() ([]startupRecord, error) {
 			continue
 		}
 		records = append(records, startupRecord{
-			Path:    path,
-			ModTime: info.ModTime(),
+			Path:    item.path,
+			ModTime: item.modTime,
 			Raw:     raw,
 			Log:     log,
 		})
 	}
-
-	sort.Slice(records, func(i, j int) bool {
-		if records[i].ModTime.Equal(records[j].ModTime) {
-			return records[i].Path > records[j].Path
-		}
-		return records[i].ModTime.After(records[j].ModTime)
-	})
-	return records, nil
+	return records, total, nil
 }
 
 func currentTTYID() string {

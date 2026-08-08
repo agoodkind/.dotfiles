@@ -77,6 +77,9 @@ function _perf_first_precmd() {
 }
 precmd_functions=(_perf_first_precmd $precmd_functions)
 
+# The gate below must stay identical to the one guarding the syssnap writer in
+# home/.zshenv. This function is the only code that reads a syssnap and deletes
+# it, so a shell that writes one without reaching here leaks the file.
 function _write_startup_log() {
     if [[ ! -t 1 && "${ZSH_PERF:-}" != "1" ]]; then
         return 0

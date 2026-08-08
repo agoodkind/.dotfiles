@@ -15,6 +15,7 @@ import (
 	"goodkind.io/.dotfiles/internal/runner"
 	"goodkind.io/.dotfiles/internal/sync/compilation"
 	"goodkind.io/.dotfiles/internal/sync/corpus"
+	"goodkind.io/.dotfiles/internal/sync/logrotate"
 	"goodkind.io/.dotfiles/internal/sync/platform"
 	"goodkind.io/.dotfiles/internal/sync/platform/debian"
 	"goodkind.io/.dotfiles/internal/sync/platform/macos"
@@ -374,6 +375,16 @@ func runCompilationSteps(dotfiles string, logger *telemetry.Logger, step syncSte
 	}
 	if err := step("Creating hushlogin", false, func(ctx context.Context) error {
 		return compilation.CreateHushLogin(ctx, logger)
+	}); err != nil {
+		return err
+	}
+	if err := step("Rotating logs", false, func(ctx context.Context) error {
+		return logrotate.Rotate(ctx, logrotate.DefaultRotationConfig(), logger)
+	}); err != nil {
+		return err
+	}
+	if err := step("Pruning startup logs", false, func(ctx context.Context) error {
+		return logrotate.PruneStartupLogs(ctx, logger)
 	}); err != nil {
 		return err
 	}
