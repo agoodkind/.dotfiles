@@ -8,10 +8,51 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"goodkind.io/.dotfiles/internal/cmdexec"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
+
+// pathSourceDir holds the drop-in files path_helper reads.
+const pathSourceDir = "/etc/paths.d"
+
+// systemPathFile is the base path list path_helper reads.
+const systemPathFile = "/etc/paths"
+
+// cacheIsStale reports whether a cache written at cacheModTime must be rebuilt.
+//
+// The consumer is home/.zshenv, which sources the cache only when
+// `$cache -nt /etc/paths.d` holds. That test compares against the directory
+// inode, whose modification time changes when an entry is added, removed, or
+// renamed, independently of the files that remain inside. Checking only the
+// surviving children therefore misses a deletion, and the two sides can wedge:
+// zsh rejects a cache that this worker considers current, and nothing rebuilds
+// it. Including the directory itself keeps this test a superset of the shell's.
+//
+// A source counts as newer, and therefore triggers a rebuild, whenever its
+// modification time is not strictly before the cache's. Equal modification
+// times count as newer for this same reason: the shell's -nt requires the
+// cache to be strictly newer than every source, so an equal timestamp already
+// makes the shell reject the cache, and this worker must rebuild it too.
+func cacheIsStale(cacheModTime time.Time, baseFile string, sourceDir string) bool {
+	sources := []string{baseFile, sourceDir}
+	if entries, err := os.ReadDir(sourceDir); err == nil {
+		for _, entry := range entries {
+			sources = append(sources, filepath.Join(sourceDir, entry.Name()))
+		}
+	}
+	for _, source := range sources {
+		info, err := os.Stat(filepath.Clean(source))
+		if err != nil {
+			continue
+		}
+		if !info.ModTime().Before(cacheModTime) {
+			return true
+		}
+	}
+	return false
+}
 
 // Rebuild regenerates the macOS path_helper cache and writes it to disk.
 func Rebuild(ctx context.Context, dispatchLogger *telemetry.Logger) error {
@@ -34,26 +75,7 @@ func Rebuild(ctx context.Context, dispatchLogger *telemetry.Logger) error {
 	cacheFile := filepath.Join(cacheDir, "path_cache.zsh")
 
 	cacheInfo, err := os.Stat(filepath.Clean(cacheFile))
-	needsRebuild := err != nil
-	if !needsRebuild {
-		systemPathInfo, systemErr := os.Stat("/etc/paths")
-		if systemErr == nil && systemPathInfo.ModTime().After(cacheInfo.ModTime()) {
-			needsRebuild = true
-		}
-	}
-	if !needsRebuild {
-		entries, err := os.ReadDir("/etc/paths.d")
-		if err == nil {
-			for _, entry := range entries {
-				entryPath := filepath.Join("/etc/paths.d", entry.Name())
-				info, err := os.Stat(entryPath)
-				if err == nil && info.ModTime().After(cacheInfo.ModTime()) {
-					needsRebuild = true
-					break
-				}
-			}
-		}
-	}
+	needsRebuild := err != nil || cacheIsStale(cacheInfo.ModTime(), systemPathFile, pathSourceDir)
 	if !needsRebuild {
 		dispatchLogger.InfoContext(ctx, "path cache up to date, skipping")
 		return nil
