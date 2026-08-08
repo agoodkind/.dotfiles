@@ -216,7 +216,7 @@ Default is no filename, path, module path, or inventory basename in prose.
 - A filename, path, or symbol appears only when the reader must open, edit, or run that exact artifact to complete a documented step.
 - Replacing a link with a backtick path, plain path, or "the X file" ownership phrase is the same failure as the original link litter.
 - Prefer everyday system nouns ("guest inventory", "bridge layout", "suburban module") over basenames when a referent is needed at all.
-- Avoid ownership narration such as "belong in", "live in", "lives at", or "to find X, see Y". State the behavior, or name the file only as part of an open, edit, or run step.
+- Avoid excessive ownership narration such as "belong in", "live in", "lives at", or "to find X, see Y" unless naming the file is part of an open, edit, or run step.
 - When a filename or path does appear after those gates, it MUST be a clickable markdown link. A bare backtick path, a bare path, or plain text that names the file fails the rewrite.
 - Link in-repo artifacts with a relative path from the current page. Link out-of-repo artifacts with an absolute URL. Do not leave an unlinked basename for the reader to hunt.
 
