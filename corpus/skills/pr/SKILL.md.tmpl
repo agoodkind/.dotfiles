@@ -130,6 +130,7 @@ Writing rules:
 - Do not add irrelevant adjacent context just because it is available.
 - Include a `## Testing` section only when actual material verification was run. Material verification includes meaningful commands, simulator checks, deployed checks, screenshots or videos, smoke tests, and other concrete evidence. If you are unsure whether the evidence is material, ask before adding `## Testing`. DO NOT ADD non-material checks like "lints passed", "rg found x", or anything that isn't directly related to the behavior of the change itself.
 - Unit tests alone do NOT qualify as material verification. Do not include them in the PR narration.
+- Linting, formatting, and static checks do NOT qualify as material verification. Do not include them in the PR narration.
 - Do not mention unavailable test output, unrun tests, or missing verification unless it materially changes review risk.
 - Keep implementation detail at the system level, not line-by-line.
 
