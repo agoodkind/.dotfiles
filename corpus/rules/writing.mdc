@@ -182,9 +182,17 @@ Default is no link.
 
 > Prefix delegation sizes match production, and NPT translates the first `/60` of each delegation.
 
-**Good** (filename allowed because the reader must edit it):
+**Good** (filename allowed because the reader must edit it, and the name is a markdown link):
 
-> Set `initialization.datastore_id` to `local-zfs` in the guest definition, or cloud-init drive regen fails with storage unavailable.
+> Set `initialization.datastore_id` to `local-zfs` in the [guest OpenTofu definition](../../opentofu/suburban/vms.tf), or cloud-init drive regen fails with storage unavailable.
+
+**Bad** (filename quoted without a markdown link):
+
+> Edit `service_mapping.yml` and renumber the guest.
+
+**Good** (same step, filename is a clickable link):
+
+> Edit [service_mapping.yml](../../ansible/inventory/group_vars/all/service_mapping.yml) and renumber the guest.
 
 ### Duplication examples
 
@@ -204,6 +212,8 @@ Default is no filename, path, module path, or inventory basename in prose.
 - A filename, path, or symbol appears only when the reader must open, edit, or run that exact artifact to complete a documented step.
 - Replacing a link with a backtick path, plain path, or "the X file" ownership phrase is the same failure as the original link litter.
 - Prefer everyday system nouns ("guest inventory", "bridge layout", "suburban module") over basenames when a referent is needed at all.
+- When a filename or path does appear after those gates, it MUST be a clickable markdown link. A bare backtick path, a bare path, or plain text that names the file fails the rewrite.
+- Link in-repo artifacts with a relative path from the current page. Link out-of-repo artifacts with an absolute URL. Do not leave an unlinked basename for the reader to hunt.
 
 ## Plan document architecture from meaning
 
@@ -255,6 +265,7 @@ An accuracy pass checks every claim against the current sources after the rewrit
 - Confirm each remaining link appears at most once on the page and passes the materiality test.
 - Confirm no sentence asserts ownership with a bare filename, path, backtick path, or "the X file" phrase after a link was removed or instead of stating behavior.
 - Confirm every filename or path in prose is tied to a reader action that requires that artifact.
+- Confirm every filename or path that appears is a clickable markdown link to a relative in-repo path or an absolute out-of-repo URL.
 - Keep the accuracy pass separate from the fidelity comparison. Fidelity preserves meaning from the original document, while accuracy checks that preserved meaning against the system as it exists now.
 
 ## Workflow for document rewrites
@@ -266,10 +277,10 @@ Apply this workflow before generating or restructuring documentation:
 3. State each page's meaning, purpose, scope, canonical facts, and relationship to nearby pages. Name the single durable home for each overlapping fact.
 4. Decide what stays, moves, merges, splits, or disappears. Prefer delete and consolidate over keep-and-link. Plan structural changes before applying them across the corpus.
 5. Rewrite the behavioral and operational meaning without narrating code. Preserve examples, constraints, exceptions, and recovery knowledge that readers still need, and only in the durable home.
-6. Inventory every markdown link and every basename or path-like token in prose on the page. Fail the rewrite if any destination appears more than once, if any link fails the materiality test, if any linked sibling still duplicates material this page also carries, if any sentence asserts ownership with a bare filename, path, backtick path, or "the X file" phrase after a link was removed or instead of stating behavior, or if any filename or path appears without a reader action that requires that artifact. Remove, consolidate, or collapse until the page passes.
+6. Inventory every markdown link and every basename or path-like token in prose on the page. Fail the rewrite if any destination appears more than once, if any link fails the materiality test, if any linked sibling still duplicates material this page also carries, if any sentence asserts ownership with a bare filename, path, backtick path, or "the X file" phrase after a link was removed or instead of stating behavior, if any filename or path appears without a reader action that requires that artifact, or if any filename or path appears without a clickable markdown link to a relative in-repo path or an absolute out-of-repo URL. Remove, consolidate, or collapse until the page passes.
 7. Compare the source and rewritten document before and after. Account for every removed or changed claim, and confirm no load-bearing operational knowledge was lost when duplicates were deleted.
 8. Run the accuracy pass against the implementation, configuration, tests, comments, commands, paths, and remaining links.
-9. Read the result as one document set and verify structure, navigation, source ownership, absence of stale duplicates, link uniqueness, materiality, absence of filename laundering, fidelity, accuracy, and prose.
+9. Read the result as one document set and verify structure, navigation, source ownership, absence of stale duplicates, link uniqueness, materiality, absence of filename laundering, every remaining filename linked, fidelity, accuracy, and prose.
 
 ## Document architecture as current state
 
