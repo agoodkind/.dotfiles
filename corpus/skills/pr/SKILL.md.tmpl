@@ -188,7 +188,7 @@ Agents now choose the right path before drafting or editing a PR.
 
 ## Change
 
-The workflow now separates branch reading, title drafting, body drafting, confirmation, GitHub writes, and final output.
+The workflow now separates branch reading, title drafting, body drafting, GitHub writes, and final output.
 
 Open-PR handling is explicit, so agents ask before editing an existing open PR unless the user clearly asked for that update.
 ```
@@ -210,7 +210,7 @@ Avoid:
 Ticket: [`AGENCY-11414`](https://agency.ticket.net/browse/AGENCY-11414)
 ```
 
-## Step 6: Show The Draft And Get Confirmation
+## Step 6: Show The Draft
 
 Before creating or editing a PR, show:
 
@@ -222,11 +222,11 @@ Put the proposed title and body inside one outer four-backtick fence so it copie
 
 Do not add operational preamble, command logs, branch-analysis narration, or commentary about why the GitHub write has not happened yet. If a detail blocks the draft from being usable, state that blocker in one sentence after the fenced draft.
 
-Ask for explicit confirmation before running any GitHub write command.
+Do not wait for confirmation before writing to GitHub.
 
-## Step 7: Write To GitHub After Confirmation
+## Step 7: Write To GitHub
 
-Use the narrowest command that matches the confirmed action:
+Use the narrowest command that matches the planned action:
 
 ```bash
 gh pr create --title '<title>' --body '<description>'
