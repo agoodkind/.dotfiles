@@ -224,7 +224,7 @@ func skillRenderConflict(target string) string {
 }
 
 func hasUsableSkillFrontmatter(content string) bool {
-	frontmatter, err := parseSkillFrontmatter(content)
+	frontmatter, _, err := parseSkillDocument(content)
 	if err != nil {
 		return false
 	}
@@ -237,22 +237,23 @@ type skillFrontmatterYAML struct {
 	Description string `yaml:"description"`
 }
 
-func parseSkillFrontmatter(content string) (skillFrontmatterYAML, error) {
+func parseSkillDocument(content string) (skillFrontmatterYAML, string, error) {
 	var result skillFrontmatterYAML
 	if !strings.HasPrefix(content, "---\n") {
-		return result, fmt.Errorf("missing opening frontmatter delimiter")
+		return result, "", fmt.Errorf("missing opening frontmatter delimiter")
 	}
 	endMarker := "\n---\n"
 	frontmatterEnd := strings.Index(content[4:], endMarker)
 	if frontmatterEnd == -1 {
-		return result, fmt.Errorf("missing closing frontmatter delimiter")
+		return result, "", fmt.Errorf("missing closing frontmatter delimiter")
 	}
 	rawFrontmatter := content[4 : 4+frontmatterEnd]
 	if err := yaml.Unmarshal([]byte(rawFrontmatter), &result); err != nil {
-		slog.Warn("compilation: parseSkillFrontmatter yaml failed", "err", err)
-		return result, fmt.Errorf("parsing skill front matter: %w", err)
+		slog.Warn("compilation: parseSkillDocument yaml failed", "err", err)
+		return result, "", fmt.Errorf("parsing skill front matter: %w", err)
 	}
-	return result, nil
+	bodyStart := 4 + frontmatterEnd + len(endMarker)
+	return result, content[bodyStart:], nil
 }
 
 func skillRenderConflictsError(conflicts []string) error {

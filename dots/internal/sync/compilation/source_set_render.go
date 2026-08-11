@@ -31,7 +31,7 @@ func RenderSkillDirsFromSourceSet(sourceSet CorpusSourceSet, dst string, refStyl
 	conflicts := make([]string, 0)
 	for _, skillName := range skillNames {
 		activeSkills[skillName] = struct{}{}
-		plan, err := renderSourceSkillPlan(sourceSet.Skills[skillName], filepath.Join(dst, skillName), refStyle, sourceSet.Rules, ruleNames)
+		plan, err := renderSourceSkillPlan(sourceSet.Skills[skillName], filepath.Join(dst, skillName), refStyle, sourceSet, ruleNames)
 		if err != nil {
 			return err
 		}
@@ -93,7 +93,7 @@ func ValidateSkillDirsFromSourceSet(sourceSet CorpusSourceSet, dst string, refSt
 	conflicts := make([]string, 0)
 	for _, skillName := range skillNames {
 		targetDir := filepath.Join(dst, skillName)
-		plan, err := renderSourceSkillPlan(sourceSet.Skills[skillName], targetDir, refStyle, sourceSet.Rules, ruleNames)
+		plan, err := renderSourceSkillPlan(sourceSet.Skills[skillName], targetDir, refStyle, sourceSet, ruleNames)
 		if err != nil {
 			return err
 		}
@@ -114,7 +114,7 @@ func validateSkillPlanPaths(targetDir string, plan renderedSkillPlan) error {
 	return nil
 }
 
-func renderSourceSkillPlan(skill SkillSource, dst string, style SkillRefStyle, rules map[string]RuleSource, ruleNames []string) (renderedSkillPlan, error) {
+func renderSourceSkillPlan(skill SkillSource, dst string, style SkillRefStyle, sourceSet CorpusSourceSet, ruleNames []string) (renderedSkillPlan, error) {
 	plan := renderedSkillPlan{
 		name:      skill.Name,
 		files:     make(map[string]string),
@@ -134,7 +134,11 @@ func renderSourceSkillPlan(skill SkillSource, dst string, style SkillRefStyle, r
 		output := skill.Files[fileName]
 		if base, ok := strings.CutSuffix(cleanName, ".tmpl"); ok {
 			outputName = base
-			rendered, err := renderSourceSkillTemplate(output, style, rules, ruleNames, fileName)
+			rootSkillName := ""
+			if filepath.ToSlash(cleanName) == "SKILL.md.tmpl" {
+				rootSkillName = skill.Name
+			}
+			rendered, err := renderSourceSkillTemplate(output, style, sourceSet, ruleNames, fileName, rootSkillName)
 			if err != nil {
 				return renderedSkillPlan{}, err
 			}
@@ -155,10 +159,32 @@ func renderSourceSkillPlan(skill SkillSource, dst string, style SkillRefStyle, r
 
 type sourceSkillTemplateData struct {
 	style     SkillRefStyle
-	rules     map[string]RuleSource
+	sourceSet CorpusSourceSet
 	ruleNames []string
 	execErr   *error
-	expanding map[string]struct{}
+	stack     []sourceBodyRef
+	active    map[sourceBodyRef]int
+}
+
+type sourceBodyKind string
+
+const (
+	sourceBodyRule  sourceBodyKind = "rule"
+	sourceBodySkill sourceBodyKind = "skill"
+)
+
+type sourceBodyRef struct {
+	kind sourceBodyKind
+	name string
+}
+
+type sourceBody struct {
+	content    string
+	isTemplate bool
+}
+
+func (r sourceBodyRef) String() string {
+	return string(r.kind) + ":" + r.name
 }
 
 func (d *sourceSkillTemplateData) Rules() string            { return renderRulesList(d.style, d.ruleNames) }
@@ -166,36 +192,98 @@ func (d *sourceSkillTemplateData) Rule(name string) string  { return renderRuleL
 func (d *sourceSkillTemplateData) Skill(name string) string { return renderSkillSiblingLink(name) }
 
 func (d *sourceSkillTemplateData) RuleBody(name string) string {
-	if name == "" || name == "." || name == ".." || strings.Contains(name, "/") || strings.Contains(name, string(filepath.Separator)) {
-		d.setError(fmt.Errorf("invalid rule body name %q", name))
+	return d.renderBody(sourceBodyRef{kind: sourceBodyRule, name: name})
+}
+
+func (d *sourceSkillTemplateData) SkillBody(name string) string {
+	return d.renderBody(sourceBodyRef{kind: sourceBodySkill, name: name})
+}
+
+func (d *sourceSkillTemplateData) renderBody(ref sourceBodyRef) string {
+	if err := validateSourceBodyRef(ref); err != nil {
+		d.setError(err)
 		return ""
 	}
-	rule, ok := d.rules[name]
-	if !ok {
-		d.setError(fmt.Errorf("unknown rule body %q", name))
+	if cycleStart, exists := d.active[ref]; exists {
+		cycle := append(append([]sourceBodyRef(nil), d.stack[cycleStart:]...), ref)
+		cycleNames := make([]string, 0, len(cycle))
+		for _, cycleRef := range cycle {
+			cycleNames = append(cycleNames, cycleRef.String())
+		}
+		d.setError(fmt.Errorf("body embedding cycle: %s", strings.Join(cycleNames, " -> ")))
 		return ""
 	}
-	if _, exists := d.expanding[name]; exists {
-		d.setError(fmt.Errorf("cyclic rule body transclusion for %q", name))
-		return ""
-	}
-	d.expanding[name] = struct{}{}
-	defer delete(d.expanding, name)
-	body := strings.TrimSpace(rule.Body)
-	if !strings.Contains(body, "{{") {
-		return body
-	}
-	parsed, err := template.New(name + ".mdc").Parse(body)
+	body, err := d.readBody(ref)
 	if err != nil {
-		d.setError(fmt.Errorf("parsing rule body template %q: %w", name, err))
+		d.setError(err)
+		return ""
+	}
+	d.push(ref)
+	defer d.pop(ref)
+	if !body.isTemplate || !strings.Contains(body.content, "{{") {
+		return body.content
+	}
+	parsed, err := template.New(ref.String()).Parse(body.content)
+	if err != nil {
+		d.setError(fmt.Errorf("parsing %s body template: %w", ref, err))
 		return ""
 	}
 	var buffer bytes.Buffer
 	if err := parsed.Execute(&buffer, d); err != nil {
-		d.setError(fmt.Errorf("executing rule body template %q: %w", name, err))
+		d.setError(fmt.Errorf("executing %s body template: %w", ref, err))
 		return ""
 	}
-	return strings.TrimSpace(buffer.String())
+	return buffer.String()
+}
+
+func validateSourceBodyRef(ref sourceBodyRef) error {
+	name := ref.name
+	if name == "" || name == "." || name == ".." || strings.Contains(name, "/") || strings.Contains(name, string(filepath.Separator)) {
+		return fmt.Errorf("invalid %s body name %q", ref.kind, name)
+	}
+	return nil
+}
+
+func (d *sourceSkillTemplateData) readBody(ref sourceBodyRef) (sourceBody, error) {
+	switch ref.kind {
+	case sourceBodyRule:
+		rule, ok := d.sourceSet.Rules[ref.name]
+		if !ok {
+			return sourceBody{}, fmt.Errorf("unknown rule body %q", ref.name)
+		}
+		return sourceBody{content: rule.Body, isTemplate: true}, nil
+	case sourceBodySkill:
+		skill, ok := d.sourceSet.Skills[ref.name]
+		if !ok {
+			return sourceBody{}, fmt.Errorf("unknown skill body %q", ref.name)
+		}
+		content, ok := skill.Files["SKILL.md.tmpl"]
+		isTemplate := ok
+		if !ok {
+			content, ok = skill.Files["SKILL.md"]
+		}
+		if !ok {
+			return sourceBody{}, fmt.Errorf("skill body %q has no SKILL.md source", ref.name)
+		}
+		_, body, err := parseSkillDocument(content)
+		if err != nil {
+			slog.Warn("compilation: parsing embedded skill body", "skill", ref.name, "err", err)
+			return sourceBody{}, fmt.Errorf("parsing skill body %q: %w", ref.name, err)
+		}
+		return sourceBody{content: body, isTemplate: isTemplate}, nil
+	default:
+		return sourceBody{}, fmt.Errorf("unknown body kind %q", ref.kind)
+	}
+}
+
+func (d *sourceSkillTemplateData) push(ref sourceBodyRef) {
+	d.active[ref] = len(d.stack)
+	d.stack = append(d.stack, ref)
+}
+
+func (d *sourceSkillTemplateData) pop(ref sourceBodyRef) {
+	delete(d.active, ref)
+	d.stack = d.stack[:len(d.stack)-1]
 }
 
 func (d *sourceSkillTemplateData) setError(err error) {
@@ -204,7 +292,7 @@ func (d *sourceSkillTemplateData) setError(err error) {
 	}
 }
 
-func renderSourceSkillTemplate(content string, style SkillRefStyle, rules map[string]RuleSource, ruleNames []string, name string) (string, error) {
+func renderSourceSkillTemplate(content string, style SkillRefStyle, sourceSet CorpusSourceSet, ruleNames []string, name string, rootSkillName string) (string, error) {
 	parsed, err := template.New(name).Parse(content)
 	if err != nil {
 		slog.Warn("compilation: parsing skill template", "name", name, "err", err)
@@ -213,10 +301,14 @@ func renderSourceSkillTemplate(content string, style SkillRefStyle, rules map[st
 	var execErr error
 	data := &sourceSkillTemplateData{
 		style:     style,
-		rules:     rules,
+		sourceSet: sourceSet,
 		ruleNames: ruleNames,
 		execErr:   &execErr,
-		expanding: make(map[string]struct{}),
+		stack:     make([]sourceBodyRef, 0),
+		active:    make(map[sourceBodyRef]int),
+	}
+	if rootSkillName != "" {
+		data.push(sourceBodyRef{kind: sourceBodySkill, name: rootSkillName})
 	}
 	var buffer bytes.Buffer
 	if err := parsed.Execute(&buffer, data); err != nil {
