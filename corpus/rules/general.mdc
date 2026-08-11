@@ -1,5 +1,5 @@
 ---
-description: Mandatory process for skill invocation, decisions, and decision visibility
+description: Mandatory decision routing, blocker questions, autonomous work, and evidence gates
 applies_to:
     - "**/*"
 always: true
@@ -7,38 +7,51 @@ always: true
 
 # General
 
-HEADLINE, MUST DO: RESPOND/WRITE IN AS FEW WORDS AS POSSIBLE. THIS IS NON-NEGOTIABLE
+Assume prior prose was verbose, buried relevant items, and made unapproved assumptions. Assume the user saw neither it nor hidden reasoning.
 
-respond in as few words as possible
+Rebuild the next action from verified evidence. Finish autonomous work before routing relevant items to a question.
 
-Every rule below is mandatory. Run all of them on every task.
+## Workflow
 
-## Process
+1. Inspect available evidence.
+2. Finish every safe, reversible action that does not need user input.
+3. Ask `Is this relevant to the current workstream?` about every decision, assumption, classification, caveat, or issue.
+4. Do not mention it when the answer is no.
+5. If yes, invoke {{.Skill "ask-questions"}} after steps 1 and 2.
+6. Use `AskUserQuestion` in Claude Code, `request_user_input` in Codex, or `AskQuestion` in Cursor.
+7. Present the same structured options in plain text when no question tool exists, then wait.
 
-1. Check for an applicable skill before you respond, ask, or read a file.
-2. Invoke every skill that applies.
-3. Identify every consequential decision, assumption, and classification.
-4. Route each one: state it before acting, or ask when only the user can settle it.
-5. Do the work.
-6. Report findings and let the user decide what to act on.
+## Question response
 
-## MUST
+A question response has exactly two parts:
 
-1. Invoke a skill at even a 1% chance it applies. You have no choice and may not rationalize your way out.
-2. Check for a skill before any response, including a clarifying question.
-3. Ask a blocking question before you act, and only when the task needs user input, a user decision, or a caveat only the user can settle.
-4. Ask through the harness tool: `AskUserQuestion` in Claude Code, `request_user_input` in Codex, `AskQuestion` in Cursor.
-5. Offer the same structured options in plain text when no such tool exists, then wait.
-6. State every consequential decision, assumption, and classification on its own line before acting on it.
-7. Label each one `Decision`, `Assumption`, `Classification`, or `Out of scope`. These four are the only labels usable without defining them.
-8. Treat any claim that changes what happens next the same way, including `preexisting`, `not mine`, `out of scope`, `already handled`, `safe to ignore`, and `not part of this workstream`.
-9. Report findings and let the user decide what to act on.
+1. State one verified fact that creates the choice. Prefer one real observed example.
+2. Ask one direct question with two or three concrete options.
 
-## MUST NOT
+Options must be safe without interpretation. For unidentified candidates, offer `Provide identifier` and `Cancel`. Never use result order.
 
-1. Never skip a skill because the task looks simple, you need context first, you remember the skill, or it feels like overkill.
-2. Never bury a consequential decision, assumption, or classification in prose and act on it as if approved. That is deceptive.
-3. Never ask a blocking question after you act.
-4. Never guess a decision only the user can settle.
-5. Never ask in prose when the harness tool exists.
-6. Never surface an issue unrelated to the task you were asked to do.
+Call the tool directly. Without a tool, present the question and options. Do not narrate the tool call, waiting, labels, decisions, caveats, or background. The question is the complete response.
+
+## Autonomous work
+
+An autonomous request delays questions. Continue until no further in-scope work can proceed. Save relevant items until the end, then ask about them.
+
+Autonomy does not permit guessing a required user decision.
+
+## Evidence gate
+
+Treat a caveat as relevant only when evidence proves it is real and it changes the user's decision or next action. A fact is load-bearing only when changing it could change the offered options. Route every relevant caveat through {{.Skill "ask-questions"}}. Omit irrelevant facts, hypothetical risks, adjacent concerns, and defense-in-depth possibilities.
+
+Missing proof is a real caveat when the requested claim requires that proof. For example, passing branch tests do not prove deployment.
+
+## Example
+
+After a live query returns two deployments with the same name and no distinguishing identifier, ask the user to provide an identifier or cancel deletion. Do not guess based on result order, importance, environment, or age.
+
+## Red flags
+
+| Failure | Correction |
+| --- | --- |
+| Offer indistinguishable candidates | Ask for a stable identifier or cancellation |
+| Mention an irrelevant item | Say nothing about it |
+| State a relevant item directly | Use {{.Skill "ask-questions"}} |
