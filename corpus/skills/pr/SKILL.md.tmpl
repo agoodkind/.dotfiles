@@ -1,11 +1,13 @@
 ---
 name: pr
-description: Create or revise a pull request.
+description: Use when the user asks to create, update, reword, or review one pull request.
 ---
 
 # Create Or Revise Pull Request
 
 Use this workflow when the user asks to create, update, reword, or review a pull request description. Follow the steps in order. Do not skip the existing-PR check unless the user explicitly asks for a drafting-only exercise.
+
+Follow {{.Rule "git"}} for fetches, remote-tracking comparisons, signed commits, staging, and pushes. Apply {{.Rule "writing"}} and {{.Skill "make-readable"}} to every title, body, and final message. Use {{.Skill "split-to-prs"}} for any multi-PR split or stack decision.
 
 ## Step 1: Check Existing PR State
 
@@ -26,15 +28,11 @@ You are working from the current branch. Choose exactly one path for that branch
 
 ### Split or stack context
 
-When the user asked to split work into multiple PRs or a stack, and an open PR already covers that work, follow **Reuse before recreate** in {{.Skill "split-to-prs"}}.
-
-- Do not open new PRs that abandon the existing one unless the user chose **Replace and close** or **Leave untouched** in the approved plan.
-- When repurposing is approved, update the existing PR title and body to match the bottom slice only. Stack new PRs on top of that branch.
-- If the disposition is unclear, stop and ask before creating any PR.
+Do not decide the disposition of an existing pull request inside this skill. Follow **Reuse before recreate** in {{.Skill "split-to-prs"}}, then return here after the split plan identifies the branch this pull request should describe.
 
 ## Step 2: Read The Branch
 
-Find the target branch from the workspace or repository context. Prefer the remote-tracking ref, such as `origin/main`.
+Find the target branch from the workspace or repository context. Follow {{.Rule "git"}} and use its remote-tracking ref, such as `origin/main`.
 
 Run:
 
@@ -77,6 +75,7 @@ Use this title format:
 Rules:
 
 - Start with the ticket in square brackets when a ticket exists.
+- For a small ad-hoc, out-of-scope, or untracked change with no ticket, omit both the title prefix and the `Ticket:` line. Do not use `[NO TICKET]` or another placeholder.
 - State what changed, not why it matters.
 - Keep the title specific to the behavior, surface area, or system.
 - Use backticks only around code symbols. Leave plain prose unwrapped.
@@ -113,6 +112,8 @@ Adjust section names and order when that makes the PR easier to scan. Useful alt
 
 Use section boundaries to separate different jobs. `### Summary` should orient the reviewer to the change. Motivation or background should be separate when it is load-bearing or too large to fit naturally in the summary. Mechanics should be separate when they would make the summary dense.
 
+Apply {{.Rule "writing"}} and {{.Skill "make-readable"}} in addition to the pull request-specific rules below.
+
 Writing rules:
 
 - Write PR prose as if it must pass review against Apple Human Interface Guidelines writing guidance: use simple plain language, fit the reviewer's context, write for accessibility, avoid jargon unless it is necessary, and leave no ambiguous claims.
@@ -147,6 +148,13 @@ Media rules:
 - If screenshots, videos, or before/after comparisons belong in the PR body, apply the `pr-media` skill.
 - Use a before/after table when the visual change is easier to review side by side.
 
+Comparison rules:
+
+- Prefer a before-and-after table when a change has directly comparable behavior, contracts, workflows, or visuals. Use the table when it lets the reviewer answer a real question faster than prose.
+- Make each row synthesize a reviewer-visible consequence, risk, or invariant. Do not inventory changed files, symbols, or line-level implementation.
+- Skip the table when it would only restate the diff or repeat the surrounding prose.
+- For visual changes, pair the media with short outcome-focused captions so the reviewer knows what to inspect.
+
 ## Examples
 
 Use these as drafting patterns, not as fixed templates.
@@ -178,7 +186,7 @@ The event includes the reason for the update, the changed fields, the previous a
 ### No Noisy Testing Section
 
 ```markdown
-Title: [NO TICKET] Update PR skill workflow for existing PR state
+Title: [ACME-310] Update PR skill workflow for existing PR state
 
 ### Summary
 
@@ -195,6 +203,22 @@ Open-PR handling is explicit, so agents ask before editing an existing open PR u
 
 Do not add `## Testing` unless material verification actually ran for the behavior of the change.
 
+### Small Untracked Follow-Up
+
+```markdown
+Title: Clear stale retry warning after recovery
+
+### Summary
+
+A recovered request no longer leaves a warning visible after the retry succeeds.
+
+## Change
+
+The page clears the warning when a retry returns a result, so the status matches the recovered request.
+```
+
+This small follow-up has no ticket. The title and body omit ticket placeholders instead of inventing tracking context.
+
 ### Linked Text
 
 Prefer:
@@ -209,6 +233,65 @@ Avoid:
 ```markdown
 Ticket: [`AGENCY-11414`](https://agency.ticket.net/browse/AGENCY-11414)
 ```
+
+### User-Visible Behavior Comparison
+
+```markdown
+Title: Preserve catalog sort after clearing filters
+
+### Summary
+
+Clearing Acme catalog filters now preserves the selected sort order. People can broaden the results without losing their preferred ordering.
+
+## Change
+
+| Reviewer question | Before | After |
+| --- | --- | --- |
+| What does `Clear filters` reset? | Filters and sort order. | Filters only. |
+| What must the person repeat? | The person selects the sort order again. | Nothing. The selected order remains active. |
+| What remains unchanged? | The catalog refreshes with the cleared filter set. | The catalog still refreshes with the cleared filter set. |
+```
+
+This table explains the user consequence. It does not list the changed screens, handlers, or state fields.
+
+### System Contract Comparison
+
+```markdown
+Title: [ACME-218] Publish warehouse inventory changes
+
+### Summary
+
+Warehouse displays now receive inventory changes through an event contract instead of polling a full snapshot.
+
+## Change
+
+| Contract question | Before | After |
+| --- | --- | --- |
+| What is the integration source? | Displays poll the inventory snapshot endpoint. | Displays handle the `inventory.changed` event. |
+| When is a change observable? | Displays discover changes on their next poll. | The warehouse service publishes after an inventory change commits. |
+| What context crosses the boundary? | Displays receive the full inventory snapshot. | Displays receive the item, location, quantity delta, and resulting quantity. |
+```
+
+This table defines the boundary reviewers must validate. It does not repeat publisher class names or serialization changes from the diff.
+
+### Visual Comparison
+
+```markdown
+Title: Explain why upload is disabled
+
+### Summary
+
+The Acme upload dialog now tells people to select a file before the disabled `Upload` action becomes available.
+
+## Demo
+
+| Before | After |
+| --- | --- |
+| ![Before Acme upload dialog](https://example.com/acme-upload-before.png) | ![After Acme upload dialog](https://example.com/acme-upload-after.png) |
+| The disabled action gives no recovery guidance. | Helper text explains that selecting a file enables `Upload`. |
+```
+
+This table tells the reviewer what changed visually and what outcome to inspect. It does not narrate spacing, color, or component edits already visible in the diff.
 
 ## Step 6: Show The Draft
 
