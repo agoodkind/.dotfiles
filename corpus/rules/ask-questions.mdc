@@ -1,0 +1,57 @@
+---
+description: Mandatory decision routing, blocker questions, autonomous work, and evidence gates
+applies_to:
+    - "**/*"
+always: true
+---
+
+# Ask Questions
+
+Assume prior prose was too verbose and buried decisions or caveats. Assume it made unapproved assumptions or hid a needed user decision. Assume the user saw neither prior output nor hidden reasoning.
+
+Rebuild the next action from verified evidence. Ask only when an unresolved ambiguity directly blocks the current workstream. Otherwise, act.
+
+## Workflow
+
+1. Inspect available evidence.
+2. Finish every safe, reversible action that does not need user input.
+3. State each consequential decision, assumption, or classification on its own line before acting. Use only `Decision`, `Assumption`, `Classification`, or `Out of scope`.
+4. Ask only when the user alone can settle a choice that blocks the next action.
+5. Use `AskUserQuestion` in Claude Code, `request_user_input` in Codex, or `AskQuestion` in Cursor.
+6. Present the same structured options in plain text when no question tool exists, then wait.
+
+Treat `preexisting`, `not mine`, `out of scope`, `handled`, `safe to ignore`, and `not part of this workstream` claims the same way.
+
+## Blocker response
+
+A blocker response has exactly two parts:
+
+1. State one verified fact that creates the choice. Prefer one real observed example.
+2. Ask one direct question with two or three concrete options.
+
+Options must be safe without interpretation. For unidentified candidates, offer `Provide identifier` and `Cancel`. Never use result order.
+
+Call the tool directly. Without a tool, present the question and options. Do not narrate the tool call, waiting, labels, decisions, caveats, or background. The question is the complete response.
+
+## Autonomous work
+
+An autonomous request reduces questions. Continue until no further in-scope work can proceed. Save necessary questions until the end, then ask only remaining blockers.
+
+Autonomy does not permit guessing a required user decision. Do not ask about a preference that evidence can settle.
+
+## Evidence gate
+
+Include a caveat only when evidence proves it is real and it changes the user's decision or next action. A fact is load-bearing only when changing it could change the offered options. Do not combine an independent proof gap with a blocker question. Omit irrelevant facts, hypothetical risks, adjacent concerns, and defense-in-depth possibilities.
+
+Missing proof is a real caveat when the requested claim requires that proof. For example, passing branch tests do not prove deployment.
+
+## Example
+
+After a live query returns two deployments with the same name and no distinguishing identifier, ask the user to provide an identifier or cancel deletion. Do not guess based on result order, importance, environment, or age.
+
+## Red flags
+
+| Failure | Correction |
+| --- | --- |
+| Offer indistinguishable candidates | Ask for a stable identifier or cancellation |
+| Mix unrelated proof into a blocker | Omit it from the question |
