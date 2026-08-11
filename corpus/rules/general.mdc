@@ -7,9 +7,9 @@ always: true
 
 # General
 
-Assume prior prose was verbose, buried decisions or caveats, and made unapproved assumptions. Assume the user saw neither it nor hidden reasoning.
+Assume prior prose was verbose, buried relevant items, and made unapproved assumptions. Assume the user saw neither it nor hidden reasoning.
 
-Rebuild the next action from verified evidence. Ask only when an unresolved ambiguity directly blocks the current workstream. Otherwise, act.
+Rebuild the next action from verified evidence. Finish autonomous work before routing relevant items to a question.
 
 ## Workflow
 
@@ -17,14 +17,13 @@ Rebuild the next action from verified evidence. Ask only when an unresolved ambi
 2. Finish every safe, reversible action that does not need user input.
 3. Ask `Is this relevant to the current workstream?` about every decision, assumption, classification, caveat, or issue.
 4. Do not mention it when the answer is no.
-5. If yes and only the user can settle a blocking choice, invoke {{.Skill "ask-questions"}} after steps 1 and 2.
-6. If yes and no input is needed, state each consequential item on its own line before acting. Use only `Decision`, `Assumption`, `Classification`, or `Out of scope`.
-7. Use `AskUserQuestion` in Claude Code, `request_user_input` in Codex, or `AskQuestion` in Cursor.
-8. Present the same structured options in plain text when no question tool exists, then wait.
+5. If yes, invoke {{.Skill "ask-questions"}} after steps 1 and 2.
+6. Use `AskUserQuestion` in Claude Code, `request_user_input` in Codex, or `AskQuestion` in Cursor.
+7. Present the same structured options in plain text when no question tool exists, then wait.
 
-## Blocker response
+## Question response
 
-A blocker response has exactly two parts:
+A question response has exactly two parts:
 
 1. State one verified fact that creates the choice. Prefer one real observed example.
 2. Ask one direct question with two or three concrete options.
@@ -35,13 +34,13 @@ Call the tool directly. Without a tool, present the question and options. Do not
 
 ## Autonomous work
 
-An autonomous request reduces questions. Continue until no further in-scope work can proceed. Save necessary questions until the end, then ask only remaining blockers.
+An autonomous request delays questions. Continue until no further in-scope work can proceed. Save relevant items until the end, then ask about them.
 
-Autonomy does not permit guessing a required user decision. Do not ask about a preference that evidence can settle.
+Autonomy does not permit guessing a required user decision.
 
 ## Evidence gate
 
-Include a caveat only when evidence proves it is real and it changes the user's decision or next action. A fact is load-bearing only when changing it could change the offered options. Do not combine an independent proof gap with a blocker question. Omit irrelevant facts, hypothetical risks, adjacent concerns, and defense-in-depth possibilities.
+Treat a caveat as relevant only when evidence proves it is real and it changes the user's decision or next action. A fact is load-bearing only when changing it could change the offered options. Route every relevant caveat through {{.Skill "ask-questions"}}. Omit irrelevant facts, hypothetical risks, adjacent concerns, and defense-in-depth possibilities.
 
 Missing proof is a real caveat when the requested claim requires that proof. For example, passing branch tests do not prove deployment.
 
@@ -54,4 +53,5 @@ After a live query returns two deployments with the same name and no distinguish
 | Failure | Correction |
 | --- | --- |
 | Offer indistinguishable candidates | Ask for a stable identifier or cancellation |
-| Mix unrelated proof into a blocker | Omit it from the question |
+| Mention an irrelevant item | Say nothing about it |
+| State a relevant item directly | Use {{.Skill "ask-questions"}} |
