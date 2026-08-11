@@ -381,6 +381,192 @@ func TestRenderSkillDirsRuleBodyTransclusion(t *testing.T) {
 	}
 }
 
+func TestRenderSkillDirsSkillBodyTransclusion(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(
+		t,
+		filepath.Join(root, "rules", "writing.mdc"),
+		"---\ndescription: writing\n---\nWriting guidance.\n",
+	)
+	skillsDir := filepath.Join(root, "skills")
+	writeTestFile(
+		t,
+		filepath.Join(skillsDir, "shared", "SKILL.md.tmpl"),
+		"---\nname: shared\ndescription: shared guidance\n---\n\nShared body.\n\n{{.RuleBody \"writing\"}}\n",
+	)
+	writeTestFile(
+		t,
+		filepath.Join(skillsDir, "root", "SKILL.md.tmpl"),
+		"---\nname: root\ndescription: root guidance\n---\n\nRoot body.\n\n{{.SkillBody \"shared\"}}\n",
+	)
+
+	dst := filepath.Join(t.TempDir(), "skills")
+	if err := RenderSkillDirs(skillsDir, dst, SkillRefMDC); err != nil {
+		t.Fatalf("RenderSkillDirs: %v", err)
+	}
+	rendered, err := os.ReadFile(filepath.Join(dst, "root", "SKILL.md"))
+	if err != nil {
+		t.Fatalf("reading rendered skill: %v", err)
+	}
+	got := string(rendered)
+	if !strings.Contains(got, "Shared body.\n\nWriting guidance.") {
+		t.Errorf("rendered skill missing expanded skill and rule bodies:\n%s", got)
+	}
+	if strings.Contains(got, "name: shared") || strings.Contains(got, "description: shared guidance") {
+		t.Errorf("rendered skill retained embedded front matter:\n%s", got)
+	}
+	if strings.Count(got, GeneratedAgentHTMLMarker) != 1 {
+		t.Errorf("expected exactly one generated marker, got %d in:\n%s", strings.Count(got, GeneratedAgentHTMLMarker), got)
+	}
+	if strings.Contains(got, "{{") {
+		t.Errorf("rendered skill still contains unexpanded token:\n%s", got)
+	}
+}
+
+func TestRenderSkillDirsSkillBodyPreservesMarkdownWhitespace(t *testing.T) {
+	root := t.TempDir()
+	skillsDir := filepath.Join(root, "skills")
+	writeTestFile(
+		t,
+		filepath.Join(skillsDir, "plain", "SKILL.md"),
+		"---\nname: plain\ndescription: plain guidance\n---\n    Keep {{ example }} literal.\n\nPlain hard break.  \n",
+	)
+	writeTestFile(
+		t,
+		filepath.Join(skillsDir, "templated", "SKILL.md.tmpl"),
+		"---\nname: templated\ndescription: templated guidance\n---\n    Link to {{.Skill \"root\"}}.\n\nTemplated hard break.  \n",
+	)
+	writeTestFile(
+		t,
+		filepath.Join(skillsDir, "root", "SKILL.md.tmpl"),
+		"---\nname: root\ndescription: root guidance\n---\n\nBefore plain\n{{.SkillBody \"plain\"}}After plain\n\nBefore templated\n{{.SkillBody \"templated\"}}After templated\n",
+	)
+
+	dst := filepath.Join(t.TempDir(), "skills")
+	if err := RenderSkillDirs(skillsDir, dst, SkillRefMDC); err != nil {
+		t.Fatalf("RenderSkillDirs: %v", err)
+	}
+	rendered, err := os.ReadFile(filepath.Join(dst, "root", "SKILL.md"))
+	if err != nil {
+		t.Fatalf("reading rendered skill: %v", err)
+	}
+	got := string(rendered)
+	wantPlain := "Before plain\n    Keep {{ example }} literal.\n\nPlain hard break.  \nAfter plain"
+	if !strings.Contains(got, wantPlain) {
+		t.Errorf("rendered skill changed plain Markdown whitespace\nwant substring: %q\ngot:\n%s", wantPlain, got)
+	}
+	wantTemplated := "Before templated\n    Link to [root](../root/SKILL.md).\n\nTemplated hard break.  \nAfter templated"
+	if !strings.Contains(got, wantTemplated) {
+		t.Errorf("rendered skill changed templated Markdown whitespace\nwant substring: %q\ngot:\n%s", wantTemplated, got)
+	}
+}
+
+func TestRenderSkillDirsBodyEmbeddingRejectsCycles(t *testing.T) {
+	testCases := []struct {
+		name      string
+		rootSkill string
+		rules     map[string]string
+		skills    map[string]string
+		wantCycle string
+	}{
+		{
+			name:      "direct skill cycle",
+			rootSkill: "a",
+			skills: map[string]string{
+				"a": "{{.SkillBody \"a\"}}",
+			},
+			wantCycle: "skill:a -> skill:a",
+		},
+		{
+			name:      "nested skill cycle",
+			rootSkill: "a",
+			skills: map[string]string{
+				"a": "{{.SkillBody \"b\"}}",
+				"b": "{{.SkillBody \"a\"}}",
+			},
+			wantCycle: "skill:a -> skill:b -> skill:a",
+		},
+		{
+			name:      "nested rule cycle",
+			rootSkill: "root",
+			rules: map[string]string{
+				"a": "{{.RuleBody \"b\"}}",
+				"b": "{{.RuleBody \"a\"}}",
+			},
+			skills: map[string]string{
+				"root": "{{.RuleBody \"a\"}}",
+			},
+			wantCycle: "rule:a -> rule:b -> rule:a",
+		},
+		{
+			name:      "cross type cycle",
+			rootSkill: "a",
+			rules: map[string]string{
+				"bridge": "{{.SkillBody \"a\"}}",
+			},
+			skills: map[string]string{
+				"a": "{{.RuleBody \"bridge\"}}",
+			},
+			wantCycle: "skill:a -> rule:bridge -> skill:a",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			root := t.TempDir()
+			for name, body := range testCase.rules {
+				content := "---\ndescription: test rule\n---\n" + body + "\n"
+				writeTestFile(t, filepath.Join(root, "rules", name+".mdc"), content)
+			}
+			skillsDir := filepath.Join(root, "skills")
+			for name, body := range testCase.skills {
+				content := "---\nname: " + name + "\ndescription: test skill\n---\n\n" + body + "\n"
+				writeTestFile(t, filepath.Join(skillsDir, name, "SKILL.md.tmpl"), content)
+			}
+
+			dst := filepath.Join(t.TempDir(), "skills")
+			err := RenderSkillDirs(skillsDir, dst, SkillRefMDC)
+			if err == nil {
+				t.Fatal("expected RenderSkillDirs to fail on cyclic body embedding, got nil")
+			}
+			if !strings.Contains(err.Error(), testCase.wantCycle) {
+				t.Errorf("expected cycle %q in error, got: %v", testCase.wantCycle, err)
+			}
+			if _, statErr := os.Stat(filepath.Join(dst, testCase.rootSkill, "SKILL.md")); !os.IsNotExist(statErr) {
+				t.Errorf("expected no rendered root skill, stat error: %v", statErr)
+			}
+		})
+	}
+}
+
+func TestRenderSkillDirsSkillBodyRejectsInvalidNames(t *testing.T) {
+	testCases := []struct {
+		name      string
+		reference string
+		wantError string
+	}{
+		{name: "missing", reference: "missing", wantError: "unknown skill body"},
+		{name: "traversal", reference: "../secrets", wantError: "invalid skill body name"},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			root := t.TempDir()
+			skillsDir := filepath.Join(root, "skills")
+			content := "---\nname: root\ndescription: test skill\n---\n\n{{.SkillBody \"" + testCase.reference + "\"}}\n"
+			writeTestFile(t, filepath.Join(skillsDir, "root", "SKILL.md.tmpl"), content)
+
+			err := RenderSkillDirs(skillsDir, filepath.Join(t.TempDir(), "skills"), SkillRefMDC)
+			if err == nil {
+				t.Fatal("expected RenderSkillDirs to reject invalid SkillBody reference, got nil")
+			}
+			if !strings.Contains(err.Error(), testCase.wantError) {
+				t.Errorf("expected %q in error, got: %v", testCase.wantError, err)
+			}
+		})
+	}
+}
+
 func TestRenderSkillDirsRuleBodyMissing(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, filepath.Join(root, "rules", "code.mdc"), "---\ndescription: c\n---\ncode body\n")
@@ -416,27 +602,6 @@ func TestRenderSkillDirsRuleBodyRejectsTraversal(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "invalid rule body name") {
 		t.Errorf("expected invalid rule body name in error, got: %v", err)
-	}
-}
-
-func TestRenderSkillDirsRuleBodyRejectsCycles(t *testing.T) {
-	root := t.TempDir()
-	rulesDir := filepath.Join(root, "rules")
-	writeTestFile(t, filepath.Join(rulesDir, "loop-a.mdc"), "---\ndescription: a\n---\n{{.RuleBody \"loop-b\"}}\n")
-	writeTestFile(t, filepath.Join(rulesDir, "loop-b.mdc"), "---\ndescription: b\n---\n{{.RuleBody \"loop-a\"}}\n")
-	skillsDir := filepath.Join(root, "skills")
-	writeTestFile(
-		t,
-		filepath.Join(skillsDir, "broken", "SKILL.md.tmpl"),
-		"---\nname: broken\ndescription: d\n---\n\n{{.RuleBody \"loop-a\"}}\n",
-	)
-	dst := filepath.Join(t.TempDir(), "skills")
-	err := RenderSkillDirs(skillsDir, dst, SkillRefMDC)
-	if err == nil {
-		t.Fatal("expected RenderSkillDirs to fail on cyclic rule body transclusion, got nil")
-	}
-	if !strings.Contains(err.Error(), "cyclic rule body transclusion") {
-		t.Errorf("expected cyclic transclusion in error, got: %v", err)
 	}
 }
 
