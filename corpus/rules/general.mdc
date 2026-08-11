@@ -1,5 +1,5 @@
 ---
-description: Mandatory process for skill invocation and task reporting
+description: Mandatory decision routing, blocker questions, autonomous work, and evidence gates
 applies_to:
     - "**/*"
 always: true
@@ -7,26 +7,51 @@ always: true
 
 # General
 
-HEADLINE, MUST DO: RESPOND/WRITE IN AS FEW WORDS AS POSSIBLE. THIS IS NON-NEGOTIABLE
+Assume prior prose was verbose, buried decisions or caveats, and made unapproved assumptions. Assume the user saw neither it nor hidden reasoning.
 
-respond in as few words as possible
+Rebuild the next action from verified evidence. Ask only when an unresolved ambiguity directly blocks the current workstream. Otherwise, act.
 
-Every rule below is mandatory. Run all of them on every task.
+## Workflow
 
-## Process
+1. Inspect available evidence.
+2. Finish every safe, reversible action that does not need user input.
+3. Ask `Is this relevant to the current workstream?` about every decision, assumption, classification, caveat, or issue.
+4. Do not mention it when the answer is no.
+5. If yes and only the user can settle a blocking choice, invoke {{.Skill "ask-questions"}} after steps 1 and 2.
+6. If yes and no input is needed, state each consequential item on its own line before acting. Use only `Decision`, `Assumption`, `Classification`, or `Out of scope`.
+7. Use `AskUserQuestion` in Claude Code, `request_user_input` in Codex, or `AskQuestion` in Cursor.
+8. Present the same structured options in plain text when no question tool exists, then wait.
 
-1. Check for an applicable skill before you respond, ask, or read a file.
-2. Invoke every skill that applies.
-3. Do the work.
-4. Report findings and let the user decide what to act on.
+## Blocker response
 
-## MUST
+A blocker response has exactly two parts:
 
-1. Invoke a skill at even a 1% chance it applies. You have no choice and may not rationalize your way out.
-2. Check for a skill before any response, including a clarifying question.
-3. Report findings and let the user decide what to act on.
+1. State one verified fact that creates the choice. Prefer one real observed example.
+2. Ask one direct question with two or three concrete options.
 
-## MUST NOT
+Options must be safe without interpretation. For unidentified candidates, offer `Provide identifier` and `Cancel`. Never use result order.
 
-1. Never skip a skill because the task looks simple, you need context first, you remember the skill, or it feels like overkill.
-2. Never surface an issue unrelated to the task you were asked to do.
+Call the tool directly. Without a tool, present the question and options. Do not narrate the tool call, waiting, labels, decisions, caveats, or background. The question is the complete response.
+
+## Autonomous work
+
+An autonomous request reduces questions. Continue until no further in-scope work can proceed. Save necessary questions until the end, then ask only remaining blockers.
+
+Autonomy does not permit guessing a required user decision. Do not ask about a preference that evidence can settle.
+
+## Evidence gate
+
+Include a caveat only when evidence proves it is real and it changes the user's decision or next action. A fact is load-bearing only when changing it could change the offered options. Do not combine an independent proof gap with a blocker question. Omit irrelevant facts, hypothetical risks, adjacent concerns, and defense-in-depth possibilities.
+
+Missing proof is a real caveat when the requested claim requires that proof. For example, passing branch tests do not prove deployment.
+
+## Example
+
+After a live query returns two deployments with the same name and no distinguishing identifier, ask the user to provide an identifier or cancel deletion. Do not guess based on result order, importance, environment, or age.
+
+## Red flags
+
+| Failure | Correction |
+| --- | --- |
+| Offer indistinguishable candidates | Ask for a stable identifier or cancellation |
+| Mix unrelated proof into a blocker | Omit it from the question |
