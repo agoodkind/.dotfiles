@@ -260,6 +260,9 @@ func removeCacheFiles() {
 		"dotfiles_update_error",
 		"dotfiles_update_success",
 		"dotfiles_debug_enabled",
+		// Pre-rename names, still cleaned up on machines that ran the older
+		// layout where these lived directly under .cache instead of
+		// .cache/dotfiles.
 		"dotfiles_dispatch.flock",
 		"dotfiles_dispatch.log",
 		"dotfiles_weekly_update",
@@ -267,6 +270,15 @@ func removeCacheFiles() {
 		_ = removeIfExists(filepath.Join(os.Getenv("HOME"), ".cache", name))
 	}
 	_ = removeIfExists(filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles_dispatch.lock"))
+
+	for _, name := range []string{
+		"dispatch.flock",
+		"dispatch.log",
+		"weekly_update",
+	} {
+		_ = removeIfExists(filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", name))
+	}
+	_ = removeIfExists(filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "dispatch.lock"))
 }
 
 func removeHushlogin(ctx context.Context) {

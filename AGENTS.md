@@ -112,11 +112,49 @@ file path if available, then deletes the file.
 unless `DOTFILES_LOG` is set.
 - Startup performance logs are written to `~/.cache/zsh_startup/*.json` and
 inspected via `zsh_perf` / `dots perf`.
+- One list in the telemetry package names every log the binary appends to.
+Maintenance reads that list, so it cannot miss a log an entry point opens.
+
+### Log and Cache Maintenance
+
+Two sync steps stop the log and startup cache directories growing without
+limit. Writing a log stays a plain append, so the logging path is unchanged.
+
+"Rotating logs" renames an oversized log aside and starts a fresh one. It
+skips any log the running process still has open. A skipped log rotates on
+the next sync that does not hold it.
+
+The `updater` worker runs the sync pipeline inside the dispatch process. Such
+a run holds the dispatch log open throughout. A sync you run by hand rotates
+that log instead.
+
+"Pruning startup logs" deletes abandoned shell snapshots and caps how many
+startup logs are kept.
+
+`.zshenv` writes one snapshot per shell. Only `_write_startup_log` reads a
+snapshot and deletes it. Both are gated on the same test, and the two tests
+must stay identical. A shell that writes a snapshot no reader consumes leaks
+that file.
 
 ### Manual `sync.sh` Runs
 
 `sync.sh` is a thin wrapper around `dots sync`, so interactive sync
 output comes from the Go command directly rather than shell-side tee helpers.
+
+### Syncing from a Linked Worktree
+
+`dots sync` refuses to run from a linked git worktree. It exits non-zero
+before it takes the sync lock.
+
+Sync rewrites `$HOME` from the repository's `home` directory. A run from a
+worktree therefore points every managed dotfile at that worktree's branch.
+Those steps are non-critical, so without the refusal the run would still
+report success.
+
+Pass `--allow-worktree` to sync a worktree on purpose.
+
+The same layout check tells the git hooks step where the shared git directory
+is. A worktree's `.git` is a file rather than a directory.
 
 ## Work vs. Personal Separation
 
@@ -149,18 +187,6 @@ portable find/test expressions.
 | `zsh_perf`                      | Inspect the latest startup performance log                                          |
 | `dots perf history`      | Show startup performance history                                                    |
 
-
-## Git Operations on This Repository
-
-**Do not use `git push` to push changes in this repository.** The dotfiles repo
-uses a bare-repo / worktree setup where the working tree is `~/.dotfiles` but
-the git directory is stored elsewhere. The `config` shell alias wraps the
-correct `git --git-dir` invocation.
-
-Use `config push` instead of `git push` for any push operation on `.dotfiles`.
-All other git read operations (`git status`, `git diff`, `git log`, etc.) work
-normally when run from inside `~/.dotfiles`; only push (and any operation that
-writes to the remote) requires `config`.
 
 ### Agent worktree placement
 

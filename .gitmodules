@@ -5,3 +5,7 @@
 [submodule "lib/zsh-defer"]
 	path = lib/zsh-defer
 	url = https://github.com/romkatv/zsh-defer.git
+[submodule "lib/Claude-Opus-5-tools"]
+	path = lib/Claude-Opus-5-tools
+	url = https://github.com/Lunarsong/Claude-Opus-5-tools.git
+	branch = main

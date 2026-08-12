@@ -1,6 +1,6 @@
 ---
 name: enforce-rules
-description: Enforce style, epistemic framing, and dash-free prose. Use when the user invokes this skill to remind the LLM of general rules, the redo command, and the dash prohibition before or during a task.
+description: Enforce the mandatory response process, documentation style, and dash-free prose. Use when the user invokes this skill to remind the LLM of the rule files and the dash prohibition before or during a task.
 ---
 
 # Rules
@@ -11,9 +11,11 @@ Read these files in full before producing any output:
 
 {{.Rules}}
 
-Also read the redo command and apply it as the review standard for any regenerated response: [redo/SKILL.md](../redo/SKILL.md)
+When the user asks for a redo, apply the redo command to the claim that was false, overconfident, or unsupported, and regenerate the whole response when its tone was overconfident throughout: [redo/SKILL.md](../redo/SKILL.md)
 
 Follow every rule file for the duration of this task.
+
+{{.RuleBody "responses"}}
 
 {{.RuleBody "writing"}}
 
@@ -52,7 +54,7 @@ If a sentence would naturally use an em dash, rewrite the sentence entirely so t
 When this skill is active, every piece of output must:
 
 1. Follow every `.agents/rules` rule file that applies to the task.
-2. Be eligible for the redo command (no overconfident assertions, all claims qualified).
+2. Pass the responses rule's final gate, with every claim stated no more strongly and no more weakly than its evidence supports.
 3. Contain zero em dashes or en dashes in any form.
 
 If you catch an em dash or en dash in your own draft, rewrite the sentence before emitting it.

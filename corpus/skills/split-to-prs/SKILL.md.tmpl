@@ -1,28 +1,23 @@
 ---
 name: split-to-prs
-description: Split current work into small reviewable PRs. Prefer Graphite stacks when gt or the Graphite MCP is available. Use when the user asks to split a chat, set of changes, branch, or PR.
+description: Use when the user asks to split a chat, change set, branch, or pull request into multiple reviewable pull requests.
 ---
 
 # Split to PRs
 
-Turn one pile of work into a few small PRs.
+Turn one pile of work into the smallest feasible pull requests.
 
-## Graphite first
+Follow {{.Rule "git"}} for fetches, comparisons, worktree safety, staging, signed commits, pushes, and cleanup. Use {{.Skill "pr"}} for every pull request title, body, and GitHub write.
 
-When Graphite is available, prefer a stacked split over plain git branches.
+## Create independent or dependent pull requests
 
-Graphite is available when any of these hold:
+Create one pull request for each smallest logically shippable slice that can pass continuous integration at its branch position. Create independent sibling branches from trunk by default. Use Graphite only when two or more slices have a real dependency. Graphite availability or repository initialization does not turn independent pull requests into a stack.
 
-- the Graphite MCP `run_gt_cmd` tool is loaded in the session
-- `gt` is on PATH and the repo passes Graphite init detection in {{.Skill "graphite"}} (`gt state` output identifies the trunk branch)
-
-For planning, stay in this skill. For execution, follow {{.Skill "graphite"}} task **Split work into a Graphite stack**. That skill owns MCP usage, `gt create`, dry-run submit, draft-ready handling, and stack verification.
-
-Use the plain git path in section 3 only when Graphite is unavailable and the user does not want to set it up.
+Execute a dependent stack through {{.Skill "graphite"}} task **Split work into a Graphite stack**. Execute independent pull requests through the plain Git path in section 3.
 
 ## Reuse before recreate
 
-When an open PR already covers the work being split, default to repurposing that PR as the stack base. Do not open new PRs that abandon the existing one unless the user explicitly chose otherwise in the approved plan. Surface the disposition and ask before you execute.
+When an open PR already covers the work being split, repurpose that PR as the stack base when doing so preserves its intent and unique work. Do not abandon the existing PR merely to create a cleaner stack.
 
 ## Stack position in titles
 
@@ -40,21 +35,21 @@ Example: `[AGENCY-11267] Add plaid relink URL (PR 2/3)`
 
 ## Hard rules
 
-- Do not create branches, commit, push, or open PRs until the user approves the split plan.
+- Continue through branch creation, commits, pushes, and pull request creation without pausing.
+- Create the smallest slices that are each logically shippable and can pass every required check at their branch position.
+- Group changes only when separating them would break required checks, omit required behavior, or create an unusable intermediate state.
 - When an open PR exists, follow **Reuse before recreate** above.
-- Never discard user work. No destructive git commands (`reset --hard`, `clean -fdx`, branch deletion, force-push, history rewrite) without explicit approval.
+- Follow {{.Rule "git"}} for all repository mutations and worktree handling.
 - A recoverable snapshot preserves work. It does not require leaving an existing open PR untouched after a split request.
 - Always save a recoverable snapshot before moving work around. This often starts from dirty work on `main`, so do not assume there is already a safe branch.
-- When work happens in a feature worktree, record the primary checkout path and treat local `refs/heads/<trunk>` as read-only. Never move trunk refs from the feature worktree when trunk is checked out elsewhere.
 - Snapshot refs must stay under `refs/backup/`, never `refs/heads/`.
-- Stage only named files or hunks. No `git add .` or `git add -A`.
-- Every PR title and body comes from {{.Skill "pr"}}, reviewed with the user per PR. Do not use ad hoc text or default commit-message bodies.
+- Every pull request title, body, and GitHub write follows {{.Skill "pr"}}.
 
 ## 1. Check the state
 
 Compare the current work to the repo's default branch, including committed and uncommitted changes. Summarize the real slices you see, and use the chat history to recover intent.
 
-Before proposing slices, find ownership signals for the touched paths (`CODEOWNERS`, nested ownership files, `tools/ownership/PRODUCTOWNERS`, or repo equivalents) and use them to identify natural reviewer boundaries.
+Before dividing the work, find ownership signals for the touched paths (`CODEOWNERS`, nested ownership files, `tools/ownership/PRODUCTOWNERS`, or repo equivalents). Use them to identify natural reviewer boundaries.
 
 Check for existing open PRs that already cover this work:
 
@@ -66,52 +61,39 @@ For each PR number returned, run `gh pr view <number> --json body,title,url,stat
 
 Record every open PR number, branch, and URL. If the user mentioned a PR by number, confirm it with `gh pr view <number>`.
 
-Note whether Graphite is available (see above).
+Classify each dependency between slices. Do not use Graphite availability as the classification.
 
-When `git worktree list` shows more than one checkout, record which path owns trunk before proposing slices:
+When `git worktree list` shows more than one checkout, record which path owns trunk before dividing the work:
 
 ```bash
 git worktree list
 ```
 
-For trunk and ref safety during Graphite execution, follow **Worktrees and trunk refs** in {{.Skill "graphite"}}.
+Follow {{.Rule "git"}} for trunk and worktree safety. A dependent stack also follows {{.Skill "graphite"}}.
 
-## 2. Propose the split
+## 2. Build the split map
 
-Use judgment on detail. Usually PR titles are enough. Add a one-line scope note only when a title is unclear. Show a Mermaid diagram when there are multiple slices.
+Write the pull request titles and their branch relationships, then continue immediately. Add a one-line scope note only when a title is unclear. Show a Mermaid diagram only when it clarifies a dependency.
 
-Optimize for reviewer-aligned PRs with minimal unrelated diff. Split independent owners or concerns. Keep tightly coupled changes together. When stacking is necessary, order foundations before consumers.
+Split at every logical boundary where the lower slice and remaining work can each stay shippable and pass required checks. Keep tests with the behavior they prove. Keep a migration with the minimum compatible application change. Keep generated output with the source change that produces it.
+
+Use ownership boundaries as additional split signals. Do not combine independently shippable behavior merely because one reviewer owns both areas. When stacking is necessary, order foundations before consumers.
 
 Default to independent PRs off the default branch. Stack PRs only when the dependency is real.
 
-State the disposition of every existing open PR explicitly. Use one of these labels:
+Repurpose an existing open PR as the stack base when it covers the work and preserves its intent. Thin that branch to the bottom slice. Replace and close the PR only when the new split preserves all its intent and unique work. Honor any existing instruction to leave the PR untouched. Otherwise, reuse or replace it.
 
-- **Repurpose as stack base**: keep the open PR and thin it to the bottom slice (default)
-- **Replace and close**: open a new stack and close the old PR
-- **Leave untouched**: keep the existing PR unchanged (only when the user asks explicitly)
-
-State which execution path you will use after approval:
-
-- **Graphite** when Graphite is available. Use stacked branches when slices depend on each other. Use parallel `gt create` branches off trunk when slices are independent.
-- **Plain git branches** only when Graphite is unavailable or the user opts out.
-
-Ask for approval before starting. In Claude Code call `AskUserQuestion`. In Codex call `request_user_input`. In Cursor call `AskQuestion`. When none is available, present the plan in plain text and wait for approval.
-
-When one or more existing open PRs were detected, the approval question must include these options in this order. Repeat the question for each open PR when more than one exists:
-
-1. Repurpose existing PR #<number> as the base of the stack (recommended)
-2. Create a new stack from trunk and leave #<number> alone
-3. Other
+Use a Graphite stack only for dependent slices. Use plain Git sibling branches for independent slices. Use plain Git when Graphite is unavailable for a dependent stack.
 
 ## 3. Execute the split
 
-### Graphite path (preferred)
+### Graphite path for a dependent stack
 
-After approval, switch to {{.Skill "graphite"}} and run **Split work into a Graphite stack** with the approved plan. Do not reimplement those steps here.
+Switch to {{.Skill "graphite"}} and run **Split work into a Graphite stack** with the split map. Do not reimplement those steps here.
 
-### Plain git path (fallback)
+### Plain Git path
 
-Use only when Graphite is unavailable.
+Use this path for independent slices. Also use it when Graphite is unavailable for a dependent split.
 
 If there is uncommitted work, save a recoverable snapshot without changing the working tree:
 
@@ -122,10 +104,11 @@ if [ -n "$SHA" ]; then
 fi
 ```
 
-For each approved slice:
+For each split-map entry:
 
-1. Create a branch from the right base, stage and commit only the planned files or hunks, then push.
-2. Stay on that branch (or check it out). The `pr` skill reads the current branch. Invoke {{.Skill "pr"}} to draft the title and body, review with the user, and open the PR through the canonical Step 1 through Step 8 flow.
+1. Reuse and thin its recorded branch when the entry covers an existing PR. Create a dependent branch from its recorded parent. Create only an independent branch from the remote trunk.
+2. Follow {{.Rule "git"}} to stage the slice, create a signed commit, verify it, and push it.
+3. Check out that branch and invoke {{.Skill "pr"}} to create or update the pull request.
 
 ## 4. Report back
 

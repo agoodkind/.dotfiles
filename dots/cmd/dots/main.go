@@ -16,6 +16,7 @@ import (
 	"goodkind.io/.dotfiles/internal/runner"
 	syncer "goodkind.io/.dotfiles/internal/sync"
 	"goodkind.io/.dotfiles/internal/sync/compilation"
+	"goodkind.io/.dotfiles/internal/sync/corpus"
 	"goodkind.io/.dotfiles/internal/telemetry"
 	uninstaller "goodkind.io/.dotfiles/internal/uninstall"
 )
@@ -98,7 +99,7 @@ func runSync(args []string) int {
 	for _, arg := range args {
 		if arg == "-h" || arg == "--help" {
 			logInfo("Usage:")
-			logInfo("  dots sync [--repair] [--quick] [--skip-git] [--skip-network] [--skip-cursor-sync] [--dry-run] [--use-defaults] [--strict]")
+			logInfo("  dots sync [--repair] [--quick] [--skip-git] [--skip-network] [--skip-cursor-sync] [--dry-run] [--use-defaults] [--strict] [--allow-worktree]")
 			return 0
 		}
 	}
@@ -112,6 +113,7 @@ func runSync(args []string) int {
 	dryRun := fs.Bool("dry-run", false, "run through sync steps without applying changes")
 	useDefaults := fs.Bool("use-defaults", false, "use non-interactive installer defaults")
 	strictMode := fs.Bool("strict", false, "fail on non-critical sync step failures")
+	allowWorktree := fs.Bool("allow-worktree", false, "allow syncing from a linked git worktree")
 	if err := fs.Parse(args); err != nil {
 		logWarn(err.Error())
 		printUsage()
@@ -123,10 +125,12 @@ func runSync(args []string) int {
 		QuickMode:      *quickMode,
 		SkipGit:        *skipGit,
 		SkipNetwork:    *skipNetwork,
+		SkipCorpusSync: false,
 		SkipCursorSync: *skipCursorSync,
 		DryRun:         *dryRun,
 		UseDefaults:    *useDefaults,
 		StrictMode:     *strictMode,
+		AllowWorktree:  *allowWorktree,
 	}); err != nil {
 		logError("sync failed", err)
 		return 1
@@ -192,9 +196,13 @@ func runCursorSync(args []string) int {
 	if dotfiles == "" {
 		dotfiles = filepath.Join(os.Getenv("HOME"), ".dotfiles")
 	}
-	source := compilation.ResolveCorpusSource(dotfiles)
+	sourceSet, err := corpus.LoadSourceSet(dotfiles)
+	if err != nil {
+		logError("loading corpus for cursor upload", err)
+		return 1
+	}
 	style := compilation.RuleRenderStyle{SkillsRelDir: "../skills"}
-	rules, err := compilation.RenderRulesForUpload(source.Rules, style)
+	rules, err := compilation.RenderRulesForUploadFromSourceSet(sourceSet, style)
 	if err != nil {
 		logError("rendering corpus rules for cursor upload", err)
 		return 1

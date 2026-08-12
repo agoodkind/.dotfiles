@@ -99,10 +99,12 @@ func runSyncOnly(ctx context.Context, dotfiles string, dispatchLogger *telemetry
 		QuickMode:      true,
 		SkipGit:        true,
 		SkipNetwork:    false,
+		SkipCorpusSync: false,
 		SkipCursorSync: false,
 		DryRun:         false,
 		UseDefaults:    true,
 		StrictMode:     false,
+		AllowWorktree:  false,
 	})
 	if runErr != nil {
 		dispatchLogger.WarnContextWithErr(ctx, "updater: sync exited with non-zero status", runErr)
@@ -122,10 +124,12 @@ func doWeeklyUpdate(ctx context.Context, dotfiles, weeklyMarkerPath string, disp
 		QuickMode:      false,
 		SkipGit:        true,
 		SkipNetwork:    false,
+		SkipCorpusSync: false,
 		SkipCursorSync: false,
 		DryRun:         false,
 		UseDefaults:    true,
 		StrictMode:     false,
+		AllowWorktree:  false,
 	})
 	if runErr != nil {
 		dispatchLogger.WarnContextWithErr(ctx, "updater: weekly sync exited with non-zero status", runErr)
@@ -151,7 +155,7 @@ func doWeeklyUpdate(ctx context.Context, dotfiles, weeklyMarkerPath string, disp
 
 	now := strconv.FormatInt(clock.Now().Unix(), 10)
 	if weeklyMarkerPath == "" {
-		weeklyMarkerPath = filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles_weekly_update")
+		weeklyMarkerPath = filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "weekly_update")
 	}
 	_ = os.WriteFile(filepath.Clean(weeklyMarkerPath), []byte(now), 0o600)
 	return nil

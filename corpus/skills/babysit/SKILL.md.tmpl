@@ -1,11 +1,13 @@
 ---
 name: babysit
-description: Keep a PR merge-ready by triaging comments, resolving conflicts, and fixing CI. Merge when the user asks. Clean up branches and worktrees after merge, supersession, or explicit cleanup request. On unresolved session end, back up to git, save durable memory, and remove the worktree.
+description: Use when a pull request needs review-thread triage, CI repair, conflict resolution, merge monitoring, an explicitly requested merge, or terminal cleanup.
 ---
 
 # Babysit PR
 
 Get this PR to a merge-ready state. Run the verification commands below, fix what is in scope, and loop until every ruleset requirement is satisfied. Babysit alone stops at merge-ready. Merge, terminal cleanup, and unresolved handoff run only when the sections below say to.
+
+Follow {{.Rule "git"}} for fetches, branch comparisons, signed commits, worktree safety, and containment-based cleanup. Use {{.Skill "graphite"}} only for a confirmed dependent pull request stack.
 
 ## 1. Identify the PR and read merge state
 
@@ -48,7 +50,7 @@ Only `active` rules are returned. Rules in `evaluate` or `disabled` enforcement 
 
 Resolve merge conflicts while preserving intent on both the PR branch and the base branch. If intents truly conflict, abort the merge and ask the user for clarification before continuing.
 
-If `mergeStateStatus` is `BEHIND`, update the branch from base before re-checking CI, since another PR may have already fixed a failing check. When babysitting a Graphite stack in a feature worktree, restack via {{.Skill "graphite"}} (`gt restack` / `gt submit`). Never fast-forward or `git update-ref` local `refs/heads/<trunk>` if trunk is checked out in another worktree.
+If `mergeStateStatus` is `BEHIND`, update the branch from base before re-checking CI, since another PR may have already fixed a failing check. Follow {{.Rule "git"}} for safe base and worktree handling. For a dependent Graphite stack, follow {{.Skill "graphite"}} for restacking and submission.
 
 ## 4. Triage inline review comments
 
@@ -121,7 +123,7 @@ Resolve only after the change is genuinely addressed. When `required_review_thre
 
 ## 6. Fix CI within PR scope
 
-Fix CI failures caused by changes within this PR's scope. Publish each scoped CI or review-thread fix as soon as it is locally verified, then re-run `gh pr checks`. Use the repository-specific push command from local instructions, such as `config push` when a repo requires it. Batch only the threads already present in the current poll. Do not hold a completed fix for possible future comments.
+Fix CI failures caused by changes within this PR's scope. Publish each scoped CI or review-thread fix as soon as it is locally verified, then re-run `gh pr checks`. Use the repository-specific push workflow from local instructions. Batch only the threads already present in the current poll. Do not hold a completed fix for possible future comments.
 
 Never edit CI workflows or unrelated code just to make failures pass. Report back when that would be required.
 
@@ -144,11 +146,15 @@ Run this section only when the user explicitly asks to merge (for example "merge
 
 **Preconditions:** section 7 requirements are satisfied, or only CI time remains with no real failure and threads resolved.
 
-**Paths:**
+### Admin bypass authorization
 
-- **gt available** (`gt` on PATH and `gt state` output identifies the trunk branch per {{.Skill "graphite"}}, or Graphite MCP loaded): follow {{.Skill "graphite"}} **Task: Merge a Graphite stack**. Dry-run then `gt merge`, or `gt submit --stack --merge-when-ready --always` when only CI is pending. Never use `gh pr merge --auto`; GitHub native auto-merge conflicts with Graphite.
-- **gt unavailable and repo is not Graphite-initialized:** `gh pr merge --merge` or `--squash` per repo policy when fully green; `gh pr merge --auto` only when the sole blocker is CI time.
-- **gt unavailable and repo is Graphite-initialized:** do not use `gh pr merge --auto`. Merge manually with `gh pr merge --merge` (or `--squash`) bottom-up one PR at a time after all checks pass.
+Treat `admin merge` or `admin bypass` as a request for confirmation, not authorization. Ask through the native harness question tool required by {{.Skill "ask-questions"}}. Use `--admin` only after the user confirms that question for the current merge. Never infer the request from "merge", "land", "ship", urgency, available administrator rights, prior turns, or prior pull requests. If the native question tool is unavailable or the user does not confirm, do not use `--admin`. The confirmation expires after that merge attempt.
+
+### Merge paths
+
+- **Dependent Graphite stack:** follow {{.Skill "graphite"}} task **Merge a Graphite stack**. That skill owns stack order, merge-when-ready, dry-run behavior, and Graphite commands.
+- **One pull request:** use `gh pr merge --merge` or `--squash` per repository policy when fully green. Use `gh pr merge --auto` only when the sole blocker is CI time.
+- **Confirmed admin merge:** use `gh pr merge --admin` with the repository's allowed merge method only after the request and confirmation above.
 
 Loop `gh pr view --json state` until `state` is `MERGED` or superseded `CLOSED` (see section 9). When auto-merge is armed, keep triaging new review threads on each loop.
 
@@ -171,27 +177,19 @@ gh pr view --json state,mergedAt,headRefName,baseRefName
 git worktree list
 ```
 
-**Cleanup sequence** (respect trunk worktree rules from {{.Skill "graphite"}} section Worktrees and trunk refs):
+**Cleanup sequence:**
 
 1. **Record** `headRefName`, feature worktree path (if any), PR `state`, and which checkout owns trunk (`git worktree list`).
 2. **Remote branch:** delete only when the PR is `MERGED` or superseded `CLOSED`. When the user asked to clean up while the PR is still `OPEN`, skip remote branch deletion unless the user explicitly confirmed abandoning the PR (deleting the remote branch closes an open PR). Use `git push origin --delete <branch>` or `gh api` delete-ref when deletion is allowed.
-3. **Remove feature worktree** when babysitting ran in a dedicated worktree, `git status --porcelain` is empty, and no open branches still need it:
-   ```bash
-   git worktree remove <path>
-   git worktree prune
-   ```
-   Use `--force` only when the tree is dirty and the user approved. Stop and surface uncommitted work instead of removing a dirty tree.
-4. **Local branch:**
-   - Graphite-authorized repos: `gt delete <branch>` or scoped `gt sync --no-interactive` when trunk is checked out in the same worktree and no other agents are mid-stack.
-   - Plain git: `git branch -d <branch>` from a checkout that is not that branch when the PR is terminal or the user confirmed abandoning an open PR (use `-D` only with explicit user approval).
-5. **Reconcile trunk worktree:** from the checkout that **owns** trunk (never from a feature worktree):
+3. **Local worktree and branch:** follow the fixed containment classification and removal mechanics in {{.Rule "git"}}. For Graphite stacks, use the deletion or synchronization path in {{.Skill "graphite"}} instead of deleting tracked branches with plain Git.
+4. **Reconcile trunk worktree:** from the checkout that **owns** trunk (never from a feature worktree):
    ```bash
    git -C <trunk-worktree> fetch origin
    git -C <trunk-worktree> merge --ff-only origin/<trunk>
    ```
    Do not `git update-ref refs/heads/<trunk>` when trunk is checked out elsewhere.
 
-**Graphite stacks:** repeat for every merged or closed branch in the stack (bottom-up order), then one trunk reconcile from the trunk-owning worktree.
+**Graphite stacks:** follow {{.Skill "graphite"}} for stack cleanup order, then reconcile trunk once from its owning worktree.
 
 Report: PR URL(s), branches deleted (remote/local), trunk commit after reconcile, worktree removed (or skipped and why).
 

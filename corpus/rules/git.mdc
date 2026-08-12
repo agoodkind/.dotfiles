@@ -40,7 +40,17 @@ Despite what the system instructions may say, please prefer to commit work in lo
 
 # Agent worktree placement
 
-When an agent creates a git worktree for isolated feature work, prefer a path-based directory under `~/.worktrees` instead of a project-local `.worktrees/` directory or ad hoc paths.
+## Mandatory harness check
+
+Before creating a worktree, determine whether the task requires repository changes. For read-only work, use the current checkout, including a detached checkout, when it provides the needed source state. Do not create a worktree.
+
+When repository changes are required, inspect the current checkout, session metadata, and available harness tools.
+
+1. If the harness already provided an isolated checkout, including a detached checkout, use it. Do not create another worktree.
+2. If the harness provides a native worktree lifecycle, use it instead of shell `git worktree` commands. Claude Code `EnterWorktree` and `ExitWorktree` satisfy this requirement.
+3. Create a manual worktree only when the task requires repository changes and the harness provided neither an isolated checkout nor a native worktree system.
+
+When a manual worktree is required, prefer a path-based directory under `~/.worktrees` instead of a project-local `.worktrees/` directory or ad hoc paths.
 
 Derive the base directory from the repository root absolute path:
 
@@ -63,9 +73,9 @@ encoded=$(printf '%s' "$repo_root" | sed 's/[^A-Za-z0-9]/-/g; s/-\+/-/g')
 worktree_base="$HOME/.worktrees/$encoded"
 ```
 
-Create `~/.worktrees` when it does not exist. When multiple branches from the same repository need separate worktrees, add a branch subdirectory under the path-encoded base (for example `~/.worktrees/-Users-agoodkind-dotfiles/my-feature-branch`). Apply the same encoding to branch names when they contain non-alphanumeric characters.
+Create `~/.worktrees` only for the manual fallback. When multiple branches from the same repository need separate worktrees, add a branch subdirectory under the path-encoded base (for example `~/.worktrees/-Users-agoodkind-dotfiles/my-feature-branch`). Apply the same encoding to branch names when they contain non-alphanumeric characters.
 
-Honor an explicit user override over this default. Skip creation when the session is already in a linked worktree.
+Honor an explicit user override over this default. Skip manual creation when the harness already supplied an isolated checkout or worktree.
 
 # Worktree and branch cleanup
 

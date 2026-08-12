@@ -35,13 +35,13 @@ function _dotfiles_install_in_progress() {
 
 # Show transient "running now" state from background dispatch.
 function _dotfiles_show_dispatch_banner() {
-    if [[ ! -d ~/.cache/dotfiles_dispatch.lock ]]; then
+    if [[ ! -d ~/.cache/dotfiles/dispatch.lock ]]; then
         return 0
     fi
 
     local update_type=""
-    if [[ -f ~/.cache/dotfiles_dispatch.lock/status ]]; then
-        update_type=$(<~/.cache/dotfiles_dispatch.lock/status)
+    if [[ -f ~/.cache/dotfiles/dispatch.lock/status ]]; then
+        update_type=$(<~/.cache/dotfiles/dispatch.lock/status)
     fi
     if [[ "$update_type" == "weekly" ]]; then
         print -P "%F{blue}↻ weekly update running in background%f"

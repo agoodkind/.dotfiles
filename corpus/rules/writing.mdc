@@ -47,12 +47,12 @@ A detail belongs when it helps the reviewer understand, verify, or ship safely.
 
 - Nonessential context stays out of the document.
 - Unasked recommendations stay out of review prose.
-- Repeated detail creates drift and should become a link or disappear.
+- Repeated detail creates drift. Keep one durable home. Delete or consolidate every other copy. Do not add a link as a way to keep the duplicate.
 - Adjacent context belongs only when it changes risk or review.
 - Implementation detail stays at the system level.
 - The prose explains behavior before naming code.
 - Prose should not narrate literal code.
-- Code anchors appear only when they help the reader orient, not on every statement.
+- Code anchors appear only when the reader must open, edit, or run that artifact to complete a step.
 - The code carries line-level detail.
 
 ## Order information
@@ -135,25 +135,98 @@ Neutral error text helps the reader recover.
 - Error text avoids alarmist language such as `Fatal Error!`.
 - Error codes appear with a plain solution.
 
+## One durable home
+
+When the same fact, procedure, or ownership claim appears or could appear in more than one place, apply this order:
+
+1. Delete the copy that is not the durable home.
+2. Consolidate into the one page that owns the fact; merge useful unique material there, then remove the rest.
+3. Link once only if this page must point the reader at another page that carries material this page deliberately omits, and that material changes what the reader understands, verifies, or does.
+4. Never keep a second prose home for convenience, and never use repeated links as a substitute for consolidation.
+
 ## Use durable links
 
-Links work best when another local source is the stable home for the detail.
+Default is no link.
 
+- Before adding or keeping any link, search the surrounding document set for the same fact, procedure, or ownership claim.
+- If a sibling doc already owns it, delete or consolidate this page's copy. Do not leave both and paper over with a link.
+- Link a given destination at most once per page. Later mentions use ordinary product or system nouns, not a second link and not a bare filename, path, or backtick path that only asserts ownership.
+- Do not launder a link into a bare filename or path. Removing `[service_mapping.yml](...)` and leaving `` `service_mapping.yml` `` or `service_mapping.yml` fails the rewrite when the sentence only says where a value lives.
+- Link only when the destination carries material this page does not already give the reader, and that material changes what the reader understands, verifies, or does.
+- Do not link a source file only to prove ownership or to point at values the reader can find by reading the codebase.
+- Do not link sibling docs for navigation decoration when the current page already carries the needed fact, or when the fact should instead move into one home.
 - Link text stays free of backticks.
-- Local sources carry load-bearing details when possible.
-- Stable local files are better than copied detail.
-- Repeated detail creates drift.
+- Prefer local durable homes over copied detail when a link is justified.
 - Current behavior matters more than history.
 - Historical notes appear only when current work requires them.
-- Before adding or preserving a link, determine whether the reader needs it to understand, verify, or act.
-- Remove links that only decorate prose, repeat navigation, or expose implementation detail without helping the reader.
-- Use the fewest links that preserve clear navigation and verification.
+
+### Link examples
+
+**Bad** (same target linked repeatedly; links only name ownership):
+
+> Guest ids live in [service_mapping.yml](...). Bridge addresses live in [networks.tf](...). Guest addresses also live in [service_mapping.yml](...). The [suburban module](...) owns the rest. Watchdog addresses come from [service_mapping.yml](...).
+
+**Bad** (laundered: link removed, filename kept):
+
+> Guest identities share one inventory file, `service_mapping.yml`, so a renumber changes one line. Bridge names live in the suburban OpenTofu networks file.
+
+**Good** (behavior only):
+
+> Guest identities, hostnames, and addresses share one inventory, so a renumber changes one line. What this page adds is the behavior each bridge carries.
+
+**Bad** (ownership sentence with no reader action):
+
+> Prefix sizes are set in `group_vars/...`.
+
+**Good** (operational fact):
+
+> Prefix delegation sizes match production, and NPT translates the first `/60` of each delegation.
+
+**Good** (relative in-repo link when the reader must edit that file):
+
+> Set `initialization.datastore_id` to `local-zfs` in [opentofu/suburban/vms.tf](../../opentofu/suburban/vms.tf), or cloud-init drive regen fails with storage unavailable.
+
+**Good** (absolute out-of-repo link when the artifact is outside this repository):
+
+> WireGuard handshake and cryptography steps follow the [WireGuard protocol](https://www.wireguard.com/protocol/).
+
+**Bad** (filename quoted without a markdown link):
+
+> Edit `service_mapping.yml` and renumber the guest.
+
+**Good** (same edit step, relative markdown link):
+
+> Edit [service_mapping.yml](../../ansible/inventory/group_vars/all/service_mapping.yml) and renumber the guest.
+
+### Duplication examples
+
+**Bad** (two docs both carry the same gotcha; each links to the other):
+
+> Page A and page B both explain the cloud-init datastore rule and link to each other.
+
+**Good** (one durable home; the other page deletes the copy):
+
+> The gotcha lives only in the suburban operations page. The testbed page does not restate it and does not link unless the reader must leave this page to act on that gotcha.
+
+## Name sources only to act
+
+Default is no filename, path, module path, or inventory basename in prose.
+
+- State the operational fact or behavior. Do not say that a fact "lives in", "comes from", "is owned by", or "is set in" a file unless the next sentence is an action the reader takes in that file.
+- A filename, path, or symbol appears only when the reader must open, edit, or run that exact artifact to complete a documented step.
+- Replacing a link with a backtick path, plain path, or "the X file" ownership phrase is the same failure as the original link litter.
+- Prefer everyday system nouns ("guest inventory", "bridge layout", "suburban module") over basenames when a referent is needed at all.
+- Avoid excessive ownership narration such as "belong in", "live in", "lives at", or "to find X, see Y" unless naming the file is part of an open, edit, or run step.
+- When a filename or path does appear after those gates, it MUST be a clickable markdown link. A bare backtick path, a bare path, or plain text that names the file fails the rewrite.
+- Link in-repo artifacts with a relative path from the current page. Link out-of-repo artifacts with an absolute URL. Do not leave an unlinked basename for the reader to hunt.
 
 ## Plan document architecture from meaning
 
 Document rewrites are information architecture work, not sentence cleanup.
 
 - Read the relevant document set before changing page boundaries or layout.
+- Search the document set for overlapping facts, procedures, commands, paths, and ownership claims before writing or rewriting a page.
+- Treat every overlap as a consolidation decision: one durable home stays; every other copy is deleted or merged into that home.
 - Identify each page's meaning, purpose, scope, and relationship to the surrounding document set.
 - Derive paths, headings, merges, and splits from the content's meaning, conceptual boundaries, operational function, and place in the larger system, not filenames or bulk patterns.
 - Preserve useful existing structure unless the content supports a clearer replacement.
@@ -170,6 +243,8 @@ Configuration and code own current exact values, mechanics, and defaults. Tests 
 
 - Documentation explains the behavior or operational contract that readers need, without narrating code or repeating what the implementation already says clearly.
 - Read the relevant implementation, configuration, tests, and comments before describing behavior.
+- Facts that live clearly in code, config, or tests stay there. Docs do not mirror them for convenience, because that copy goes stale.
+- A page that only restates another page or the codebase fails the rewrite until the duplicate material is removed.
 - Do not infer behavior from filenames, symbols, stale prose, or assumptions when the source can establish it directly.
 - Historical narration stays out unless current operation depends on it.
 
@@ -191,36 +266,41 @@ An accuracy pass checks every claim against the current sources after the rewrit
 - Verify exact names, values, commands, paths, and defaults against the source that owns them.
 - Remove unsupported claims and correct stale claims instead of preserving them for apparent completeness.
 - Confirm that links resolve to the intended current source.
+- Confirm no stale cross-doc duplicates remain.
+- Confirm each remaining link appears at most once on the page and passes the materiality test.
+- Confirm no sentence asserts ownership with a bare filename, path, backtick path, or "the X file" phrase after a link was removed or instead of stating behavior.
+- Confirm every filename or path in prose is tied to a reader action that requires that artifact.
+- Confirm every filename or path that appears is a clickable markdown link to a relative in-repo path or an absolute out-of-repo URL.
 - Keep the accuracy pass separate from the fidelity comparison. Fidelity preserves meaning from the original document, while accuracy checks that preserved meaning against the system as it exists now.
 
 ## Workflow for document rewrites
 
 Apply this workflow before generating or restructuring documentation:
 
-1. Read the relevant document set and map its existing structure, meaning, duplication, and navigation.
-2. Read the implementation, configuration, tests, and comments that establish the documented behavior. Separate facts the docs must explain from details the source already explains well.
-3. State each page's meaning, purpose, scope, canonical facts, and relationship to nearby pages.
-4. Decide what stays, moves, merges, splits, or disappears from the content itself. Plan structural changes before applying them across the corpus.
-5. Rewrite the behavioral and operational meaning without narrating code. Preserve examples, constraints, exceptions, and recovery knowledge that readers still need.
-6. Review every link with two questions: Does the reader need this link, and can the document set use fewer links without losing navigation or verifiability?
-7. Compare the source and rewritten document before and after. Account for every removed or changed claim, and confirm that no factual fidelity, semantic meaning, constraint, exception, or operational instruction was lost or altered.
-8. Run the accuracy pass against the implementation, configuration, tests, comments, commands, paths, and links that establish each claim.
-9. Read the result as one document set and verify structure, navigation, source ownership, duplication, fidelity, accuracy, and prose.
+1. Read and search the surrounding document set for the same facts, procedures, commands, paths, and ownership claims this page would carry. Map every overlap before drafting.
+2. Read the implementation, configuration, tests, and comments that establish the documented behavior. Separate facts the docs must explain from details the source already explains well. Anything the codebase already owns clearly is a delete candidate in the docs, not a link candidate.
+3. State each page's meaning, purpose, scope, canonical facts, and relationship to nearby pages. Name the single durable home for each overlapping fact.
+4. Decide what stays, moves, merges, splits, or disappears. Prefer delete and consolidate over keep-and-link. Plan structural changes before applying them across the corpus.
+5. Rewrite the behavioral and operational meaning without narrating code. Preserve examples, constraints, exceptions, and recovery knowledge that readers still need, and only in the durable home.
+6. Inventory every markdown link and every basename or path-like token in prose on the page. Fail the rewrite if any destination appears more than once, if any link fails the materiality test, if any linked sibling still duplicates material this page also carries, if any sentence asserts ownership with a bare filename, path, backtick path, or "the X file" phrase after a link was removed or instead of stating behavior, if any filename or path appears without a reader action that requires that artifact, or if any filename or path appears without a clickable markdown link to a relative in-repo path or an absolute out-of-repo URL. Remove, consolidate, or collapse until the page passes.
+7. Compare the source and rewritten document before and after. Account for every removed or changed claim, and confirm no load-bearing operational knowledge was lost when duplicates were deleted.
+8. Run the accuracy pass against the implementation, configuration, tests, comments, commands, paths, and remaining links.
+9. Read the result as one document set and verify structure, navigation, source ownership, absence of stale duplicates, link uniqueness, materiality, absence of filename laundering, every remaining filename linked, fidelity, accuracy, and prose.
 
 ## Document architecture as current state
 
-Architecture docs describe the system as it is now, stating behavior first and linking to the code or test that holds a detail only where a reader needs to verify it. Linking to the source that way keeps the doc easy to verify and reduces drift from the code.
+Architecture docs describe the system as it is now, stating behavior first. Link to the code or test that holds a detail only where a reader must leave this page for material it deliberately omits.
 
 - Prefer `docs/<concern>.md` when the concern stands alone. Create `docs/<concern>/` only when multiple substantive pages share that concern, and give each page a specific name.
 - Keep a substantive existing `overview.md` only when it owns synthesis that would otherwise be lost. Its content must justify the page independently of its filename.
 - Let `README.md` or `AGENTS.md` link to the smallest set of meaningful entry points instead of routing every area through an overview page.
 - Doc path segments are single words. Use paths like `docs/deadcode/contract.md`, and never use paths like `docs/dead-code/contract.md`.
 - Every architecture page states what its subject does today, in present tense.
-- Each statement describes current behavior first, and adds a durable doc or test link only where a reader needs to verify it.
+- Each statement describes current behavior first, and adds a durable doc or test link only where a reader must leave this page for material it deliberately omits.
 - A behavior doc is not an index of code locations, so do not append a symbol name or file path to every statement.
-- Name a code symbol or file path only when it is the shortest way to help a reader orient, never as the default.
+- Name a code symbol or file path only when the reader must use that exact artifact; never to prove ownership or locate a value.
 - The enforcing test or rule is the source of truth, and the doc never copies the invariant it enforces.
-- A copied detail drifts, so link to it instead of restating it.
+- Keep one durable home for each fact. Delete other copies. Link once only when the reader must leave this page for material it deliberately omits.
 - The doc describes what is, not how the decision was reached.
 - Decision history stays out unless current work needs it.
 
@@ -229,6 +309,14 @@ Architecture docs describe the system as it is now, stating behavior first and l
 **Bad** (hardcoded symbol and path):
 
 > `saveSettings` in `src/settings/store.ts` and its test hold the enforced wording.
+
+**Bad** (laundered ownership):
+
+> Guest ids live in `service_mapping.yml`.
+
+**Good** (behavior only):
+
+> Guest identities share one inventory, so a renumber changes one line.
 
 **Good** (behavior and contract):
 
@@ -240,24 +328,36 @@ Architecture docs describe the system as it is now, stating behavior first and l
 
 ### Structure examples
 
-**Bad** (unnecessary directory and overview):
+**Bad** (unnecessary directory and overview; path quoted without a link):
 
 > A single daemon architecture document lives at `docs/daemon/overview.md` only because every concern receives its own directory.
 
-**Good** (single concern page):
+**Good** (single concern page; relative links):
 
-> The daemon architecture lives at `docs/daemon.md` while it is the only document for that concern. If distinct install and operations documents become necessary, the concern can become `docs/daemon/` with specifically named pages.
+> A single-concern daemon page is [docs/daemon.md](docs/daemon.md). Separate install and operations pages use specifically named files under [docs/daemon/](docs/daemon/).
 
-**Good** (substantive existing overview):
+**Good** (substantive overview; relative link):
 
-> Keep an existing `overview.md` when it explains a system-wide relationship that no specific page owns, and preserve that synthesis during a rewrite. The page earns its place through its content, not its conventional filename.
+> An [overview.md](overview.md) page stands alone when it owns system-wide synthesis that no specific page carries.
+
+**Good** (out-of-repo durable home; absolute link):
+
+> FreeBSD serial console behavior follows the [FreeBSD Handbook serial communications chapter](https://docs.freebsd.org/en/books/handbook/serialcomms/).
 
 ### Organization examples
 
-**Bad** (filename-derived rename):
+**Bad** (filename-derived rename; paths quoted without links):
 
 > `operational-notes.md` becomes `notes.md` because the filename is shorter.
 
-**Good** (content-based grouping):
+**Bad** (ownership narration that sends the reader hunting):
 
-> Router BGP, gateway, and NAT foot-guns belong in `operations.md` because they describe how the production OPNsense router is operated. Daemon install and upgrade steps belong under `daemon/` because they describe a separate component.
+> Router BGP, gateway, and NAT foot-guns belong in `operations.md`. Daemon install steps live under `daemon/`.
+
+**Good** (content-based grouping; no ownership pointing):
+
+> Production OPNsense router BGP, gateway, and NAT foot-guns share one operations concern. Daemon install and upgrade steps are a separate concern.
+
+**Good** (same concerns named only for an edit step, with relative links):
+
+> Update production OPNsense router BGP, gateway, and NAT recovery steps in [operations.md](operations.md). Update daemon install and upgrade steps under [daemon/](daemon/).

@@ -6,7 +6,7 @@ require (
 	charm.land/bubbles/v2 v2.1.1
 	charm.land/bubbletea/v2 v2.0.8
 	github.com/moby/moby/api v1.55.0
-	github.com/moby/moby/client v0.5.0
+	github.com/moby/moby/client v0.5.1
 	github.com/pelletier/go-toml/v2 v2.4.3
 	goodkind.io/gklog v0.4.4
 	gopkg.in/yaml.v3 v3.0.1
@@ -32,6 +32,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
+	github.com/gofrs/flock v0.13.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.4.0 // indirect
 	github.com/mattn/go-runewidth v0.0.24 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
@@ -48,4 +49,5 @@ require (
 	golang.org/x/sync v0.21.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
 	google.golang.org/grpc v1.82.1 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )

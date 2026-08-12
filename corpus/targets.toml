@@ -9,6 +9,7 @@
 #   rule-files            each rule written as a marker-stamped file (needs rule_ext)
 #   instruction-doc       all rules concatenated into one document (needs title)
 #   per-file-instructions each rule rendered as a .instructions.md file
+#   agents               native provider agent definitions
 #
 # ref_style values (skills only): mdc | md
 #
@@ -18,6 +19,28 @@
 # VSCode also reads ~/.copilot/instructions, ~/.claude/rules, and ~/.agents/skills.
 # Claude Desktop shares ~/.claude with Claude Code.
 # Cursor global user rules are uploaded to the cloud API during dots sync (not from ~/.cursor/rules).
+
+# Imported reliability methods from the branch-tracking submodule.
+[[source]]
+name              = "reliability"
+kind              = "submodule-import"
+root              = "lib/Claude-Opus-5-tools"
+source_url        = "https://github.com/Lunarsong/Claude-Opus-5-tools.git"
+source_branch     = "main"
+working_agreement = "working-agreements.md"
+skills = [
+  ".claude/skills/trace-the-chain/SKILL.md",
+  ".claude/skills/adversarial-review/SKILL.md",
+  ".claude/skills/root-cause-debugging/SKILL.md",
+  ".claude/skills/empirical-validation/SKILL.md",
+]
+agents = [
+  ".claude/agents/code-implementer.md",
+  ".claude/agents/evidence-gatherer.md",
+]
+read_only_agents = [
+  "evidence-gatherer",
+]
 
 # Claude Code (and Claude Desktop)
 [[output]]
@@ -33,6 +56,11 @@ dest       = ".claude/rules"
 rule_ext   = ".md"
 skill_dest = ".claude/skills"
 
+[[output]]
+provider = "claude"
+kind     = "agents"
+dest     = ".claude/agents"
+
 # Shared cross-agent directory (read by Zed, VSCode, and Codex)
 [[output]]
 provider  = "agents"
@@ -47,6 +75,12 @@ dest       = ".agents/rules"
 rule_ext   = ".mdc"
 skill_dest = ".agents/skills"
 
+# Cursor
+[[output]]
+provider = "cursor"
+kind     = "agents"
+dest     = ".cursor/agents"
+
 # Codex
 [[output]]
 provider   = "codex"
@@ -55,6 +89,11 @@ dest       = ".codex/AGENTS.md"
 title      = "Codex Instructions"
 skill_dest = ".agents/skills"
 
+[[output]]
+provider = "codex"
+kind     = "agents"
+dest     = ".codex/agents"
+
 # Gemini
 [[output]]
 provider   = "gemini"
@@ -62,6 +101,11 @@ kind       = "instruction-doc"
 dest       = ".gemini/GEMINI.md"
 title      = "Gemini Instructions"
 skill_dest = ".agents/skills"
+
+[[output]]
+provider = "gemini"
+kind     = "agents"
+dest     = ".gemini/agents"
 
 # GitHub Copilot
 [[output]]
@@ -76,6 +120,11 @@ provider   = "copilot"
 kind       = "per-file-instructions"
 dest       = ".copilot/instructions"
 skill_dest = ".agents/skills"
+
+[[output]]
+provider = "copilot"
+kind     = "agents"
+dest     = ".copilot/agents"
 
 # Zed (first-party agent reads user-global rules from this doc)
 [[output]]

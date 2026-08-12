@@ -55,6 +55,45 @@ func ConfigureDefaultSlogFromEnv() {
 	slog.SetDefault(slog.New(handler))
 }
 
+// cacheLogNames are the log files this binary opens under the dotfiles cache
+// directory. Each is resolved independently at its own entry point, so this
+// list exists for maintenance rather than for resolution.
+var cacheLogNames = []string{
+	"sync.log",
+	"dots.log",
+	"install.log",
+	"uninstall.log",
+	"cursor.log",
+}
+
+// KnownLogPaths returns every log file this binary appends to. Maintenance
+// that operates on logs as a set, such as rotation, uses this so it cannot
+// drift from the entry points that open them.
+func KnownLogPaths() []string {
+	paths := make([]string, 0, len(cacheLogNames)+1)
+	paths = append(paths, dispatchLogPath())
+	for _, name := range cacheLogNames {
+		paths = append(paths, filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", name))
+	}
+	return paths
+}
+
+// dispatchLogPath returns the dispatch log's real path. DOTFILES_DISPATCH_LOG
+// names it exactly when a dispatch process is running, since dispatch resolves
+// its own path from config rather than from this default. Only when that
+// variable is unset does this fall back to the default the dispatch config
+// itself falls back to.
+func dispatchLogPath() string {
+	if configured := os.Getenv("DOTFILES_DISPATCH_LOG"); configured != "" {
+		return configured
+	}
+	cacheDir := os.Getenv("XDG_CACHE_HOME")
+	if cacheDir == "" {
+		cacheDir = filepath.Join(os.Getenv("HOME"), ".cache")
+	}
+	return filepath.Join(cacheDir, "dotfiles", "dispatch.log")
+}
+
 // Logger provides structured logging to both a JSON log file and a TTY-aware stdout/stderr.
 type Logger struct {
 	mu         sync.Mutex

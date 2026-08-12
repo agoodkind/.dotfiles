@@ -20,6 +20,8 @@ import (
 	"goodkind.io/.dotfiles/internal/runner"
 	"goodkind.io/.dotfiles/internal/sync"
 	"goodkind.io/.dotfiles/internal/sync/common"
+	"goodkind.io/.dotfiles/internal/sync/corpus"
+	"goodkind.io/.dotfiles/internal/sync/workspace"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
@@ -109,12 +111,31 @@ func Run(ctx context.Context, args ...string) error {
 		logTTYLine(ctx, "Git is not installed yet, so the installer will collect git details now and apply them after package setup.")
 		pending = collectGitConfigInputs(ctx, useDefaults)
 	}
+	deferAgentSync := !managedRepositoryExists()
+	if deferAgentSync {
+		syncOpts = deferRepositoryDependentSyncs(syncOpts)
+	}
 	if err := sync.Run(ctx, syncOpts); err != nil {
 		slog.WarnContext(ctx, "running sync", "err", err)
 		return fmt.Errorf("running sync: %w", err)
 	}
-	if err := ensureManagedRepository(ctx); err != nil {
-		installLogger.WarnContextWithErr(ctx, "Failed to convert archive installation to git repository", err)
+	managedRepositoryErr := ensureManagedRepository(ctx)
+	if managedRepositoryErr != nil {
+		installLogger.WarnContextWithErr(ctx, "Failed to convert archive installation to git repository", managedRepositoryErr)
+	}
+	if deferAgentSync && managedRepositoryErr == nil && managedRepositoryExists() {
+		if err := runDeferredAgentSync(
+			ctx,
+			func(syncCtx context.Context) error {
+				return corpus.Sync(syncCtx, dotfilesRoot(), installLogger)
+			},
+			func(syncCtx context.Context) error {
+				return workspace.SyncCursorUserRules(syncCtx, dotfilesRoot(), installLogger)
+			},
+		); err != nil {
+			slog.WarnContext(ctx, "syncing deferred agent configuration", "err", err)
+			return err
+		}
 	}
 	if !configuredGit && runner.HasCommand("git") {
 		if err := configureGit(ctx, useDefaults, &pending); err != nil {
@@ -122,6 +143,28 @@ func Run(ctx context.Context, args ...string) error {
 		}
 	}
 	ensureLoginShell(ctx)
+	return nil
+}
+
+func deferRepositoryDependentSyncs(options sync.Options) sync.Options {
+	options.SkipCorpusSync = true
+	options.SkipCursorSync = true
+	return options
+}
+
+func runDeferredAgentSync(
+	ctx context.Context,
+	corpusSync func(context.Context) error,
+	cursorSync func(context.Context) error,
+) error {
+	if err := corpusSync(ctx); err != nil {
+		slog.WarnContext(ctx, "syncing deferred agent corpus", "err", err)
+		return fmt.Errorf("syncing deferred agent corpus: %w", err)
+	}
+	if err := cursorSync(ctx); err != nil {
+		slog.WarnContext(ctx, "syncing deferred Cursor rules", "err", err)
+		return fmt.Errorf("syncing deferred Cursor rules: %w", err)
+	}
 	return nil
 }
 
@@ -136,10 +179,12 @@ func parseInstallArgs(args []string) (bool, sync.Options, bool, error) {
 		QuickMode:      false,
 		SkipGit:        false,
 		SkipNetwork:    false,
+		SkipCorpusSync: false,
 		SkipCursorSync: false,
 		DryRun:         false,
 		UseDefaults:    false,
 		StrictMode:     false,
+		AllowWorktree:  false,
 	}
 
 	for _, arg := range args {
@@ -431,6 +476,11 @@ func acquireInstallLock(ctx context.Context) (*os.File, func(), bool, error) {
 		_ = os.RemoveAll(statusDir)
 	}
 	return lockFile, release, false, nil
+}
+
+func managedRepositoryExists() bool {
+	_, err := os.Stat(filepath.Clean(filepath.Join(dotfilesRoot(), ".git")))
+	return err == nil
 }
 
 func ensureManagedRepository(ctx context.Context) error {
