@@ -143,15 +143,17 @@ output comes from the Go command directly rather than shell-side tee helpers.
 
 ### Syncing from a Linked Worktree
 
-`dots sync` refuses to run from a linked git worktree. It exits non-zero
-before it takes the sync lock.
+`dots sync` always runs the normal sync pipeline in dry-run mode from a linked
+git worktree. It exits successfully. Each pipeline step logs
+`dry-run: no changes applied`. The output names the main checkout that can
+apply changes.
 
-Sync rewrites `$HOME` from the repository's `home` directory. A run from a
-worktree therefore points every managed dotfile at that worktree's branch.
-Those steps are non-critical, so without the refusal the run would still
-report success.
+The background updater uses the same path. It skips repository updates. It
+skips weekly maintenance. It runs the sync dry run. It queues an informational
+notice for the next shell.
 
-Pass `--allow-worktree` to sync a worktree on purpose.
+A linked worktree can never apply a sync. Run sync from the main checkout to
+rewrite `$HOME`.
 
 The same layout check tells the git hooks step where the shared git directory
 is. A worktree's `.git` is a file rather than a directory.

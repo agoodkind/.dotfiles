@@ -1,5 +1,5 @@
 // Package gitdir resolves the git layout of a working tree so callers can tell
-// a canonical checkout from a linked worktree, and can find the shared git
+// a main checkout from a linked worktree, and can find the shared git
 // directory instead of assuming that <root>/.git is one.
 package gitdir
 
@@ -25,7 +25,7 @@ type Info struct {
 	// Hooks, the object store, and submodule git directories live here.
 	CommonDir string
 	// IsWorktree reports whether Root is a linked worktree rather than the
-	// canonical checkout. It is true exactly when GitDir differs from
+	// main checkout. It is true exactly when GitDir differs from
 	// CommonDir.
 	IsWorktree bool
 }
