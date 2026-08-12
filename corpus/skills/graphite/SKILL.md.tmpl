@@ -50,7 +50,7 @@ Run this before declaring a repo "not gt init" or falling back to plain-git stac
 ### Hard rules
 
 - **Scope gate:** use this skill only after confirming that the task contains two or more dependent PRs. One independent PR uses the normal PR workflow, even when the repository is Graphite-initialized.
-- **When this skill is invoked for a confirmed stack**, stack work goes through Graphite MCP. Do not fall back to plain-git branches, manual `git push`, or "PR2 base = PR1 branch" workflows unless the user explicitly opts out after a failed detection sequence.
+- **When this skill is invoked for a confirmed stack**, stack work goes through Graphite MCP. Fall back to plain Git only when Graphite remains unavailable after the detection sequence.
 - **Canonical init probe (gt command):** MCP `["state", "--no-interactive"]` from the target worktree `cwd`. `gt state` displays repository state. Success means the output identifies the trunk branch (for example a line or entry naming `main` with trunk metadata). That means Graphite is enabled, even when there are no stacked branches yet.
 - **Non-mutating file probe (shell fallback only):** when MCP is unavailable and the agent must avoid auto-init side effects:
 
@@ -140,20 +140,20 @@ This is {{.Skill "split-to-prs"}} executed with Graphite instead of plain git br
 
 ### Planning rules (from split-to-prs)
 
-- Do not create branches, commit, submit, or open PRs until the user approves the split plan.
+- Continue directly from the split map produced by {{.Skill "split-to-prs"}}.
 - When an open PR exists, follow **Reuse before recreate** in {{.Skill "split-to-prs"}}.
-- Never discard user work. No destructive git without explicit approval.
+- Never discard user work. Use recoverable git operations throughout this workflow.
 - Save a recoverable snapshot before moving work around.
 - Stage only named files or hunks. No `git add .` or `git add -A`.
 - Default to independent PRs off trunk. Stack only when dependency is real.
 - Order foundations before consumers.
-- Do not check out trunk and `gt create` a fresh bottom slice until the approved plan names the stack base branch.
+- Do not check out trunk or create a bottom slice until the split map identifies the stack base branch.
 
-Propose titles (and a Mermaid diagram when helpful). Ask for approval before executing.
+Execute the recorded slices from bottom to top.
 
 ### When an open PR already exists
 
-Use this path when the approved plan repurposes an existing open PR as the stack base.
+Use this path when the split map repurposes an existing open PR as the stack base.
 
 1. Confirm the existing PR branch and number with `gh pr view`.
 2. Thin that branch to the bottom slice only. Stage named files or hunks. Amend with `["modify"]` or add a commit with `["modify", "--commit", "--message", "..."]`. Do not pass `--all`; only staged changes should enter the amend.
@@ -164,13 +164,13 @@ args: ["track", "<existing-branch>", "--parent", "main"]
 ```
 
 4. Stack each remaining slice on top with `["create", "--message", "..."]` on the previous branch tip.
-5. Dry-run submit, submit, then draft and review each PR per the steps below.
+5. Dry-run submit, submit, then write each PR per the steps below.
 
 For adopt steps when Graphite metadata is missing, see **Task: Adopt a non-Graphite stack** below.
 
 ### Execute with Graphite
 
-Skip steps 3 and 4 below when the approved plan repurposes an existing open PR. Use **When an open PR already exists** instead.
+Skip steps 3 and 4 below when the split map repurposes an existing open PR. Use **When an open PR already exists** instead.
 
 1. **Snapshot** uncommitted work:
 
@@ -203,7 +203,7 @@ args: ["submit", "--stack", "--dry-run", "--no-interactive"]
 args: ["submit", "--stack", "--no-interactive"]
 ```
 
-7. **Draft and review each PR.** Check out each branch bottom to top. The `pr` skill reads the current branch, so check out the PR branch before invoking it. For each branch, invoke {{.Skill "pr"}} to draft and review the title and body with the user. Apply the reviewed title and body through the `pr` skill edit path (`gh pr edit`), not create. The PR already exists from `gt submit`. After all stack PRs have numbers, read them bottom to top. When the numbers are non-sequential, append ` (PR x/N)` to each title through the `pr` skill edit path, per **Stack position in titles** in {{.Skill "split-to-prs"}}.
+7. **Write each PR.** Check out each branch from bottom to top. Invoke {{.Skill "pr"}} on each branch to write its title and body to the PR created by `gt submit`. After every PR has a number, read the numbers from bottom to top. Append ` (PR x/N)` to each non-sequential title through the `pr` skill edit path, as defined by **Stack position in titles** in {{.Skill "split-to-prs"}}.
 
 8. **Mark PRs ready** when reviewers are required. Non-interactive submit creates new PRs as drafts unless `--publish` is passed. Existing PRs keep their current state:
 
@@ -213,7 +213,7 @@ gh pr ready <number>   # for each PR in the stack
 
 9. **Report** bottom PR URL, full stack order, and anything left uncommitted on trunk.
 
-One logical change per branch. The first commit message line becomes the initial PR title until the `pr` skill review updates it.
+One logical change belongs on each branch. The first commit message line becomes the initial PR title until the `pr` skill updates it.
 
 ---
 
@@ -260,7 +260,7 @@ Expect **Sync** or **New parent** actions. **Create** on an existing PR means th
 args: ["submit", "--stack", "--no-interactive"]
 ```
 
-7. **Draft and review each PR.** Check out each adopted branch bottom to top. The `pr` skill reads the current branch, so you must be on the PR's branch before invoking it. For each branch, invoke {{.Skill "pr"}} to draft and review the title and body with the user, then apply the reviewed title and body through the `pr` skill edit path (`gh pr edit`). After all stack PRs have numbers, read them bottom to top. When the numbers are non-sequential, append ` (PR x/N)` to each title through the `pr` skill edit path, per **Stack position in titles** in {{.Skill "split-to-prs"}}.
+7. **Write each PR.** Check out each adopted branch from bottom to top. Invoke {{.Skill "pr"}} on each branch to write its title and body to GitHub. After every PR has a number, read the numbers from bottom to top. Append ` (PR x/N)` to each non-sequential title through the `pr` skill edit path, as defined by **Stack position in titles** in {{.Skill "split-to-prs"}}.
 
 8. **Mark drafts ready** if reviewers are required.
 
@@ -278,11 +278,11 @@ If branches were deleted with `git branch -D` instead of `gt delete`, Graphite m
 
 When there is no existing branch chain:
 
-1. Propose stack structure and get confirmation.
+1. Use the split map produced by {{.Skill "split-to-prs"}}.
 2. Preflight (above).
 3. For each PR bottom to top: write code, stage named paths, `["create", "--message", "..."]`.
 4. `["submit", "--stack", "--dry-run", "--no-interactive"]` then real submit.
-5. Check out each branch bottom to top. The `pr` skill reads the current branch, so you must be on the PR's branch before invoking it. For each branch, invoke {{.Skill "pr"}} to draft and review the title and body with the user, then apply the reviewed title and body through the `pr` skill edit path (`gh pr edit`). After all stack PRs have numbers, read them bottom to top. When the numbers are non-sequential, append ` (PR x/N)` to each title through the `pr` skill edit path, per **Stack position in titles** in {{.Skill "split-to-prs"}}.
+5. Check out each branch from bottom to top. Invoke {{.Skill "pr"}} on each branch to write its title and body to GitHub. After every PR has a number, read the numbers from bottom to top. Append ` (PR x/N)` to each non-sequential title through the `pr` skill edit path, as defined by **Stack position in titles** in {{.Skill "split-to-prs"}}.
 6. Mark PRs ready. Share bottom PR URL.
 
 ---
@@ -482,8 +482,8 @@ Prefer `["continue"]` over `git rebase --continue`. Avoid `["abort"]` in agent s
 | shell `gt` when MCP is available | loses cross-turn context | `run_gt_cmd` |
 | branches created outside `gt` | invisible to `gt log` | `gt track` before submit |
 | submit without dry-run on existing PRs | duplicate PRs | dry-run first; expect Sync/New parent |
-| fresh stack from trunk when an open PR covers the work | orphans the PR number and review history | follow **Reuse before recreate** in {{.Skill "split-to-prs"}}, or ask |
-| ignore draft state after submit | new PRs remain drafts unless published or marked ready | `gh pr ready` on each PR after its body is reviewed |
+| fresh stack from trunk when an open PR covers the work | orphans the PR number and review history | follow **Reuse before recreate** in {{.Skill "split-to-prs"}} |
+| ignore draft state after submit | new PRs remain drafts unless published or marked ready | `gh pr ready` on each PR after the `pr` skill writes its body |
 | stale trunk | submit and restack block | update trunk from its clean, idle owning worktree, then run scoped `gt restack` |
 | `git update-ref refs/heads/<trunk>` while trunk checked out elsewhere | skews that checkout; entire trunk looks staged/dirty | update trunk from its owning worktree with `git merge --ff-only origin/<trunk>` |
 | repo-wide `gt sync` with shared worktrees | may update trunk across worktrees and affect unowned branches | update trunk from its owner, then use scoped restack |

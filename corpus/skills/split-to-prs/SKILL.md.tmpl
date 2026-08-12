@@ -5,19 +5,19 @@ description: Use when the user asks to split a chat, change set, branch, or pull
 
 # Split to PRs
 
-Turn one pile of work into a few small PRs.
+Turn one pile of work into the smallest feasible pull requests.
 
 Follow {{.Rule "git"}} for fetches, comparisons, worktree safety, staging, signed commits, pushes, and cleanup. Use {{.Skill "pr"}} for every pull request title, body, and GitHub write.
 
-## Choose independent or dependent pull requests
+## Create independent or dependent pull requests
 
-Default to independent sibling branches from trunk. Use Graphite only when two or more slices have a real dependency and therefore require a stack. Graphite availability or repository initialization does not turn independent pull requests into a stack.
+Create one pull request for each smallest logically shippable slice that can pass continuous integration at its branch position. Create independent sibling branches from trunk by default. Use Graphite only when two or more slices have a real dependency. Graphite availability or repository initialization does not turn independent pull requests into a stack.
 
-For a dependent stack, plan here and execute through {{.Skill "graphite"}} task **Split work into a Graphite stack**. For independent pull requests, use the plain Git path in section 3.
+Execute a dependent stack through {{.Skill "graphite"}} task **Split work into a Graphite stack**. Execute independent pull requests through the plain Git path in section 3.
 
 ## Reuse before recreate
 
-When an open PR already covers the work being split, default to repurposing that PR as the stack base. Do not open new PRs that abandon the existing one unless the user explicitly chose otherwise in the approved plan. Surface the disposition and ask before you execute.
+When an open PR already covers the work being split, repurpose that PR as the stack base when doing so preserves its intent and unique work. Do not abandon the existing PR merely to create a cleaner stack.
 
 ## Stack position in titles
 
@@ -35,7 +35,9 @@ Example: `[AGENCY-11267] Add plaid relink URL (PR 2/3)`
 
 ## Hard rules
 
-- Do not create branches, commit, push, or open PRs until the user approves the split plan.
+- Continue through branch creation, commits, pushes, and pull request creation without pausing.
+- Create the smallest slices that are each logically shippable and can pass every required check at their branch position.
+- Group changes only when separating them would break required checks, omit required behavior, or create an unusable intermediate state.
 - When an open PR exists, follow **Reuse before recreate** above.
 - Follow {{.Rule "git"}} for all repository mutations and worktree handling.
 - A recoverable snapshot preserves work. It does not require leaving an existing open PR untouched after a split request.
@@ -47,7 +49,7 @@ Example: `[AGENCY-11267] Add plaid relink URL (PR 2/3)`
 
 Compare the current work to the repo's default branch, including committed and uncommitted changes. Summarize the real slices you see, and use the chat history to recover intent.
 
-Before proposing slices, find ownership signals for the touched paths (`CODEOWNERS`, nested ownership files, `tools/ownership/PRODUCTOWNERS`, or repo equivalents) and use them to identify natural reviewer boundaries.
+Before dividing the work, find ownership signals for the touched paths (`CODEOWNERS`, nested ownership files, `tools/ownership/PRODUCTOWNERS`, or repo equivalents). Use them to identify natural reviewer boundaries.
 
 Check for existing open PRs that already cover this work:
 
@@ -59,9 +61,9 @@ For each PR number returned, run `gh pr view <number> --json body,title,url,stat
 
 Record every open PR number, branch, and URL. If the user mentioned a PR by number, confirm it with `gh pr view <number>`.
 
-Classify the approved slices as independent or dependent. Do not use Graphite availability as the classification.
+Classify each dependency between slices. Do not use Graphite availability as the classification.
 
-When `git worktree list` shows more than one checkout, record which path owns trunk before proposing slices:
+When `git worktree list` shows more than one checkout, record which path owns trunk before dividing the work:
 
 ```bash
 git worktree list
@@ -69,42 +71,29 @@ git worktree list
 
 Follow {{.Rule "git"}} for trunk and worktree safety. A dependent stack also follows {{.Skill "graphite"}}.
 
-## 2. Propose the split
+## 2. Build the split map
 
-Use judgment on detail. Usually PR titles are enough. Add a one-line scope note only when a title is unclear. Show a Mermaid diagram when there are multiple slices.
+Write the pull request titles and their branch relationships, then continue immediately. Add a one-line scope note only when a title is unclear. Show a Mermaid diagram only when it clarifies a dependency.
 
-Optimize for reviewer-aligned PRs with minimal unrelated diff. Split independent owners or concerns. Keep tightly coupled changes together. When stacking is necessary, order foundations before consumers.
+Split at every logical boundary where the lower slice and remaining work can each stay shippable and pass required checks. Keep tests with the behavior they prove. Keep a migration with the minimum compatible application change. Keep generated output with the source change that produces it.
+
+Use ownership boundaries as additional split signals. Do not combine independently shippable behavior merely because one reviewer owns both areas. When stacking is necessary, order foundations before consumers.
 
 Default to independent PRs off the default branch. Stack PRs only when the dependency is real.
 
-State the disposition of every existing open PR explicitly. Use one of these labels:
+Repurpose an existing open PR as the stack base when it covers the work and preserves its intent. Thin that branch to the bottom slice. Replace and close the PR only when the new split preserves all its intent and unique work. Honor any existing instruction to leave the PR untouched. Otherwise, reuse or replace it.
 
-- **Repurpose as stack base**: keep the open PR and thin it to the bottom slice (default)
-- **Replace and close**: open a new stack and close the old PR
-- **Leave untouched**: keep the existing PR unchanged (only when the user asks explicitly)
-
-State which execution path you will use after approval:
-
-- **Graphite stack** only when the slices depend on each other.
-- **Plain Git sibling branches** when the slices are independent, or when Graphite is unavailable or declined for a dependent stack.
-
-Ask for approval through the native harness question tool required by {{.Skill "ask-questions"}} before starting.
-
-When one or more existing open PRs were detected, the approval question must include these options in this order. Repeat the question for each open PR when more than one exists:
-
-1. Repurpose existing PR #<number> as the base of the stack (recommended)
-2. Create a new stack from trunk and leave #<number> alone
-3. Other
+Use a Graphite stack only for dependent slices. Use plain Git sibling branches for independent slices. Use plain Git when Graphite is unavailable for a dependent stack.
 
 ## 3. Execute the split
 
 ### Graphite path for a dependent stack
 
-After approval, switch to {{.Skill "graphite"}} and run **Split work into a Graphite stack** with the approved plan. Do not reimplement those steps here.
+Switch to {{.Skill "graphite"}} and run **Split work into a Graphite stack** with the split map. Do not reimplement those steps here.
 
-### Plain Git path for independent pull requests
+### Plain Git path
 
-Use this path for independent slices. Also use it when Graphite is unavailable or declined for a dependent split.
+Use this path for independent slices. Also use it when Graphite is unavailable for a dependent split.
 
 If there is uncommitted work, save a recoverable snapshot without changing the working tree:
 
@@ -115,10 +104,11 @@ if [ -n "$SHA" ]; then
 fi
 ```
 
-For each approved slice:
+For each split-map entry:
 
-1. Follow {{.Rule "git"}} to create the sibling branch from the remote trunk, stage the approved slice, create a signed commit, verify it, and push it.
-2. Check out that branch and invoke {{.Skill "pr"}}. That skill owns the title, body, existing-PR handling, user-visible draft, and GitHub write.
+1. Reuse and thin its recorded branch when the entry covers an existing PR. Create a dependent branch from its recorded parent. Create only an independent branch from the remote trunk.
+2. Follow {{.Rule "git"}} to stage the slice, create a signed commit, verify it, and push it.
+3. Check out that branch and invoke {{.Skill "pr"}} to create or update the pull request.
 
 ## 4. Report back
 
