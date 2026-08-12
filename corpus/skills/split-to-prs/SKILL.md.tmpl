@@ -91,7 +91,7 @@ Use a Graphite stack only for dependent slices. Use plain Git sibling branches f
 
 Switch to {{.Skill "graphite"}} and run **Split work into a Graphite stack** with the split map. Do not reimplement those steps here.
 
-### Plain Git path for independent pull requests
+### Plain Git path
 
 Use this path for independent slices. Also use it when Graphite is unavailable for a dependent split.
 
@@ -104,10 +104,11 @@ if [ -n "$SHA" ]; then
 fi
 ```
 
-For each slice:
+For each split-map entry:
 
-1. Follow {{.Rule "git"}} to create the sibling branch from the remote trunk. Stage the slice, create a signed commit, verify it, and push it.
-2. Check out that branch and invoke {{.Skill "pr"}} to create or update the pull request.
+1. Reuse and thin its recorded branch when the entry covers an existing PR. Create a dependent branch from its recorded parent. Create only an independent branch from the remote trunk.
+2. Follow {{.Rule "git"}} to stage the slice, create a signed commit, verify it, and push it.
+3. Check out that branch and invoke {{.Skill "pr"}} to create or update the pull request.
 
 ## 4. Report back
 
