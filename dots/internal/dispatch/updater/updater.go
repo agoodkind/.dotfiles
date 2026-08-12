@@ -15,6 +15,7 @@ import (
 
 	"goodkind.io/.dotfiles/internal/clock"
 	"goodkind.io/.dotfiles/internal/cmdexec"
+	"goodkind.io/.dotfiles/internal/gitdir"
 	"goodkind.io/.dotfiles/internal/runner"
 	syncer "goodkind.io/.dotfiles/internal/sync"
 	"goodkind.io/.dotfiles/internal/sync/common"
@@ -33,6 +34,10 @@ func Run(
 	dispatchLogger *telemetry.Logger,
 ) error {
 	ctx = telemetry.WithRun(ctx)
+	if _, isWorktree := gitdir.LinkedWorktree(ctx, dotfiles, dispatchLogger); isWorktree {
+		dispatchLogger.InfoContext(ctx, "updater: linked worktree, skipping")
+		return nil
+	}
 	notifyf := func(level string, message string) {
 		if err := telemetry.Notify(level, message, notifyLogPath, telemetry.RunID(ctx)); err != nil {
 			dispatchLogger.WarnContextWithErr(ctx, "notification write failed", err)
