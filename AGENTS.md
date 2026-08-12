@@ -144,12 +144,13 @@ output comes from the Go command directly rather than shell-side tee helpers.
 ### Syncing from a Linked Worktree
 
 `dots sync` always runs the normal sync pipeline in dry-run mode from a linked
-git worktree. It exits successfully after reporting each skipped write and
-names the main checkout that can apply changes.
+git worktree. It exits successfully. Each pipeline step logs
+`dry-run: no changes applied`. The output names the main checkout that can
+apply changes.
 
-The background updater uses the same path. It skips repository updates and
-weekly maintenance, runs the sync dry run, and queues an informational notice
-for the next shell.
+The background updater uses the same path. It skips repository updates. It
+skips weekly maintenance. It runs the sync dry run. It queues an informational
+notice for the next shell.
 
 A linked worktree can never apply a sync. Run sync from the main checkout to
 rewrite `$HOME`.
