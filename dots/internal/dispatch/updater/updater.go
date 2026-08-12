@@ -35,8 +35,11 @@ func Run(
 ) error {
 	ctx = telemetry.WithRun(ctx)
 	if _, isWorktree := gitdir.LinkedWorktree(ctx, dotfiles, dispatchLogger); isWorktree {
-		dispatchLogger.InfoContext(ctx, "updater: linked worktree, skipping")
-		return nil
+		dispatchLogger.InfoContext(ctx, "updater: linked worktree, running sync dry run")
+		if statusDir != "" {
+			_ = os.WriteFile(filepath.Join(statusDir, "status"), []byte("sync"), 0o600)
+		}
+		return runSyncOnly(ctx, dotfiles, dispatchLogger)
 	}
 	notifyf := func(level string, message string) {
 		if err := telemetry.Notify(level, message, notifyLogPath, telemetry.RunID(ctx)); err != nil {
@@ -109,7 +112,6 @@ func runSyncOnly(ctx context.Context, dotfiles string, dispatchLogger *telemetry
 		DryRun:         false,
 		UseDefaults:    true,
 		StrictMode:     false,
-		AllowWorktree:  false,
 	})
 	if runErr != nil {
 		dispatchLogger.WarnContextWithErr(ctx, "updater: sync exited with non-zero status", runErr)
@@ -134,7 +136,6 @@ func doWeeklyUpdate(ctx context.Context, dotfiles, weeklyMarkerPath string, disp
 		DryRun:         false,
 		UseDefaults:    true,
 		StrictMode:     false,
-		AllowWorktree:  false,
 	})
 	if runErr != nil {
 		dispatchLogger.WarnContextWithErr(ctx, "updater: weekly sync exited with non-zero status", runErr)

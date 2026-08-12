@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"io"
 	"os"
 	"os/exec"
@@ -33,13 +32,36 @@ func TestRunSyncUsesDryRunInLinkedWorktree(t *testing.T) {
 	if !strings.Contains(output, "dry-run: no changes applied") {
 		t.Fatalf("output = %q, want dry-run output", output)
 	}
-	if !strings.Contains(output, "linked worktree") || !strings.Contains(output, "--allow-worktree") {
-		t.Fatalf("output = %q, want linked-worktree guidance", output)
+	mainCheckout, err := filepath.EvalSymlinks(canonicalRoot)
+	if err != nil {
+		t.Fatalf("resolving main checkout: %v", err)
+	}
+	if !strings.Contains(output, "linked worktree") || !strings.Contains(output, "Run sync from "+mainCheckout) {
+		t.Fatalf("output = %q, want linked-worktree guidance with %s", output, mainCheckout)
+	}
+	if strings.Contains(output, "--allow-worktree") {
+		t.Fatalf("output = %q, want no worktree override guidance", output)
 	}
 
 	notificationPath := filepath.Join(homeDirectory, ".cache", "dotfiles", "notifications")
-	if _, err := os.Stat(notificationPath); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("notification path error = %v, want not exist", err)
+	notifications, err := os.ReadFile(notificationPath)
+	if err != nil {
+		t.Fatalf("reading notifications: %v", err)
+	}
+	notificationText := string(notifications)
+	if !strings.Contains(notificationText, "|info|") || strings.Contains(notificationText, "|error|") {
+		t.Fatalf("notifications = %q, want informational dry-run entry", notificationText)
+	}
+}
+
+func TestRunSyncRejectsAllowWorktreeFlag(t *testing.T) {
+	homeDirectory := t.TempDir()
+	t.Setenv("HOME", homeDirectory)
+	t.Setenv("DOTFILES_LOG", filepath.Join(homeDirectory, ".cache", "dotfiles", "dots.log"))
+
+	exitCode := run([]string{"sync", "--dry-run", "--allow-worktree"})
+	if exitCode != 2 {
+		t.Fatalf("run(sync --allow-worktree) exit code = %d, want 2", exitCode)
 	}
 }
 

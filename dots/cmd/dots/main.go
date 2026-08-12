@@ -11,7 +11,6 @@ import (
 
 	cursorSync "goodkind.io/.dotfiles/internal/cursor/syncer"
 	dispatcher "goodkind.io/.dotfiles/internal/dispatch"
-	"goodkind.io/.dotfiles/internal/gitdir"
 	installer "goodkind.io/.dotfiles/internal/install"
 	perfcmd "goodkind.io/.dotfiles/internal/perf"
 	"goodkind.io/.dotfiles/internal/runner"
@@ -100,7 +99,7 @@ func runSync(args []string) int {
 	for _, arg := range args {
 		if arg == "-h" || arg == "--help" {
 			logInfo("Usage:")
-			logInfo("  dots sync [--repair] [--quick] [--skip-git] [--skip-network] [--skip-cursor-sync] [--dry-run] [--use-defaults] [--strict] [--allow-worktree]")
+			logInfo("  dots sync [--repair] [--quick] [--skip-git] [--skip-network] [--skip-cursor-sync] [--dry-run] [--use-defaults] [--strict]")
 			return 0
 		}
 	}
@@ -114,25 +113,11 @@ func runSync(args []string) int {
 	dryRun := fs.Bool("dry-run", false, "run through sync steps without applying changes")
 	useDefaults := fs.Bool("use-defaults", false, "use non-interactive installer defaults")
 	strictMode := fs.Bool("strict", false, "fail on non-critical sync step failures")
-	allowWorktree := fs.Bool("allow-worktree", false, "allow syncing from a linked git worktree")
 	if err := fs.Parse(args); err != nil {
 		logWarn(err.Error())
 		printUsage()
 		return 2
 	}
-	dotfiles := os.Getenv("DOTDOTFILES")
-	if dotfiles == "" {
-		dotfiles = filepath.Join(os.Getenv("HOME"), ".dotfiles")
-	}
-	canonicalCheckout := ""
-	if !*allowWorktree {
-		layout, isWorktree := gitdir.LinkedWorktree(context.Background(), dotfiles, appLogger)
-		if isWorktree {
-			*dryRun = true
-			canonicalCheckout = layout.MainWorktree()
-		}
-	}
-
 	if err := syncer.Run(context.Background(), syncer.Options{
 		RepairMode:     *repairMode,
 		QuickMode:      *quickMode,
@@ -143,15 +128,10 @@ func runSync(args []string) int {
 		DryRun:         *dryRun,
 		UseDefaults:    *useDefaults,
 		StrictMode:     *strictMode,
-		AllowWorktree:  *allowWorktree || canonicalCheckout != "",
 	}); err != nil {
 		logError("sync failed", err)
 		return 1
 	}
-	if canonicalCheckout != "" {
-		logInfo("Sync ran in dry-run mode from a linked worktree. Run sync from " + canonicalCheckout + " to apply changes, or pass --allow-worktree to sync this worktree.")
-	}
-
 	return 0
 }
 

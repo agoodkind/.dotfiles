@@ -2,7 +2,6 @@ package updater
 
 import (
 	"context"
-	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,7 +11,7 @@ import (
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
-func TestRunSkipsLinkedWorktreeWithoutNotification(t *testing.T) {
+func TestRunUsesSyncDryRunForLinkedWorktree(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git is not available")
 	}
@@ -23,8 +22,10 @@ func TestRunSkipsLinkedWorktreeWithoutNotification(t *testing.T) {
 	worktreeRoot := filepath.Join(t.TempDir(), "linked")
 	runUpdaterTestGit(t, canonicalRoot, "worktree", "add", "-b", "feature", worktreeRoot)
 
-	logPath := filepath.Join(homeDirectory, ".cache", "dotfiles", "dispatch.log")
-	logger, err := telemetry.NewLogger(logPath)
+	dispatchLogPath := filepath.Join(homeDirectory, ".cache", "dotfiles", "dispatch.log")
+	syncLogPath := filepath.Join(homeDirectory, ".cache", "dotfiles", "sync.log")
+	t.Setenv("DOTFILES_LOG", syncLogPath)
+	logger, err := telemetry.NewLogger(dispatchLogPath)
 	if err != nil {
 		t.Fatalf("NewLogger: %v", err)
 	}
@@ -35,7 +36,7 @@ func TestRunSkipsLinkedWorktreeWithoutNotification(t *testing.T) {
 		filepath.Join(homeDirectory, "status"),
 		filepath.Join(homeDirectory, "weekly_update"),
 		168,
-		logPath,
+		dispatchLogPath,
 		logger,
 	)
 	if closeErr := logger.Close(); closeErr != nil {
@@ -45,17 +46,41 @@ func TestRunSkipsLinkedWorktreeWithoutNotification(t *testing.T) {
 		t.Fatalf("Run: %v", runErr)
 	}
 
-	logContents, err := os.ReadFile(logPath)
+	dispatchLogContents, err := os.ReadFile(dispatchLogPath)
 	if err != nil {
 		t.Fatalf("reading dispatch log: %v", err)
 	}
-	if !strings.Contains(string(logContents), "updater: linked worktree, skipping") {
-		t.Fatalf("dispatch log = %q, want linked-worktree skip", logContents)
+	dispatchLogText := string(dispatchLogContents)
+	if !strings.Contains(dispatchLogText, "updater: linked worktree, running sync dry run") {
+		t.Fatalf("dispatch log = %q, want linked-worktree sync path", dispatchLogText)
+	}
+	if !strings.Contains(dispatchLogText, "updater: sync exited successfully") {
+		t.Fatalf("dispatch log = %q, want successful sync completion", dispatchLogText)
+	}
+
+	syncLogContents, err := os.ReadFile(syncLogPath)
+	if err != nil {
+		t.Fatalf("reading sync log: %v", err)
+	}
+	syncLogText := string(syncLogContents)
+	if !strings.Contains(syncLogText, "dry-run: no changes applied") {
+		t.Fatalf("sync log = %q, want dry-run pipeline output", syncLogText)
+	}
+	if strings.Contains(syncLogText, "FATAL: refusing") {
+		t.Fatalf("sync log = %q, want no worktree refusal", syncLogText)
 	}
 
 	notificationPath := filepath.Join(homeDirectory, ".cache", "dotfiles", "notifications")
-	if _, err := os.Stat(notificationPath); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("notification path error = %v, want not exist", err)
+	notifications, err := os.ReadFile(notificationPath)
+	if err != nil {
+		t.Fatalf("reading notifications: %v", err)
+	}
+	notificationText := string(notifications)
+	if !strings.Contains(notificationText, "|info|") || !strings.Contains(notificationText, "ran as a dry run from linked worktree") {
+		t.Fatalf("notifications = %q, want informational worktree dry-run entry", notificationText)
+	}
+	if strings.Contains(notificationText, "|error|") || strings.Contains(notificationText, "sync refused") {
+		t.Fatalf("notifications = %q, want no worktree error", notificationText)
 	}
 }
 
