@@ -93,24 +93,26 @@ Write for a lightly technical reviewer who may have no prior context. The review
 Use this structure as a starting point, then adjust it to fit the change:
 
 ```markdown
-### Summary
+### Problem
 
 Ticket: https://agency.ticketing.net/browse/TICKET-12345
 
-One short paragraph that explains what changes and why it matters in plain language.
-
-## Why
-
-One short paragraph that explains the review-critical reason for the change when that reason is not obvious from the diff.
-
-## Change
-
-One or two short paragraphs that explain what changed and why the new behavior follows from the change.
+Because of the current behavior or constraint, a concrete problem occurs. This PR changes the relevant behavior to produce the intended outcome.
 ```
 
-Adjust section names and order when that makes the PR easier to scan. Useful alternatives are `Problem`, `Fix`, `Impact`, `Rollout`, and `Demo`. Use the fewest sections that make the review clear.
+For a new capability, use this shape instead:
 
-Use section boundaries to separate different jobs. `### Summary` should orient the reviewer to the change. Motivation or background should be separate when it is load-bearing or too large to fit naturally in the summary. Mechanics should be separate when they would make the summary dense.
+```markdown
+### New feature
+
+Ticket: https://agency.ticketing.net/browse/TICKET-12345
+
+Because a user or system needs a capability that does not exist, a concrete workflow is blocked or incomplete. This PR adds the capability and explains the resulting behavior.
+```
+
+Choose `Problem` for a bug, limitation, or maintenance change. Choose `New feature` for a new capability. Add `Fix`, `Impact`, `Rollout`, or `Demo` only when it gives the reviewer distinct, load-bearing information.
+
+Open with the cause or context, then describe its consequence. Follow with what this PR changes and the resulting behavior. The sentences should form one causal narrative instead of a list of disconnected implementation facts.
 
 Apply {{.Rule "writing"}} and {{.Skill "make-readable"}} in addition to the pull request-specific rules below.
 
@@ -123,9 +125,10 @@ Writing rules:
 - Reject bloviating. `Bloviate` means to write verbosely and windily, so remove pompous, inflated, self-important, or low-substance prose.
 - Keep each paragraph readable, avoid densely packed formatting. Optimize for quick scanning of the PR description from a distance.
 - Prefer everyday product or system nouns before code names, especially in the first explanation.
-- Explain the behavioral or qualitative change first, then add code anchors only where they help reviewers orient.
+- Explain the cause or need before the behavioral or qualitative change, then add code anchors only where they help reviewers orient.
 - Explain why the change exists, not only what changed. If linked context says the old path is being retired, a new system is becoming the source of truth, or an event/API is now the official contract, include that reason.
-- Prefer prose shaped like "this changes behavior X because of Y" over dense implementation detail.
+- Prefer a flowing causal shape: "Because of Z, X happened. This PR changes Y to produce the intended behavior."
+- Do not open with a result-only construction such as "X now does Y." Give the reviewer the problem or need first.
 - Include only details that help the reviewer understand, verify, or safely ship the PR.
 - Do not narrate literal code changes, the PR description provides high-level context for the change, and the PR diff carries the code change.
 - Do not add irrelevant adjacent context just because it is available.
@@ -159,28 +162,18 @@ Comparison rules:
 
 Use these as drafting patterns, not as fixed templates.
 
-### Context-Driven Why
+### New Feature With Context
 
 ```markdown
 Title: [TICKET-12345] Publish account update events
 
 Depends on: https://github.com/example-org/example-repo/pull/123
 
-### Summary
+### New feature
 
-This change is to make bank-account-service service start publishing an update event when an existing account record changes.
+Because direct table replication is being retired, consumers need an event-based source of truth for account changes. This PR publishes an update event whenever an existing account changes.
 
-## Why
-
-According to the replication deprecation [announcement](https://enterprise.slack.com/archives/...), consumers are encouraged move away from direct table replication.
-
-Instead, events are now the official integration path, and should be used as a source of truth instead of reading replicated tables.
-
-## Change
-
-The account model now builds and publishes the update event and the publish path is wired into every service path that change account state.
-
-The event includes the reason for the update, the changed fields, the previous account snapshot, and the current account snapshot.
+The event carries the update reason, changed fields, previous account snapshot, and current account snapshot. Every service path that changes account state publishes the same contract.
 ```
 
 ### No Noisy Testing Section
@@ -188,17 +181,11 @@ The event includes the reason for the update, the changed fields, the previous a
 ```markdown
 Title: [ACME-310] Update PR skill workflow for existing PR state
 
-### Summary
+### Problem
 
-This change reorganizes the `pr` skill into a strict step-by-step workflow.
+Because the existing guidance mixes branch inspection with PR editing, agents can edit an open PR without confirming the requested scope. This PR separates branch reading, drafting, GitHub writes, and final output into explicit steps.
 
-Agents now choose the right path before drafting or editing a PR.
-
-## Change
-
-The workflow now separates branch reading, title drafting, body drafting, GitHub writes, and final output.
-
-Open-PR handling is explicit, so agents ask before editing an existing open PR unless the user clearly asked for that update.
+The workflow requires agents to choose the correct path before drafting. Agents ask before editing an existing open PR unless the user clearly requested that update.
 ```
 
 Do not add `## Testing` unless material verification actually ran for the behavior of the change.
@@ -208,13 +195,9 @@ Do not add `## Testing` unless material verification actually ran for the behavi
 ```markdown
 Title: Clear stale retry warning after recovery
 
-### Summary
+### Problem
 
-A recovered request no longer leaves a warning visible after the retry succeeds.
-
-## Change
-
-The page clears the warning when a retry returns a result, so the status matches the recovered request.
+Because a failed attempt leaves its warning in place, a later successful retry still looks unsuccessful. This PR clears the warning when the retry returns a result, so the page reflects the recovered request.
 ```
 
 This small follow-up has no ticket. The title and body omit ticket placeholders instead of inventing tracking context.
@@ -239,11 +222,9 @@ Ticket: [`AGENCY-11414`](https://agency.ticket.net/browse/AGENCY-11414)
 ```markdown
 Title: Preserve catalog sort after clearing filters
 
-### Summary
+### Problem
 
-Clearing Acme catalog filters now preserves the selected sort order. People can broaden the results without losing their preferred ordering.
-
-## Change
+Because `Clear filters` also resets the selected sort order, people must restore their preferred ordering after broadening the results. This PR limits the action to filters, so the selected sort order remains active.
 
 | Reviewer question | Before | After |
 | --- | --- | --- |
@@ -259,11 +240,9 @@ This table explains the user consequence. It does not list the changed screens, 
 ```markdown
 Title: [ACME-218] Publish warehouse inventory changes
 
-### Summary
+### New feature
 
-Warehouse displays now receive inventory changes through an event contract instead of polling a full snapshot.
-
-## Change
+Because polling delays inventory updates and transfers the full snapshot each time, warehouse displays need a smaller event-based contract. This PR publishes each committed inventory change with the context a display needs.
 
 | Contract question | Before | After |
 | --- | --- | --- |
@@ -279,9 +258,9 @@ This table defines the boundary reviewers must validate. It does not repeat publ
 ```markdown
 Title: Explain why upload is disabled
 
-### Summary
+### Problem
 
-The Acme upload dialog now tells people to select a file before the disabled `Upload` action becomes available.
+Because the disabled `Upload` action gives no recovery guidance, people cannot tell how to continue. This PR adds helper text that tells them to select a file.
 
 ## Demo
 
