@@ -1,0 +1,48 @@
+---
+name: open-claude-in-chrome
+description: Use when controlling the operator's live Chromium browser through the open-claude-in-chrome, open-claude-in-chrome-codemode, or open-claude-in-chrome-hybrid MCP server, including repeated browser flows and recorded demonstrations.
+---
+
+# Open Claude in Chrome
+
+Drive the operator's real browser. Its sessions, logins, cookies, and actions are real.
+
+## Browser workflow
+
+1. Use the direct browser tools for the first pass through a flow.
+2. Inspect the page whenever the next action depends on visible state.
+3. Stop before repeating a known sequence.
+4. Replay deterministic repetitions with `execute_code` in one call.
+5. End a batch before the first action that depends on new page state.
+6. Return the state needed for the next decision.
+7. Verify the resulting page after every batch.
+
+Use direct tools for one action, screenshots, zoom, and image-dependent decisions.
+
+## Execute code
+
+Write one inline async arrow function. Prefix every tool with `chrome.`, such as `chrome.navigate(...)`, `chrome.computer(...)`, or `chrome.find(...)`.
+
+Use `chrome.computer({ action: "wait", duration: <seconds>, tabId })` for waits. Do not use `setTimeout`.
+
+Use `chrome.find(...)` when an element may have moved. Reuse exact actions when the page has not changed since the first pass.
+
+Screenshots are not visible inside `execute_code`. Call the top-level `computer` tool for screenshots or zoom.
+
+If a batch fails, inspect the error. Add a condition wait, retry the failed step, or replace a stale coordinate with a fresh element reference.
+
+## Recorded demonstrations
+
+When a `recording_complete` channel event arrives, call `recording_ack` immediately with its `recording_id`.
+
+Read `SCHEMA_<version>.md` before `trace.json`. Align the behavior, cursor, images, and cognitive tracks by timestamp. Do not merge the tracks.
+
+Use narration to interpret inferred events. Treat cursor movement with narration and no behavior event as pointing or explanation.
+
+Apply the demonstrated intent to the requested task. Wait when the operator has not requested an action.
+
+## Recovery
+
+If `execute_code` reports that Wrangler is starting, retry after a short wait.
+
+If the sandbox remains unavailable, continue with the hybrid server's direct browser tools. Reconnect the Model Context Protocol server to restart its sandbox.
