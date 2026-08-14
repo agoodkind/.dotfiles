@@ -119,7 +119,7 @@ mutation {
 }
 ```
 
-Resolve only after the change is genuinely addressed. When `required_review_thread_resolution` is active in the ruleset, every required thread must be resolved before merge.
+Do not ask the user for approval before resolving a thread whose concern is genuinely fixed or superseded. Resolve it autonomously after verifying the current code and relevant checks. When `required_review_thread_resolution` is active in the ruleset, every required thread must be resolved before merge.
 
 ## 6. Fix CI within PR scope
 
