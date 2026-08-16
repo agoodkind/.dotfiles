@@ -13,11 +13,13 @@ Help reviewers find the answer quickly.
 
 ## Overview
 
-Good technical documentation feels light, precise, and easy to scan. This rule provides the model for plain language and accessibility and style guide for restrained, polished wording.
+Good technical documentation feels light, precise, and easy to scan. This rule is the model for plain language, accessibility, and restrained wording.
 
-A useful document includes only details that help readers understand, verify, or ship safely.
+A useful document keeps only the details that help a reader understand the system, verify a claim, or ship a change safely.
 
 ## Write for review
+
+Explanation pages and review prose use this voice. Tutorials and how-to guides do not.
 
 Prose for review should be clear enough for a critical Apple Marketing review.
 
@@ -38,7 +40,6 @@ A clear page or pull request (PR) description starts with the result.
 - The summary sentence states the behavior or qualitative result.
 - Each later section carries one idea whose meaning, purpose, or operational scope is clear on its own.
 - Each task heading starts with an action verb.
-- Numbered steps describe ordered work.
 - Notes appear beside the step they clarify.
 
 ## Keep detail load bearing
@@ -47,7 +48,7 @@ A detail belongs when it helps the reviewer understand, verify, or ship safely.
 
 - Nonessential context stays out of the document.
 - Unasked recommendations stay out of review prose.
-- Repeated detail creates drift. Keep one durable home. Delete or consolidate every other copy. Do not add a link as a way to keep the duplicate.
+- Repeated detail creates drift.
 - Adjacent context belongs only when it changes risk or review.
 - Implementation detail stays at the system level.
 - The prose explains behavior before naming code.
@@ -68,17 +69,20 @@ The most useful information belongs before supporting detail.
 
 ## Write plain sentences
 
-Clear sentences can stand alone.
+Clear sentences can stand alone, and they should sound natural when spoken aloud.
 
 - Each sentence has a concrete subject and a concrete verb.
-- Each sentence stays under 20 words when that preserves meaning.
-- Separate ideas work better as separate sentences.
+- Join related clauses with connectors such as "and", "so", "since", commas, semicolons, colons, or parentheses when they are one thought.
+- Do not chop one thought into stub sentences or punchy one-liners. A short stub fails when it is only the front half of a longer thought.
+- Length is not the test. A longer sentence is correct when it carries one finished thought.
 - Verbose, inflated, or low-substance prose should become shorter or disappear.
 - The {{.Skill "make-readable"}} rule helps remove dense or repetitive prose.
 - The {{.Skill "plain"}} rule helps define unexplained labels before use.
 - The {{.Skill "remove-emdashes"}} rule helps split interrupted sentences into separate thoughts.
 
 ## Write direct instructions
+
+Tutorials, how-to guides, and task steps use this voice. Explanation and reference pages do not carry command recipes as the spine of the page.
 
 Direct instructions tell the reader what to do and what will happen.
 
@@ -88,6 +92,7 @@ Direct instructions tell the reader what to do and what will happen.
 - Imperative mood keeps steps direct.
 - Irreversible results belong before the action.
 - Externally visible results belong before the action.
+- Ordered work is a numbered list. Do not write a procedure as period-separated commands in a paragraph.
 
 ## Choose precise words
 
@@ -150,63 +155,69 @@ Default is no link.
 
 - Before adding or keeping any link, search the surrounding document set for the same fact, procedure, or ownership claim.
 - If a sibling doc already owns it, delete or consolidate this page's copy. Do not leave both and paper over with a link.
-- Link a given destination at most once per page. Later mentions use ordinary product or system nouns, not a second link and not a bare filename, path, or backtick path that only asserts ownership.
-- Do not launder a link into a bare filename or path. Removing `[service_mapping.yml](...)` and leaving `` `service_mapping.yml` `` or `service_mapping.yml` fails the rewrite when the sentence only says where a value lives.
+- Link a given destination at most once per page. Later mentions use ordinary product or system nouns, not a second link.
 - Link only when the destination carries material this page does not already give the reader, and that material changes what the reader understands, verifies, or does.
-- Do not link a source file only to prove ownership or to point at values the reader can find by reading the codebase.
 - Do not link sibling docs for navigation decoration when the current page already carries the needed fact, or when the fact should instead move into one home.
+- Do not narrate where a page lives. Leave the tree self-discoverable.
+- Do not sprinkle links that only name ownership or location.
+- A load-bearing see-more is allowed when the reader must leave this page, and only after this page has named the condition or topic the destination covers. Prefer "To learn more about X, see Y" or "See all X under Y".
 - Link text stays free of backticks.
-- Prefer local durable homes over copied detail when a link is justified.
-- Current behavior matters more than history.
-- Historical notes appear only when current work requires them.
 
 ### Link examples
 
 **Bad** (same target linked repeatedly; links only name ownership):
 
-> Guest ids live in [service_mapping.yml](...). Bridge addresses live in [networks.tf](...). Guest addresses also live in [service_mapping.yml](...). The [suburban module](...) owns the rest. Watchdog addresses come from [service_mapping.yml](...).
+> Invoice numbers for Acme Inc are listed in [invoices.yml](...). Queue names are listed in [queues.tf](...). Invoice numbers are also listed in [invoices.yml](...). The [helios module](...) owns the rest of the payroll layout. Reminder schedules also come from [invoices.yml](...).
 
 **Bad** (laundered: link removed, filename kept):
 
-> Guest identities share one inventory file, `service_mapping.yml`, so a renumber changes one line. Bridge names live in the suburban OpenTofu networks file.
+> Acme Inc invoice identities share one ledger file, named `invoices.yml`, so changing an invoice number updates a single line. Queue names live in the Helios queues file.
 
 **Good** (behavior only):
 
-> Guest identities, hostnames, and addresses share one inventory, so a renumber changes one line. What this page adds is the behavior each bridge carries.
+> Acme Inc invoice identities share one ledger, so changing an invoice number updates a single line. This page adds the behavior each pay run carries for employees.
 
 **Bad** (ownership sentence with no reader action):
 
-> Prefix sizes are set in `group_vars/...`.
+> Tax table names for Acme Inc are set in `group_vars/...`.
 
 **Good** (operational fact):
 
-> Prefix delegation sizes match production, and NPT translates the first `/60` of each delegation.
+> Tax tables for Acme Inc match production, and Helios applies the current table to every pay run.
 
-**Good** (relative in-repo link when the reader must edit that file):
+**Bad** (narrating where a page lives):
 
-> Set `initialization.datastore_id` to `local-zfs` in [opentofu/suburban/vms.tf](../../opentofu/suburban/vms.tf), or cloud-init drive regen fails with storage unavailable.
+> A single-page explanation of Helios is [docs/helios.md](docs/helios.md).
+
+**Good** (self-discoverable; load-bearing see-more only):
+
+> Helios calculates pay and posts results to the ledger, but sometimes a pay run gets stuck. To learn more about a stuck pay run, see [Recover a stuck pay run](recover.md).
+
+**Good** (load-bearing "see all under"):
+
+> Each pay-period record lists the period start, the period end, and the tax table name. See all Helios pay-run fields under [Pay run reference](payruns.md).
 
 **Good** (absolute out-of-repo link when the artifact is outside this repository):
 
-> WireGuard handshake and cryptography steps follow the [WireGuard protocol](https://www.wireguard.com/protocol/).
+> Helios pay-period timestamps follow [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339).
 
 **Bad** (filename quoted without a markdown link):
 
-> Edit `service_mapping.yml` and renumber the guest.
+> Open `tax-tables.yml` and then change the Acme Inc rate for the current year.
 
 **Good** (same edit step, relative markdown link):
 
-> Edit [service_mapping.yml](../../ansible/inventory/group_vars/all/service_mapping.yml) and renumber the guest.
+> Open [tax-tables.yml](../../helios/tax-tables.yml) and then change the Acme Inc rate for the current year, so Helios keeps the old rate until that change is saved.
 
 ### Duplication examples
 
 **Bad** (two docs both carry the same gotcha; each links to the other):
 
-> Page A and page B both explain the cloud-init datastore rule and link to each other.
+> Two pages both explain Acme Inc's ledger posting rule, and each page links to the other for the same warning.
 
 **Good** (one durable home; the other page deletes the copy):
 
-> The gotcha lives only in the suburban operations page. The testbed page does not restate it and does not link unless the reader must leave this page to act on that gotcha.
+> The ledger posting rule lives only on the Helios how-to page. The staging page does not restate that rule, and it does not link unless the reader must leave this page to act on the warning.
 
 ## Name sources only to act
 
@@ -215,25 +226,62 @@ Default is no filename, path, module path, or inventory basename in prose.
 - State the operational fact or behavior. Do not say that a fact "lives in", "comes from", "is owned by", or "is set in" a file unless the next sentence is an action the reader takes in that file.
 - A filename, path, or symbol appears only when the reader must open, edit, or run that exact artifact to complete a documented step.
 - Replacing a link with a backtick path, plain path, or "the X file" ownership phrase is the same failure as the original link litter.
-- Prefer everyday system nouns ("guest inventory", "bridge layout", "suburban module") over basenames when a referent is needed at all.
-- Avoid excessive ownership narration such as "belong in", "live in", "lives at", or "to find X, see Y" unless naming the file is part of an open, edit, or run step.
+- Prefer everyday system nouns ("employee roster", "pay run", "Helios") over basenames when a referent is needed at all.
+- Avoid ownership narration such as "belong in", "live in", or "lives at". Do not write "to find X, see Y" as a location tour.
 - When a filename or path does appear after those gates, it MUST be a clickable markdown link. A bare backtick path, a bare path, or plain text that names the file fails the rewrite.
 - Link in-repo artifacts with a relative path from the current page. Link out-of-repo artifacts with an absolute URL. Do not leave an unlinked basename for the reader to hunt.
+
+## One page, one kind
+
+Documentation serves four needs. [Diátaxis](https://diataxis.fr/start-here/) names them tutorials, how-to guides, reference, and explanation. Each page does one of those jobs. Mixing them on one page is the failure. Do not title a how-to as explanation.
+
+**Tutorial.** A tutorial is a lesson in which the reader does something in order to learn. The writer is responsible for the reader's success, and the destination is skill rather than a production outcome.
+
+**How-to guide.** A how-to guide gives practical directions to a competent reader who has a real goal. The destination is finished work: configure, recover, diagnose, or change.
+
+**Reference.** A reference page states neutral facts that are accurate, complete, and free of interpretation. It maps the thing it describes, and it does not tell the reader what to do with the map.
+
+**Explanation.** An explanation page gives context and background. It answers what the system is, what it does today, and why the shape is the shape, and it does not carry a command recipe as the spine of the page.
+
+Tutorials and how-to guides serve action. Reference and explanation serve knowing. Tutorials and explanation serve study. How-to guides and reference serve work.
+
+A page that explains a system and then includes command recipes, rollback matrices, or recovery snippets is two kinds at once.
+
+## Place pages where this repository already works
+
+The four kinds are a content contract, not a required directory schema. Derive paths from the existing document set, the reader's arrival path, page count, and independently addressable topics. Do not invent a tree because another repository uses it. Do not flatten a large concern into one file. Do not create a directory for a single page.
+
+State which layout the current set supports. Then ask through {{.Skill "ask-questions"}}. Do not pick a tree silently.
+
+## Ask after evaluating the document set
+
+Document layout is a user decision informed by the current set. Evaluate what fits. Then ask.
+
+1. Read the current document set. Record each page's path, size, kind, and whether topics are independently addressable.
+2. Finish every classification the files themselves prove.
+3. Route every remaining type or path choice through {{.Skill "ask-questions"}}. Ask one question at a time. State one verified fact from the corpus, then offer two or three concrete options.
+
+Ask the first load-bearing question that changes the next edit. Typical order:
+
+1. Kind. State the mix the page actually contains. Split into two pages, rewrite this page as one named kind, or cancel?
+2. Placement. State which tree this repository already uses and what the reader arrival supports. Then ask among the concrete paths that fit.
+3. Leaf versus directory. State the page count or independently addressable topics. Keep the leaf, create the matching directory, or cancel?
+4. Entry filename if a directory exists. Offer the two or three names this repository already uses, or the names the reader would actually open.
+5. Next structural step. Split this mixed page, move one kind into the chosen home, or leave paths and fix positioning in prose only?
+
+Do not restructure the whole tree in one pass unless the user chooses that step.
 
 ## Plan document architecture from meaning
 
 Document rewrites are information architecture work, not sentence cleanup.
 
-- Read the relevant document set before changing page boundaries or layout.
 - Search the document set for overlapping facts, procedures, commands, paths, and ownership claims before writing or rewriting a page.
 - Treat every overlap as a consolidation decision: one durable home stays; every other copy is deleted or merged into that home.
-- Identify each page's meaning, purpose, scope, and relationship to the surrounding document set.
-- Derive paths, headings, merges, and splits from the content's meaning, conceptual boundaries, operational function, and place in the larger system, not filenames or bulk patterns.
+- Identify each page's meaning, purpose, scope, kind, and relationship to the surrounding document set.
+- Derive paths, headings, merges, and splits from the content's meaning, conceptual boundaries, function, size, and place in the larger system, not filenames or bulk patterns.
 - Preserve useful existing structure unless the content supports a clearer replacement.
 - Treat prose, document placement, consolidation, and links as one design problem.
-- Keep one durable home for each fact.
-- Do not create `docs/<concern>/overview.md` for a concern that needs only one page. Use `docs/<concern>.md` until the concern has multiple substantive pages that justify a directory.
-- When a concern does justify a directory, do not add `overview.md` by convention. Keep or create it only when it owns distinct, load-bearing synthesis that no specific page carries.
+- Classify the page's kind and the path that fits this repository before naming files. Then ask.
 - Reject file inventories, annotated directory listings, and headings that merely enumerate code locations.
 - Use tables only for genuine comparisons or exact mappings, never as a default index or prose substitute.
 
@@ -246,7 +294,7 @@ Configuration and code own current exact values, mechanics, and defaults. Tests 
 - Facts that live clearly in code, config, or tests stay there. Docs do not mirror them for convenience, because that copy goes stale.
 - A page that only restates another page or the codebase fails the rewrite until the duplicate material is removed.
 - Do not infer behavior from filenames, symbols, stale prose, or assumptions when the source can establish it directly.
-- Historical narration stays out unless current operation depends on it.
+- Current behavior matters more than history. Historical narration stays out unless current operation depends on it.
 
 ## Rewrite with fidelity
 
@@ -266,11 +314,7 @@ An accuracy pass checks every claim against the current sources after the rewrit
 - Verify exact names, values, commands, paths, and defaults against the source that owns them.
 - Remove unsupported claims and correct stale claims instead of preserving them for apparent completeness.
 - Confirm that links resolve to the intended current source.
-- Confirm no stale cross-doc duplicates remain.
-- Confirm each remaining link appears at most once on the page and passes the materiality test.
-- Confirm no sentence asserts ownership with a bare filename, path, backtick path, or "the X file" phrase after a link was removed or instead of stating behavior.
-- Confirm every filename or path in prose is tied to a reader action that requires that artifact.
-- Confirm every filename or path that appears is a clickable markdown link to a relative in-repo path or an absolute out-of-repo URL.
+- Confirm that remaining links and filenames still satisfy Use durable links and Name sources only to act.
 - Keep the accuracy pass separate from the fidelity comparison. Fidelity preserves meaning from the original document, while accuracy checks that preserved meaning against the system as it exists now.
 
 ## Workflow for document rewrites
@@ -278,86 +322,117 @@ An accuracy pass checks every claim against the current sources after the rewrit
 Apply this workflow before generating or restructuring documentation:
 
 1. Read and search the surrounding document set for the same facts, procedures, commands, paths, and ownership claims this page would carry. Map every overlap before drafting.
-2. Read the implementation, configuration, tests, and comments that establish the documented behavior. Separate facts the docs must explain from details the source already explains well. Anything the codebase already owns clearly is a delete candidate in the docs, not a link candidate.
-3. State each page's meaning, purpose, scope, canonical facts, and relationship to nearby pages. Name the single durable home for each overlapping fact.
-4. Decide what stays, moves, merges, splits, or disappears. Prefer delete and consolidate over keep-and-link. Plan structural changes before applying them across the corpus.
+2. Read the implementation, configuration, tests, and comments that establish the documented behavior. Separate facts the docs must explain from details the source already explains well.
+3. Record each page's kind, size, and whether its topics are independently addressable. Ask remaining type and path questions.
+4. Name the single durable home for each overlapping fact. Decide what stays, moves, merges, splits, or disappears only after those questions are answered.
 5. Rewrite the behavioral and operational meaning without narrating code. Preserve examples, constraints, exceptions, and recovery knowledge that readers still need, and only in the durable home.
-6. Inventory every markdown link and every basename or path-like token in prose on the page. Fail the rewrite if any destination appears more than once, if any link fails the materiality test, if any linked sibling still duplicates material this page also carries, if any sentence asserts ownership with a bare filename, path, backtick path, or "the X file" phrase after a link was removed or instead of stating behavior, if any filename or path appears without a reader action that requires that artifact, or if any filename or path appears without a clickable markdown link to a relative in-repo path or an absolute out-of-repo URL. Remove, consolidate, or collapse until the page passes.
-7. Compare the source and rewritten document before and after. Account for every removed or changed claim, and confirm no load-bearing operational knowledge was lost when duplicates were deleted.
-8. Run the accuracy pass against the implementation, configuration, tests, comments, commands, paths, and remaining links.
-9. Read the result as one document set and verify structure, navigation, source ownership, absence of stale duplicates, link uniqueness, materiality, absence of filename laundering, every remaining filename linked, fidelity, accuracy, and prose.
+6. Inventory every markdown link and every basename or path-like token. Fail the rewrite if Use durable links or Name sources only to act is violated.
+7. Compare the source and rewritten document. Account for every removed or changed claim.
+8. Run the accuracy pass.
 
 ## Document architecture as current state
 
-Architecture docs describe the system as it is now, stating behavior first. Link to the code or test that holds a detail only where a reader must leave this page for material it deliberately omits.
+Architecture docs describe the system as it is now, stating behavior first.
 
-- Prefer `docs/<concern>.md` when the concern stands alone. Create `docs/<concern>/` only when multiple substantive pages share that concern, and give each page a specific name.
-- Keep a substantive existing `overview.md` only when it owns synthesis that would otherwise be lost. Its content must justify the page independently of its filename.
-- Let `README.md` or `AGENTS.md` link to the smallest set of meaningful entry points instead of routing every area through an overview page.
-- Doc path segments are single words. Use paths like `docs/deadcode/contract.md`, and never use paths like `docs/dead-code/contract.md`.
+- Prefer a single concern page when that concern is one explanation. Create a concern directory when several pages of the same kind share it, and give each page a specific name.
+- Place each kind in the tree this repository already uses and the user confirms. Size chooses a leaf versus a directory.
+- Doc path segments are single words.
 - Every architecture page states what its subject does today, in present tense.
-- Each statement describes current behavior first, and adds a durable doc or test link only where a reader must leave this page for material it deliberately omits.
 - A behavior doc is not an index of code locations, so do not append a symbol name or file path to every statement.
-- Name a code symbol or file path only when the reader must use that exact artifact; never to prove ownership or locate a value.
 - The enforcing test or rule is the source of truth, and the doc never copies the invariant it enforces.
-- Keep one durable home for each fact. Delete other copies. Link once only when the reader must leave this page for material it deliberately omits.
-- The doc describes what is, not how the decision was reached.
-- Decision history stays out unless current work needs it.
 
-### Content examples
+### Prose examples
 
 **Bad** (hardcoded symbol and path):
 
-> `saveSettings` in `src/settings/store.ts` and its test hold the enforced wording.
+> The function `saveSettings` in `src/settings/store.ts` and the test next to it hold the enforced wording for Acme Inc's confirmation message.
 
-**Bad** (laundered ownership):
+**Bad** (how-to inside explanation):
 
-> Guest ids live in `service_mapping.yml`.
+> One page first explains why Helios posts pay to the Acme Inc ledger. That same page then includes shell commands and a rollback matrix for the pay-run worker.
 
-**Good** (behavior only):
+**Good** (explanation):
 
-> Guest identities share one inventory, so a renumber changes one line.
+> Helios is Acme Inc's payroll product. It calculates pay, withholds tax, and posts results to the ledger so that every employee sees one payslip.
 
-**Good** (behavior and contract):
+**Good** (how-to):
 
-> Saving settings shows a confirmation message once the write succeeds, so the user knows it was stored.
+> To recover a stuck pay run:
+>
+> 1. Stop the Helios worker.
+> 2. Clear the leftover lock.
+> 3. Start the worker again.
 
-**Good** (reworded, link only if truly needed):
+**Bad** (tutorial overloaded with explanation):
 
-> Saving settings confirms success with a short message, and a test locks that wording so it cannot regress.
+> A first-pay-run walkthrough for Acme Inc pauses in the middle of the lesson for a chapter on why Helios withholds tax before it posts to the ledger.
 
-### Structure examples
+**Good** (tutorial):
 
-**Bad** (unnecessary directory and overview; path quoted without a link):
+> The learner runs one test pay period for Acme Inc and then checks that Helios writes a payslip for that employee.
 
-> A single daemon architecture document lives at `docs/daemon/overview.md` only because every concern receives its own directory.
+**Bad** (reference written as a story):
 
-**Good** (single concern page; relative links):
+> The pay-period fields are introduced through a narrative of how Acme Inc chose its configuration format.
 
-> A single-concern daemon page is [docs/daemon.md](docs/daemon.md). Separate install and operations pages use specifically named files under [docs/daemon/](docs/daemon/).
+**Good** (reference):
 
-**Good** (substantive overview; relative link):
+> Each pay-period record lists the period start, the period end, the tax table name, and the ledger account Helios posts to.
 
-> An [overview.md](overview.md) page stands alone when it owns system-wide synthesis that no specific page carries.
+**Bad** (see-more when this page already holds the answer):
 
-**Good** (out-of-repo durable home; absolute link):
+> To recover a stuck pay run:
+>
+> 1. Stop the Helios worker.
+> 2. Clear the leftover lock.
+> 3. Start the worker again.
+>
+> See the recovery guide for those same steps.
 
-> FreeBSD serial console behavior follows the [FreeBSD Handbook serial communications chapter](https://docs.freebsd.org/en/books/handbook/serialcomms/).
+**Bad** (see-more as decoration):
 
-### Organization examples
+> Helios is Acme Inc's payroll product. See also the layout page, the tax page, and the ledger page.
 
-**Bad** (filename-derived rename; paths quoted without links):
+### Tone examples
 
-> `operational-notes.md` becomes `notes.md` because the filename is shorter.
+**Bad** (stub sentences that chop one thought):
 
-**Bad** (ownership narration that sends the reader hunting):
+> One product. One ledger. Many payslips.
 
-> Router BGP, gateway, and NAT foot-guns belong in `operations.md`. Daemon install steps live under `daemon/`.
+**Good** (flowing sentence):
 
-**Good** (content-based grouping; no ownership pointing):
+> The Helios product posts every Acme Inc pay run to one ledger, so employees receive many payslips from a single source.
 
-> Production OPNsense router BGP, gateway, and NAT foot-guns share one operations concern. Daemon install and upgrade steps are a separate concern.
+**Bad** (explanation in how-to voice):
 
-**Good** (same concerns named only for an edit step, with relative links):
+> Run these commands on the host so that you can understand why Helios posts pay to the Acme Inc ledger.
 
-> Update production OPNsense router BGP, gateway, and NAT recovery steps in [operations.md](operations.md). Update daemon install and upgrade steps under [daemon/](daemon/).
+**Good** (explanation):
+
+> Helios posts pay to the Acme Inc ledger so that every employee sees one payslip.
+
+**Bad** (how-to in explanation voice):
+
+> Recovery is a matter of restoring the Helios worker so that it once again owns the active pay run.
+
+**Bad** (procedure as period-separated commands):
+
+> Stop the Helios worker. Clear the leftover lock. Then start the worker again.
+
+### Tree structure examples
+
+**Bad** (one file, two kinds):
+
+> The explanation of Helios and the how-to for pay-run recovery share a single page because Acme Inc's payroll concern only has one folder.
+
+**Good** (leaf until size requires a directory):
+
+> A concern that still fits on one page of one kind stays a single file. When that kind needs several independently addressable pages, those pages share a directory of their own.
+
+**Bad** (kinds mixed in one undifferentiated directory):
+
+> How-to recovery steps and an explanation of Helios sit beside each other in the same folder, and nothing in the names tells the reader which page is which.
+
+**Good** (one kind per home):
+
+> Pages that do the same job share one home in the tree. A page that does a different job gets a separate home so the reader can tell the kinds apart.
