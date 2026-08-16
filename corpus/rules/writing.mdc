@@ -165,6 +165,7 @@ Default is no link.
 - Do not narrate where a page lives. Leave the tree self-discoverable.
 - Do not sprinkle links that only name ownership or location.
 - A load-bearing see-more is allowed when the reader must leave this page. Prefer "To learn more about X, see Y" or "See all X under Y".
+- A see-more is load-bearing only after this page has named the condition or topic the destination covers. Do not link to a recovery page after a sentence that never mentioned failure.
 - Link text stays free of backticks.
 - Prefer local durable homes over copied detail when a link is justified.
 - Current behavior matters more than history.
@@ -198,11 +199,11 @@ Default is no link.
 
 **Good** (self-discoverable; load-bearing see-more only):
 
-> Helios calculates pay and posts results to the ledger. To learn more about a stuck pay run, see [Recover a stuck pay run](recover.md).
+> Helios calculates pay and posts results to the ledger, but sometimes a pay run gets stuck. To learn more about a stuck pay run, see [Recover a stuck pay run](recover.md).
 
 **Good** (load-bearing "see all under"):
 
-> See all Helios pay-run fields under [Pay run reference](payruns.md).
+> Each pay-period record lists the period start, the period end, and the tax table name. See all Helios pay-run fields under [Pay run reference](payruns.md).
 
 **Good** (absolute out-of-repo link when the artifact is outside this repository):
 
@@ -252,7 +253,7 @@ Documentation serves four needs. [Diátaxis](https://diataxis.fr/start-here/) na
 
 Tutorials and how-to guides serve action. Reference and explanation serve knowing. Tutorials and explanation serve study. How-to guides and reference serve work.
 
-A page that explains a system and then includes command recipes, rollback matrices, or recovery snippets is two kinds at once. Add one see-more link only when the reader must leave this page to act or to understand. Prefer "To learn more about X, see Y" or "See all X under Y". Do not add a see-more when this page already holds the answer. Do not decorate nouns with extra pages. Do not narrate where a page lives.
+A page that explains a system and then includes command recipes, rollback matrices, or recovery snippets is two kinds at once. Add one see-more link only when the reader must leave this page to act or to understand, and only after this page has named the condition or topic the destination covers. Prefer "To learn more about X, see Y" or "See all X under Y". Do not add a see-more when this page already holds the answer. Do not decorate nouns with extra pages. Do not narrate where a page lives.
 
 ## Place pages where this repository already works
 
@@ -354,7 +355,7 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 - Do not put two kinds on one page. Do not title a how-to as explanation.
 - Doc path segments are single words.
 - Every architecture page states what its subject does today, in present tense.
-- Each statement describes current behavior first. Add one load-bearing see-more only where a reader must leave this page, using "To learn more about X, see Y" or "See all X under Y". Do not narrate where a page lives.
+- Each statement describes current behavior first. Add one load-bearing see-more only where a reader must leave this page, and only after this page has named the condition or topic the destination covers, using "To learn more about X, see Y" or "See all X under Y". Do not narrate where a page lives.
 - A behavior doc is not an index of code locations, so do not append a symbol name or file path to every statement.
 - Name a code symbol or file path only when the reader must use that exact artifact; never to prove ownership or locate a value.
 - The enforcing test or rule is the source of truth, and the doc never copies the invariant it enforces.
@@ -410,7 +411,7 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 
 **Good** (one see-more, when the reader must leave):
 
-> Helios is Acme Inc's payroll product. To learn more about a stuck pay run, see [Recover a stuck pay run](recover.md).
+> Helios is Acme Inc's payroll product, and it posts every pay run to the ledger, but sometimes a pay run gets stuck. To learn more about a stuck pay run, see [Recover a stuck pay run](recover.md).
 
 **Bad** (see-more when this page already holds the answer):
 
