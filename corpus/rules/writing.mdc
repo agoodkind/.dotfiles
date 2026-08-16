@@ -13,9 +13,9 @@ Help reviewers find the answer quickly.
 
 ## Overview
 
-Good technical documentation feels light, precise, and easy to scan. This rule provides the model for plain language and accessibility and style guide for restrained, polished wording.
+Good technical documentation feels light, precise, and easy to scan. This rule is the model for plain language, accessibility, and restrained wording.
 
-A useful document includes only details that help readers understand, verify, or ship safely.
+A useful document keeps only the details that help a reader understand the system, verify a claim, or ship a change safely.
 
 ## Write for review
 
@@ -155,7 +155,7 @@ Default is no link.
 - Before adding or keeping any link, search the surrounding document set for the same fact, procedure, or ownership claim.
 - If a sibling doc already owns it, delete or consolidate this page's copy. Do not leave both and paper over with a link.
 - Link a given destination at most once per page. Later mentions use ordinary product or system nouns, not a second link and not a bare filename, path, or backtick path that only asserts ownership.
-- Do not launder a link into a bare filename or path. Removing `[service_mapping.yml](...)` and leaving `` `service_mapping.yml` `` or `service_mapping.yml` fails the rewrite when the sentence only says where a value lives.
+- Do not launder a link into a bare filename or path. Removing `[shops.yml](...)` and leaving `` `shops.yml` `` or `shops.yml` fails the rewrite when the sentence only says where a value lives.
 - Link only when the destination carries material this page does not already give the reader, and that material changes what the reader understands, verifies, or does.
 - Do not link a source file only to prove ownership or to point at values the reader can find by reading the codebase.
 - Do not link sibling docs for navigation decoration when the current page already carries the needed fact, or when the fact should instead move into one home.
@@ -168,49 +168,49 @@ Default is no link.
 
 **Bad** (same target linked repeatedly; links only name ownership):
 
-> Guest ids live in [service_mapping.yml](...). Bridge addresses live in [networks.tf](...). Guest addresses also live in [service_mapping.yml](...). The [suburban module](...) owns the rest. Watchdog addresses come from [service_mapping.yml](...).
+> Store numbers for Pear Corp shops are listed in [shops.yml](...). Warehouse addresses are listed in [networks.tf](...). Store addresses are also listed in [shops.yml](...). The [orchard module](...) owns the rest of the storefront layout. Health-check addresses also come from [shops.yml](...).
 
 **Bad** (laundered: link removed, filename kept):
 
-> Guest identities share one inventory file, `service_mapping.yml`, so a renumber changes one line. Bridge names live in the suburban OpenTofu networks file.
+> Pear Corp store identities share one inventory file, named `shops.yml`, so changing a store number updates a single line. Warehouse names live in the orchard networks file.
 
 **Good** (behavior only):
 
-> Guest identities, hostnames, and addresses share one inventory, so a renumber changes one line. What this page adds is the behavior each bridge carries.
+> Pear Corp store identities, hostnames, and addresses share one inventory, so changing a store number updates a single line. This page adds the behavior each warehouse connection carries for shoppers.
 
 **Bad** (ownership sentence with no reader action):
 
-> Prefix sizes are set in `group_vars/...`.
+> Address prefix sizes for Pear Corp shops are set in `group_vars/...`.
 
 **Good** (operational fact):
 
-> Prefix delegation sizes match production, and NPT translates the first `/60` of each delegation.
+> Address prefix sizes for Pear Corp shops match production. The storefront maps the first block of each prefix onto the catalog range.
 
 **Good** (relative in-repo link when the reader must edit that file):
 
-> Set `initialization.datastore_id` to `local-zfs` in [opentofu/suburban/vms.tf](../../opentofu/suburban/vms.tf), or cloud-init drive regen fails with storage unavailable.
+> Set `initialization.datastore_id` to `local-disk` in [pear/storefront/shops.tf](../../pear/storefront/shops.tf). A new shop fails to provision if that value is wrong, because storage is then unavailable.
 
 **Good** (absolute out-of-repo link when the artifact is outside this repository):
 
-> WireGuard handshake and cryptography steps follow the [WireGuard protocol](https://www.wireguard.com/protocol/).
+> Checkout encryption on the Pear Corp storefront follows the handshake and record rules in the [TLS 1.3 specification](https://www.rfc-editor.org/rfc/rfc8446).
 
 **Bad** (filename quoted without a markdown link):
 
-> Edit `service_mapping.yml` and renumber the guest.
+> Open `shops.yml` and then change the store number for the Pear Corp shop that moved.
 
 **Good** (same edit step, relative markdown link):
 
-> Edit [service_mapping.yml](../../ansible/inventory/group_vars/all/service_mapping.yml) and renumber the guest.
+> Open [shops.yml](../../inventory/group_vars/all/shops.yml) and then change the store number for the Pear Corp shop that moved. The storefront keeps the old address until that change is saved.
 
 ### Duplication examples
 
 **Bad** (two docs both carry the same gotcha; each links to the other):
 
-> Page A and page B both explain the cloud-init datastore rule and link to each other.
+> Two pages both explain Pear Corp's catalog datastore rule, and each page links to the other for the same warning.
 
 **Good** (one durable home; the other page deletes the copy):
 
-> The gotcha lives only in the suburban operations page. The testbed page does not restate it and does not link unless the reader must leave this page to act on that gotcha.
+> The catalog datastore rule lives only on the storefront how-to page. The testbed page does not restate that rule. It does not link unless the reader must leave this page to act on the warning.
 
 ## Name sources only to act
 
@@ -219,7 +219,7 @@ Default is no filename, path, module path, or inventory basename in prose.
 - State the operational fact or behavior. Do not say that a fact "lives in", "comes from", "is owned by", or "is set in" a file unless the next sentence is an action the reader takes in that file.
 - A filename, path, or symbol appears only when the reader must open, edit, or run that exact artifact to complete a documented step.
 - Replacing a link with a backtick path, plain path, or "the X file" ownership phrase is the same failure as the original link litter.
-- Prefer everyday system nouns ("guest inventory", "bridge layout", "suburban module") over basenames when a referent is needed at all.
+- Prefer everyday system nouns ("store inventory", "warehouse layout", "orchard module") over basenames when a referent is needed at all.
 - Avoid excessive ownership narration such as "belong in", "live in", "lives at", or "to find X, see Y" unless naming the file is part of an open, edit, or run step.
 - When a filename or path does appear after those gates, it MUST be a clickable markdown link. A bare backtick path, a bare path, or plain text that names the file fails the rewrite.
 - Link in-repo artifacts with a relative path from the current page. Link out-of-repo artifacts with an absolute URL. Do not leave an unlinked basename for the reader to hunt.
@@ -238,7 +238,7 @@ Documentation serves four needs. [Diátaxis](https://diataxis.fr/start-here/) na
 
 Tutorials and how-to guides serve action. Reference and explanation serve knowing. Tutorials and explanation serve study. How-to guides and reference serve work.
 
-A page that explains a system and then includes `ssh` recipes, rollback matrices, or recovery snippets is two kinds at once. Add one see-more link only when the reader must leave this page to act or to understand. Do not add a see-more when this page already holds the answer. Do not decorate nouns with extra pages.
+A page that explains a system and then includes command recipes, rollback matrices, or recovery snippets is two kinds at once. Add one see-more link only when the reader must leave this page to act or to understand. Do not add a see-more when this page already holds the answer. Do not decorate nouns with extra pages.
 
 ## Place pages where this repository already works
 
@@ -352,88 +352,88 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 
 **Bad** (hardcoded symbol and path):
 
-> `saveSettings` in `src/settings/store.ts` and its test hold the enforced wording.
+> The function `saveSettings` in `src/settings/store.ts` and the test next to it hold the enforced wording for Pear Corp's confirmation message.
 
 **Bad** (laundered ownership):
 
-> Guest ids live in `service_mapping.yml`.
+> Pear Corp store numbers live in the inventory file `shops.yml`.
 
 **Good** (behavior only):
 
-> Guest identities share one inventory, so a renumber changes one line.
+> Pear Corp store identities share one inventory. Changing a store number updates a single line in that inventory.
 
 **Bad** (how-to inside explanation):
 
-> A page that explains the WAN edge then includes `ssh` recipes and a rollback matrix.
+> One page first explains why Orchard sits in front of the Pear Corp catalog. That same page then includes shell commands and a rollback matrix for the routing service.
 
 **Good** (explanation):
 
-> MWAN is the WAN edge in front of OPNsense. It owns authentication, policy routing, translation, health, and BGP failover.
+> Orchard is Pear Corp's public storefront. It sits in front of the catalog so that every shopper reaches one shop. Orchard owns sign-in, payment routing, stock translation, health checks, and failover between warehouses.
 
 **Good** (how-to):
 
-> To recover a wiped BGP default, stop FRR, delete the kernel default routes, then start FRR.
+> To recover checkout after the default route disappears, stop the Pear Corp routing service. Remove the leftover default routes. Then start the routing service again.
 
 **Bad** (tutorial overloaded with explanation):
 
-> A first-deploy walkthrough pauses for a chapter on why network prefix translation exists.
+> A first-publish walkthrough for Pear Corp pauses in the middle of the lesson for a chapter on why the storefront translates stock identifiers.
 
 **Good** (tutorial):
 
-> The learner deploys one testbed guest and verifies it answers ICMP.
+> The learner publishes one test shop for Pear Corp. The learner then checks that the shop answers a health probe from the catalog.
 
 **Bad** (reference written as a story):
 
-> Config keys appear through a narrative of how the project chose TOML.
+> The warehouse table fields are introduced through a narrative of how Pear Corp chose its configuration format.
 
 **Good** (reference):
 
-> Each WAN table names the interface, routing table, firewall mark, priorities, and prefixes.
+> Each warehouse record lists the interface name, the routing table number, the traffic mark, the rule priorities, and the address prefixes that Orchard uses for that warehouse.
 
 **Good** (one see-more, when the reader must leave):
 
-> MWAN is the WAN edge in front of OPNsense. [Recover a wiped BGP default](recover.md) when the kernel route is gone.
+> Orchard is Pear Corp's public storefront. It sits in front of the catalog. Open [Recover a dropped checkout route](recover.md) when the default checkout route on the host is gone.
 
 **Bad** (see-more when this page already holds the answer):
 
-> Stop FRR, delete the kernel default routes, then start FRR. See the recovery guide for those same steps.
+> Stop the Pear Corp routing service. Remove the leftover default routes. Then start the routing service again. See the recovery guide for those same steps.
 
 **Bad** (see-more as decoration):
 
-> MWAN is the WAN edge. See also layout, watchdog, and BGP.
+> Orchard is Pear Corp's public storefront. See also the layout page, the health-check page, and the routing page.
 
 ### Tone examples
 
 **Bad** (explanation in how-to voice):
 
-> Run these commands to understand why MWAN sits in front of OPNsense.
+> Run these commands on the host so that you can understand why Orchard sits in front of the Pear Corp catalog.
 
 **Good** (explanation):
 
-> MWAN sits in front of OPNsense so the LAN router sees one upstream.
+> Orchard sits in front of Pear Corp's catalog so that every shopper reaches one shop instead of a warehouse.
 
 **Bad** (how-to in explanation voice):
 
-> Recovery is a matter of restoring FRR's ownership of the default route.
+> Recovery is a matter of restoring the routing service so that it once again owns the default checkout route.
 
 **Good** (how-to):
 
-> Stop FRR, delete the kernel default routes, then start FRR.
+> Stop the Pear Corp routing service. Remove the leftover default routes. Then start the routing service again.
 
 ### Tree structure examples
 
 **Bad** (one file, two kinds):
 
-> Explanation and how-to share a single page because the concern only has one folder.
+> The explanation of Orchard and the how-to for checkout recovery share a single page because Pear Corp's storefront concern only has one folder.
 
 **Good** (leaf until size requires a directory):
 
-> One page of one kind stays a leaf. Several pages of that kind share a directory.
+> A concern that still fits on one page of one kind stays a single file. When that kind needs several independently addressable pages, those pages share a directory of their own.
 
 **Bad** (kinds mixed in one undifferentiated directory):
 
-> How-to recovery and explanation sit beside each other with no signal which page is which.
+> How-to recovery steps and an explanation of Orchard sit beside each other in the same folder. Nothing in the names tells the reader which page is which.
 
 **Good** (one kind per home):
 
-> Pages of the same kind share a home. A different kind gets its own home.
+> Pages that do the same job share one home in the tree. A page that does a different job gets a separate home so the reader can tell the kinds apart.
