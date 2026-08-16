@@ -238,7 +238,7 @@ Documentation serves four needs. [Diátaxis](https://diataxis.fr/start-here/) na
 
 Tutorials and how-to guides serve action. Reference and explanation serve knowing. Tutorials and explanation serve study. How-to guides and reference serve work.
 
-A page that explains a system and then includes `ssh` recipes, rollback matrices, or recovery snippets is two kinds at once. Add one see-more link only when the reader must leave this page to act or to understand.
+A page that explains a system and then includes `ssh` recipes, rollback matrices, or recovery snippets is two kinds at once. Add one see-more link only when the reader must leave this page to act or to understand. Do not add a see-more when this page already holds the answer. Do not decorate nouns with extra pages.
 
 ## Place pages where this repository already works
 
@@ -393,6 +393,14 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 **Good** (one see-more, when the reader must leave):
 
 > MWAN is the WAN edge in front of OPNsense. [Recover a wiped BGP default](recover.md) when the kernel route is gone.
+
+**Bad** (see-more when this page already holds the answer):
+
+> Stop FRR, delete the kernel default routes, then start FRR. See the recovery guide for those same steps.
+
+**Bad** (see-more as decoration):
+
+> MWAN is the WAN edge. See also layout, watchdog, and BGP.
 
 ### Tone examples
 
