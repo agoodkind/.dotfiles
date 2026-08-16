@@ -70,11 +70,13 @@ The most useful information belongs before supporting detail.
 
 ## Write plain sentences
 
-Clear sentences can stand alone.
+Clear sentences can stand alone, and they should sound natural when spoken aloud.
 
 - Each sentence has a concrete subject and a concrete verb.
-- Each sentence stays under 20 words when that preserves meaning.
-- Separate ideas work better as separate sentences.
+- Join related clauses with connectors such as "and", "so", "since", commas, semicolons, colons, or parentheses when they are one thought.
+- Do not chop one thought into stub sentences or punchy one-liners. "One product. One ledger. Many payslips." fails. "The Helios product posts every Acme Inc pay run to one ledger, so employees receive many payslips from a single source." succeeds.
+- Length is not the test. A longer sentence is correct when it carries one finished thought. A short stub fails when it is only the front half of a longer thought.
+- Separate finished thoughts. Do not split one thought across several fragments.
 - Verbose, inflated, or low-substance prose should become shorter or disappear.
 - The {{.Skill "make-readable"}} rule helps remove dense or repetitive prose.
 - The {{.Skill "plain"}} rule helps define unexplained labels before use.
@@ -92,6 +94,7 @@ Direct instructions tell the reader what to do and what will happen.
 - Imperative mood keeps steps direct.
 - Irreversible results belong before the action.
 - Externally visible results belong before the action.
+- Ordered work is a numbered list. Do not write a procedure as period-separated commands in a paragraph. "Stop the worker. Clear the lock. Start the worker again." fails. A numbered list of those same steps succeeds.
 
 ## Choose precise words
 
@@ -187,7 +190,7 @@ Default is no link.
 
 **Good** (operational fact):
 
-> Tax tables for Acme Inc match production. Helios applies the current table to every pay run.
+> Tax tables for Acme Inc match production, and Helios applies the current table to every pay run.
 
 **Bad** (narrating where a page lives):
 
@@ -211,7 +214,7 @@ Default is no link.
 
 **Good** (same edit step, relative markdown link):
 
-> Open [tax-tables.yml](../../helios/tax-tables.yml) and then change the Acme Inc rate for the current year. Helios keeps the old rate until that change is saved.
+> Open [tax-tables.yml](../../helios/tax-tables.yml) and then change the Acme Inc rate for the current year, so Helios keeps the old rate until that change is saved.
 
 ### Duplication examples
 
@@ -221,7 +224,7 @@ Default is no link.
 
 **Good** (one durable home; the other page deletes the copy):
 
-> The ledger posting rule lives only on the Helios how-to page. The staging page does not restate that rule. It does not link unless the reader must leave this page to act on the warning.
+> The ledger posting rule lives only on the Helios how-to page. The staging page does not restate that rule, and it does not link unless the reader must leave this page to act on the warning.
 
 ## Name sources only to act
 
@@ -239,13 +242,13 @@ Default is no filename, path, module path, or inventory basename in prose.
 
 Documentation serves four needs. [Diátaxis](https://diataxis.fr/start-here/) names them tutorials, how-to guides, reference, and explanation. Each page does one of those jobs. Mixing them on one page is the failure.
 
-**Tutorial.** A lesson. The reader does something in order to learn. The writer is responsible for the reader's success. The destination is skill, not a production outcome.
+**Tutorial.** A tutorial is a lesson in which the reader does something in order to learn. The writer is responsible for the reader's success, and the destination is skill rather than a production outcome.
 
-**How-to guide.** Practical directions for a competent reader who has a real goal. The destination is finished work: configure, recover, diagnose, change.
+**How-to guide.** A how-to guide gives practical directions to a competent reader who has a real goal. The destination is finished work: configure, recover, diagnose, or change.
 
-**Reference.** Neutral facts. Accurate, complete, and free of interpretation. The page maps the thing it describes. It does not tell the reader what to do with the map.
+**Reference.** A reference page states neutral facts that are accurate, complete, and free of interpretation. It maps the thing it describes, and it does not tell the reader what to do with the map.
 
-**Explanation.** Context and background. It answers what the system is, what it does today, and why the shape is the shape. It does not carry a command recipe as the spine of the page.
+**Explanation.** An explanation page gives context and background. It answers what the system is, what it does today, and why the shape is the shape, and it does not carry a command recipe as the spine of the page.
 
 Tutorials and how-to guides serve action. Reference and explanation serve knowing. Tutorials and explanation serve study. How-to guides and reference serve work.
 
@@ -371,7 +374,7 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 
 **Good** (behavior only):
 
-> Acme Inc invoice identities share one ledger. Changing an invoice number updates a single line in that ledger.
+> Acme Inc invoice identities share one ledger, so changing an invoice number updates a single line in that ledger.
 
 **Bad** (how-to inside explanation):
 
@@ -383,7 +386,11 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 
 **Good** (how-to):
 
-> To recover a stuck pay run, stop the Helios worker. Clear the leftover lock. Then start the worker again.
+> To recover a stuck pay run:
+>
+> 1. Stop the Helios worker.
+> 2. Clear the leftover lock.
+> 3. Start the worker again.
 
 **Bad** (tutorial overloaded with explanation):
 
@@ -391,7 +398,7 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 
 **Good** (tutorial):
 
-> The learner runs one test pay period for Acme Inc. The learner then checks that Helios writes a payslip for that employee.
+> The learner runs one test pay period for Acme Inc and then checks that Helios writes a payslip for that employee.
 
 **Bad** (reference written as a story):
 
@@ -407,13 +414,27 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 
 **Bad** (see-more when this page already holds the answer):
 
-> Stop the Helios worker. Clear the leftover lock. Then start the worker again. See the recovery guide for those same steps.
+> To recover a stuck pay run:
+>
+> 1. Stop the Helios worker.
+> 2. Clear the leftover lock.
+> 3. Start the worker again.
+>
+> See the recovery guide for those same steps.
 
 **Bad** (see-more as decoration):
 
 > Helios is Acme Inc's payroll product. See also the layout page, the tax page, and the ledger page.
 
 ### Tone examples
+
+**Bad** (stub sentences that chop one thought):
+
+> One product. One ledger. Many payslips.
+
+**Good** (flowing sentence):
+
+> The Helios product posts every Acme Inc pay run to one ledger, so employees receive many payslips from a single source.
 
 **Bad** (explanation in how-to voice):
 
@@ -427,9 +448,17 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 
 > Recovery is a matter of restoring the Helios worker so that it once again owns the active pay run.
 
-**Good** (how-to):
+**Bad** (procedure as period-separated commands):
 
 > Stop the Helios worker. Clear the leftover lock. Then start the worker again.
+
+**Good** (how-to):
+
+> To recover a stuck pay run:
+>
+> 1. Stop the Helios worker.
+> 2. Clear the leftover lock.
+> 3. Start the worker again.
 
 ### Tree structure examples
 
@@ -443,7 +472,7 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 
 **Bad** (kinds mixed in one undifferentiated directory):
 
-> How-to recovery steps and an explanation of Helios sit beside each other in the same folder. Nothing in the names tells the reader which page is which.
+> How-to recovery steps and an explanation of Helios sit beside each other in the same folder, and nothing in the names tells the reader which page is which.
 
 **Bad** (narrating where a page lives):
 
