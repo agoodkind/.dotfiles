@@ -19,6 +19,8 @@ A useful document includes only details that help readers understand, verify, or
 
 ## Write for review
 
+Executive overview pages and review prose use this voice. Operations pages do not.
+
 Prose for review should be clear enough for a critical Apple Marketing review.
 
 - The first sentence gives the load-bearing point.
@@ -79,6 +81,8 @@ Clear sentences can stand alone.
 - The {{.Skill "remove-emdashes"}} rule helps split interrupted sentences into separate thoughts.
 
 ## Write direct instructions
+
+Operations pages and task steps use this voice. Executive overview pages do not carry command recipes.
 
 Direct instructions tell the reader what to do and what will happen.
 
@@ -220,6 +224,54 @@ Default is no filename, path, module path, or inventory basename in prose.
 - When a filename or path does appear after those gates, it MUST be a clickable markdown link. A bare backtick path, a bare path, or plain text that names the file fails the rewrite.
 - Link in-repo artifacts with a relative path from the current page. Link out-of-repo artifacts with an absolute URL. Do not leave an unlinked basename for the reader to hunt.
 
+## Separate operations from executive overview
+
+A documentation set has two audiences. Mixing them on one page, or placing a runbook where an overview belongs, is the failure.
+
+**Executive overview** answers what the system is and what it does today. It gives shape, scope, and the few facts a reviewer needs. It does not carry command recipes, recovery steps, STOP conditions, or foot-guns. It links once into operations when the reader must leave the page to act.
+
+**Operations** answers how to run, diagnose, recover, or change the system. Page names are verbs or operator topics. Direct instructions live only here.
+
+Kubernetes [concept pages](https://kubernetes.io/docs/contribute/style/page-content-types/) typically do not include sequences of steps. They link to tasks instead. [Diátaxis](https://diataxis.fr/start-here/) treats mixing explanation with how-to as the documentation failure. Do not adopt four Diátaxis folders unless the user chooses that layout through {{.Skill "ask-questions"}}.
+
+A page titled or placed as overview that then carries `ssh` recipes, rollback matrices, or recovery snippets is mispositioned. The [MWAN runtime overview](https://github.com/agoodkind/configs/blob/main/docs/mwan/overview.md) in the configs document set is that failure. It states the WAN-edge shape, then includes watchdog rollback and an operational quick reference.
+
+## Scale placement with size
+
+Audience chooses the tree. Size chooses leaf versus directory. Do not flatten a large concern into one file, and do not create a directory for a single page.
+
+Executive leaves and directories:
+
+- One executive page: `docs/<concern>.md`, or a verb if the entry is a workflow
+- Several executive or concept pages: `docs/<concern>/` plus an entry page whose filename is chosen through {{.Skill "ask-questions"}}
+
+Operations leaves and directories:
+
+- One operations page: `docs/ops/<concern>.md` or `docs/ops/<topic>.md`
+- Several operations pages for one concern: `docs/ops/<concern>/`
+- Cross-cutting operator topics may sit at `docs/ops/<topic>.md` rather than under a concern
+
+Never create `overview.md` by convention. Never park operations pages as siblings of an overview inside `docs/<concern>/` without classifying them. A page that is neither executive nor operations (a merge contract, a linter rule) is not an overview. Ask where it belongs.
+
+Repository readme and agent-instruction files point at the executive pages. Operations pages are reached from those when the reader must act.
+
+## Ask after evaluating the document set
+
+Document layout is a user decision. Evaluate first. Then ask. Do not guess.
+
+1. Read the current document set. Record each page's path, size, audience mix, and whether topics are independently addressable.
+2. Finish every classification that the files themselves prove (this page is a command recipe; this page is a one-paragraph shape statement).
+3. Route every remaining layout choice through {{.Skill "ask-questions"}}. Ask one question at a time. State one verified fact from the corpus, then offer two or three concrete path options.
+
+Ask the first load-bearing question that changes the next edit. Typical order:
+
+1. Audience. State the mix the page actually contains. Is the next rewrite executive, operations, or a split into both?
+2. Leaf versus directory. State the page count or independently addressable topics. Keep the leaf, create the matching directory, or cancel?
+3. Entry file when a directory exists. Sibling `docs/<concern>.md` beside `docs/<concern>/`, `docs/<concern>/index.md` replacing the leaf, or `docs/<concern>/README.md` replacing the leaf? The same three options apply under `docs/ops/`.
+4. Best next structural step. Split this mixed page, move already-operational pages under `docs/ops/`, or leave paths and fix positioning in prose only?
+
+Do not restructure the whole tree in one pass unless the user chooses that step.
+
 ## Plan document architecture from meaning
 
 Document rewrites are information architecture work, not sentence cleanup.
@@ -227,13 +279,12 @@ Document rewrites are information architecture work, not sentence cleanup.
 - Read the relevant document set before changing page boundaries or layout.
 - Search the document set for overlapping facts, procedures, commands, paths, and ownership claims before writing or rewriting a page.
 - Treat every overlap as a consolidation decision: one durable home stays; every other copy is deleted or merged into that home.
-- Identify each page's meaning, purpose, scope, and relationship to the surrounding document set.
-- Derive paths, headings, merges, and splits from the content's meaning, conceptual boundaries, operational function, and place in the larger system, not filenames or bulk patterns.
+- Identify each page's meaning, purpose, scope, audience, and relationship to the surrounding document set.
+- Derive paths, headings, merges, and splits from the content's meaning, conceptual boundaries, operational function, size, and place in the larger system, not filenames or bulk patterns.
 - Preserve useful existing structure unless the content supports a clearer replacement.
 - Treat prose, document placement, consolidation, and links as one design problem.
 - Keep one durable home for each fact.
-- Do not create `docs/<concern>/overview.md` for a concern that needs only one page. Use `docs/<concern>.md` until the concern has multiple substantive pages that justify a directory.
-- When a concern does justify a directory, do not add `overview.md` by convention. Keep or create it only when it owns distinct, load-bearing synthesis that no specific page carries.
+- Classify audience and scale before naming files. Then ask through {{.Skill "ask-questions"}} instead of defaulting to `overview.md`.
 - Reject file inventories, annotated directory listings, and headings that merely enumerate code locations.
 - Use tables only for genuine comparisons or exact mappings, never as a default index or prose substitute.
 
@@ -279,21 +330,22 @@ Apply this workflow before generating or restructuring documentation:
 
 1. Read and search the surrounding document set for the same facts, procedures, commands, paths, and ownership claims this page would carry. Map every overlap before drafting.
 2. Read the implementation, configuration, tests, and comments that establish the documented behavior. Separate facts the docs must explain from details the source already explains well. Anything the codebase already owns clearly is a delete candidate in the docs, not a link candidate.
-3. State each page's meaning, purpose, scope, canonical facts, and relationship to nearby pages. Name the single durable home for each overlapping fact.
-4. Decide what stays, moves, merges, splits, or disappears. Prefer delete and consolidate over keep-and-link. Plan structural changes before applying them across the corpus.
-5. Rewrite the behavioral and operational meaning without narrating code. Preserve examples, constraints, exceptions, and recovery knowledge that readers still need, and only in the durable home.
-6. Inventory every markdown link and every basename or path-like token in prose on the page. Fail the rewrite if any destination appears more than once, if any link fails the materiality test, if any linked sibling still duplicates material this page also carries, if any sentence asserts ownership with a bare filename, path, backtick path, or "the X file" phrase after a link was removed or instead of stating behavior, if any filename or path appears without a reader action that requires that artifact, or if any filename or path appears without a clickable markdown link to a relative in-repo path or an absolute out-of-repo URL. Remove, consolidate, or collapse until the page passes.
-7. Compare the source and rewritten document before and after. Account for every removed or changed claim, and confirm no load-bearing operational knowledge was lost when duplicates were deleted.
-8. Run the accuracy pass against the implementation, configuration, tests, comments, commands, paths, and remaining links.
-9. Read the result as one document set and verify structure, navigation, source ownership, absence of stale duplicates, link uniqueness, materiality, absence of filename laundering, every remaining filename linked, fidelity, accuracy, and prose.
+3. Record each page's audience mix, size, and whether its topics are independently addressable. Classify what the files prove. Ask the remaining layout questions through {{.Skill "ask-questions"}} before moving paths.
+4. State each page's meaning, purpose, scope, canonical facts, and relationship to nearby pages. Name the single durable home for each overlapping fact.
+5. Decide what stays, moves, merges, splits, or disappears only after those questions are answered. Prefer delete and consolidate over keep-and-link. Plan structural changes before applying them across the corpus.
+6. Rewrite the behavioral and operational meaning without narrating code. Preserve examples, constraints, exceptions, and recovery knowledge that readers still need, and only in the durable home.
+7. Inventory every markdown link and every basename or path-like token in prose on the page. Fail the rewrite if any destination appears more than once, if any link fails the materiality test, if any linked sibling still duplicates material this page also carries, if any sentence asserts ownership with a bare filename, path, backtick path, or "the X file" phrase after a link was removed or instead of stating behavior, if any filename or path appears without a reader action that requires that artifact, or if any filename or path appears without a clickable markdown link to a relative in-repo path or an absolute out-of-repo URL. Remove, consolidate, or collapse until the page passes.
+8. Compare the source and rewritten document before and after. Account for every removed or changed claim, and confirm no load-bearing operational knowledge was lost when duplicates were deleted.
+9. Run the accuracy pass against the implementation, configuration, tests, comments, commands, paths, and remaining links.
+10. Read the result as one document set and verify structure, navigation, source ownership, absence of stale duplicates, link uniqueness, materiality, absence of filename laundering, every remaining filename linked, fidelity, accuracy, and prose.
 
 ## Document architecture as current state
 
 Architecture docs describe the system as it is now, stating behavior first. Link to the code or test that holds a detail only where a reader must leave this page for material it deliberately omits.
 
-- Prefer `docs/<concern>.md` when the concern stands alone. Create `docs/<concern>/` only when multiple substantive pages share that concern, and give each page a specific name.
-- Keep a substantive existing `overview.md` only when it owns synthesis that would otherwise be lost. Its content must justify the page independently of its filename.
-- Let `README.md` or `AGENTS.md` link to the smallest set of meaningful entry points instead of routing every area through an overview page.
+- Prefer `docs/<concern>.md` when the executive concern is one page. Create `docs/<concern>/` when several executive or concept pages share that concern, and give each page a specific name.
+- Prefer `docs/ops/<concern>.md` when operations for that concern is one page. Create `docs/ops/<concern>/` when several operator pages share that concern.
+- Do not name or place an operations page as an overview. Do not fill an executive page with procedures.
 - Doc path segments are single words. Use paths like `docs/deadcode/contract.md`, and never use paths like `docs/dead-code/contract.md`.
 - Every architecture page states what its subject does today, in present tense.
 - Each statement describes current behavior first, and adds a durable doc or test link only where a reader must leave this page for material it deliberately omits.
@@ -328,17 +380,17 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 
 ### Structure examples
 
-**Bad** (unnecessary directory and overview; path quoted without a link):
+**Bad** (operations placed as overview):
 
-> A single daemon architecture document lives at `docs/daemon/overview.md` only because every concern receives its own directory.
+> A WAN-edge runbook of watchdog rollback and `ssh` recipes sits under a page named overview because every concern received an overview page.
 
-**Good** (single concern page; relative links):
+**Good** (one executive page; relative links):
 
-> A single-concern daemon page is [docs/daemon.md](docs/daemon.md). Separate install and operations pages use specifically named files under [docs/daemon/](docs/daemon/).
+> A single-page executive concern is [docs/mwan.md](docs/mwan.md).
 
-**Good** (substantive overview; relative link):
+**Good** (operations in the ops tree; relative links):
 
-> An [overview.md](overview.md) page stands alone when it owns system-wide synthesis that no specific page carries.
+> Watchdog rollback and recovery commands live in [docs/ops/mwan.md](docs/ops/mwan.md) while that concern is one operator page, and under [docs/ops/mwan/](docs/ops/mwan/) once it has several.
 
 **Good** (out-of-repo durable home; absolute link):
 
@@ -360,4 +412,4 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 
 **Good** (same concerns named only for an edit step, with relative links):
 
-> Update production OPNsense router BGP, gateway, and NAT recovery steps in [operations.md](operations.md). Update daemon install and upgrade steps under [daemon/](daemon/).
+> Update production OPNsense router BGP, gateway, and NAT recovery steps in [docs/ops/opnsense.md](docs/ops/opnsense.md). Update the executive router shape in [docs/opnsense.md](docs/opnsense.md).
