@@ -238,20 +238,13 @@ Documentation serves four needs. [Diátaxis](https://diataxis.fr/start-here/) na
 
 Tutorials and how-to guides serve action. Reference and explanation serve knowing. Tutorials and explanation serve study. How-to guides and reference serve work.
 
-A page that explains a system and then includes `ssh` recipes, rollback matrices, or recovery snippets is two kinds at once. Link once to the page that holds the other kind when the reader must leave to act or to understand.
+A page that explains a system and then includes `ssh` recipes, rollback matrices, or recovery snippets is two kinds at once. Add one see-more link only when the reader must leave this page to act or to understand.
 
 ## Place pages where this repository already works
 
 The four kinds are a content contract, not a required directory schema. Derive paths from the existing document set, the reader's arrival path, page count, and independently addressable topics. Do not invent a tree because another repository uses it. Do not flatten a large concern into one file. Do not create a directory for a single page.
 
 State which layout the current set supports. Then ask through {{.Skill "ask-questions"}}. Offer two or three concrete paths. The user confirms or picks another. Do not pick a tree silently.
-
-Shapes that often fit, when the corpus supports them:
-
-- One explanation page named for the concern, with more explanation pages in a concern directory if the subject is large
-- How-to pages beside the concern, under the concern, or in a shared how-to tree, as a leaf or a directory by size
-- Reference that follows the structure of the thing it describes
-- A tutorial that stands apart from work-oriented how-to
 
 ## Ask after evaluating the document set
 
@@ -342,10 +335,10 @@ Apply this workflow before generating or restructuring documentation:
 
 Architecture docs describe the system as it is now, stating behavior first. Link to the code or test that holds a detail only where a reader must leave this page for material it deliberately omits.
 
-- Prefer a single concern page when that concern is one explanation. Create a concern directory when several explanation or concept pages share it, and give each page a specific name.
-- Place how-to, reference, and tutorial pages in the tree this repository already uses and the user confirms. Size chooses a leaf versus a directory.
+- Prefer a single concern page when that concern is one explanation. Create a concern directory when several pages of the same kind share it, and give each page a specific name.
+- Place each kind in the tree this repository already uses and the user confirms. Size chooses a leaf versus a directory.
 - Do not put two kinds on one page. Do not title a how-to as explanation.
-- Doc path segments are single words. Use paths like `docs/deadcode/contract.md`, and never use paths like `docs/dead-code/contract.md`.
+- Doc path segments are single words.
 - Every architecture page states what its subject does today, in present tense.
 - Each statement describes current behavior first, and adds a durable doc or test link only where a reader must leave this page for material it deliberately omits.
 - A behavior doc is not an index of code locations, so do not append a symbol name or file path to every statement.
@@ -355,7 +348,7 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 - The doc describes what is, not how the decision was reached.
 - Decision history stays out unless current work needs it.
 
-### Content examples
+### Prose examples
 
 **Bad** (hardcoded symbol and path):
 
@@ -368,16 +361,6 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 **Good** (behavior only):
 
 > Guest identities share one inventory, so a renumber changes one line.
-
-**Good** (behavior and contract):
-
-> Saving settings shows a confirmation message once the write succeeds, so the user knows it was stored.
-
-**Good** (reworded, link only if truly needed):
-
-> Saving settings confirms success with a short message, and a test locks that wording so it cannot regress.
-
-### Structure examples
 
 **Bad** (how-to inside explanation):
 
@@ -397,7 +380,7 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 
 **Good** (tutorial):
 
-> The learner deploys one testbed guest and verifies it answers ICMP. One sentence says why the probe matters. The explanation page holds the rest.
+> The learner deploys one testbed guest and verifies it answers ICMP.
 
 **Bad** (reference written as a story):
 
@@ -407,24 +390,42 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 
 > Each WAN table names the interface, routing table, firewall mark, priorities, and prefixes.
 
-**Good** (out-of-repo durable home; absolute link):
+**Good** (one see-more, when the reader must leave):
 
-> FreeBSD serial console behavior follows the [FreeBSD Handbook serial communications chapter](https://docs.freebsd.org/en/books/handbook/serialcomms/).
+> MWAN is the WAN edge in front of OPNsense. [Recover a wiped BGP default](recover.md) when the kernel route is gone.
 
-### Organization examples
+### Tone examples
 
-**Bad** (filename-derived rename; paths quoted without links):
+**Bad** (explanation in how-to voice):
 
-> `operational-notes.md` becomes `notes.md` because the filename is shorter.
+> Run these commands to understand why MWAN sits in front of OPNsense.
 
-**Bad** (two kinds sharing one undifferentiated directory):
+**Good** (explanation):
 
-> How-to recovery steps sit beside an explanation page under the same concern name, with no signal which page is which.
+> MWAN sits in front of OPNsense so the LAN router sees one upstream.
 
-**Good** (content-based grouping; no ownership pointing):
+**Bad** (how-to in explanation voice):
 
-> Production router BGP, gateway, and NAT foot-guns share one how-to concern. Install and upgrade steps are a separate how-to.
+> Recovery is a matter of restoring FRR's ownership of the default route.
 
-**Good** (same concerns named only for an edit step, with relative links):
+**Good** (how-to):
 
-> Update production router BGP, gateway, and NAT recovery steps in [docs/opnsense/recover.md](docs/opnsense/recover.md). Update the explanation of the router shape in [docs/opnsense.md](docs/opnsense.md).
+> Stop FRR, delete the kernel default routes, then start FRR.
+
+### Tree structure examples
+
+**Bad** (one file, two kinds):
+
+> Explanation and how-to share a single page because the concern only has one folder.
+
+**Good** (leaf until size requires a directory):
+
+> One page of one kind stays a leaf. Several pages of that kind share a directory.
+
+**Bad** (kinds mixed in one undifferentiated directory):
+
+> How-to recovery and explanation sit beside each other with no signal which page is which.
+
+**Good** (one kind per home):
+
+> Pages of the same kind share a home. A different kind gets its own home.
