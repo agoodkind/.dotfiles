@@ -238,20 +238,22 @@ A page titled or placed as overview that then carries `ssh` recipes, rollback ma
 
 ## Scale placement with size
 
-Audience chooses the tree. Size chooses leaf versus directory. Do not flatten a large concern into one file, and do not create a directory for a single page.
+Audience chooses executive versus operations. Size chooses leaf versus directory. Nesting of operations is a separate choice. Do not flatten a large concern into one file, and do not create a directory for a single page.
 
 Executive leaves and directories:
 
 - One executive page: `docs/<concern>.md`, or a verb if the entry is a workflow
 - Several executive or concept pages: `docs/<concern>/` plus an entry page whose filename is chosen through {{.Skill "ask-questions"}}
 
-Operations leaves and directories:
+Operations may nest in more than one valid tree. Do not default to a global `docs/ops/` tree.
 
-- One operations page: `docs/ops/<concern>.md` or `docs/ops/<topic>.md`
-- Several operations pages for one concern: `docs/ops/<concern>/`
-- Cross-cutting operator topics may sit at `docs/ops/<topic>.md` rather than under a concern
+- Global ops tree: `docs/ops/<concern>.md`, or `docs/ops/<concern>/` when that concern has several operator pages
+- Ops under the concern: `docs/<concern>/ops.md`, or `docs/<concern>/ops/` when that concern has several operator pages
+- Cross-cutting operator topics: `docs/ops/<topic>.md` when the work is not owned by one concern
 
-Never create `overview.md` by convention. Never park operations pages as siblings of an overview inside `docs/<concern>/` without classifying them. A page that is neither executive nor operations (a merge contract, a linter rule) is not an overview. Ask where it belongs.
+Cite how the reader actually arrives, then ask. A global ops tree fits an operator who starts from runbooks across concerns. Ops under the concern fits a reader who already entered through that concern.
+
+Never create `overview.md` by convention. Never park operations pages as unclassified siblings of executive pages. `docs/<concern>/ops/` is classified. `docs/<concern>/overview.md` full of `ssh` recipes is not. A page that is neither executive nor operations (a merge contract, a linter rule) is not an overview. Ask where it belongs.
 
 Repository readme and agent-instruction files point at the executive pages. Operations pages are reached from those when the reader must act.
 
@@ -266,9 +268,10 @@ Document layout is a user decision. Evaluate first. Then ask. Do not guess.
 Ask the first load-bearing question that changes the next edit. Typical order:
 
 1. Audience. State the mix the page actually contains. Is the next rewrite executive, operations, or a split into both?
-2. Leaf versus directory. State the page count or independently addressable topics. Keep the leaf, create the matching directory, or cancel?
-3. Entry file when a directory exists. Sibling `docs/<concern>.md` beside `docs/<concern>/`, `docs/<concern>/index.md` replacing the leaf, or `docs/<concern>/README.md` replacing the leaf? The same three options apply under `docs/ops/`.
-4. Best next structural step. Split this mixed page, move already-operational pages under `docs/ops/`, or leave paths and fix positioning in prose only?
+2. Operations nesting, when operations is in play. Global `docs/ops/<concern>/`, ops under the concern at `docs/<concern>/ops/`, or a cross-cutting `docs/ops/<topic>.md`?
+3. Leaf versus directory inside the chosen nest. State the page count or independently addressable topics. Keep the leaf, create the matching directory, or cancel?
+4. Entry file when a directory exists. Sibling `docs/<concern>.md` beside `docs/<concern>/`, `docs/<concern>/index.md` replacing the leaf, or `docs/<concern>/README.md` replacing the leaf? The same three options apply under `docs/ops/` and under `docs/<concern>/ops/`.
+5. Best next structural step. Split this mixed page, move already-operational pages into the chosen ops nest, or leave paths and fix positioning in prose only?
 
 Do not restructure the whole tree in one pass unless the user chooses that step.
 
@@ -284,7 +287,7 @@ Document rewrites are information architecture work, not sentence cleanup.
 - Preserve useful existing structure unless the content supports a clearer replacement.
 - Treat prose, document placement, consolidation, and links as one design problem.
 - Keep one durable home for each fact.
-- Classify audience and scale before naming files. Then ask through {{.Skill "ask-questions"}} instead of defaulting to `overview.md`.
+- Classify audience, ops nesting, and scale before naming files. Then ask through {{.Skill "ask-questions"}} instead of defaulting to `overview.md` or to a global `docs/ops/` tree.
 - Reject file inventories, annotated directory listings, and headings that merely enumerate code locations.
 - Use tables only for genuine comparisons or exact mappings, never as a default index or prose substitute.
 
@@ -344,7 +347,7 @@ Apply this workflow before generating or restructuring documentation:
 Architecture docs describe the system as it is now, stating behavior first. Link to the code or test that holds a detail only where a reader must leave this page for material it deliberately omits.
 
 - Prefer `docs/<concern>.md` when the executive concern is one page. Create `docs/<concern>/` when several executive or concept pages share that concern, and give each page a specific name.
-- Prefer `docs/ops/<concern>.md` when operations for that concern is one page. Create `docs/ops/<concern>/` when several operator pages share that concern.
+- Place operations in the nest the user chose: `docs/ops/<concern>/` or `docs/<concern>/ops/`, with a leaf file while that nest still has one page.
 - Do not name or place an operations page as an overview. Do not fill an executive page with procedures.
 - Doc path segments are single words. Use paths like `docs/deadcode/contract.md`, and never use paths like `docs/dead-code/contract.md`.
 - Every architecture page states what its subject does today, in present tense.
@@ -388,9 +391,13 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 
 > A single-page executive concern is [docs/mwan.md](docs/mwan.md).
 
-**Good** (operations in the ops tree; relative links):
+**Good** (operations under the concern, after that nest is chosen; relative links):
 
-> Watchdog rollback and recovery commands live in [docs/ops/mwan.md](docs/ops/mwan.md) while that concern is one operator page, and under [docs/ops/mwan/](docs/ops/mwan/) once it has several.
+> Watchdog rollback and recovery commands live under [docs/mwan/ops/](docs/mwan/ops/).
+
+**Good** (operations in a global ops tree, after that nest is chosen; relative links):
+
+> Watchdog rollback and recovery commands live under [docs/ops/mwan/](docs/ops/mwan/).
 
 **Good** (out-of-repo durable home; absolute link):
 
@@ -412,4 +419,4 @@ Architecture docs describe the system as it is now, stating behavior first. Link
 
 **Good** (same concerns named only for an edit step, with relative links):
 
-> Update production OPNsense router BGP, gateway, and NAT recovery steps in [docs/ops/opnsense.md](docs/ops/opnsense.md). Update the executive router shape in [docs/opnsense.md](docs/opnsense.md).
+> Update production OPNsense router BGP, gateway, and NAT recovery steps in [docs/opnsense/ops.md](docs/opnsense/ops.md). Update the executive router shape in [docs/opnsense.md](docs/opnsense.md).
