@@ -81,14 +81,16 @@ Honor an explicit user override over this default. Skip manual creation when the
 
 Classify each branch and its worktree with a fixed three-step test. The first step that passes proves the trunk contains the work, so remove the branch and worktree. If all three fail, the branch carries unique work the trunk lacks, so keep it.
 
-Local and remote branches are both in scope. Run the same test on each.
+Local and remote branches are both in scope, as separate candidates. `feature-x` and `origin/feature-x` can diverge, so classify each on its own fully qualified ref and let a verdict authorize deleting only the ref it was computed from.
+
+The trunk is never a candidate. It passes both mechanical checks against itself, so leaving `main` or `origin/main` in the candidate list points the removal step at the trunk ref.
 
 `graphite-base/*` refs are synthetic stack bases created by `gt` rather than work branches. They are cruft by definition, so remove them without classifying them.
 
 ## Classification (run in order; first pass wins)
 
 1. Direct git containment. Run `git merge-base --is-ancestor <branch> origin/main`. If it succeeds, the trunk holds the commits. Remove.
-2. Patch containment. Run `git cherry origin/main <branch>`. If no line starts with `+`, every patch is already applied to the trunk, including cherry-picks. Remove.
+2. Patch containment. Run `git cherry origin/main <branch>`. If it succeeds and no line starts with `+`, every patch is already applied to the trunk, including cherry-picks. Remove. A failed `git cherry` is not containment, and neither is a zero count on a branch carrying merge commits, since `git cherry` skips merges and a conflict resolution can be the only unique content.
 3. Semantic containment. Ask the high-level question before opening any source file: did the trunk supersede this, and is this slice of work done in some other manner? Read the branch's pull request and commit subjects, state the slice of work in one sentence, then read the trunk copy of the files it changed to confirm whether the trunk delivers that slice. If it does, remove, citing the `file:line` on the trunk that carries the behavior.
 
 Steps 1 and 2 alone are insufficient. A squash-merged or relanded branch fails both while its work is on the trunk, so step 3 is the step that catches it.
@@ -109,8 +111,8 @@ That case is easy to invert, because a removal and a change that never landed lo
 
 - Remove the worktree before the branch, and only when `git status --porcelain` is empty. Run `git worktree remove <path>`, then `git worktree prune`. A non-empty status is uncommitted work; stop and surface it instead of removing.
 - When step 1 passed, delete the branch with `git branch -d`, which refuses anything git still sees as unmerged.
-- When step 2 or step 3 passed, delete the branch with `git branch -D`, since git cannot see the containment. Cite the evidence: the empty `git cherry` result, the merged PR, or the trunk file that carries the behavior.
+- When step 2 or step 3 passed, delete the branch with `git branch -D`, since git cannot see the containment. Cite the evidence: the empty `git cherry` result for step 2, or a trunk `file:line` for step 3. A merged pull request is not step 3 evidence, because it says the work landed once rather than that the trunk delivers the slice today.
 - Delete a cleared remote branch with `git push origin --delete <branch>`. Keep a branch whose pull request is still open.
-- Never move the trunk ref of a checkout owned by another worktree.
+- Never delete the trunk branch or its remote ref, and never move the trunk ref of a checkout owned by another worktree.
 
 Run {{.Skill "cleanup-git"}} to execute this classification across a whole repository.

@@ -27,9 +27,13 @@ Both failures are banned below.
 
 ## MUST DO: the steps
 
-### STEP 1: REFRESH. MUST run before any classification.
+### STEP 1: REFRESH AND ENUMERATE. MUST run before any classification.
 
-MUST run `git fetch origin --prune`.
+MUST fetch every remote head explicitly, because a narrowed fetch refspec leaves `origin/<branch>` missing for heads the remote actually has, and a missing ref cannot be classified:
+
+```bash
+git fetch origin --prune '+refs/heads/*:refs/remotes/origin/*'
+```
 
 MUST enumerate all three sets, because a partial enumeration produces a partial cleanup:
 
@@ -41,6 +45,10 @@ git ls-remote --heads origin | sed 's|.*refs/heads/||'
 
 MUST NOT stop after the local branches. Remote branches are in scope on every run.
 
+MUST EXCLUDE THE TRUNK from every candidate list. `main` and `origin/main` pass both mechanical checks against themselves, so leaving them in the list points the removal steps at the trunk ref. MUST also exclude the branch each worktree currently has checked out.
+
+MUST keep local and remote candidates as SEPARATE, FULLY QUALIFIED refs from here to deletion. `feature-x` and `origin/feature-x` are two candidates that can diverge, and collapsing them lets a contained remote branch delete unique local work.
+
 ### STEP 2: DROP TOOL CRUFT. MUST run before classification.
 
 `graphite-base/*` refs are synthetic stack bases created by `gt`, never work branches. They are CRUFT BY DEFINITION. MUST delete them without classification.
@@ -49,14 +57,20 @@ MUST NOT classify them. MUST NOT ask about them.
 
 ### STEP 3: CLASSIFY EVERY REMAINING BRANCH. MUST cover all of them.
 
-MUST apply the three-step test from {{.Rule "git"}} to EVERY branch, local and remote. MUST NOT sample. MUST NOT classify only the ones that look interesting.
+MUST apply the three-step test from {{.Rule "git"}} to EVERY candidate, local and remote. MUST NOT sample. MUST NOT classify only the ones that look interesting.
 
-Steps 1 and 2 of that test are mechanical:
+Steps 1 and 2 of that test are mechanical. `$ref` below is the fully qualified candidate from STEP 1, so `feature-x` and `origin/feature-x` each get their own run:
 
 ```bash
-git merge-base --is-ancestor "origin/$branch" origin/main   # step 1: ancestor
-git cherry origin/main "origin/$branch" | grep -c '^+'      # step 2: 0 means contained
+git merge-base --is-ancestor "$ref" origin/main   # step 1: contained when it exits 0
+
+cherry=$(git cherry origin/main "$ref") || exit 1  # step 2: a failure is NOT containment
+unapplied=$(printf '%s\n' "$cherry" | grep -c '^+')
 ```
+
+MUST require `git cherry` to SUCCEED before reading its output. Piping it straight into `grep -c` turns a failure, such as a ref that does not exist, into the count `0`, which this procedure reads as contained. That path deletes an unclassified branch.
+
+MUST NOT accept a `git cherry` result of zero as containment when the candidate carries a merge commit. `git cherry` skips merges, so a branch whose only unique content came from a merge conflict resolution reports zero while holding work the trunk lacks. Check with `git rev-list --merges origin/main.."$ref"`, and when it returns anything, MUST settle the candidate by diffing trees or by STEP 4 rather than by the count.
 
 ### STEP 4: ASK THE HEADLINE QUESTION AT THE PR LEVEL. MUST come before any code.
 
@@ -66,8 +80,8 @@ MUST read the branch at the level the author worked at:
 
 ```bash
 gh pr list --state all --search "head:$branch" --json number,title,state,mergedAt,body
-git log origin/main..origin/$branch --format='%s'
-git diff origin/main...origin/$branch --stat
+git log origin/main.."$ref" --format='%s'
+git diff origin/main..."$ref" --stat
 ```
 
 MUST state the slice of work in one sentence before going further. "This branch adds a Cursor transcript reader" is a slice. "This branch adds `parseBubble`" is a symbol, and reasoning from symbols is what this step exists to prevent.
@@ -85,7 +99,9 @@ These are NOT sufficient evidence on their own. Each one has produced a wrong ve
 | Package or file exists on trunk | Proves a package exists, not that this branch's step landed. |
 | PR state is CLOSED | Graphite closes intermediate stack PRs when the stack squashes. |
 
-MUST cite a specific `file:line` or symbol on trunk for every CONTAINED verdict. A verdict with no citation is not a verdict.
+MUST cite a specific `file:line` ON TRUNK for every CONTAINED verdict. A symbol name may accompany that citation, never replace it. A verdict with no `file:line` is not a verdict.
+
+A merged pull request is NOT that evidence. It says the work landed once, not that the trunk still delivers the slice today. Use pull request state to protect open work in STEP 7, never as the proof that clears a deletion.
 
 ### STEP 6: TREAT REMOVAL AS SUPERSESSION. MUST check before calling anything unique.
 
@@ -110,9 +126,11 @@ git worktree remove <path>
 git worktree prune
 ```
 
+MUST delete only the candidate that its OWN classification cleared. A cleared `origin/feature-x` authorizes `git push origin --delete feature-x` and NOTHING ELSE. Deleting local `feature-x` requires local `feature-x` to have passed on its own ref.
+
 MUST use `git branch -d` when step 1 passed, and `git branch -D` when step 2 or step 3 passed.
 
-MUST delete the remote branch with `git push origin --delete <branch>` once it passed classification.
+MUST NOT delete the trunk branch or the trunk remote ref under any classification result.
 
 ### STEP 9: VERIFY AND REPORT. MUST run last.
 
