@@ -51,9 +51,9 @@ MUST keep local and remote candidates as SEPARATE, FULLY QUALIFIED refs from her
 
 ### STEP 2: DROP TOOL CRUFT. MUST run before classification.
 
-`graphite-base/*` refs are synthetic stack bases created by `gt`, never work branches. They are CRUFT BY DEFINITION. MUST delete them without classification.
+`graphite-base/*` refs are synthetic stack bases created by `gt`, never work branches. They are CRUFT BY DEFINITION, so MUST NOT spend the expensive reading of STEPS 4 and 5 on them, and MUST NOT ask the user about them.
 
-MUST NOT classify them. MUST NOT ask about them.
+That prefix is a naming convention, not a namespace Git reserves for `gt`, so a real branch can carry it. MUST still run the cheap guards before deleting one: the mechanical checks in STEP 3, and the open pull request check in STEP 7. A `graphite-base/*` ref that has unique commits or an open pull request is somebody's branch. Keep it and say so.
 
 ### STEP 3: CLASSIFY EVERY REMAINING BRANCH. MUST cover all of them.
 
@@ -126,9 +126,18 @@ git worktree remove <path>
 git worktree prune
 ```
 
-MUST delete only the candidate that its OWN classification cleared. A cleared `origin/feature-x` authorizes `git push origin --delete feature-x` and NOTHING ELSE. Deleting local `feature-x` requires local `feature-x` to have passed on its own ref.
+MUST delete only the candidate that its OWN classification cleared. Deleting local `feature-x` requires local `feature-x` to have passed on its own ref.
 
 MUST use `git branch -d` when step 1 passed, and `git branch -D` when step 2 or step 3 passed.
+
+MUST delete a remote branch UNDER A LEASE for the exact object it classified, never by name alone. A plain `git push origin --delete` removes whatever the remote holds at execution time, so a push that arrived after classification is lost with no trace:
+
+```bash
+oid=$(git rev-parse "$ref")   # captured when the candidate was classified
+git push origin --force-with-lease="refs/heads/$branch:$oid" ":refs/heads/$branch"
+```
+
+MUST quote every branch name in every command. Ref names accept characters the shell treats as syntax, and `git ls-remote` returns whatever the remote holds, so an unquoted name is command execution during cleanup.
 
 MUST NOT delete the trunk branch or the trunk remote ref under any classification result.
 

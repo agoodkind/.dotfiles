@@ -85,7 +85,7 @@ Local and remote branches are both in scope, as separate candidates. `feature-x`
 
 The trunk is never a candidate. It passes both mechanical checks against itself, so leaving `main` or `origin/main` in the candidate list points the removal step at the trunk ref.
 
-`graphite-base/*` refs are synthetic stack bases created by `gt` rather than work branches. They are cruft by definition, so remove them without classifying them.
+`graphite-base/*` refs are synthetic stack bases created by `gt` rather than work branches. They are cruft by definition, so they skip the semantic read of step 3. The prefix is a convention rather than a namespace Git reserves, so still run the two mechanical checks and the open pull request check before deleting one, and keep any that carries unique commits or an open pull request.
 
 ## Classification (run in order; first pass wins)
 
@@ -112,7 +112,7 @@ That case is easy to invert, because a removal and a change that never landed lo
 - Remove the worktree before the branch, and only when `git status --porcelain` is empty. Run `git worktree remove <path>`, then `git worktree prune`. A non-empty status is uncommitted work; stop and surface it instead of removing.
 - When step 1 passed, delete the branch with `git branch -d`, which refuses anything git still sees as unmerged.
 - When step 2 or step 3 passed, delete the branch with `git branch -D`, since git cannot see the containment. Cite the evidence: the empty `git cherry` result for step 2, or a trunk `file:line` for step 3. A merged pull request is not step 3 evidence, because it says the work landed once rather than that the trunk delivers the slice today.
-- Delete a cleared remote branch with `git push origin --delete <branch>`. Keep a branch whose pull request is still open.
+- Delete a cleared remote branch under a lease for the object that was classified, using `--force-with-lease=refs/heads/<branch>:<oid>` with a `:refs/heads/<branch>` refspec. Deleting by name alone removes whatever the remote holds at execution time, so a push that arrived after classification is lost. Quote every branch name, since ref names accept characters the shell treats as syntax. Keep a branch whose pull request is still open.
 - Never delete the trunk branch or its remote ref, and never move the trunk ref of a checkout owned by another worktree.
 
 Run {{.Skill "cleanup-git"}} to execute this classification across a whole repository.
