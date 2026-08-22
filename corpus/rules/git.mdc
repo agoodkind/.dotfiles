@@ -109,7 +109,7 @@ That case is easy to invert, because a removal and a change that never landed lo
 
 ## Remove mechanics
 
-- Remove the worktree before the branch, and only when `git status --porcelain` is empty. Run `git worktree remove -- "<path>"`, then `git worktree prune`. Quote the path and terminate options, since a worktree path can contain whitespace or shell syntax. A non-empty status is uncommitted work; stop and surface it instead of removing.
+- Remove the worktree before the branch, and only when `git status --porcelain --ignored` is empty. Run `git worktree remove -- "<path>"`, then `git worktree prune`. Quote the path and terminate options, since a worktree path can contain whitespace or shell syntax. Include ignored files in that check, because removal deletes the directory recursively and takes local environment files with it. A non-empty status is unique work; stop and surface it instead of removing.
 - Confirm the local ref still equals the object id recorded at enumeration before deleting it. `git branch -d` and `-D` address a mutable name, so a ref another process advanced would take its new commits down unexamined.
 - When step 1 passed, delete the branch with `git branch -d`, which refuses anything git still sees as unmerged.
 - When step 2 or step 3 passed, delete the branch with `git branch -D`, since git cannot see the containment. Cite the evidence: the empty `git cherry` result for step 2, or a trunk `file:line` for step 3. A merged pull request is not step 3 evidence, because it says the work landed once rather than that the trunk delivers the slice today.

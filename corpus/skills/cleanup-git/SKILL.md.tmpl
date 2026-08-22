@@ -121,7 +121,7 @@ This case is easy to invert, because a removal and a change that never landed lo
 
 MUST NOT delete a branch whose pull request is OPEN.
 
-MUST NOT remove a worktree whose `git status --porcelain` is non-empty. Uncommitted work is unique work. Surface it instead.
+MUST NOT remove a worktree unless `git status --porcelain --ignored` is empty. Plain `git status --porcelain` hides ignored files, and `git worktree remove` deletes the directory recursively, so a `.env` or a local database goes with it. Tracked, untracked, and ignored files all count as unique work. Surface them instead.
 
 MUST NOT move the trunk ref of a checkout owned by another worktree.
 
@@ -184,4 +184,4 @@ STEPS 4 through 6 across many branches are a large read. Dispatching subagents t
 
 MUST give each subagent the branch list, the repository absolute path, and the headline question in its own words: DID MAIN SUPERSEDE THIS SLICE OF WORK, BY ANY ROUTE? MUST tell it to answer at the PR level first and confirm in trunk code second, and to cite `file:line` on trunk. MUST require a CONTAINED or UNIQUE verdict per branch with no hedging.
 
-MUST verify a sample of the returned verdicts against trunk yourself before deleting. A subagent report is a claim, not proof.
+MUST verify EVERY CONTAINED verdict against trunk yourself before deleting. A subagent report is a claim, not proof, and sampling lets one wrong claim delete the last ref to unique commits. Verifying a UNIQUE verdict is optional, because keeping a branch destroys nothing.
