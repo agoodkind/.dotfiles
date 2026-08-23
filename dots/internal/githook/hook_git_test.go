@@ -125,6 +125,9 @@ func TestClaudeCommitAndRebaseOnPrimaryAreBlocked(t *testing.T) {
 	}
 	output, err := runGitResult(t, repo, "commit", "-m", "harness commit")
 	assertBlocked(t, err, output, msgPrimaryWrite)
+	if _, err := runGitResult(t, repo, "reset", "--hard", "HEAD"); err != nil {
+		t.Fatalf("resetting after blocked commit: %v", err)
+	}
 	output, err = runGitResult(t, repo, "rebase", "main")
 	assertBlocked(t, err, output, msgPrimaryWrite)
 }

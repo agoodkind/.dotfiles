@@ -184,9 +184,25 @@ dots_hash_tool() {
 # dots_without_git_env runs a command with git-hook identity variables removed
 # so the Go toolchain inspects the dots module instead of the hooked repository.
 dots_without_git_env() {
-    env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE \
-        -u GIT_OBJECT_DIRECTORY -u GIT_ALTERNATE_OBJECT_DIRECTORIES \
-        "$@"
+    local -a unset_args
+    local name
+    unset_args=()
+    if check_command git; then
+        while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            unset_args+=(-u "$name")
+        done < <(git rev-parse --local-env-vars 2>/dev/null || true)
+    fi
+    if [ "${#unset_args[@]}" -eq 0 ]; then
+        unset_args=(
+            -u GIT_DIR
+            -u GIT_WORK_TREE
+            -u GIT_INDEX_FILE
+            -u GIT_OBJECT_DIRECTORY
+            -u GIT_ALTERNATE_OBJECT_DIRECTORIES
+        )
+    fi
+    env "${unset_args[@]}" "$@"
 }
 
 # dots_build_input_hash prints a content hash of the files that actually compile
@@ -548,6 +564,7 @@ run_dots_go_command() {
     fi
 
     GOTOOLCHAIN="$(dots_go_toolchain)" GO111MODULE=on GOWORK=off \
+        dots_without_git_env \
         "$GO_BINARY" run -C "$DOTDOTFILES/dots" -buildvcs=false ./cmd/dots "$command" "$@"
 }
 
