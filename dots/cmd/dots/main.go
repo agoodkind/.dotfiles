@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"io"
 	"log/slog"
@@ -11,6 +12,7 @@ import (
 
 	cursorSync "goodkind.io/.dotfiles/internal/cursor/syncer"
 	dispatcher "goodkind.io/.dotfiles/internal/dispatch"
+	"goodkind.io/.dotfiles/internal/githook"
 	installer "goodkind.io/.dotfiles/internal/install"
 	perfcmd "goodkind.io/.dotfiles/internal/perf"
 	"goodkind.io/.dotfiles/internal/runner"
@@ -31,6 +33,7 @@ const (
 	cmdCursorSync         subcommand = "cursor-sync"
 	cmdInstall            subcommand = "install"
 	cmdUninstall          subcommand = "uninstall"
+	cmdGitHook            subcommand = "git-hook"
 	cmdVersion            subcommand = "version"
 	cmdHelp               subcommand = "help"
 	cmdHelpShort          subcommand = "-h"
@@ -82,6 +85,8 @@ func run(args []string) int {
 		return runInstall(args[1:])
 	case cmdUninstall:
 		return runUninstall(args[1:])
+	case cmdGitHook:
+		return runGitHook(args[1:])
 	case cmdVersion:
 		logInfo("dots 0.1.0")
 		return 0
@@ -228,6 +233,28 @@ func runUninstall(args []string) int {
 	return 0
 }
 
+func runGitHook(args []string) int {
+	for _, arg := range args {
+		if arg == "-h" || arg == "--help" {
+			logInfo("Usage: dots git-hook {reference-transaction|pre-commit|pre-rebase} [args]")
+			return 0
+		}
+	}
+	err := githook.Run(context.Background(), args, os.Stdin, os.Stderr)
+	if err == nil {
+		return 0
+	}
+	if errors.Is(err, githook.ErrUsage) {
+		return 2
+	}
+	var refusal *githook.RefusalError
+	if errors.As(err, &refusal) {
+		return 1
+	}
+	logError("git-hook failed", err)
+	return 1
+}
+
 func printUsage() {
 	logInfo("Usage:")
 	logInfo("  dots sync [--repair] [--quick] [--skip-git] [--skip-network] [--skip-cursor-sync] [--dry-run] [--use-defaults] [--strict]")
@@ -237,6 +264,7 @@ func printUsage() {
 	logInfo("  dots cursor-sync")
 	logInfo("  dots install [--use-defaults] [--quick] [--skip-git] [--skip-network] [--repair] [--strict]")
 	logInfo("  dots uninstall [--purge-packages]")
+	logInfo("  dots git-hook {reference-transaction|pre-commit|pre-rebase} [args]")
 	logInfo("  dots version")
 }
 
