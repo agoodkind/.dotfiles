@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+source "$(dirname "$0")/chain-hook.sh"
+
+"$(dirname "$0")/invoke-dots-git-hook.sh" pre-rebase "$@"
+
+chain_hook pre-rebase "$@"

@@ -181,6 +181,14 @@ dots_hash_tool() {
     echo ""
 }
 
+# dots_without_git_env runs a command with git-hook identity variables removed
+# so the Go toolchain inspects the dots module instead of the hooked repository.
+dots_without_git_env() {
+    env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE \
+        -u GIT_OBJECT_DIRECTORY -u GIT_ALTERNATE_OBJECT_DIRECTORIES \
+        "$@"
+}
+
 # dots_build_input_hash prints a content hash of the files that actually compile
 # into the dots binary: this module's GoFiles and EmbedFiles as reported by
 # `go list -deps`, plus go.mod and go.sum. Test files and the runtime-read config
@@ -207,6 +215,7 @@ dots_build_input_hash() {
         (
             cd "$DOTDOTFILES/dots" 2>/dev/null || exit 0
             GOTOOLCHAIN=local GO111MODULE=on GOWORK=off \
+                dots_without_git_env \
                 "$GO_BINARY" list -deps -f "$list_tmpl" ./cmd/dots 2>/dev/null || true
         )
         printf '%s\n%s\n' "$DOTDOTFILES/dots/go.mod" "$DOTDOTFILES/dots/go.sum"
@@ -538,7 +547,8 @@ run_dots_go_command() {
         return 1
     fi
 
-    GOTOOLCHAIN="$(dots_go_toolchain)" GO111MODULE=on GOWORK=off "$GO_BINARY" run -C "$DOTDOTFILES/dots" ./cmd/dots "$command" "$@"
+    GOTOOLCHAIN="$(dots_go_toolchain)" GO111MODULE=on GOWORK=off \
+        "$GO_BINARY" run -C "$DOTDOTFILES/dots" -buildvcs=false ./cmd/dots "$command" "$@"
 }
 
 run_dots_binary() {
@@ -569,8 +579,9 @@ build_dots_binary() {
 
     if [ "$DOTS_BUILD_TIMEOUT_SECONDS" -gt 0 ] && check_command timeout; then
         if ! GOTOOLCHAIN="$toolchain" GO111MODULE=on GOWORK=off \
+            dots_without_git_env \
             timeout "$DOTS_BUILD_TIMEOUT_SECONDS" \
-            "$GO_BINARY" build -C "$DOTDOTFILES/dots" -o "$DOTS_BINARY" ./cmd/dots >"$build_log" 2>&1; then
+            "$GO_BINARY" build -C "$DOTDOTFILES/dots" -buildvcs=false -o "$DOTS_BINARY" ./cmd/dots >"$build_log" 2>&1; then
             cat "$build_log" >&2
             rm -f "$build_log"
             echo "dots: build failed or timed out after ${DOTS_BUILD_TIMEOUT_SECONDS}s" >&2
@@ -578,7 +589,8 @@ build_dots_binary() {
         fi
     else
         if ! GOTOOLCHAIN="$toolchain" GO111MODULE=on GOWORK=off \
-            "$GO_BINARY" build -C "$DOTDOTFILES/dots" -o "$DOTS_BINARY" ./cmd/dots >"$build_log" 2>&1; then
+            dots_without_git_env \
+            "$GO_BINARY" build -C "$DOTDOTFILES/dots" -buildvcs=false -o "$DOTS_BINARY" ./cmd/dots >"$build_log" 2>&1; then
             cat "$build_log" >&2
             rm -f "$build_log"
             echo "dots: build failed" >&2

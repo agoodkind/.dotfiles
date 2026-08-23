@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+unset CLAUDECODE CODEX_CI GEMINI_CLI
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GLOBAL_HOOKS="$ROOT_DIR/git-global-hooks"
 TEMP_DIR="$(mktemp -d)"
@@ -10,6 +12,7 @@ EMPTY_HOOKS="$TEMP_DIR/empty-hooks"
 MISSING_EMAIL_RULES="$TEMP_DIR/missing-email-rules"
 
 cleanup() {
+    chmod -R u+w "$TEMP_DIR" 2>/dev/null || true
     rm -rf "$TEMP_DIR"
 }
 trap cleanup EXIT
@@ -63,6 +66,13 @@ assert_allowed() {
         fail "$scenario_name: hook rejected an allowed commit: $output"
     fi
 }
+
+# Git commits below set HOME to TEST_HOME. Keep Go caches on the real home so
+# hook rebuilds do not write a read-only module cache under TEMP_DIR.
+export GOPATH="${GOPATH:-$HOME/go}"
+export GOCACHE="${GOCACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/go-build}"
+export GOMODCACHE="${GOMODCACHE:-$GOPATH/pkg/mod}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 
 mkdir -p "$TEST_HOME" "$EMPTY_HOOKS"
 
