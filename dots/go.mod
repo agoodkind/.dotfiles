@@ -3,7 +3,7 @@ module goodkind.io/.dotfiles
 go 1.26.5
 
 require (
-	charm.land/bubbles/v2 v2.2.0
+	charm.land/bubbles/v2 v2.2.1
 	charm.land/bubbletea/v2 v2.0.9
 	github.com/moby/moby/api v1.55.0
 	github.com/moby/moby/client v0.5.1
