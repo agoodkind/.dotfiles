@@ -255,7 +255,7 @@ A page that explains a system and then includes command recipes, rollback matric
 
 The four kinds are a content contract, not a required directory schema. Derive paths from the existing document set, the reader's arrival path, page count, and independently addressable topics. Do not invent a tree because another repository uses it. Do not flatten a large concern into one file. Do not create a directory for a single page.
 
-State which layout the current set supports. Then ask through {{.Skill "ask-questions"}}. Do not pick a tree silently.
+State which layout the current set supports. If more than one viable layout remains and the user has not already chosen one, ask through {{.Skill "ask-questions"}}. Do not pick among unresolved options silently.
 
 ## Ask after evaluating the document set
 
