@@ -92,6 +92,14 @@ func LinkDotfiles(ctx context.Context, dotfiles string, logger *telemetry.Logger
 		}
 		homeFile := filepath.Join(homeDir, rel)
 
+		if rel == localProfileName {
+			if err := ensureLocalProfile(ctx, homeFile, path); err != nil {
+				return err
+			}
+			skipped++
+			return nil
+		}
+
 		if common.IsSymlinkTo(homeFile, path) {
 			skipped++
 			return nil
@@ -122,6 +130,46 @@ func LinkDotfiles(ctx context.Context, dotfiles string, logger *telemetry.Logger
 		return fmt.Errorf("walking dotfiles: %w", walkErr)
 	}
 	common.InfoContextf(ctx, logger, "  Linked: %s Skipped: %s Backed up: %s", strconv.Itoa(linked), strconv.Itoa(skipped), strconv.Itoa(backed))
+	return nil
+}
+
+const localProfileName = ".profile"
+
+// Docker Desktop rewrites ~/.profile on launch. A symlink would dirty the
+// tracked copy, so this path stays a regular file that sources the repo.
+func ensureLocalProfile(ctx context.Context, homeFile string, repoProfile string) error {
+	if common.IsSymlinkTo(homeFile, repoProfile) {
+		if err := os.Remove(filepath.Clean(homeFile)); err != nil {
+			slog.WarnContext(ctx, "workspace: removing profile symlink", "err", err)
+			return fmt.Errorf("removing profile symlink: %w", err)
+		}
+		return writeLocalProfile(ctx, homeFile, repoProfile)
+	}
+	_, err := os.Lstat(filepath.Clean(homeFile))
+	if os.IsNotExist(err) {
+		return writeLocalProfile(ctx, homeFile, repoProfile)
+	}
+	if err != nil {
+		slog.WarnContext(ctx, "workspace: stat profile", "err", err)
+		return fmt.Errorf("stat profile: %w", err)
+	}
+	return nil
+}
+
+func writeLocalProfile(ctx context.Context, homeFile string, repoProfile string) error {
+	if err := os.MkdirAll(filepath.Dir(filepath.Clean(homeFile)), 0o755); err != nil {
+		slog.WarnContext(ctx, "workspace: creating profile directory", "err", err)
+		return fmt.Errorf("creating profile directory: %w", err)
+	}
+	quotedRepo := `"` + strings.ReplaceAll(repoProfile, `"`, `\"`) + `"`
+	body := "# Local login profile managed by dots. Docker Desktop may write a PATH block here.\n" +
+		"if [ -f " + quotedRepo + " ]; then\n" +
+		"    . " + quotedRepo + "\n" +
+		"fi\n"
+	if err := os.WriteFile(filepath.Clean(homeFile), []byte(body), 0o644); err != nil {
+		slog.WarnContext(ctx, "workspace: writing local profile", "err", err)
+		return fmt.Errorf("writing local profile: %w", err)
+	}
 	return nil
 }
 

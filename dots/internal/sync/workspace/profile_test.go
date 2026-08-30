@@ -1,0 +1,121 @@
+package workspace
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestLinkDotfilesReplacesProfileSymlinkWithLocalFile(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_DATA_HOME", filepath.Join(home, "xdg-data"))
+
+	dotfiles := t.TempDir()
+	repoProfile := filepath.Join(dotfiles, "home", ".profile")
+	repoZshrc := filepath.Join(dotfiles, "home", ".zshrc")
+	if err := os.MkdirAll(filepath.Join(dotfiles, "home"), 0o755); err != nil {
+		t.Fatalf("creating home dir: %v", err)
+	}
+	if err := os.WriteFile(repoProfile, []byte("repo-profile\n"), 0o644); err != nil {
+		t.Fatalf("writing repo profile: %v", err)
+	}
+	if err := os.WriteFile(repoZshrc, []byte("repo-zshrc\n"), 0o644); err != nil {
+		t.Fatalf("writing repo zshrc: %v", err)
+	}
+
+	homeProfile := filepath.Join(home, ".profile")
+	if err := os.Symlink(repoProfile, homeProfile); err != nil {
+		t.Fatalf("creating profile symlink: %v", err)
+	}
+
+	logger, _ := newBackupTestLogger(t)
+	if err := LinkDotfiles(context.Background(), dotfiles, logger); err != nil {
+		t.Fatalf("LinkDotfiles: %v", err)
+	}
+
+	info, err := os.Lstat(homeProfile)
+	if err != nil {
+		t.Fatalf("stat HOME/.profile: %v", err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		t.Fatal("HOME/.profile is still a symlink")
+	}
+	body, err := os.ReadFile(homeProfile)
+	if err != nil {
+		t.Fatalf("reading HOME/.profile: %v", err)
+	}
+	if !strings.Contains(string(body), repoProfile) {
+		t.Fatalf("local profile does not source %s: %q", repoProfile, body)
+	}
+
+	zshrc := filepath.Join(home, ".zshrc")
+	target, err := os.Readlink(zshrc)
+	if err != nil {
+		t.Fatalf("HOME/.zshrc was not a symlink: %v", err)
+	}
+	if target != repoZshrc {
+		t.Fatalf("HOME/.zshrc -> %q, want %q", target, repoZshrc)
+	}
+
+	dockerBlock := "# The following lines were added by Docker Desktop to add commands to your PATH.\nexport PATH=\"$PATH:/tmp/docker-bin\"\n# End of Docker Desktop section.\n\n"
+	if err := os.WriteFile(homeProfile, append([]byte(dockerBlock), body...), 0o644); err != nil {
+		t.Fatalf("writing Docker PATH block: %v", err)
+	}
+	if err := LinkDotfiles(context.Background(), dotfiles, logger); err != nil {
+		t.Fatalf("second LinkDotfiles: %v", err)
+	}
+
+	info, err = os.Lstat(homeProfile)
+	if err != nil {
+		t.Fatalf("stat HOME/.profile after second sync: %v", err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		t.Fatal("second LinkDotfiles re-symlinked HOME/.profile")
+	}
+	body, err = os.ReadFile(homeProfile)
+	if err != nil {
+		t.Fatalf("reading HOME/.profile after second sync: %v", err)
+	}
+	if !strings.Contains(string(body), "End of Docker Desktop section") {
+		t.Fatalf("second LinkDotfiles wiped Docker PATH block: %q", body)
+	}
+}
+
+func TestLinkDotfilesWritesProfileWhenMissing(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_DATA_HOME", filepath.Join(home, "xdg-data"))
+
+	dotfiles := t.TempDir()
+	repoProfile := filepath.Join(dotfiles, "home", ".profile")
+	if err := os.MkdirAll(filepath.Join(dotfiles, "home"), 0o755); err != nil {
+		t.Fatalf("creating home dir: %v", err)
+	}
+	if err := os.WriteFile(repoProfile, []byte("repo-profile\n"), 0o644); err != nil {
+		t.Fatalf("writing repo profile: %v", err)
+	}
+
+	logger, _ := newBackupTestLogger(t)
+	if err := LinkDotfiles(context.Background(), dotfiles, logger); err != nil {
+		t.Fatalf("LinkDotfiles: %v", err)
+	}
+
+	homeProfile := filepath.Join(home, ".profile")
+	info, err := os.Lstat(homeProfile)
+	if err != nil {
+		t.Fatalf("stat HOME/.profile: %v", err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		t.Fatal("HOME/.profile was created as a symlink")
+	}
+	body, err := os.ReadFile(homeProfile)
+	if err != nil {
+		t.Fatalf("reading HOME/.profile: %v", err)
+	}
+	if !strings.Contains(string(body), repoProfile) {
+		t.Fatalf("local profile does not source %s: %q", repoProfile, body)
+	}
+}
