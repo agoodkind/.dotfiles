@@ -72,7 +72,7 @@ The most useful information belongs before supporting detail.
 Clear sentences can stand alone, and they should sound natural when spoken aloud.
 
 - Each sentence has a concrete subject and a concrete verb.
-- Join related clauses with connectors such as "and", "so", "since", commas, semicolons, colons, or parentheses when they are one thought.
+- Join related clauses with "and", "so", or "since", or with a semicolon, colon, or parentheses. Do not join two independent clauses with a comma alone.
 - Do not chop one thought into stub sentences or punchy one-liners. A short stub fails when it is only the front half of a longer thought.
 - Length is not the test. A longer sentence is correct when it carries one finished thought.
 - Verbose, inflated, or low-substance prose should become shorter or disappear.
@@ -167,7 +167,7 @@ Default is no link.
 
 **Bad** (same target linked repeatedly; links only name ownership):
 
-> Invoice numbers for Acme Inc are listed in [invoices.yml](...). Queue names are listed in [queues.tf](...). Invoice numbers are also listed in [invoices.yml](...). The [helios module](...) owns the rest of the payroll layout. Reminder schedules also come from [invoices.yml](...).
+> Invoice numbers for Acme Inc are listed in [invoices.yml](...). Invoice numbers are also listed in [invoices.yml](...).
 
 **Bad** (laundered: link removed, filename kept):
 
@@ -195,7 +195,11 @@ Default is no link.
 
 **Good** (load-bearing "see all under"):
 
-> Each pay-period record lists the period start, the period end, and the tax table name. See all Helios pay-run fields under [Pay run reference](payruns.md).
+> Each pay-period record lists the period start, the period end, and the tax table name. See all Helios pay-run fields under [pay-runs.yml](../../helios/pay-runs.yml).
+
+**Bad** (see-more when this page already holds the answer):
+
+> The recovery steps are on this page. See the recovery guide for those same steps.
 
 **Good** (absolute out-of-repo link when the artifact is outside this repository):
 
@@ -343,10 +347,6 @@ Architecture docs describe the system as it is now, stating behavior first.
 
 ### Prose examples
 
-**Bad** (hardcoded symbol and path):
-
-> The function `saveSettings` in `src/settings/store.ts` and the test next to it hold the enforced wording for Acme Inc's confirmation message.
-
 **Bad** (how-to inside explanation):
 
 > One page first explains why Helios posts pay to the Acme Inc ledger. That same page then includes shell commands and a rollback matrix for the pay-run worker.
@@ -379,20 +379,6 @@ Architecture docs describe the system as it is now, stating behavior first.
 
 > Each pay-period record lists the period start, the period end, the tax table name, and the ledger account Helios posts to.
 
-**Bad** (see-more when this page already holds the answer):
-
-> To recover a stuck pay run:
->
-> 1. Stop the Helios worker.
-> 2. Clear the leftover lock.
-> 3. Start the worker again.
->
-> See the recovery guide for those same steps.
-
-**Bad** (see-more as decoration):
-
-> Helios is Acme Inc's payroll product. See also the layout page, the tax page, and the ledger page.
-
 ### Tone examples
 
 **Bad** (stub sentences that chop one thought):
@@ -406,10 +392,6 @@ Architecture docs describe the system as it is now, stating behavior first.
 **Bad** (explanation in how-to voice):
 
 > Run these commands on the host so that you can understand why Helios posts pay to the Acme Inc ledger.
-
-**Good** (explanation):
-
-> Helios posts pay to the Acme Inc ledger so that every employee sees one payslip.
 
 **Bad** (how-to in explanation voice):
 
