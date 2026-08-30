@@ -134,43 +134,87 @@ func LinkDotfiles(ctx context.Context, dotfiles string, logger *telemetry.Logger
 }
 
 const localProfileName = ".profile"
+const localProfileSentinel = "# Local login profile managed by dots."
 
 // Docker Desktop rewrites ~/.profile on launch. A symlink would dirty the
 // tracked copy, so this path stays a regular file that sources the repo.
 func ensureLocalProfile(ctx context.Context, homeFile string, repoProfile string) error {
-	if common.IsSymlinkTo(homeFile, repoProfile) {
-		if err := os.Remove(filepath.Clean(homeFile)); err != nil {
-			slog.WarnContext(ctx, "workspace: removing profile symlink", "err", err)
-			return fmt.Errorf("removing profile symlink: %w", err)
-		}
-		return writeLocalProfile(ctx, homeFile, repoProfile)
-	}
-	_, err := os.Lstat(filepath.Clean(homeFile))
+	info, err := os.Lstat(filepath.Clean(homeFile))
 	if os.IsNotExist(err) {
-		return writeLocalProfile(ctx, homeFile, repoProfile)
+		return writeLocalProfile(ctx, homeFile, repoProfile, "")
 	}
 	if err != nil {
 		slog.WarnContext(ctx, "workspace: stat profile", "err", err)
 		return fmt.Errorf("stat profile: %w", err)
 	}
-	return nil
+
+	existing := ""
+	if info.Mode()&os.ModeSymlink != 0 {
+		if common.IsSymlinkTo(homeFile, repoProfile) {
+			if err := os.Remove(filepath.Clean(homeFile)); err != nil {
+				slog.WarnContext(ctx, "workspace: removing profile symlink", "err", err)
+				return fmt.Errorf("removing profile symlink: %w", err)
+			}
+			return writeLocalProfile(ctx, homeFile, repoProfile, "")
+		}
+		if data, readErr := os.ReadFile(filepath.Clean(homeFile)); readErr == nil {
+			existing = string(data)
+		}
+		if err := os.Remove(filepath.Clean(homeFile)); err != nil {
+			slog.WarnContext(ctx, "workspace: removing stale profile symlink", "err", err)
+			return fmt.Errorf("removing stale profile symlink: %w", err)
+		}
+		return writeLocalProfile(ctx, homeFile, repoProfile, existing)
+	}
+
+	data, err := os.ReadFile(filepath.Clean(homeFile))
+	if err != nil {
+		slog.WarnContext(ctx, "workspace: reading profile", "err", err)
+		return fmt.Errorf("reading profile: %w", err)
+	}
+	return writeLocalProfile(ctx, homeFile, repoProfile, string(data))
 }
 
-func writeLocalProfile(ctx context.Context, homeFile string, repoProfile string) error {
+func writeLocalProfile(ctx context.Context, homeFile string, repoProfile string, existing string) error {
+	body := withLocalProfileSource(existing, repoProfile)
+	if existing != "" && body == existing {
+		return nil
+	}
 	if err := os.MkdirAll(filepath.Dir(filepath.Clean(homeFile)), 0o755); err != nil {
 		slog.WarnContext(ctx, "workspace: creating profile directory", "err", err)
 		return fmt.Errorf("creating profile directory: %w", err)
 	}
-	quotedRepo := `"` + strings.ReplaceAll(repoProfile, `"`, `\"`) + `"`
-	body := "# Local login profile managed by dots. Docker Desktop may write a PATH block here.\n" +
-		"if [ -f " + quotedRepo + " ]; then\n" +
-		"    . " + quotedRepo + "\n" +
-		"fi\n"
 	if err := os.WriteFile(filepath.Clean(homeFile), []byte(body), 0o644); err != nil {
 		slog.WarnContext(ctx, "workspace: writing local profile", "err", err)
 		return fmt.Errorf("writing local profile: %w", err)
 	}
 	return nil
+}
+
+func withLocalProfileSource(existing string, repoProfile string) string {
+	quotedRepo := shellSingleQuote(repoProfile)
+	block := localProfileSentinel + " Docker Desktop may write a PATH block here.\n" +
+		"if [ -f " + quotedRepo + " ]; then\n" +
+		"    . " + quotedRepo + "\n" +
+		"fi\n"
+	if strings.Contains(existing, localProfileSentinel) && strings.Contains(existing, repoProfile) {
+		return existing
+	}
+	prefix := existing
+	if index := strings.Index(existing, localProfileSentinel); index >= 0 {
+		prefix = strings.TrimRight(existing[:index], "\n")
+	}
+	if prefix == "" {
+		return block
+	}
+	if !strings.HasSuffix(prefix, "\n") {
+		prefix += "\n"
+	}
+	return prefix + block
+}
+
+func shellSingleQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", `'\''`) + "'"
 }
 
 // isWithinDir reports whether target is root itself or a descendant of root.
