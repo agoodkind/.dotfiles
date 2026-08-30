@@ -189,36 +189,40 @@ func writeLocalProfile(ctx context.Context, homeFile string, repoProfile string,
 		slog.WarnContext(ctx, "workspace: creating profile directory", "err", err)
 		return fmt.Errorf("creating profile directory: %w", err)
 	}
-	if err := writeFileAtomically(homeFile, []byte(body), 0o600); err != nil {
-		slog.WarnContext(ctx, "workspace: writing local profile", "err", err)
+	if err := writeFileAtomically(ctx, homeFile, []byte(body), 0o600); err != nil {
 		return fmt.Errorf("writing local profile: %w", err)
 	}
 	return nil
 }
 
-func writeFileAtomically(path string, body []byte, mode os.FileMode) error {
+func writeFileAtomically(ctx context.Context, path string, body []byte, mode os.FileMode) error {
 	cleanPath := filepath.Clean(path)
 	file, err := os.CreateTemp(filepath.Dir(cleanPath), ".dots-profile-*")
 	if err != nil {
+		slog.WarnContext(ctx, "workspace: creating temp profile", "err", err)
 		return fmt.Errorf("creating temp profile: %w", err)
 	}
 	tempName := file.Name()
 	if _, err := file.Write(body); err != nil {
 		_ = file.Close()
 		_ = os.Remove(tempName)
+		slog.WarnContext(ctx, "workspace: writing temp profile", "err", err)
 		return fmt.Errorf("writing temp profile: %w", err)
 	}
 	if err := file.Chmod(mode); err != nil {
 		_ = file.Close()
 		_ = os.Remove(tempName)
+		slog.WarnContext(ctx, "workspace: chmod temp profile", "err", err)
 		return fmt.Errorf("chmod temp profile: %w", err)
 	}
 	if err := file.Close(); err != nil {
 		_ = os.Remove(tempName)
+		slog.WarnContext(ctx, "workspace: closing temp profile", "err", err)
 		return fmt.Errorf("closing temp profile: %w", err)
 	}
 	if err := os.Rename(tempName, cleanPath); err != nil {
 		_ = os.Remove(tempName)
+		slog.WarnContext(ctx, "workspace: replacing profile", "err", err)
 		return fmt.Errorf("replacing profile: %w", err)
 	}
 	return nil
