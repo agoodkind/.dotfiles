@@ -1,12 +1,14 @@
 ---
 name: writing
-description: Apply the corpus writing rules to a doc or response. Use when the user invokes /writing or asks to apply the writing rules.
+description: Apply the corpus writing rules. Use when writing or restructuring docs, classifying documentation by need, or when the user invokes /writing.
 ---
 
 # Writing
 
 Apply the corpus writing rules to the current task.
 
+When the task writes or restructures docs, evaluate the current document set first. Complete any kind and placement decisions that the files establish, then route each unresolved choice through {{.Skill "ask-questions"}}. Do not choose an unresolved page kind, path tree, leaf versus directory, or entry filename without the user's answer.
+
 {{.RuleBody "writing"}}
 
-Related skills: {{.Skill "make-readable"}}, {{.Skill "plain"}}, {{.Skill "remove-emdashes"}}
+Related skills: {{.Skill "ask-questions"}}, {{.Skill "make-readable"}}, {{.Skill "plain"}}, {{.Skill "remove-emdashes"}}
