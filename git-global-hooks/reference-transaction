@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+source "$(dirname "$0")/chain-hook.sh"
+
+stdin_file="$(mktemp)"
+cleanup() {
+    rm -f "$stdin_file"
+}
+trap cleanup EXIT
+cat >"$stdin_file"
+export CHAIN_HOOK_STDIN_FILE="$stdin_file"
+
+state="${1:-}"
+if [[ "$state" == "preparing" ]]; then
+    "$(dirname "$0")/invoke-dots-git-hook.sh" reference-transaction "$@" <"$stdin_file"
+fi
+
+chain_hook reference-transaction "$@"

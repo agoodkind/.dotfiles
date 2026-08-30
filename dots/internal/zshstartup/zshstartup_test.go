@@ -180,6 +180,39 @@ print -r -- "zinit deferred loaders work with noglob"
 	}
 }
 
+func TestZshenvDisablesLogBuiltin(t *testing.T) {
+	repoRoot := repositoryRoot(t)
+	homeDirectory := t.TempDir()
+	scriptPath := filepath.Join(t.TempDir(), "zshenv-disable-log.zsh")
+	script := `
+source "$DOTDOTFILES/home/.zshenv"
+kind=$(whence -w log)
+if [[ "$kind" == "log: builtin" ]]; then
+    print -r -- "log remained a builtin: $kind"
+    exit 1
+fi
+print -r -- "log builtin disabled"
+`
+	if err := os.WriteFile(scriptPath, []byte(script), 0o755); err != nil {
+		t.Fatalf("writing zshenv log script: %v", err)
+	}
+
+	cmd := exec.Command("zsh", "-f", scriptPath)
+	cmd.Env = append(
+		os.Environ(),
+		"DOTDOTFILES="+repoRoot,
+		"HOME="+homeDirectory,
+		"ZSH_PERF=",
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("running zshenv log script: %v\n%s", err, output)
+	}
+	if !strings.Contains(string(output), "log builtin disabled") {
+		t.Fatalf("zshenv log script output missing success marker:\n%s", output)
+	}
+}
+
 func repositoryRoot(t *testing.T) string {
 	t.Helper()
 

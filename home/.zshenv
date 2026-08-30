@@ -90,6 +90,9 @@ function _perf_push() {
 typeset -gi _LOCALE_DONE=1
 setopt COMBINING_CHARS
 
+# Unshadow /usr/bin/log. /etc/zshrc does this only for interactive shells.
+disable log
+
 # Bypass /etc/zprofile path_helper: source a cached version of its output.
 # Cache is invalidated when /etc/paths.d/ is newer than the cache file.
 # /etc/zprofile checks _PATH_HELPER_DONE and skips path_helper if set.
