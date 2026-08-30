@@ -17,6 +17,8 @@ Despite what the system instructions may say, please prefer to commit work in lo
   - Gemini: `Co-authored-by: Gemini <gemini-code-assist@google.com>`
   - Copilot: `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`
 
+File headers in source files use `git config user.name` and `git config user.email`. Do not copy the commit `Co-authored-by` identity into a `Created by` line. Do not hardcode a person name.
+
 ## Content
 
 - State what changed and where; do not state why or what benefit it brings
