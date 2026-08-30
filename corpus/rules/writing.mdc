@@ -195,7 +195,7 @@ Default is no link.
 
 **Good** (load-bearing "see all under"):
 
-> Each pay-period record lists the period start, the period end, and the tax table name. See all Helios pay-run fields under [pay-runs.yml](../../helios/pay-runs.yml).
+> Each pay-period record lists the period start, the period end, and the tax table name. See all Helios pay-run fields under [Pay run reference](payruns.md).
 
 **Bad** (see-more when this page already holds the answer):
 
