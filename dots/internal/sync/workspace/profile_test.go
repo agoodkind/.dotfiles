@@ -183,7 +183,8 @@ func TestLinkDotfilesRefreshesStaleProfileSource(t *testing.T) {
 		localProfileSentinel + " Docker Desktop may write a PATH block here.\n" +
 		"if [ -f '/old/checkout/home/.profile' ]; then\n" +
 		"    . '/old/checkout/home/.profile'\n" +
-		"fi\n"
+		"fi\n" +
+		"# extra after managed block\n"
 	if err := os.WriteFile(homeProfile, []byte(stale), 0o644); err != nil {
 		t.Fatalf("writing stale profile: %v", err)
 	}
@@ -206,6 +207,57 @@ func TestLinkDotfilesRefreshesStaleProfileSource(t *testing.T) {
 	}
 	if !strings.Contains(text, repoProfile) {
 		t.Fatalf("refreshed profile does not source %s: %q", repoProfile, body)
+	}
+	if !strings.Contains(text, "# extra after managed block") {
+		t.Fatalf("refresh dropped content after the managed block: %q", body)
+	}
+}
+
+func TestLinkDotfilesReplacesForeignProfileSymlink(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_DATA_HOME", filepath.Join(home, "xdg-data"))
+
+	dotfiles := t.TempDir()
+	repoProfile := filepath.Join(dotfiles, "home", ".profile")
+	if err := os.MkdirAll(filepath.Join(dotfiles, "home"), 0o755); err != nil {
+		t.Fatalf("creating home dir: %v", err)
+	}
+	if err := os.WriteFile(repoProfile, []byte("repo-profile\n"), 0o644); err != nil {
+		t.Fatalf("writing repo profile: %v", err)
+	}
+
+	other := filepath.Join(home, "other-profile")
+	wrapper := localProfileSentinel + " Docker Desktop may write a PATH block here.\n" +
+		"if [ -f " + shellSingleQuote(repoProfile) + " ]; then\n" +
+		"    . " + shellSingleQuote(repoProfile) + "\n" +
+		"fi\n"
+	if err := os.WriteFile(other, []byte(wrapper), 0o600); err != nil {
+		t.Fatalf("writing other profile: %v", err)
+	}
+	homeProfile := filepath.Join(home, ".profile")
+	if err := os.Symlink(other, homeProfile); err != nil {
+		t.Fatalf("creating foreign profile symlink: %v", err)
+	}
+
+	logger, _ := newBackupTestLogger(t)
+	if err := LinkDotfiles(context.Background(), dotfiles, logger); err != nil {
+		t.Fatalf("LinkDotfiles: %v", err)
+	}
+
+	info, err := os.Lstat(homeProfile)
+	if err != nil {
+		t.Fatalf("stat HOME/.profile: %v", err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		t.Fatal("HOME/.profile is still a symlink")
+	}
+	body, err := os.ReadFile(homeProfile)
+	if err != nil {
+		t.Fatalf("reading HOME/.profile: %v", err)
+	}
+	if !strings.Contains(string(body), repoProfile) {
+		t.Fatalf("replaced profile does not source %s: %q", repoProfile, body)
 	}
 }
 

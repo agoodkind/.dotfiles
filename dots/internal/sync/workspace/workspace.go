@@ -133,60 +133,93 @@ func LinkDotfiles(ctx context.Context, dotfiles string, logger *telemetry.Logger
 	return nil
 }
 
-const localProfileName = ".profile"
-const localProfileSentinel = "# Local login profile managed by dots."
+const (
+	localProfileName     = ".profile"
+	localProfileSentinel = "# Local login profile managed by dots."
+)
 
 // Docker Desktop rewrites ~/.profile on launch. A symlink would dirty the
 // tracked copy, so this path stays a regular file that sources the repo.
 func ensureLocalProfile(ctx context.Context, homeFile string, repoProfile string) error {
 	info, err := os.Lstat(filepath.Clean(homeFile))
 	if os.IsNotExist(err) {
-		return writeLocalProfile(ctx, homeFile, repoProfile, "")
+		return writeLocalProfile(ctx, homeFile, repoProfile, "", true)
 	}
 	if err != nil {
 		slog.WarnContext(ctx, "workspace: stat profile", "err", err)
 		return fmt.Errorf("stat profile: %w", err)
 	}
-
-	existing := ""
 	if info.Mode()&os.ModeSymlink != 0 {
-		if common.IsSymlinkTo(homeFile, repoProfile) {
-			if err := os.Remove(filepath.Clean(homeFile)); err != nil {
-				slog.WarnContext(ctx, "workspace: removing profile symlink", "err", err)
-				return fmt.Errorf("removing profile symlink: %w", err)
-			}
-			return writeLocalProfile(ctx, homeFile, repoProfile, "")
-		}
-		if data, readErr := os.ReadFile(filepath.Clean(homeFile)); readErr == nil {
-			existing = string(data)
-		}
-		if err := os.Remove(filepath.Clean(homeFile)); err != nil {
-			slog.WarnContext(ctx, "workspace: removing stale profile symlink", "err", err)
-			return fmt.Errorf("removing stale profile symlink: %w", err)
-		}
-		return writeLocalProfile(ctx, homeFile, repoProfile, existing)
+		return replaceProfileSymlink(ctx, homeFile, repoProfile)
 	}
-
 	data, err := os.ReadFile(filepath.Clean(homeFile))
 	if err != nil {
 		slog.WarnContext(ctx, "workspace: reading profile", "err", err)
 		return fmt.Errorf("reading profile: %w", err)
 	}
-	return writeLocalProfile(ctx, homeFile, repoProfile, string(data))
+	return writeLocalProfile(ctx, homeFile, repoProfile, string(data), false)
 }
 
-func writeLocalProfile(ctx context.Context, homeFile string, repoProfile string, existing string) error {
+func replaceProfileSymlink(ctx context.Context, homeFile string, repoProfile string) error {
+	if common.IsSymlinkTo(homeFile, repoProfile) {
+		if err := os.Remove(filepath.Clean(homeFile)); err != nil {
+			slog.WarnContext(ctx, "workspace: removing profile symlink", "err", err)
+			return fmt.Errorf("removing profile symlink: %w", err)
+		}
+		return writeLocalProfile(ctx, homeFile, repoProfile, "", true)
+	}
+	data, err := os.ReadFile(filepath.Clean(homeFile))
+	if err != nil {
+		slog.WarnContext(ctx, "workspace: reading profile symlink", "err", err)
+		return fmt.Errorf("reading profile symlink: %w", err)
+	}
+	if err := os.Remove(filepath.Clean(homeFile)); err != nil {
+		slog.WarnContext(ctx, "workspace: removing stale profile symlink", "err", err)
+		return fmt.Errorf("removing stale profile symlink: %w", err)
+	}
+	return writeLocalProfile(ctx, homeFile, repoProfile, string(data), true)
+}
+
+func writeLocalProfile(ctx context.Context, homeFile string, repoProfile string, existing string, mustWrite bool) error {
 	body := withLocalProfileSource(existing, repoProfile)
-	if existing != "" && body == existing {
+	if !mustWrite && existing != "" && body == existing {
 		return nil
 	}
 	if err := os.MkdirAll(filepath.Dir(filepath.Clean(homeFile)), 0o755); err != nil {
 		slog.WarnContext(ctx, "workspace: creating profile directory", "err", err)
 		return fmt.Errorf("creating profile directory: %w", err)
 	}
-	if err := os.WriteFile(filepath.Clean(homeFile), []byte(body), 0o644); err != nil {
+	if err := writeFileAtomically(homeFile, []byte(body), 0o600); err != nil {
 		slog.WarnContext(ctx, "workspace: writing local profile", "err", err)
 		return fmt.Errorf("writing local profile: %w", err)
+	}
+	return nil
+}
+
+func writeFileAtomically(path string, body []byte, mode os.FileMode) error {
+	cleanPath := filepath.Clean(path)
+	file, err := os.CreateTemp(filepath.Dir(cleanPath), ".dots-profile-*")
+	if err != nil {
+		return fmt.Errorf("creating temp profile: %w", err)
+	}
+	tempName := file.Name()
+	if _, err := file.Write(body); err != nil {
+		_ = file.Close()
+		_ = os.Remove(tempName)
+		return fmt.Errorf("writing temp profile: %w", err)
+	}
+	if err := file.Chmod(mode); err != nil {
+		_ = file.Close()
+		_ = os.Remove(tempName)
+		return fmt.Errorf("chmod temp profile: %w", err)
+	}
+	if err := file.Close(); err != nil {
+		_ = os.Remove(tempName)
+		return fmt.Errorf("closing temp profile: %w", err)
+	}
+	if err := os.Rename(tempName, cleanPath); err != nil {
+		_ = os.Remove(tempName)
+		return fmt.Errorf("replacing profile: %w", err)
 	}
 	return nil
 }
@@ -201,16 +234,26 @@ func withLocalProfileSource(existing string, repoProfile string) string {
 		return existing
 	}
 	prefix := existing
-	if index := strings.Index(existing, localProfileSentinel); index >= 0 {
-		prefix = strings.TrimRight(existing[:index], "\n")
+	suffix := ""
+	if before, after, found := strings.Cut(existing, localProfileSentinel); found {
+		prefix = strings.TrimRight(before, "\n")
+		suffix = suffixAfterManagedBlock(after)
 	}
 	if prefix == "" {
-		return block
+		return block + suffix
 	}
 	if !strings.HasSuffix(prefix, "\n") {
 		prefix += "\n"
 	}
-	return prefix + block
+	return prefix + block + suffix
+}
+
+func suffixAfterManagedBlock(afterSentinel string) string {
+	_, afterFi, found := strings.Cut(afterSentinel, "\nfi\n")
+	if !found {
+		return ""
+	}
+	return afterFi
 }
 
 func shellSingleQuote(value string) string {
