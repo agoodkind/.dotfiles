@@ -1,13 +1,13 @@
 ---
 name: cleanup-git
-description: Use when the user asks to clean up git, remove stale branches or worktrees, tidy the repo, or invokes /cleanup-git. Runs the full local and remote branch classification to completion without asking the user to choose a depth.
+description: Use when the user asks to clean up git, remove stale branches or worktrees, tidy the repo, or invokes /cleanup-git. Recursively classifies every ref, worktree, and blocking artifact before removal.
 ---
 
 # Clean Up Git Branches And Worktrees
 
 ## HEADLINE: STOP. DO NOT LOOK AT CODE FIRST.
 
-For every branch, the FIRST question is at the pull request level, not the code level:
+For every branch and worktree, the FIRST question is at the pull request level, not the code level:
 
 **DID MAIN SUPERSEDE THIS? IS THIS SLICE OF WORK DONE IN SOME OTHER MANNER?**
 
@@ -47,7 +47,9 @@ git ls-remote --heads origin | sed 's|.*refs/heads/||'
 
 MUST NOT stop after the local branches. Remote branches are in scope on every run.
 
-MUST EXCLUDE THE TRUNK from every candidate list. `main` and `origin/main` pass both mechanical checks against themselves, so leaving them in the list points the removal steps at the trunk ref. MUST also exclude the branch each worktree currently has checked out.
+MUST EXCLUDE THE TRUNK from every candidate list. `main` and `origin/main` pass both mechanical checks against themselves, so leaving them in the list points the removal steps at the trunk ref.
+
+MUST record every checked-out branch as a worktree candidate. A checked-out branch cannot be deleted until its worktree is removed, but that does not exempt it from classification. The worktree's branch, its uncommitted state, and its ignored state each require the same recursive review as an unattached ref.
 
 MUST keep local and remote candidates as SEPARATE, FULLY QUALIFIED refs from here to deletion. `feature-x` and `origin/feature-x` are two candidates that can diverge, and collapsing them lets a contained remote branch delete unique local work.
 
@@ -59,9 +61,11 @@ MUST record each candidate's object id NOW, with `git rev-parse "$ref"`, and car
 
 That prefix is a naming convention, not a namespace Git reserves for `gt`, so a real branch can carry it. MUST still run the cheap guards before deleting one: the mechanical checks in STEP 3, and the open pull request check in STEP 7. A `graphite-base/*` ref that has unique commits or an open pull request is somebody's branch. Keep it and say so.
 
-### STEP 3: CLASSIFY EVERY REMAINING BRANCH. MUST cover all of them.
+### STEP 3: COLLECT MECHANICAL EVIDENCE FOR EVERY REF. MUST cover all of them.
 
 MUST apply the three-step test from {{.Rule "git"}} to EVERY candidate, local and remote. MUST NOT sample. MUST NOT classify only the ones that look interesting.
+
+Mechanical evidence NEVER ends the review. A step 1 or step 2 pass may make removal fast after STEPS 4 through 7 pass. A failure starts the same review. No mechanical result may keep a branch, keep a worktree, or skip the high-level supersession question.
 
 Steps 1 and 2 of that test are mechanical. `$ref` below is the fully qualified candidate from STEP 1, so `feature-x` and `origin/feature-x` each get their own run:
 
@@ -76,9 +80,9 @@ MUST require `git cherry` to SUCCEED before reading its output. Piping it straig
 
 MUST NOT accept a `git cherry` result of zero as containment when the candidate carries a merge commit. `git cherry` skips merges, so a branch whose only unique content came from a merge conflict resolution reports zero while holding work the trunk lacks. Check with `git rev-list --merges origin/main.."$ref"`, and when it returns anything, MUST settle the candidate by diffing trees or by STEP 4 rather than by the count.
 
-### STEP 4: ASK THE HEADLINE QUESTION AT THE PR LEVEL. MUST come before any code.
+### STEP 4: ASK THE HEADLINE QUESTION AT THE PR LEVEL FOR EVERY CANDIDATE. MUST come before any code.
 
-For every branch that fails steps 1 and 2, MUST answer the headline question before opening a single source file: DID MAIN SUPERSEDE THIS? IS THIS SLICE OF WORK DONE IN SOME OTHER MANNER?
+For every branch and worktree, including each step 1 or step 2 pass, MUST answer the headline question before opening a single source file: DID MAIN SUPERSEDE THIS? IS THIS SLICE OF WORK DONE IN SOME OTHER MANNER?
 
 MUST read the branch at the level the author worked at:
 
@@ -117,17 +121,27 @@ ABSENCE FROM TRUNK IS NOT THE SAME AS UNIQUE WORK. Work the trunk removed on pur
 
 This case is easy to invert, because a removal and a change that never landed look identical in the file. MUST run `git log origin/main --oneline -30` and MUST check whether a recent commit deliberately removed the code before calling any branch unique. Removals made earlier in the same session count and are the easiest to miss.
 
-### STEP 7: PROTECT OPEN WORK. MUST check before deleting.
+### STEP 7: RECURSIVELY RESOLVE WORKTREE STATE. MUST check before deleting.
 
 MUST NOT delete a branch whose pull request is OPEN.
 
-MUST NOT remove a worktree unless `git status --porcelain --ignored` is empty. Plain `git status --porcelain` hides ignored files, and `git worktree remove` deletes the directory recursively, so a `.env` or a local database goes with it. Tracked, untracked, and ignored files all count as unique work. Surface them instead.
+For every worktree, run `git status --porcelain --ignored`. A nonempty result is an investigation queue, never an early blocker.
+
+MUST recursively classify every tracked, untracked, and ignored path that blocks removal. Stop only at a leaf file or at a directory whose whole contents are proved by one source of truth. For each path, establish exactly one outcome:
+
+1. **Regenerable:** Read the owning build, generator, or bootstrap source. Prove the path regenerates from tracked inputs, then remove only that exact path. When the path is material or the generator is uncertain, move it to a temporary recovery location, regenerate it once, compare the observable result, then remove the recovery copy.
+2. **Superseded:** Compare the worktree change to the trunk behavior. When trunk delivers it, or deliberately removed it, make the worktree clean using the already verified trunk content. Do not preserve a duplicate merely because it is uncommitted.
+3. **Unique:** Name the user-facing slice that the trunk lacks. Preserve that path and its worktree. A filename, an ignored marker, or a nonempty status alone is never enough to call content unique.
+
+MUST recurse after every regenerated or superseded removal. Re-run `git status --porcelain --ignored` until the worktree is clean or every remaining path has a unique-work verdict. A clean worktree authorizes removal only when its branch also has a contained verdict. A unique path keeps only the necessary worktree and branch.
+
+MUST NOT use `git worktree remove --force` to bypass this review. MUST NOT discard a tracked or untracked path before proving it is regenerable or superseded.
 
 MUST NOT move the trunk ref of a checkout owned by another worktree.
 
 ### STEP 8: REMOVE. MUST follow this order.
 
-MUST remove the worktree before its branch, passing the path as a quoted variable after `--`. A worktree path can contain whitespace, `;`, or `$()`, so substituting it as bare text runs whatever it spells:
+After STEP 7 makes a contained worktree clean, MUST remove the worktree before its branch, passing the path as a quoted variable after `--`. A worktree path can contain whitespace, `;`, or `$()`, so substituting it as bare text runs whatever it spells:
 
 ```bash
 git worktree remove -- "$worktree_path"
@@ -171,6 +185,8 @@ MUST NOT ask the user to choose a cleanup depth. Offering to delete only the mec
 MUST NOT ask the user for permission mid-run once they asked for cleanup. Classification is read-only, and deleting a branch the classification cleared is the work they asked for.
 
 MUST NOT stop at "I cannot tell mechanically." That is the point where STEP 4 starts, not the point where you hand the problem back.
+
+MUST NOT treat a mechanical pass, a nonempty worktree status, an ignored directory, or a checked-out branch as a keep verdict. Each is evidence that starts or accelerates recursive review.
 
 MUST NOT open a source file before STEP 4 named the slice of work. Starting from the diff is the failure this skill exists to prevent.
 
