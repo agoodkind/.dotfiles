@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 source "$(dirname "$0")/email-guard.sh"
 source "$(dirname "$0")/chain-hook.sh"
+source "$(dirname "$0")/protected-branch-policy.sh"
 
 protected_branch_names() {
     printf '%s\n' main
@@ -33,7 +34,9 @@ is_protected_branch() {
 }
 
 current_branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
-if [[ -n "$current_branch" ]] && is_protected_branch "$current_branch"; then
+if [[ -n "$current_branch" ]] &&
+    is_protected_branch "$current_branch" &&
+    protected_branch_policy_applies; then
     printf 'error: commit blocked on protected branch %q\n' "$current_branch"
     printf '%s\n' '  make all changes in a worktree and merge via GitHub.'
     exit 1
