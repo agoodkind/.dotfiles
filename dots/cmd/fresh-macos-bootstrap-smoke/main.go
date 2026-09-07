@@ -190,14 +190,14 @@ func macSmokePath(home string, basePath string) string {
 // runWithTart is the local path: clones a macOS Tart VM, shares the repo and
 // the smoke binary via --dir, and runs --in-vm assertions using tart exec
 // (no SSH required; Cirrus Labs base images pre-install the Tart Guest Agent).
-// Requires: brew install cirruslabs/cli/tart
+// Requires: brew install openai/tools/tart
 func runWithTart(ctx context.Context, opts options) error {
 	repoRoot, err := resolveRepoRoot(opts.repoRoot)
 	if err != nil {
 		return err
 	}
 	if _, err := exec.LookPath("tart"); err != nil {
-		return fmt.Errorf("tart not found — install with: brew install cirruslabs/cli/tart")
+		return fmt.Errorf("tart not found; install with: brew install openai/tools/tart")
 	}
 
 	vmName := "dotfiles-smoke-" + strconv.FormatInt(time.Now().Unix(), 10)
