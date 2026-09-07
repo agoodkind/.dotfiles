@@ -31,7 +31,7 @@ fi
 
 # Agents and non-TTY shells need none of the interactive machinery, so they apply
 # agent shell options if requested and then stop here.
-if ((!DOTFILES_INTERACTIVE)); then
+if ((! DOTFILES_INTERACTIVE)); then
     if ((DOTFILES_AGENT_SHELL)) && (($+functions[dotfiles_apply_agent_shell_options])); then
         dotfiles_apply_agent_shell_options
     fi

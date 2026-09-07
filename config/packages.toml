@@ -103,6 +103,8 @@ brew_specific = [
     "navi",
     "node",
     "nvim",
+    "openai/tools/softnet",
+    "openai/tools/tart",
     "pnpm",
     "procs",
     "ripgrep-all",
