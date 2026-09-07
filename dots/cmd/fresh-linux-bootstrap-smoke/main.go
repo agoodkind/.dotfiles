@@ -1,5 +1,5 @@
 // Command fresh-linux-bootstrap-smoke runs a fresh-host bootstrap smoke test
-// inside a Linux container (debian:trixie or ubuntu:24.04) using the Docker
+// inside a supported Debian or Ubuntu container using the Docker
 // Engine API. It verifies that install.sh works on a machine with no Go, no
 // ripgrep, and no shfmt pre-installed.
 package main

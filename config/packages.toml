@@ -63,6 +63,7 @@ common_packages = [
 
 apt_specific = [
     "ack-grep",
+    "build-essential",
     "gpg",
     "ipcalc-ng",
     "ipcalc",
