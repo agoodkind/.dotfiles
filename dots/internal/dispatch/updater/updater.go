@@ -243,7 +243,7 @@ func doBrewUpgrade(ctx context.Context, dispatchLogger *telemetry.Logger) {
 	}
 	_, _ = cmdexec.OutputWithLogger(ctx, dispatchLogger, "brew", "update")
 	_, _ = cmdexec.OutputWithLogger(ctx, dispatchLogger, "brew", "upgrade")
-	_, _ = cmdexec.OutputWithLogger(ctx, dispatchLogger, "brew", "upgrade", "--cask")
+	_, _ = cmdexec.OutputWithLogger(ctx, dispatchLogger, "brew", "upgrade", "--cask", "--greedy")
 	_, _ = cmdexec.OutputWithLogger(ctx, dispatchLogger, "brew", "cleanup", "--prune=all")
 }
 
