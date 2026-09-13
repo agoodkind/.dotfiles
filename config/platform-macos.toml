@@ -11,4 +11,4 @@ patch_script = "$DOTDOTFILES/bash/setup/platform/patch-etc-zsh.bash"
 # macOS defaults applied during OS setup. screenshot_dir was previously
 # hardcoded in internal/sync/platform/macos.
 [macos]
-screenshot_dir = "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Screenshots"
+screenshot_dir = "$HOME/Pictures/Screenshots"
