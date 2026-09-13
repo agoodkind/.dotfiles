@@ -4,19 +4,23 @@ source "$(dirname "$0")/chain-hook.sh"
 source "$(dirname "$0")/protected-branch-policy.sh"
 
 protected_branch_names() {
-    printf '%s\n' main
+    # is_protected_branch's reader can exit its while loop on the first match
+    # and close this process substitution's pipe before every branch name is
+    # written, so a later printf here fails with SIGPIPE. That early exit is
+    # expected, not an error, so tolerate the write failure with || true.
+    printf '%s\n' main || true
 
     local remote_name remote_head configured_default
     while IFS= read -r remote_name; do
         remote_head="$(git symbolic-ref --quiet "refs/remotes/$remote_name/HEAD" 2>/dev/null || true)"
         if [[ "$remote_head" == "refs/remotes/$remote_name/"* ]]; then
-            printf '%s\n' "${remote_head#"refs/remotes/$remote_name/"}"
+            printf '%s\n' "${remote_head#"refs/remotes/$remote_name/"}" || true
         fi
     done < <(git remote)
 
     configured_default="$(git config --get init.defaultBranch 2>/dev/null || true)"
     if [[ -n "$configured_default" ]]; then
-        printf '%s\n' "$configured_default"
+        printf '%s\n' "$configured_default" || true
     fi
 }
 
