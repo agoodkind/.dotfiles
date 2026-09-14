@@ -258,7 +258,12 @@ func (realBrewCommands) CommandSucceeds(ctx context.Context, command string, arg
 }
 
 func (realBrewCommands) Output(ctx context.Context, logger *telemetry.Logger, command string, args ...string) (string, error) {
-	return cmdexec.OutputWithLogger(ctx, logger, command, args...)
+	output, err := cmdexec.OutputWithLogger(ctx, logger, command, args...)
+	if err != nil {
+		slog.WarnContext(ctx, "updater: brew command", "command", command, "err", err)
+		return output, fmt.Errorf("run %s: %w", command, err)
+	}
+	return output, nil
 }
 
 func doBrewUpgradeWith(

@@ -147,19 +147,34 @@ func (installer *Installer) installAptRepoKeyring(
 		slog.WarnContext(ctx, "installAptRepoKeyring: download gpg key", "id", repo.ID, "err", err)
 		return fmt.Errorf("download gpg key: %w", err)
 	}
-	armoredPath, cleanupArmored, err := writeAptRepoTempFile("dotfiles-apt-gpg-*", key)
+	armored, err := os.CreateTemp("", "dotfiles-apt-gpg-*")
 	if err != nil {
+		slog.WarnContext(ctx, "installAptRepoKeyring: create gpg temp file", "id", repo.ID, "err", err)
+		return fmt.Errorf("create gpg temp file: %w", err)
+	}
+	armoredPath := armored.Name()
+	defer os.Remove(armoredPath)
+	if _, err := armored.Write(key); err != nil {
+		_ = armored.Close()
 		slog.WarnContext(ctx, "installAptRepoKeyring: write gpg temp file", "id", repo.ID, "err", err)
 		return fmt.Errorf("write gpg temp file: %w", err)
 	}
-	defer cleanupArmored()
+	if err := armored.Close(); err != nil {
+		slog.WarnContext(ctx, "installAptRepoKeyring: close gpg temp file", "id", repo.ID, "err", err)
+		return fmt.Errorf("close gpg temp file: %w", err)
+	}
 
-	dearmoredPath, cleanupDearmored, err := writeAptRepoTempFile("dotfiles-apt-keyring-*", nil)
+	dearmored, err := os.CreateTemp("", "dotfiles-apt-keyring-*")
 	if err != nil {
 		slog.WarnContext(ctx, "installAptRepoKeyring: create keyring temp file", "id", repo.ID, "err", err)
 		return fmt.Errorf("create keyring temp file: %w", err)
 	}
-	defer cleanupDearmored()
+	dearmoredPath := dearmored.Name()
+	defer os.Remove(dearmoredPath)
+	if err := dearmored.Close(); err != nil {
+		slog.WarnContext(ctx, "installAptRepoKeyring: close keyring temp file", "id", repo.ID, "err", err)
+		return fmt.Errorf("close keyring temp file: %w", err)
+	}
 
 	if installer.deps.Commands == nil {
 		err := fmt.Errorf("gpg is unavailable")
@@ -212,12 +227,22 @@ func (installer *Installer) installAptRepoList(
 		suite,
 		component,
 	)
-	listPath, cleanup, err := writeAptRepoTempFile("dotfiles-apt-list-*", []byte(listLine))
+	listFile, err := os.CreateTemp("", "dotfiles-apt-list-*")
 	if err != nil {
+		slog.WarnContext(ctx, "installAptRepoList: create list temp file", "id", repo.ID, "err", err)
+		return fmt.Errorf("create list temp file: %w", err)
+	}
+	listPath := listFile.Name()
+	defer os.Remove(listPath)
+	if _, err := listFile.WriteString(listLine); err != nil {
+		_ = listFile.Close()
 		slog.WarnContext(ctx, "installAptRepoList: write list temp file", "id", repo.ID, "err", err)
 		return fmt.Errorf("write list temp file: %w", err)
 	}
-	defer cleanup()
+	if err := listFile.Close(); err != nil {
+		slog.WarnContext(ctx, "installAptRepoList: close list temp file", "id", repo.ID, "err", err)
+		return fmt.Errorf("close list temp file: %w", err)
+	}
 
 	listDir := filepath.Dir(repo.ListPath)
 	if err := installer.deps.Privileged.Run(ctx, logger, "install", "-d", "-m", "755", listDir); err != nil {
@@ -229,25 +254,6 @@ func (installer *Installer) installAptRepoList(
 		return fmt.Errorf("install sources list: %w", err)
 	}
 	return nil
-}
-
-func writeAptRepoTempFile(pattern string, data []byte) (string, func(), error) {
-	file, err := os.CreateTemp("", pattern)
-	if err != nil {
-		return "", func() {}, err
-	}
-	path := file.Name()
-	cleanup := func() { _ = os.Remove(path) }
-	if _, err := file.Write(data); err != nil {
-		_ = file.Close()
-		cleanup()
-		return "", func() {}, err
-	}
-	if err := file.Close(); err != nil {
-		cleanup()
-		return "", func() {}, err
-	}
-	return path, cleanup, nil
 }
 
 func (installer *Installer) selectAptRepoSuite(ctx context.Context, host platform.Host, baseURL string) (string, bool) {
@@ -277,7 +283,12 @@ func (installer *Installer) aptRepoHasRelease(ctx context.Context, baseURL, suit
 
 func (installer *Installer) aptRepoDownload(ctx context.Context, fileURL string) ([]byte, error) {
 	if installer.deps.AptRepos != nil {
-		return installer.deps.AptRepos.Download(ctx, fileURL)
+		data, err := installer.deps.AptRepos.Download(ctx, fileURL)
+		if err != nil {
+			slog.WarnContext(ctx, "debian: apt repo download backend failed", "url", fileURL, "err", err)
+			return nil, fmt.Errorf("download %s: %w", fileURL, err)
+		}
+		return data, nil
 	}
 	return downloadAptRepoFile(ctx, fileURL)
 }

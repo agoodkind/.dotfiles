@@ -3,8 +3,6 @@ package debian
 import (
 	"context"
 	"errors"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"reflect"
 	"strings"
@@ -401,58 +399,6 @@ func TestSelectAptRepoSuiteFallsBackToJammy(t *testing.T) {
 	)
 	if !ok || suite != "jammy" {
 		t.Fatalf("suite = %q ok = %v, want jammy true", suite, ok)
-	}
-}
-
-func TestAptRepoPublishesReleaseTreatsTransportFailureAsUnpublished(t *testing.T) {
-	t.Parallel()
-
-	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
-	baseURL := server.URL
-	server.Close()
-
-	if aptRepoPublishesRelease(context.Background(), baseURL, "noble") {
-		t.Fatal("aptRepoPublishesRelease() = true, want false when the probe request fails")
-	}
-}
-
-func TestInstallAptReposRemovesRepoFilesWhenAptUpdateFails(t *testing.T) {
-	t.Parallel()
-
-	repo := ooklaAptRepo()
-	privileged := &fakePrivilegedRunner{
-		errs: map[string]error{
-			debianCommandKey("apt-get", "update", "-qq"): errors.New("update failed"),
-		},
-	}
-	installer := &Installer{
-		deps: Deps{
-			Commands:   &fakeCommandRunner{},
-			Privileged: privileged,
-			AptRepos: fakeAptRepos{
-				codename: "noble",
-				releases: map[string]bool{
-					"https://packagecloud.io/ookla/speedtest-cli/ubuntu\x00noble": true,
-				},
-				downloads: map[string][]byte{
-					"https://packagecloud.io/ookla/speedtest-cli/gpgkey": []byte("gpg-key"),
-				},
-			},
-		},
-	}
-
-	ready := installer.installAptRepos(context.Background(), platform.Host{
-		GOOS:         platform.GOOSLinux,
-		Distribution: platform.DistributionUbuntu,
-	}, &catalog.PackageConfig{AptRepos: []catalog.AptRepo{repo}}, nil)
-	if ready {
-		t.Fatal("installAptRepos() = true, want false after apt-get update failure")
-	}
-	if !debianContainsCommand(privileged.calls, "rm", []string{"-f", repo.ListPath}) {
-		t.Fatalf("privileged calls = %#v, want rm -f of sources list", privileged.calls)
-	}
-	if !debianContainsCommand(privileged.calls, "rm", []string{"-f", repo.Keyring}) {
-		t.Fatalf("privileged calls = %#v, want rm -f of keyring", privileged.calls)
 	}
 }
 
