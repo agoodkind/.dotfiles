@@ -121,6 +121,8 @@ mutation {
 
 Do not ask the user for approval before resolving a thread whose concern is genuinely fixed or superseded. Resolve it autonomously after verifying the current code and relevant checks. When `required_review_thread_resolution` is active in the ruleset, every required thread must be resolved before merge.
 
+Treat every review state read before a reply or thread resolution as stale. Record the action time, then poll the pull request until each automated reviewer affected by that action publishes a completion signal after it. A check run must reach a terminal state. A newer review or edited summary counts only when it states the completed refresh result. Re-read reviews with their submission times, `reviewDecision`, review threads, checks, `mergeable`, and `mergeStateStatus` after that signal. A blocking review submitted before the latest reply or resolution does not prove that dismissal is required. Do not dismiss it, ask the user to dismiss it, or merge around it while the reviewer refresh is still pending. If the reviewer exposes no completion signal, keep the pull request in the babysit loop and report that the review refresh is pending.
+
 ## 6. Fix CI within PR scope
 
 Fix CI failures caused by changes within this PR's scope. Publish each scoped CI or review-thread fix as soon as it is locally verified, then re-run `gh pr checks`. Use the repository-specific push workflow from local instructions. Batch only the threads already present in the current poll. Do not hold a completed fix for possible future comments.
@@ -129,7 +131,7 @@ Never edit CI workflows or unrelated code just to make failures pass. Report bac
 
 ## 7. Loop until merge-ready
 
-After each push, re-run steps 1 through 6 until the PR is merge-ready. Merge-ready means all of the following hold:
+After each push, reply, or thread resolution, re-run steps 1 through 6 until the PR is merge-ready. Merge-ready means all of the following hold:
 
 - Required status checks are green.
 - `reviewDecision` satisfies the ruleset approval count and code-owner requirements.
