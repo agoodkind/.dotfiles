@@ -274,8 +274,17 @@ func TestInstallMacPackagesTrustsTapQualifiedFormulae(t *testing.T) {
 	if !containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--formula", "MisterTea/et/et"}) {
 		t.Fatal("expected brew trust --formula MisterTea/et/et")
 	}
+	if !containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "MisterTea/et"}) {
+		t.Fatal("expected brew trust MisterTea/et")
+	}
 	if containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--formula", "bat"}) {
 		t.Fatal("did not expect brew trust for core formula bat")
+	}
+	if !containsCommandCall(commands.runCalls, "brew", []string{"upgrade"}) {
+		t.Fatal("expected brew upgrade after formula install")
+	}
+	if !containsCommandCall(commands.runCalls, "brew", []string{"upgrade", "--cask", "--greedy"}) {
+		t.Fatal("expected brew upgrade --cask --greedy after formula install")
 	}
 }
 
@@ -313,6 +322,9 @@ func TestInstallMacPackagesTrustsTapQualifiedCasks(t *testing.T) {
 	if !containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--cask", "someuser/some-tap/some-cask"}) {
 		t.Fatal("expected brew trust --cask someuser/some-tap/some-cask")
 	}
+	if !containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "someuser/some-tap"}) {
+		t.Fatal("expected brew trust someuser/some-tap")
+	}
 	if containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--cask", "ghostty"}) {
 		t.Fatal("did not expect brew trust for core cask ghostty")
 	}
@@ -334,16 +346,79 @@ func TestTapQualifiedNamesRequiresOwnerTapNameShape(t *testing.T) {
 	}
 }
 
+func TestTapRepositoryNamesUsesOwnerAndTap(t *testing.T) {
+	t.Parallel()
+
+	got := tapRepositoryNames([]string{
+		"bat",
+		"MisterTea/et/et",
+		"openai/tools/softnet",
+		"openai/tools/tart",
+		"teamookla/speedtest/speedtest",
+		"someuser/some-tap/some-cask",
+	})
+	want := []string{"MisterTea/et", "openai/tools", "someuser/some-tap", "teamookla/speedtest"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("tapRepositoryNames() = %#v, want %#v", got, want)
+	}
+}
+
+func TestInstallMacPackagesUninstallsSpeedtestGoBeforeOfficialCLI(t *testing.T) {
+	t.Parallel()
+
+	commands := &fakeCommands{
+		succeeds: map[string]bool{
+			commandKey("brew", "trust", "--help"):                                    true,
+			commandKey("brew", "list", "--formula", "speedtest-go"):                  true,
+			commandKey("brew", "list", "--formula", "teamookla/speedtest/speedtest"): false,
+		},
+	}
+	installer := &Installer{
+		deps: Deps{
+			Commands: commands,
+			Lookup: fakeLookup{commands: map[string]bool{
+				"brew": true,
+			}},
+			Catalog: fakeCatalog{
+				packageConfig: &catalog.PackageConfig{
+					BrewSpecific: []string{"teamookla/speedtest/speedtest"},
+				},
+			},
+		},
+	}
+
+	if err := installer.installMacPackages(context.Background(), false, nil); err != nil {
+		t.Fatalf("installMacPackages() returned error: %v", err)
+	}
+
+	if !containsCommandCall(commands.runCalls, "brew", []string{"uninstall", "--formula", "speedtest-go"}) {
+		t.Fatal("expected brew uninstall --formula speedtest-go")
+	}
+	if !containsCommandCall(commands.runCalls, "brew", []string{"install", "teamookla/speedtest/speedtest"}) {
+		t.Fatal("expected brew install teamookla/speedtest/speedtest")
+	}
+
+	uninstallIndex := commandCallIndex(commands.runCalls, "brew", []string{"uninstall", "--formula", "speedtest-go"})
+	installIndex := commandCallIndex(commands.runCalls, "brew", []string{"install", "teamookla/speedtest/speedtest"})
+	if uninstallIndex < 0 || installIndex < 0 || uninstallIndex > installIndex {
+		t.Fatalf("uninstall index %d, install index %d, want uninstall before install", uninstallIndex, installIndex)
+	}
+}
+
 func containsCommandCall(calls []commandCall, command string, args []string) bool {
-	for _, call := range calls {
+	return commandCallIndex(calls, command, args) >= 0
+}
+
+func commandCallIndex(calls []commandCall, command string, args []string) int {
+	for index, call := range calls {
 		if call.command != command {
 			continue
 		}
 		if reflect.DeepEqual(call.args, args) {
-			return true
+			return index
 		}
 	}
-	return false
+	return -1
 }
 
 func TestInstallMacPackagesLenientModeContinuesAfterUpdateError(t *testing.T) {

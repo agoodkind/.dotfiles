@@ -23,6 +23,18 @@ type PackageConfig struct {
 	GoPackages       map[string]string `toml:"go_packages"`
 	CargoPackages    []string          `toml:"cargo_packages"`
 	CargoGitPackages map[string]string `toml:"cargo_git_packages"`
+	AptRepos         []AptRepo         `toml:"apt_repos"`
+}
+
+// AptRepo describes a third-party apt source that must be present before its packages install.
+type AptRepo struct {
+	ID         string `toml:"id"`
+	GPGURL     string `toml:"gpg_url"`
+	UbuntuBase string `toml:"ubuntu_base"`
+	DebianBase string `toml:"debian_base"`
+	Keyring    string `toml:"keyring"`
+	ListPath   string `toml:"list_path"`
+	Component  string `toml:"component"`
 }
 
 // ToolDeclaration describes a custom tool to install or upgrade.
@@ -126,6 +138,7 @@ func DefaultPackageConfig() *PackageConfig {
 			GoPackages:       nil,
 			CargoPackages:    nil,
 			CargoGitPackages: nil,
+			AptRepos:         nil,
 		}
 	}
 	source := cached.Packages
@@ -139,6 +152,7 @@ func DefaultPackageConfig() *PackageConfig {
 		BrewCasks:        make(map[string]string, len(source.BrewCasks)),
 		GoPackages:       make(map[string]string, len(source.GoPackages)),
 		CargoGitPackages: make(map[string]string, len(source.CargoGitPackages)),
+		AptRepos:         append([]AptRepo{}, source.AptRepos...),
 	}
 	maps.Copy(duplicated.BrewCasks, source.BrewCasks)
 	maps.Copy(duplicated.GoPackages, source.GoPackages)

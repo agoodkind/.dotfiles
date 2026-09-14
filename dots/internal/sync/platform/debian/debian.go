@@ -48,6 +48,12 @@ type ppaPublishChecker interface {
 	PublishesForCurrentRelease(ctx context.Context, ppa string) bool
 }
 
+type aptRepoBackend interface {
+	HasRelease(ctx context.Context, baseURL, suite string) bool
+	Download(ctx context.Context, fileURL string) ([]byte, error)
+	Codename() string
+}
+
 // Deps holds the Debian installer dependencies.
 type Deps struct {
 	Commands   commandRunner
@@ -55,6 +61,7 @@ type Deps struct {
 	Catalog    catalogProvider
 	Privileged privilegedRunner
 	PPAChecker ppaPublishChecker
+	AptRepos   aptRepoBackend
 }
 
 // Installer applies Debian-family sync steps.
@@ -80,6 +87,7 @@ func NewRealDeps() Deps {
 		Catalog:    productionDeps,
 		Privileged: productionDeps,
 		PPAChecker: productionDeps,
+		AptRepos:   productionDeps,
 	}
 }
 
@@ -237,10 +245,22 @@ func (installer *Installer) installDebianPackages(ctx context.Context, host plat
 
 	installer.installUbuntuPPAs(ctx, host, cfg, logger)
 
+	ooklaRepoReady := installer.installAptRepos(ctx, host, cfg, logger)
+	if ooklaRepoReady {
+		if err := installer.deps.Privileged.Run(ctx, logger, "apt-get", "remove", "-y", "-qq", unofficialSpeedtestCLIPackage); err != nil {
+			slog.WarnContext(ctx, "removing unofficial speedtest-cli", "err", err)
+			common.WarnContext(ctx, logger, "  failed to remove speedtest-cli before official speedtest install")
+		}
+	}
+
 	packages := make(map[string]struct{})
 	aptPackages := make([]string, 0, len(cfg.CommonPackages)+len(cfg.AptSpecific))
 	for _, item := range append(cfg.CommonPackages, cfg.AptSpecific...) {
 		if isSnapPackage(item, cfg.SnapPackages) {
+			continue
+		}
+		if !ooklaRepoReady && item == officialSpeedtestPackage {
+			common.InfoContext(ctx, logger, "  skipping speedtest: Ookla apt repo is unavailable")
 			continue
 		}
 		for mapped := range strings.FieldsSeq(aptPackageName(item)) {
@@ -381,4 +401,16 @@ func (realDeps) Run(ctx context.Context, logger *telemetry.Logger, command strin
 
 func (realDeps) PublishesForCurrentRelease(ctx context.Context, ppa string) bool {
 	return ppaPublishesForCurrentRelease(ctx, ppa)
+}
+
+func (realDeps) HasRelease(ctx context.Context, baseURL, suite string) bool {
+	return aptRepoPublishesRelease(ctx, baseURL, suite)
+}
+
+func (realDeps) Download(ctx context.Context, fileURL string) ([]byte, error) {
+	return downloadAptRepoFile(ctx, fileURL)
+}
+
+func (realDeps) Codename() string {
+	return ubuntuReleaseCodename()
 }

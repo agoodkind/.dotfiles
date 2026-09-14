@@ -77,7 +77,7 @@ apt_specific = [
     "rbenv",
     "rsyslog",
     "sudo",
-    "speedtest-cli",
+    "speedtest",
     "ufw",
     "wireguard",
 ]
@@ -106,6 +106,7 @@ brew_specific = [
     "nvim",
     "openai/tools/softnet",
     "openai/tools/tart",
+    "teamookla/speedtest/speedtest",
     "pnpm",
     "procs",
     "ripgrep-all",
@@ -120,6 +121,15 @@ brew_specific = [
 ]
 
 cargo_packages = []
+
+[[packages.apt_repos]]
+id = "ookla-speedtest"
+gpg_url = "https://packagecloud.io/ookla/speedtest-cli/gpgkey"
+ubuntu_base = "https://packagecloud.io/ookla/speedtest-cli/ubuntu"
+debian_base = "https://packagecloud.io/ookla/speedtest-cli/debian"
+keyring = "/etc/apt/keyrings/ookla_speedtest-cli-archive-keyring.gpg"
+list_path = "/etc/apt/sources.list.d/ookla_speedtest-cli.list"
+component = "main"
 
 [packages.brew_casks]
 "1password" = "1Password"
