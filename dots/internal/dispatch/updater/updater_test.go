@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"goodkind.io/.dotfiles/internal/catalog"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
@@ -103,6 +104,88 @@ func newUpdaterTestRepo(t *testing.T) string {
 	runUpdaterTestGit(t, repoRoot, "add", "README.md")
 	runUpdaterTestGit(t, repoRoot, "commit", "-m", "Initial commit")
 	return repoRoot
+}
+
+type fakeBrewCommands struct {
+	hasBrew  bool
+	succeeds map[string]bool
+	calls    []brewCall
+}
+
+type brewCall struct {
+	command string
+	args    []string
+}
+
+func (commands *fakeBrewCommands) HasCommand(name string) bool {
+	return commands.hasBrew && name == "brew"
+}
+
+func (commands *fakeBrewCommands) CommandSucceeds(_ context.Context, command string, args ...string) bool {
+	commands.calls = append(commands.calls, brewCall{command: command, args: append([]string{}, args...)})
+	return commands.succeeds[brewCommandKey(command, args...)]
+}
+
+func (commands *fakeBrewCommands) Output(_ context.Context, _ *telemetry.Logger, command string, args ...string) (string, error) {
+	commands.calls = append(commands.calls, brewCall{command: command, args: append([]string{}, args...)})
+	return "", nil
+}
+
+func brewCommandKey(command string, args ...string) string {
+	return strings.Join(append([]string{command}, args...), "\x00")
+}
+
+func brewCallIndex(calls []brewCall, command string, args []string) int {
+	for index, call := range calls {
+		if call.command != command {
+			continue
+		}
+		if strings.Join(call.args, "\x00") == strings.Join(args, "\x00") {
+			return index
+		}
+	}
+	return -1
+}
+
+func TestDoBrewUpgradeTrustsCatalogTapsBeforeUpgrade(t *testing.T) {
+	t.Parallel()
+
+	commands := &fakeBrewCommands{
+		hasBrew: true,
+		succeeds: map[string]bool{
+			brewCommandKey("brew", "trust", "--help"): true,
+		},
+	}
+	cfg := &catalog.PackageConfig{
+		BrewSpecific: []string{"MisterTea/et/et", "teamookla/speedtest/speedtest"},
+	}
+
+	doBrewUpgradeWith(context.Background(), nil, "darwin", commands, cfg)
+
+	trustTapIndex := brewCallIndex(commands.calls, "brew", []string{"trust", "MisterTea/et"})
+	trustFormulaIndex := brewCallIndex(commands.calls, "brew", []string{"trust", "--formula", "MisterTea/et/et"})
+	upgradeIndex := brewCallIndex(commands.calls, "brew", []string{"upgrade"})
+	if trustTapIndex < 0 || trustFormulaIndex < 0 || upgradeIndex < 0 {
+		t.Fatalf("calls = %#v, want tap trust, formula trust, and upgrade", commands.calls)
+	}
+	if trustTapIndex > upgradeIndex || trustFormulaIndex > upgradeIndex {
+		t.Fatalf("trust must run before brew upgrade; calls = %#v", commands.calls)
+	}
+	if brewCallIndex(commands.calls, "brew", []string{"trust", "teamookla/speedtest"}) < 0 {
+		t.Fatal("expected brew trust teamookla/speedtest")
+	}
+}
+
+func TestDoBrewUpgradeSkipsNonDarwin(t *testing.T) {
+	t.Parallel()
+
+	commands := &fakeBrewCommands{hasBrew: true}
+	doBrewUpgradeWith(context.Background(), nil, "linux", commands, &catalog.PackageConfig{
+		BrewSpecific: []string{"MisterTea/et/et"},
+	})
+	if len(commands.calls) != 0 {
+		t.Fatalf("calls = %#v, want none on linux", commands.calls)
+	}
 }
 
 func runUpdaterTestGit(t *testing.T, directory string, args ...string) {

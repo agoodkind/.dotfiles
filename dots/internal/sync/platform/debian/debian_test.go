@@ -3,6 +3,7 @@ package debian
 import (
 	"context"
 	"errors"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -56,16 +57,61 @@ func (provider fakeCatalogProvider) PackageConfig() *catalog.PackageConfig {
 }
 
 type fakePrivilegedRunner struct {
-	calls []commandCall
-	errs  map[string]error
+	calls     []commandCall
+	errs      map[string]error
+	installed map[string]string
 }
 
 func (runner *fakePrivilegedRunner) Run(_ context.Context, _ *telemetry.Logger, command string, args ...string) error {
 	runner.calls = append(runner.calls, commandCall{command: command, args: append([]string{}, args...)})
+	if command == "install" && len(args) >= 4 && args[0] == "-m" {
+		src := args[2]
+		dest := args[3]
+		if data, err := os.ReadFile(src); err == nil {
+			if runner.installed == nil {
+				runner.installed = map[string]string{}
+			}
+			runner.installed[dest] = string(data)
+		}
+	}
 	if err, ok := runner.errs[debianCommandKey(command, args...)]; ok {
 		return err
 	}
 	return nil
+}
+
+type fakeAptRepos struct {
+	codename  string
+	releases  map[string]bool
+	downloads map[string][]byte
+}
+
+func (repos fakeAptRepos) HasRelease(_ context.Context, baseURL, suite string) bool {
+	return repos.releases[baseURL+"\x00"+suite]
+}
+
+func (repos fakeAptRepos) Download(_ context.Context, fileURL string) ([]byte, error) {
+	data, ok := repos.downloads[fileURL]
+	if !ok {
+		return nil, errors.New("missing download")
+	}
+	return data, nil
+}
+
+func (repos fakeAptRepos) Codename() string {
+	return repos.codename
+}
+
+func ooklaAptRepo() catalog.AptRepo {
+	return catalog.AptRepo{
+		ID:         "ookla-speedtest",
+		GPGURL:     "https://packagecloud.io/ookla/speedtest-cli/gpgkey",
+		UbuntuBase: "https://packagecloud.io/ookla/speedtest-cli/ubuntu",
+		DebianBase: "https://packagecloud.io/ookla/speedtest-cli/debian",
+		Keyring:    "/etc/apt/keyrings/ookla_speedtest-cli-archive-keyring.gpg",
+		ListPath:   "/etc/apt/sources.list.d/ookla_speedtest-cli.list",
+		Component:  "main",
+	}
 }
 
 type commandCall struct {
@@ -225,4 +271,167 @@ func TestSnapPackageNameMapsNeovim(t *testing.T) {
 
 func debianCommandKey(command string, args ...string) string {
 	return strings.Join(append([]string{command}, args...), "\x00")
+}
+
+func TestInstallDebianPackagesAddsOoklaRepoAndSpeedtest(t *testing.T) {
+	t.Parallel()
+
+	privileged := &fakePrivilegedRunner{}
+	commands := &fakeCommandRunner{}
+	installer := &Installer{
+		deps: Deps{
+			Commands: commands,
+			Lookup:   fakeCommandLookup{commands: map[string]bool{"apt-get": true}},
+			Catalog: fakeCatalogProvider{packageConfig: &catalog.PackageConfig{
+				AptSpecific: []string{"curl", "speedtest"},
+				AptRepos:    []catalog.AptRepo{ooklaAptRepo()},
+			}},
+			Privileged: privileged,
+			AptRepos: fakeAptRepos{
+				codename: "noble",
+				releases: map[string]bool{
+					"https://packagecloud.io/ookla/speedtest-cli/ubuntu\x00noble": true,
+				},
+				downloads: map[string][]byte{
+					"https://packagecloud.io/ookla/speedtest-cli/gpgkey": []byte("gpg-key"),
+				},
+			},
+		},
+	}
+
+	if err := installer.installDebianPackages(context.Background(), platform.Host{
+		GOOS:         platform.GOOSLinux,
+		Distribution: platform.DistributionUbuntu,
+	}, nil); err != nil {
+		t.Fatalf("installDebianPackages() returned error: %v", err)
+	}
+
+	if !debianContainsCommand(privileged.calls, "apt-get", []string{"remove", "-y", "-qq", "speedtest-cli"}) {
+		t.Fatal("expected apt-get remove speedtest-cli")
+	}
+	if _, ok := privileged.installed["/etc/apt/keyrings/ookla_speedtest-cli-archive-keyring.gpg"]; !ok {
+		t.Fatal("expected ookla keyring install")
+	}
+	listBody, ok := privileged.installed["/etc/apt/sources.list.d/ookla_speedtest-cli.list"]
+	if !ok {
+		t.Fatal("expected ookla sources.list install")
+	}
+	if !strings.Contains(listBody, "noble") {
+		t.Fatalf("sources list = %q, want noble suite", listBody)
+	}
+	if !strings.Contains(listBody, "signed-by=/etc/apt/keyrings/ookla_speedtest-cli-archive-keyring.gpg") {
+		t.Fatalf("sources list = %q, want signed-by keyring", listBody)
+	}
+
+	installCall := debianAptGetInstallArgs(privileged.calls)
+	if !containsString(installCall, "speedtest") || !containsString(installCall, "curl") {
+		t.Fatalf("apt-get install args = %#v, want curl and speedtest", installCall)
+	}
+}
+
+func TestInstallDebianPackagesSkipsSpeedtestWhenRepoUnpublished(t *testing.T) {
+	t.Parallel()
+
+	privileged := &fakePrivilegedRunner{}
+	installer := &Installer{
+		deps: Deps{
+			Commands: &fakeCommandRunner{},
+			Lookup:   fakeCommandLookup{commands: map[string]bool{"apt-get": true}},
+			Catalog: fakeCatalogProvider{packageConfig: &catalog.PackageConfig{
+				AptSpecific: []string{"curl", "speedtest"},
+				AptRepos:    []catalog.AptRepo{ooklaAptRepo()},
+			}},
+			Privileged: privileged,
+			AptRepos: fakeAptRepos{
+				codename: "resolute",
+				releases: map[string]bool{
+					"https://packagecloud.io/ookla/speedtest-cli/ubuntu\x00resolute": false,
+					"https://packagecloud.io/ookla/speedtest-cli/ubuntu\x00jammy":    false,
+				},
+				downloads: map[string][]byte{
+					"https://packagecloud.io/ookla/speedtest-cli/gpgkey": []byte("gpg-key"),
+				},
+			},
+		},
+	}
+
+	if err := installer.installDebianPackages(context.Background(), platform.Host{
+		GOOS:         platform.GOOSLinux,
+		Distribution: platform.DistributionUbuntu,
+	}, nil); err != nil {
+		t.Fatalf("installDebianPackages() returned error: %v", err)
+	}
+
+	if debianContainsCommand(privileged.calls, "apt-get", []string{"remove", "-y", "-qq", "speedtest-cli"}) {
+		t.Fatal("did not expect apt-get remove speedtest-cli when repo is skipped")
+	}
+	if _, ok := privileged.installed["/etc/apt/sources.list.d/ookla_speedtest-cli.list"]; ok {
+		t.Fatal("did not expect ookla sources.list when unpublished")
+	}
+	installCall := debianAptGetInstallArgs(privileged.calls)
+	if containsString(installCall, "speedtest") {
+		t.Fatalf("apt-get install args = %#v, did not want speedtest", installCall)
+	}
+	if !containsString(installCall, "curl") {
+		t.Fatalf("apt-get install args = %#v, want curl", installCall)
+	}
+}
+
+func TestSelectAptRepoSuiteFallsBackToJammy(t *testing.T) {
+	t.Parallel()
+
+	installer := &Installer{
+		deps: Deps{
+			AptRepos: fakeAptRepos{
+				codename: "noble",
+				releases: map[string]bool{
+					"https://packagecloud.io/ookla/speedtest-cli/ubuntu\x00noble": false,
+					"https://packagecloud.io/ookla/speedtest-cli/ubuntu\x00jammy": true,
+				},
+			},
+		},
+	}
+
+	suite, ok := installer.selectAptRepoSuite(
+		context.Background(),
+		platform.Host{Distribution: platform.DistributionUbuntu},
+		"https://packagecloud.io/ookla/speedtest-cli/ubuntu",
+	)
+	if !ok || suite != "jammy" {
+		t.Fatalf("suite = %q ok = %v, want jammy true", suite, ok)
+	}
+}
+
+func debianContainsCommand(calls []commandCall, command string, args []string) bool {
+	for _, call := range calls {
+		if call.command != command {
+			continue
+		}
+		if reflect.DeepEqual(call.args, args) {
+			return true
+		}
+	}
+	return false
+}
+
+func debianAptGetInstallArgs(calls []commandCall) []string {
+	for _, call := range calls {
+		if call.command != "apt-get" || len(call.args) == 0 || call.args[0] != "install" {
+			continue
+		}
+		if len(call.args) >= 4 && call.args[1] == "-y" && call.args[2] == "-qq" && call.args[3] == "gnupg" {
+			continue
+		}
+		return call.args
+	}
+	return nil
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }

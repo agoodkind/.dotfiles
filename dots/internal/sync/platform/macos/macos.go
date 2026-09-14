@@ -297,29 +297,58 @@ func (installer *Installer) installMacPackages(ctx context.Context, strictMode b
 	}
 
 	installer.trustMacTapPackages(ctx, cfg)
+	if err := installer.uninstallConflictingSpeedtestFormulae(ctx, cfg, strictMode, logger); err != nil {
+		return err
+	}
 
 	if err := installer.installMacFormulae(ctx, cfg, strictMode, logger); err != nil {
 		return err
 	}
-	return installer.installMacCasks(ctx, cfg, strictMode, logger)
+	if err := installer.installMacCasks(ctx, cfg, strictMode, logger); err != nil {
+		return err
+	}
+	return installer.upgradeMacPackages(ctx, strictMode, logger)
+}
+
+const (
+	officialOoklaSpeedtestFormula = "teamookla/speedtest/speedtest"
+	homebrewSpeedtestGoFormula    = "speedtest-go"
+	homebrewSpeedtestCLIFormula   = "speedtest-cli"
+)
+
+// BrewTrustRunner reports whether a brew command exits zero.
+type BrewTrustRunner interface {
+	CommandSucceeds(ctx context.Context, command string, args ...string) bool
 }
 
 func (installer *Installer) trustMacTapPackages(ctx context.Context, cfg *catalog.PackageConfig) {
-	if !installer.deps.Commands.CommandSucceeds(ctx, "brew", "trust", "--help") {
+	TrustCatalogTaps(ctx, installer.deps.Commands, cfg)
+}
+
+// TrustCatalogTaps trusts unique third-party taps and tap-qualified formulae and casks.
+func TrustCatalogTaps(ctx context.Context, commands BrewTrustRunner, cfg *catalog.PackageConfig) {
+	if commands == nil || cfg == nil {
+		return
+	}
+	if !commands.CommandSucceeds(ctx, "brew", "trust", "--help") {
 		return
 	}
 
 	formulae := tapQualifiedNames(append(append([]string{}, cfg.CommonPackages...), cfg.BrewSpecific...))
-	for _, name := range formulae {
-		installer.deps.Commands.CommandSucceeds(ctx, "brew", "trust", "--formula", name)
-	}
-
 	caskNames := make([]string, 0, len(cfg.BrewCasks))
 	for cask := range cfg.BrewCasks {
 		caskNames = append(caskNames, cask)
 	}
-	for _, name := range tapQualifiedNames(caskNames) {
-		installer.deps.Commands.CommandSucceeds(ctx, "brew", "trust", "--cask", name)
+	casks := tapQualifiedNames(caskNames)
+
+	for _, tap := range tapRepositoryNames(append(append([]string{}, formulae...), casks...)) {
+		commands.CommandSucceeds(ctx, "brew", "trust", tap)
+	}
+	for _, name := range formulae {
+		commands.CommandSucceeds(ctx, "brew", "trust", "--formula", name)
+	}
+	for _, name := range casks {
+		commands.CommandSucceeds(ctx, "brew", "trust", "--cask", name)
 	}
 }
 
@@ -338,6 +367,79 @@ func tapQualifiedNames(names []string) []string {
 	}
 	slices.Sort(out)
 	return out
+}
+
+func tapRepositoryNames(qualified []string) []string {
+	seen := make(map[string]struct{})
+	out := make([]string, 0)
+	for _, name := range qualified {
+		if strings.Count(name, "/") != 2 {
+			continue
+		}
+		last := strings.LastIndex(name, "/")
+		if last <= 0 {
+			continue
+		}
+		full := name[:last]
+		if _, ok := seen[full]; ok {
+			continue
+		}
+		seen[full] = struct{}{}
+		out = append(out, full)
+	}
+	slices.Sort(out)
+	return out
+}
+
+func catalogIncludesFormula(cfg *catalog.PackageConfig, formula string) bool {
+	if cfg == nil {
+		return false
+	}
+	return slices.Contains(cfg.CommonPackages, formula) || slices.Contains(cfg.BrewSpecific, formula)
+}
+
+func (installer *Installer) uninstallConflictingSpeedtestFormulae(
+	ctx context.Context,
+	cfg *catalog.PackageConfig,
+	strictMode bool,
+	logger *telemetry.Logger,
+) error {
+	if !catalogIncludesFormula(cfg, officialOoklaSpeedtestFormula) {
+		return nil
+	}
+
+	for _, name := range []string{homebrewSpeedtestGoFormula, homebrewSpeedtestCLIFormula} {
+		if !installer.brewFormulaInstalled(ctx, name) {
+			continue
+		}
+		if err := installer.deps.Commands.RunWithLogger(ctx, logger, "brew", "uninstall", "--formula", name); err != nil {
+			common.WarnContextf(ctx, logger, "  failed to uninstall %s", name)
+			if strictMode {
+				slog.WarnContext(ctx, "running brew uninstall", "formula", name, "err", err)
+				return fmt.Errorf("running brew uninstall %s: %w", name, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (installer *Installer) upgradeMacPackages(ctx context.Context, strictMode bool, logger *telemetry.Logger) error {
+	if err := installer.deps.Commands.RunWithLogger(ctx, logger, "brew", "upgrade"); err != nil {
+		common.WarnContext(ctx, logger, "  brew upgrade failed, continuing")
+		if strictMode {
+			slog.WarnContext(ctx, "running brew upgrade", "err", err)
+			return fmt.Errorf("running brew upgrade: %w", err)
+		}
+	}
+	if err := installer.deps.Commands.RunWithLogger(ctx, logger, "brew", "upgrade", "--cask", "--greedy"); err != nil {
+		common.WarnContext(ctx, logger, "  brew cask upgrade failed, continuing")
+		if strictMode {
+			slog.WarnContext(ctx, "running brew cask upgrade", "err", err)
+			return fmt.Errorf("running brew cask upgrade: %w", err)
+		}
+	}
+	return nil
 }
 
 func (installer *Installer) installMacFormulae(ctx context.Context, cfg *catalog.PackageConfig, strictMode bool, logger *telemetry.Logger) error {

@@ -13,12 +13,14 @@ import (
 	"strings"
 	"time"
 
+	"goodkind.io/.dotfiles/internal/catalog"
 	"goodkind.io/.dotfiles/internal/clock"
 	"goodkind.io/.dotfiles/internal/cmdexec"
 	"goodkind.io/.dotfiles/internal/gitdir"
 	"goodkind.io/.dotfiles/internal/runner"
 	syncer "goodkind.io/.dotfiles/internal/sync"
 	"goodkind.io/.dotfiles/internal/sync/common"
+	"goodkind.io/.dotfiles/internal/sync/platform/macos"
 	"goodkind.io/.dotfiles/internal/sync/repository"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
@@ -235,16 +237,48 @@ func truncateSHA(value string) string {
 }
 
 func doBrewUpgrade(ctx context.Context, dispatchLogger *telemetry.Logger) {
-	if runtime.GOOS != "darwin" {
+	doBrewUpgradeWith(ctx, dispatchLogger, runtime.GOOS, realBrewCommands{}, catalog.DefaultPackageConfig())
+}
+
+type brewCommandRunner interface {
+	HasCommand(name string) bool
+	CommandSucceeds(ctx context.Context, command string, args ...string) bool
+	Output(ctx context.Context, logger *telemetry.Logger, command string, args ...string) (string, error)
+}
+
+type realBrewCommands struct{}
+
+func (realBrewCommands) HasCommand(name string) bool {
+	return runner.HasCommand(name)
+}
+
+func (realBrewCommands) CommandSucceeds(ctx context.Context, command string, args ...string) bool {
+	_, err := cmdexec.OutputWithLoggerAndEnv(ctx, nil, nil, command, args...)
+	return err == nil
+}
+
+func (realBrewCommands) Output(ctx context.Context, logger *telemetry.Logger, command string, args ...string) (string, error) {
+	return cmdexec.OutputWithLogger(ctx, logger, command, args...)
+}
+
+func doBrewUpgradeWith(
+	ctx context.Context,
+	dispatchLogger *telemetry.Logger,
+	goos string,
+	commands brewCommandRunner,
+	cfg *catalog.PackageConfig,
+) {
+	if goos != "darwin" {
 		return
 	}
-	if !runner.HasCommand("brew") {
+	if commands == nil || !commands.HasCommand("brew") {
 		return
 	}
-	_, _ = cmdexec.OutputWithLogger(ctx, dispatchLogger, "brew", "update")
-	_, _ = cmdexec.OutputWithLogger(ctx, dispatchLogger, "brew", "upgrade")
-	_, _ = cmdexec.OutputWithLogger(ctx, dispatchLogger, "brew", "upgrade", "--cask", "--greedy")
-	_, _ = cmdexec.OutputWithLogger(ctx, dispatchLogger, "brew", "cleanup", "--prune=all")
+	macos.TrustCatalogTaps(ctx, commands, cfg)
+	_, _ = commands.Output(ctx, dispatchLogger, "brew", "update")
+	_, _ = commands.Output(ctx, dispatchLogger, "brew", "upgrade")
+	_, _ = commands.Output(ctx, dispatchLogger, "brew", "upgrade", "--cask", "--greedy")
+	_, _ = commands.Output(ctx, dispatchLogger, "brew", "cleanup", "--prune=all")
 }
 
 func doAptUpgrade(ctx context.Context, dispatchLogger *telemetry.Logger) {
