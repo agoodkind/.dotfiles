@@ -1,5 +1,5 @@
 ---
-description: Test design rules that favor end-to-end coverage and forbid mock soup and inconsequential tests
+description: Test design rules that require public-boundary end-to-end coverage and forbid mocks and inconsequential tests
 applies_to:
   - "**/*"
 always: true
@@ -7,13 +7,13 @@ always: true
 
 # Testing
 
-Tests in every language must exercise real behavior end to end as far as practical. A test should enter through a public boundary, run the code path under review, and assert an observable outcome a user, caller, or downstream system would notice.
+Tests in every language must exercise real behavior end to end. Every test must enter through a public boundary, run the production code path under review, and assert an observable outcome a user, caller, or downstream system would notice.
 
-Prefer the narrowest real dependency that still proves the behavior. Use in-memory databases, temporary directories, recorded HTTP fixtures, local test servers, and other fakes that preserve the contract. Reach for mocks only at slow, nondeterministic, or unavailable externals, and keep the mocked surface small.
+Use real dependencies through the public boundary. Temporary databases, temporary directories, and local servers are valid only when the test exercises the complete production path. Do not use mocks, stubs, spies, test doubles, or recorded responses.
 
 ## Forbidden patterns
 
-Do not write mock soup: stacks of mocks, stubs, and spies that only prove collaborators were called in order while the production path stays untested.
+Do not replace any dependency with a mock, stub, spy, or test double.
 
 Do not write inconsequential tests. These include static file content checks, snapshot tests that only restate the fixture, tests that duplicate compiler or linter guarantees, and tests that lock in behavior that was already removed.
 
@@ -120,26 +120,7 @@ func testSubmit_onlyCallsDependencies() {
 
 **Bad:** keep a test named `testLegacyCheckoutFlow` after the legacy flow was deleted.
 
-**Good:** drive the real view model with an in-memory store or `ModelContainer` test double and assert persisted state.
-
-```swift
-@MainActor
-func testSubmit_persistsOrder() async throws {
-  let container = try ModelContainer(
-    for: Order.self,
-    configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-  )
-  let viewModel = CheckoutViewModel(modelContext: container.mainContext)
-
-  try await viewModel.submit(cart: Cart.fixture)
-
-  let orders = try container.mainContext.fetch(FetchDescriptor<Order>())
-  XCTAssertEqual(orders.count, 1)
-  XCTAssertEqual(orders.first?.status, .placed)
-}
-```
-
-**Good:** use a UI test or hosted view test that taps the primary control and asserts visible copy or navigation.
+**Good:** use a UI test that launches the app, taps the primary control, and asserts visible copy or navigation.
 
 ```swift
 func testCheckoutButtonShowsConfirmation() throws {
