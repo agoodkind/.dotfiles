@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -20,6 +21,8 @@ const (
 	stashPrefix = "refs/stash/"
 	headRef     = "HEAD"
 	refPrefix   = "ref:"
+	gitlinkMode = "160000"
+	mergedStage = "0"
 )
 
 type repoLayout struct {
@@ -138,6 +141,66 @@ func isZeroOID(value string) bool {
 		}
 	}
 	return len(value) >= 40
+}
+
+// pinnedSubmoduleCheckout reports whether detaching HEAD at commit checks out
+// the gitlink that the superproject index records for this submodule. `git
+// submodule update` clones a submodule onto its default branch and then
+// detaches HEAD at that gitlink.
+func pinnedSubmoduleCheckout(ctx context.Context, commit string) bool {
+	superproject, err := gitOutput(ctx, "rev-parse", "--show-superproject-working-tree")
+	if err != nil || superproject == "" {
+		return false
+	}
+	toplevel, err := gitOutput(ctx, "rev-parse", "--show-toplevel")
+	if err != nil {
+		return false
+	}
+	path, err := filepath.Rel(canonicalGitPath(superproject), canonicalGitPath(toplevel))
+	if err != nil {
+		return false
+	}
+	gitlink, ok := superprojectGitlink(ctx, superproject, filepath.ToSlash(path))
+	return ok && gitlink == commit
+}
+
+// superprojectGitlink reads the gitlink recorded at path in the superproject
+// index. Git runs hooks with variables such as GIT_DIR that name the
+// submodule, so the command drops every local repository variable to read the
+// superproject instead.
+func superprojectGitlink(ctx context.Context, superproject string, path string) (string, bool) {
+	localVars, err := gitOutput(ctx, "rev-parse", "--local-env-vars")
+	if err != nil {
+		return "", false
+	}
+	cleared := strings.Fields(localVars)
+	env := make([]string, 0, len(os.Environ()))
+	for _, entry := range os.Environ() {
+		name, _, _ := strings.Cut(entry, "=")
+		if !slices.Contains(cleared, name) {
+			env = append(env, entry)
+		}
+	}
+	command := exec.CommandContext(ctx, "git", "-C", superproject, "ls-files", "--stage", "--", path)
+	command.Env = env
+	output, err := command.Output()
+	if err != nil {
+		slog.WarnContext(ctx, "reading superproject gitlink failed", "superproject", superproject, "path", path, "err", err)
+		return "", false
+	}
+	entry := strings.TrimSuffix(string(output), "\n")
+	if entry == "" || strings.Contains(entry, "\n") {
+		return "", false
+	}
+	metadata, entryPath, ok := strings.Cut(entry, "\t")
+	if !ok || entryPath != path {
+		return "", false
+	}
+	fields := strings.Fields(metadata)
+	if len(fields) != 3 || fields[0] != gitlinkMode || fields[2] != mergedStage {
+		return "", false
+	}
+	return fields[1], true
 }
 
 func worktreeHeadSetup(ctx context.Context) bool {
