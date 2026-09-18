@@ -61,6 +61,9 @@ func applyHeadUpdate(ctx context.Context, layout repoLayout, headOld string, hea
 		return err
 	}
 	if layout.primary && onDefault {
+		if pinnedSubmoduleCheckout(ctx, headNew) {
+			return nil
+		}
 		return refuse(msgLeaveDefault, hintLeaveDefault)
 	}
 	return nil
