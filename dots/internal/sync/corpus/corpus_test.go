@@ -143,6 +143,31 @@ func TestSyncRendersAndGatesByOS(t *testing.T) {
 	}
 }
 
+func TestSyncPreflightsRepositoryCorpus(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join("..", "..", "..", ".."))
+	if err != nil {
+		t.Fatalf("repo root: %v", err)
+	}
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	if err := Sync(context.Background(), repoRoot, nil); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+
+	rendered, err := os.ReadFile(filepath.Join(home, ".claude", "rules", "writing.md"))
+	if err != nil {
+		t.Fatalf("reading rendered writing rule: %v", err)
+	}
+	if want := "[ask-questions](../skills/ask-questions/SKILL.md)"; !strings.Contains(string(rendered), want) {
+		t.Errorf("rendered writing rule missing expanded skill link %q:\n%s", want, string(rendered))
+	}
+	if strings.Contains(string(rendered), "{{") {
+		t.Errorf("rendered writing rule still contains template markup:\n%s", string(rendered))
+	}
+}
+
 func TestSyncRendersProviderFrontmatter(t *testing.T) {
 	dotfiles := t.TempDir()
 	writeFile(t, filepath.Join(dotfiles, "corpus", "rules", "writing.mdc"),

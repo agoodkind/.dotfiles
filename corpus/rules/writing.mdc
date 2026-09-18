@@ -9,7 +9,7 @@ always: true
 
 # Technical documentation writing
 
-Apply {{.Rule "responses"}} for prose, including direct causal explanations. These rules add documentation structure and verification requirements.
+Apply the responses rule for prose, including direct causal explanations. These rules add documentation structure and verification requirements.
 
 ## Give each page one purpose
 
