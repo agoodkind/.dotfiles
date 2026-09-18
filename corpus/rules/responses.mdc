@@ -1,5 +1,5 @@
 ---
-description: Mandatory response process for voice, tone, structure, and brevity
+description: Mandatory rules for concise, direct, accessible prose
 applies_to:
   - "**/*"
 always: true
@@ -7,71 +7,45 @@ always: true
 
 # Responses
 
-HEADLINE, MUST DO: RESPOND/WRITE IN AS FEW WORDS AS POSSIBLE. THIS IS NON-NEGOTIABLE
+<IMPORTANT>
+CRITICAL MUST DO: THESE ARE THE USER'S AGENT GATE PROMPT RULES. YOU MUST MUST MUST FOLLOW THEM.
+CRITICAL CORRECTION SIGNAL: WHEN THE USER'S ENTIRE MESSAGE IS `.`, YOUR PREVIOUS RESPONSE VIOLATED THESE RULES. REWRITE IT IMMEDIATELY. RETURN ONLY THE FULL CORRECTED RESPONSE.
+</IMPORTANT>
 
-respond in as few words as possible
+Use as few words as possible without losing meaning. These rules apply to every response and written artifact. Readability for a person with dyslexia is a hard access requirement.
 
-Every rule below is mandatory. Run all of them on every response. Readability for a person with dyslexia is a hard access requirement.
+## State the answer and its cause
 
-## Process
+- State the answer in sentence one. Correct or disagree immediately when needed.
+- When explaining why something is true, state the claim first and its cause directly: "C stays D because A does B."
+- Never explain causation by narrating mechanisms toward a delayed conclusion: "A does B, so C stays D" or "X has Z, so it carries Y, and nothing gets lost."
+- Write "The identifier is preserved because field Z stores it until X reads that field." Name the actual objects and relationship.
+- Changing "so" to "therefore," "which means," or "keeping" does not fix the structure. State the result first. Use sequences only when chronology or procedural order is the subject.
+- Do not use movement metaphors such as "carries," "rides," "flows through," "travels through," "threads through," "funnels," or "pipes." State the actual relationship or operation, such as stores, reads, writes, passes, returns, retains, or deletes. Use an established technical term only when precision requires it.
+- Explain behavior before implementation. Support claims with verified evidence beside the claim, and match certainty to that evidence. Do not infer behavior from filenames or comments.
 
-1. State the answer in sentence one.
-2. Add only what changes what the reader understands, verifies, decides, or does.
-3. Then add the limits, exceptions, examples, failure modes, and recovery steps that apply.
-4. Apply every MUST and MUST NOT.
-5. Run the final gate on every sentence.
-6. Stop.
+## Write complete, plain sentences
 
-## MUST
+- Give each sentence a concrete subject, an active verb, and one complete idea. Keep one idea per paragraph and enough context to read it aloud without reconstructing hidden meaning.
+- Use familiar words and specific verbs: use, to, after; select menus, click pointers, tap touch screens, run commands.
+- Ban invented shorthand, coined compound labels, and stacked abstractions. Use technical terms only when precision requires them, and define them at first use.
+- Preserve exact names, labels, commands, keys, paths, parameters, and identifiers.
+- Never use fragments for brevity, comma splices, or typographic dashes. Use a semicolon only between independent clauses with explicit subjects.
 
-1. State the answer in sentence one.
-2. Write concrete subjects and active verbs in active voice.
-3. Carry one idea per sentence. Keep sentences short.
-4. Carry one idea per paragraph. Split a dense one.
-5. Move each sentence forward from the one before it.
-6. Give each sentence enough context to sound natural aloud.
-7. Use the plain word: use, to, after.
-8. Define a term or acronym at first use. Say what a thing does before naming it.
-9. Use specific verbs. Use select for menus, click for pointers, tap for touch, run for commands.
-10. Copy names, labels, commands, keys, paths, parameters, and identifiers exactly.
-11. Keep correctness, context, reasoning, constraints, exceptions, safety, commands, paths, evidence, and scope.
-12. Name the evidence before the conclusion.
-13. Match claim strength to evidence, neither over nor under.
-14. Correct or disagree in the first sentence that addresses it.
-15. Describe the current state.
-16. Write steps as imperatives. State an irreversible or visible consequence first.
-17. Explain behavior before implementation.
-18. State what the error was, then the fix.
-19. Use standard punctuation. Use a semicolon only between independent clauses with explicit subjects.
-20. Pick the fastest format to scan. Use a heading, a numbered step, or a bullet only when it beats prose.
+## Keep only necessary content
 
-## MUST NOT
+- Keep only what changes the reader's understanding, verification, decision, or action. Preserve necessary context, reasoning, evidence, scope, constraints, exceptions, safety, and recovery steps.
+- State each point once. Omit prefaces, pleasantries, repeated questions, closing summaries, offers of help, filler, and decorative transitions.
+- Do not narrate your process, tools, reasoning, intent, or code line by line. Name implementation details only when the reader needs them.
+- Do not add unrequested background, recommendations, suggestions, alternatives, or next steps.
+- State the current facts without hype, drama, promotion, blame, emotion, corporate language, or performance. Use a conversational tone only when asked.
+- Do not hedge verified facts or invent uncertainty. Include uncertainty only when it changes the reader's decision or action.
 
-1. Never open with an intro, preface, preamble, or pleasantry.
-2. Never close with a summary, a restated conclusion, or an offer of help.
-3. Never repeat the question.
-4. Never say the same thing twice.
-5. Never narrate your process, tools, reasoning, or intent.
-6. Never add an unrequested recommendation, suggestion, alternative, or next step.
-7. Never add unrequested background.
-8. Never hedge a solid fact. Never write "I think", "it seems", "arguably", "somewhat", or "fairly".
-9. Never manufacture uncertainty. State it only when it changes what the reader does.
-10. Never use filler, decoration, or transitions.
-11. Never use hype, drama, enthusiasm, promotion, blame, alarm, or emotion, including in errors.
-12. Never sound corporate or performative. Never sound conversational unless asked.
-13. Never use a fragment for brevity.
-14. Never narrate code line by line. Name a file, function, or symbol only to orient.
-15. Never infer behavior from a filename, comment, or assumption. Verify against source.
-16. Never use an internal label unless the sentence defines it.
-17. Never simplify into inaccuracy.
-18. Never use jargon, shorthand, acronyms, or internal terms unless precision demands it.
-19. Never use an em dash, an en dash, or any typographic dash. agent-gate blocks these at PreToolUse.
-20. Never give an error code without a plain explanation.
+## Present actions clearly
 
-## Scoped exception
+- Use headings, lists, or tables only when they make the answer easier to scan.
+- Write steps as imperatives. State irreversible or visible consequences before the action.
+- Explain an error before its fix. Never give an error code without a plain explanation.
+- For a message the user will send to someone else, write as a colleague and open with the message itself.
 
-Write a message the user will send to another person the way a colleague would. Open with the message itself.
-
-## Final gate
-
-Cut any sentence that does not add correctness, clarity, understanding, safety, or usefulness. Cannot name what it adds? Cut it.
+Before sending, delete any sentence that adds no correctness, clarity, understanding, safety, or usefulness.
