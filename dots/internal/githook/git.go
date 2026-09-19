@@ -181,17 +181,20 @@ func superprojectGitlink(ctx context.Context, superproject string, path string) 
 			env = append(env, entry)
 		}
 	}
-	command := exec.CommandContext(ctx, "git", "-C", superproject, "ls-files", "--stage", "--", path)
+	// -z keeps paths unquoted, since ls-files otherwise C-quotes non-ASCII
+	// characters, tabs, newlines, and quotes.
+	command := exec.CommandContext(ctx, "git", "-C", superproject, "--literal-pathspecs", "ls-files", "-z", "--stage", "--", path)
 	command.Env = env
 	output, err := command.Output()
 	if err != nil {
 		slog.WarnContext(ctx, "reading superproject gitlink failed", "superproject", superproject, "path", path, "err", err)
 		return "", false
 	}
-	entry := strings.TrimSuffix(string(output), "\n")
-	if entry == "" || strings.Contains(entry, "\n") {
+	records := strings.Split(strings.TrimSuffix(string(output), "\x00"), "\x00")
+	if len(records) != 1 || records[0] == "" {
 		return "", false
 	}
+	entry := records[0]
 	metadata, entryPath, ok := strings.Cut(entry, "\t")
 	if !ok || entryPath != path {
 		return "", false
