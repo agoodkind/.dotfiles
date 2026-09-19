@@ -42,7 +42,7 @@ Or use `gh ruleset check --default` when the PR targets the default branch.
 Parse the returned rules:
 
 - `required_status_checks`: lists the checks that must pass before merge.
-- `pull_request`: carries `required_approving_review_count`, `require_code_owner_review`, `require_last_push_approval`, and `required_review_thread_resolution`.
+- `pull_request`: contains `required_approving_review_count`, `require_code_owner_review`, `require_last_push_approval`, and `required_review_thread_resolution`.
 
 Only `active` rules are returned. Rules in `evaluate` or `disabled` enforcement do not gate merge.
 
@@ -119,7 +119,7 @@ mutation {
 }
 ```
 
-Do not ask the user for approval before resolving a thread whose concern is genuinely fixed or superseded. Resolve it autonomously after verifying the current code and relevant checks. When `required_review_thread_resolution` is active in the ruleset, every required thread must be resolved before merge.
+Do not ask the user for approval before resolving a thread after its concern is genuinely fixed or superseded. Resolve it autonomously after verifying the current code and relevant checks. When `required_review_thread_resolution` is active in the ruleset, every required thread must be resolved before merge.
 
 Treat every review state read before a reply or thread resolution as stale. Record the action time, then poll the pull request until each automated reviewer affected by that action publishes a completion signal after it. A check run must reach a terminal state. A newer review or edited summary counts only when it states the completed refresh result. Re-read reviews with their submission times, `reviewDecision`, review threads, checks, `mergeable`, and `mergeStateStatus` after that signal. A blocking review submitted before the latest reply or resolution does not prove that dismissal is required. Do not dismiss it, ask the user to dismiss it, or merge around it while the reviewer refresh is still pending. If the reviewer exposes no completion signal, keep the pull request in the babysit loop and report that the review refresh is pending.
 
