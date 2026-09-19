@@ -43,6 +43,7 @@ _source "$DOTDOTFILES/zshrc/core/startup.zsh"
 
 # A live install may be writing shell state, so fall back to minimal startup.
 if _dotfiles_install_in_progress; then
+    _dotfiles_load_gh_token_and_mirror
     return 0 2>/dev/null || true
 fi
 
@@ -53,6 +54,14 @@ source "$DOTDOTFILES/zshrc/core/plugins.zsh"
 local _pms=$(((EPOCHREALTIME - _t0) * 1000))
 _PROFILE_TIMES[plugins]=$_pms
 _PERF_TREE+=("$((_SOURCE_DEPTH + 2)):plugins:${_pms}")
+
+# secrets.zsh leaves the gh keyring lookup to interactive shells, which run it
+# after the first prompt so its 50ms stays out of the zshrc budget.
+if typeset -f zsh-defer >/dev/null; then
+    zsh-defer _dotfiles_load_gh_token_and_mirror
+else
+    _dotfiles_load_gh_token_and_mirror
+fi
 
 _source "$DOTDOTFILES/zshrc/core/prefer.zsh"
 _source "$DOTDOTFILES/zshrc/commands/editors.zsh"
