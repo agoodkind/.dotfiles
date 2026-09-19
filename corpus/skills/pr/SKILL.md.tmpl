@@ -90,14 +90,23 @@ Examples:
 
 Write for a lightly technical reviewer who may have no prior context. The reviewer should understand the behavioral or qualitative change in one pass.
 
-Use this structure as a starting point, then adjust it to fit the change:
+Default to two short paragraphs in this order:
+
+1. State the existing problem and its cause: "People lose their edits because the form reloads saved values after a failed save." Add the concrete consequence when it helps explain the problem.
+2. State what this PR changes and what people or systems can do afterward. Include only behavior the change supports.
+
+The problem is the load-bearing point in a PR body. Instructions to put the answer or result first mean putting that problem first, not opening with the completed change. The title still states what changed.
+
+Use this structure for a bug, limitation, or maintenance change:
 
 ```markdown
 ### Problem
 
 Ticket: https://agency.ticketing.net/browse/TICKET-12345
 
-Because of the current behavior or constraint, a concrete problem occurs. This PR changes the relevant behavior to produce the intended outcome.
+A user or system experiences a concrete problem because of the existing behavior or constraint. Explain the consequence when it adds useful context.
+
+This PR changes the relevant behavior. Explain the resulting capability or recovery.
 ```
 
 For a new capability, use this shape instead:
@@ -107,12 +116,14 @@ For a new capability, use this shape instead:
 
 Ticket: https://agency.ticketing.net/browse/TICKET-12345
 
-Because a user or system needs a capability that does not exist, a concrete workflow is blocked or incomplete. This PR adds the capability and explains the resulting behavior.
+A user or system cannot complete a concrete workflow because a needed capability is missing.
+
+This PR adds the capability. Explain what the user or system can do afterward.
 ```
 
 Choose `Problem` for a bug, limitation, or maintenance change. Choose `New feature` for a new capability. Add `Fix`, `Impact`, `Rollout`, or `Demo` only when it gives the reviewer distinct, load-bearing information.
 
-Open with the cause or context, then describe its consequence. Follow with what this PR changes and the resulting behavior. The sentences should form one causal narrative instead of a list of disconnected implementation facts.
+Before showing the draft, read its first prose sentence without the title or headings. It must identify the existing problem or unmet need. Rewrite an opening such as "X now does Y", "This PR adds Y", or "Updated X to do Y" to explain the problem first. A `Problem` heading alone does not satisfy this check. Use supported context from Step 3; do not invent a problem to fill the structure.
 
 Apply {{.Rule "writing"}} and {{.Skill "make-readable"}} in addition to the pull request-specific rules below.
 
@@ -125,10 +136,7 @@ Writing rules:
 - Reject bloviating. `Bloviate` means to write verbosely and windily, so remove pompous, inflated, self-important, or low-substance prose.
 - Keep each paragraph readable, avoid densely packed formatting. Optimize for quick scanning of the PR description from a distance.
 - Prefer everyday product or system nouns before code names, especially in the first explanation.
-- Explain the cause or need before the behavioral or qualitative change, then add code anchors only where they help reviewers orient.
 - Explain why the change exists, not only what changed. If linked context says the old path is being retired, a new system is becoming the source of truth, or an event/API is now the official contract, include that reason.
-- Prefer a flowing causal shape: "Because of Z, X happened. This PR changes Y to produce the intended behavior."
-- Do not open with a result-only construction such as "X now does Y." Give the reviewer the problem or need first.
 - Include only details that help the reviewer understand, verify, or safely ship the PR.
 - Do not narrate literal code changes, the PR description provides high-level context for the change, and the PR diff carries the code change.
 - Do not add irrelevant adjacent context just because it is available.
@@ -162,6 +170,18 @@ Comparison rules:
 
 Use these as drafting patterns, not as fixed templates.
 
+### Problem Before Change
+
+```markdown
+Title: Preserve profile edits when saving fails
+
+### Problem
+
+People lose their profile edits when a save fails because the form reloads the last saved values. Retrying requires entering the changes again.
+
+This PR preserves the entered values after a failed save and displays an error beside the Save button. People can retry without retyping. The form confirms success only after the server accepts the changes.
+```
+
 ### New Feature With Context
 
 ```markdown
@@ -171,9 +191,9 @@ Depends on: https://github.com/example-org/example-repo/pull/123
 
 ### New feature
 
-Because direct table replication is being retired, consumers need an event-based source of truth for account changes. This PR publishes an update event whenever an existing account changes.
+Consumers need a new source of account changes because direct table replication is being retired.
 
-The event carries the update reason, changed fields, previous account snapshot, and current account snapshot. Every service path that changes account state publishes the same contract.
+This PR publishes an update event whenever an existing account changes. The event includes the update reason, changed fields, previous account snapshot, and current account snapshot. Every service path that changes account state publishes the same contract.
 ```
 
 ### No Noisy Testing Section
@@ -183,9 +203,9 @@ Title: [ACME-310] Update PR skill workflow for existing PR state
 
 ### Problem
 
-Because the existing guidance mixes branch inspection with PR editing, agents can edit an open PR without confirming the requested scope. This PR separates branch reading, drafting, GitHub writes, and final output into explicit steps.
+Agents can edit an open PR without confirming the requested scope because the existing guidance mixes branch inspection with PR editing.
 
-The workflow requires agents to choose the correct path before drafting. Agents ask before editing an existing open PR unless the user clearly requested that update.
+This PR separates branch reading, drafting, GitHub writes, and final output into explicit steps. Agents ask before editing an existing open PR unless the user clearly requested that update.
 ```
 
 Do not add `## Testing` unless material verification actually ran for the behavior of the change.
@@ -197,7 +217,9 @@ Title: Clear stale retry warning after recovery
 
 ### Problem
 
-Because a failed attempt leaves its warning in place, a later successful retry still looks unsuccessful. This PR clears the warning when the retry returns a result, so the page reflects the recovered request.
+A successful retry still looks unsuccessful because the warning from the failed attempt remains visible.
+
+This PR clears the warning when the retry returns a result. The page then displays the recovered result.
 ```
 
 This small follow-up has no ticket. The title and body omit ticket placeholders instead of inventing tracking context.
@@ -224,7 +246,9 @@ Title: Preserve catalog sort after clearing filters
 
 ### Problem
 
-Because `Clear filters` also resets the selected sort order, people must restore their preferred ordering after broadening the results. This PR limits the action to filters, so the selected sort order remains active.
+People must restore their preferred ordering after clearing filters because `Clear filters` also resets the selected sort order.
+
+This PR limits the action to filters. The selected sort order remains active.
 
 | Reviewer question | Before | After |
 | --- | --- | --- |
@@ -242,7 +266,9 @@ Title: [ACME-218] Publish warehouse inventory changes
 
 ### New feature
 
-Because polling delays inventory updates and transfers the full snapshot each time, warehouse displays need a smaller event-based contract. This PR publishes each committed inventory change with the context a display needs.
+Warehouse displays show stale inventory between polls and receive the full snapshot even when only one item changes.
+
+This PR publishes each committed inventory change with the context a display needs.
 
 | Contract question | Before | After |
 | --- | --- | --- |
@@ -260,7 +286,9 @@ Title: Explain why upload is disabled
 
 ### Problem
 
-Because the disabled `Upload` action gives no recovery guidance, people cannot tell how to continue. This PR adds helper text that tells them to select a file.
+People cannot tell how to continue because the disabled `Upload` action gives no recovery guidance.
+
+This PR adds helper text that tells them to select a file.
 
 ## Demo
 
