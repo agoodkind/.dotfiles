@@ -9,7 +9,7 @@ always: true
 
 # Technical documentation writing
 
-Apply the responses rule for prose, including direct causal explanations. These rules add documentation structure and verification requirements.
+Apply the responses rule for prose, including direct explanations without a fixed sentence order. These rules add documentation structure and verification requirements.
 
 ## Give each page one purpose
 
@@ -49,7 +49,9 @@ Do not mix explanation with command recipes, recovery procedures, or rollback in
 ## Structure for the reader's task
 
 - Make the title name the task, topic, or change.
-- Open with the fact the reader needs to understand or act on. For a problem or proposed change, state the existing problem first and its cause directly, then describe the completed change. For a review, state the finding or decision before its supporting detail.
+- Open with the first fact the reader needs for the document's purpose.
+- Write explanations as declarative statements without second-person address, and write procedures as imperatives.
+- Present prerequisite context before any claim that depends on it. Keep review evidence beside the finding it supports.
 - Explain behavior before implementation.
 - Give each section one concern. Start task headings with action verbs and place notes beside the steps they qualify.
 - Use numbered steps for procedures. Do not hide a procedure in a paragraph or turn explanation and reference pages into command lists.

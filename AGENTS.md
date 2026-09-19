@@ -265,16 +265,11 @@ does not fully replicate a login session.
    `rg`, system `go`, `shfmt`, `ast-grep`, Rust tools, Go-installed tools, or
    catalog-installed binaries in code that runs before package provisioning
    finishes.
-9. **Writing style**: All prose in dotfiles documentation must hold to the
-   strictness enforced by agent-gate's `no-fused-thoughts` rule. Each
-   sentence should have a concrete subject, a concrete verb, and enough
-   context to sound natural when spoken aloud, and each new sentence should
-   add useful information in the same direction as the sentence before it
-   so the paragraph moves forward by accumulation. Length is not the test,
-   since a long sentence is correct when it carries one finished thought
-   whose clauses are joined by real connectors like "and", "so", "since",
-   commas, semicolons, colons, or parentheses, and a short stub sentence
-   is its own failure mode when the thought it carries is actually the
-   front half of a longer thought that needed its continuation. Em-dashes,
-   en-dashes, and the other typographic dash characters are banned in
-   prose and will be hard-blocked at PreToolUse by the daemon.
+9. **Writing style**: All prose in dotfiles documentation must follow
+   agent-gate's `no-fused-thoughts` rule. Each sentence needs a concrete
+   subject, a concrete verb, and enough context to read aloud without
+   reconstructing omitted meaning. Each sentence must add one complete idea
+   in the same direction as the prior sentence. Sentence length does not
+   determine correctness. Use explicit connectors between related clauses.
+   Rewrite short fragments and unfinished thoughts as complete sentences.
+   Agent-gate blocks typographic dash characters in prose.

@@ -10,9 +10,9 @@ Rewrite the last response in plain language when the user types `plain` or `/pla
 ## Steps
 
 1. Apply {{.Rule "responses"}}.
-2. Replace jargon, invented labels, abstractions, and movement metaphors with the actual objects and relationships.
+2. Replace jargon, invented labels, abstractions, movement metaphors, vague relationship verbs, and possessive relative clauses with the actual objects and relationships.
 3. Keep a technical term only when the answer needs it. Define that term in the sentence where it first appears.
-4. State each conclusion first and its cause directly. Do not narrate a mechanism toward the conclusion.
+4. Present technical facts in dependency order. Use one subject, operation, and object per sentence when a combined sentence would become a causal template. Stop when the facts answer the prompt.
 5. Preserve verified meaning, constraints, commands, paths, and evidence. Remove unsupported claims and unasked advice.
 6. If the user names a term after `plain` or `/plain`, rewrite only the parts that depend on that term.
-7. Return the full corrected response without an acknowledgment, apology, preface, or summary.
+7. Return the full corrected response as declarative prose without second-person address, acknowledgment, apology, preface, process narration, or summary.

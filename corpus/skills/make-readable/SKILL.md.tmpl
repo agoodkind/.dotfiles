@@ -19,9 +19,9 @@ Do not debate, soften, or explain this standard. Apply it.
 2. If the user asks a question in the same message as "make-readable" or "/make-readable", answer that question directly in the readable style. Do not ignore the question to rewrite older text.
 3. Preserve the meaning, commands, file paths, evidence, caveats, and requested scope.
 4. Remove narration, apology, preface, self-description, editorial, motivation, filler, repetition, and unasked recommendations.
-5. Rewrite the answer so the load-bearing point appears first.
-6. Use short complete sentences with concrete subjects and concrete verbs.
-7. Use bullets only when bullets make the answer easier to scan.
+5. Start with the first fact the task requires. Order later facts by dependency.
+6. Use short declarative sentences with concrete subjects and concrete verbs. Replace "names," "describes," and similar vague relationship verbs with the actual behavior. Use standard American English without second-person address or possessive relative clauses.
+7. Use bullets only when bullets make the answer easier to scan. Replace bold fragments that act as headings inside paragraphs or list items with a complete sentence or a Markdown heading.
 8. Reproduce the full corrected response.
 
 ## Plan Handling
@@ -38,13 +38,13 @@ If the user asks to edit a plan, output the edited plan. If a higher-priority in
 
 ## Critical Rules
 
-- Produce the corrected output only. No apology, no preface, no acknowledgment of the command.
-- Put the answer first. Do not narrate what you are doing.
+- Produce the corrected output without apology, preface, acknowledgment, or process narration.
+- Begin with the requested content.
 - Do not say "the plan is ready", "approve the plan", "ready to approve", or any equivalent process status unless those words are part of text the user explicitly asked to preserve.
 - Do not summarize when the user asked to see, edit, or rewrite a specific plan. Show the plan.
 - Keep only load-bearing content.
-- State each point once.
-- Avoid dense paragraphs. Split text when a sentence or paragraph carries too much.
+- Delete paraphrases that repeat a fact, conclusion, instruction, warning, or question without adding necessary context.
+- Avoid dense paragraphs. Split text when a sentence or paragraph contains too much information.
 - Avoid internal labels unless the sentence also defines what the label means.
 - Preserve necessary uncertainty and evidence. Do not make the answer falsely absolute.
 - Preserve code blocks and commands unless they are part of the readability problem.

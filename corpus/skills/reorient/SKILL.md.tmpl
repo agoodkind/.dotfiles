@@ -5,13 +5,13 @@ description: Run the /reorient command workflow from the dotfiles agent command 
 
 # Reorient
 
-`/compact` replaces the live conversation with a summary. The summary keeps the shape of the work and drops the detail: exact file paths, prior decisions, tool results, and the step that was in progress. `/reorient` rebuilds that detail from two sources that still hold it in full, the recorded conversation transcript and the codebase, states where the work stands, and continues from the next concrete step.
+`/compact` replaces the live conversation with a summary. The summary names the task and omits exact file paths, prior decisions, tool results, and the step that was in progress. `/reorient` reads the recorded conversation transcript and the codebase to recover the omitted details. The skill then states the current work and resumes from the next concrete step.
 
 Run this skill when the user types "reorient" or "/reorient". An argument (`/reorient <topic>`) names the thread to focus the conversation search on. Without an argument, focus on the most recent task in the current session.
 
 ## Output standard
 
-Read [plain/SKILL.md](../plain/SKILL.md) in full and apply it to every line this skill produces. In short: the first sentence of each explanation states what the system does in plain subject and verb terms, an internal label appears only after the sentence that names what it does, every line reads correctly offline with each reference defined inline, and the output carries load-bearing content once with no preface, no duplication, and no editorial.
+Read [plain/SKILL.md](../plain/SKILL.md) in full and apply it to every line this skill produces. The first sentence of each explanation states what the system does in plain subject and verb terms. An internal label appears only after the sentence that defines it. Every line reads correctly offline with each reference defined inline. The output includes each necessary fact once and omits prefaces, duplication, and editorial prose.
 
 Read [enforce-rules/SKILL.md](../enforce-rules/SKILL.md) in full and apply it for the duration of the task. Output contains zero em dashes and zero en dashes in any form.
 
