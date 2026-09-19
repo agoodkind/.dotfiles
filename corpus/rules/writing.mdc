@@ -48,7 +48,9 @@ Do not mix explanation with command recipes, recovery procedures, or rollback in
 
 ## Structure for the reader's task
 
-- Make the title name the task, topic, or change. Start review prose with the result and explain behavior before implementation.
+- Make the title name the task, topic, or change.
+- Open with the fact the reader needs to understand or act on. For a problem or proposed change, state the existing problem first and its cause directly, then describe the completed change. For a review, state the finding or decision before its supporting detail.
+- Explain behavior before implementation.
 - Give each section one concern. Start task headings with action verbs and place notes beside the steps they qualify.
 - Use numbered steps for procedures. Do not hide a procedure in a paragraph or turn explanation and reference pages into command lists.
 - Reject file inventories, annotated directory listings, and headings that merely enumerate code locations. Use tables for genuine comparisons or exact mappings.
