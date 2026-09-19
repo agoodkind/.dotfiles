@@ -62,6 +62,16 @@ func TestClaudeSubmoduleUpdateChecksOutPinnedCommit(t *testing.T) {
 	assertHeadAtGitlink(t, fixture.superproject, submodulePath)
 }
 
+func TestClaudeSubmoduleUpdateChecksOutPinnedCommitAtNonASCIIPath(t *testing.T) {
+	fixture := newSubmoduleFixtureAt(t, nonASCIISubmodulePath)
+	enableAgentPolicy(t, fixture.root)
+	output, err := runGitResult(t, fixture.superproject, "submodule", "update", "--init", nonASCIISubmodulePath)
+	if err != nil {
+		t.Fatalf("git submodule update --init: %v\n%s", err, output)
+	}
+	assertHeadAtGitlink(t, fixture.superproject, nonASCIISubmodulePath)
+}
+
 func TestClaudeRecursiveSubmoduleUpdateChecksOutNestedPinnedCommit(t *testing.T) {
 	fixture := newSubmoduleFixture(t)
 	enableAgentPolicy(t, fixture.root)
@@ -193,6 +203,8 @@ func globalHooksDir(t *testing.T) string {
 const (
 	submodulePath       = "third_party/gksyntax"
 	nestedSubmodulePath = "grammars/swift"
+	// nonASCIISubmodulePath is C-quoted by ls-files unless -z is passed.
+	nonASCIISubmodulePath = "third_party/modé"
 	// protectedCommitRefusal is printed by git-global-hooks/pre-commit.
 	protectedCommitRefusal = "error: commit blocked on protected branch main"
 )
@@ -209,6 +221,13 @@ type submoduleFixture struct {
 // the branch a fresh submodule clone lands on. Git config is isolated from the
 // operator's global config, and no hooks run until enableAgentPolicy.
 func newSubmoduleFixture(t *testing.T) submoduleFixture {
+	t.Helper()
+	return newSubmoduleFixtureAt(t, submodulePath)
+}
+
+// newSubmoduleFixtureAt builds the newSubmoduleFixture layout with the
+// top-level submodule at path.
+func newSubmoduleFixtureAt(t *testing.T, path string) submoduleFixture {
 	t.Helper()
 	root, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
@@ -242,9 +261,9 @@ func newSubmoduleFixture(t *testing.T) submoduleFixture {
 	commitToOrigin(t, submoduleOrigin.work, "tip")
 
 	superOrigin := newOriginRepo(t, root, "super")
-	mustGit(t, superOrigin.work, "submodule", "add", submoduleOrigin.bare, submodulePath)
-	mustGit(t, filepath.Join(superOrigin.work, submodulePath), "checkout", "--quiet", submodulePin)
-	mustGit(t, superOrigin.work, "add", submodulePath)
+	mustGit(t, superOrigin.work, "submodule", "add", submoduleOrigin.bare, path)
+	mustGit(t, filepath.Join(superOrigin.work, path), "checkout", "--quiet", submodulePin)
+	mustGit(t, superOrigin.work, "add", path)
 	commitToOrigin(t, superOrigin.work, "pin")
 
 	superproject := filepath.Join(root, "clone")
