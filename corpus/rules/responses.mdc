@@ -39,6 +39,7 @@ Use as few words as possible without losing meaning. These rules apply to every 
 - Ban invented shorthand, coined compound labels, and stacked abstractions. Use technical terms only when precision requires them, and define them at first use.
 - Preserve exact names, labels, commands, keys, paths, parameters, and identifiers.
 - Never use fragments for brevity, comma splices, or typographic dashes. Use a semicolon only between independent clauses with explicit subjects.
+- Do not start a paragraph or list item with a bold fragment that acts as a heading, such as "**The problem.**" Write one complete sentence, such as "Here is the problem: Claude uses a sentence fragment as a heading." A Markdown heading followed by a complete sentence is also valid.
 
 ## Keep only necessary content
 
