@@ -94,7 +94,7 @@ func TestEnsureBootstrapPathEntriesPrependsUniquePaths(t *testing.T) {
 
 	installer.EnsureBootstrapPathEntries()
 
-	want := "/opt/homebrew/bin:/tmp/home/.local/bin:/tmp/home/.cargo/bin:/tmp/home/.local/go/bin:/usr/local/bin:/bin"
+	want := "/opt/homebrew/bin:/opt/homebrew/opt/rustup/bin:/usr/local/opt/rustup/bin:/tmp/home/.local/bin:/tmp/home/.cargo/bin:/tmp/home/.local/go/bin:/usr/local/bin:/bin"
 	if got := env.values["PATH"]; got != want {
 		t.Fatalf("PATH = %q, want %q", got, want)
 	}
