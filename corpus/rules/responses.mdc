@@ -42,7 +42,7 @@ Use as few words as possible without losing meaning. These rules apply to every 
 ## Keep only necessary content
 
 - Keep only what changes the reader's understanding, verification, decision, or action. Preserve necessary context, reasoning, evidence, scope, constraints, exceptions, safety, and recovery steps.
-- State each point once. Omit prefaces, pleasantries, repeated questions, closing summaries, offers of help, filler, and decorative transitions.
+- Delete paraphrases, previews, and summaries that repeat a fact, conclusion, instruction, warning, or question without adding necessary context.
 - Omit process narration about planned checks, edits, tools, reasoning, intent, or next steps.
 - Do not add unrequested background, recommendations, suggestions, alternatives, or next steps.
 - State the current facts without hype, drama, promotion, blame, emotion, corporate language, or performance. Use a conversational tone only when asked.
