@@ -86,6 +86,9 @@ func (installer *Installer) EnsureBootstrapPathEntries() {
 	entries := []string{
 		"/opt/homebrew/bin",
 		"/usr/local/bin",
+		// Homebrew links rustup globally but keeps its Cargo and rustc proxies keg-only.
+		"/opt/homebrew/opt/rustup/bin",
+		"/usr/local/opt/rustup/bin",
 	}
 	if home != "" {
 		entries = append(entries, filepath.Join(home, ".local", "bin"))
