@@ -18,6 +18,7 @@ Use as few words as possible without losing meaning. These rules apply to every 
 
 - Begin with the requested content.
 - For a technical why or how explanation, state the relevant operations as direct facts in dependency order. Give each subject, operation, and object its own sentence when combining them would produce a formulaic causal sentence. Stop when those facts answer the question.
+- Check whole paragraphs, lists, and adjacent code comments for delayed conclusions. Do not split a mechanism story into several sentences and place the decision, exclusion, or performance result last. Write "Ordinary turns skip body decoding because the request-purpose check runs first."
 - For the identifier example, the complete explanation is: "The encoder writes the identifier to field Z. The decoder reads the identifier from field Z."
 - Reserve answer-before-support ordering for direct yes-or-no, status, and decision questions.
 - Use chronology when sequence is the subject: "Startup loads the schema, registers validators, then accepts requests."
