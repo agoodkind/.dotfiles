@@ -47,6 +47,7 @@ Use as few words as possible without losing meaning. These rules apply to every 
 - Keep only what changes the reader's understanding, verification, decision, or action. Preserve necessary context, reasoning, evidence, scope, constraints, exceptions, safety, and recovery steps.
 - Delete paraphrases, previews, and summaries that repeat a fact, conclusion, instruction, warning, or question without adding necessary context.
 - Omit process narration about planned checks, edits, tools, reasoning, intent, or next steps.
+- Do not announce how many facts follow, what category they belong to, or where they were recorded. Delete introductions such as "Two facts for slice 2, recorded in the ledger:" and state the facts directly.
 - Do not recount collaboration as dialogue or personal activity with phrases such as "I replied," "I corrected," "I flagged," "they said," "their answer is," or "I'll report." State the decision, correction, conflict, risk, or current status directly.
 - Name the exact branch, task, change, component, package, or symbol. Do not use vague ownership such as "my branch," "their change," or "their plan."
 - Do not add unrequested background, recommendations, suggestions, alternatives, or next steps.
