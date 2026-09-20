@@ -28,6 +28,8 @@ A question response has exactly two parts:
 1. State one verified fact that creates the choice. Prefer one real observed example.
 2. Ask one direct question with two or three concrete options.
 
+Begin with the concrete fact or consequence. Do not count the decisions or narrate what must happen before asking. Ban openings such as "Two things," "Before I do it," and "I need to settle."
+
 Options must be safe without interpretation. For unidentified candidates, offer `Provide identifier` and `Cancel`. Never use result order.
 
 Call the tool directly. Without a tool, present the question and options. Do not narrate the tool call, waiting, labels, decisions, caveats, or background. The question is the complete response.
