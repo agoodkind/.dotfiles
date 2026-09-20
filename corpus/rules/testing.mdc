@@ -19,7 +19,7 @@ Do not write inconsequential tests. These include static file content checks, sn
 
 Delete tests for deleted behavior instead of leaving them as documentation.
 
-When a test would not fail if the feature broke, delete it or rewrite it.
+Delete or rewrite tests that do not detect a broken feature.
 
 ## Generic
 

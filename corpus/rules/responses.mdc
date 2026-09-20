@@ -56,7 +56,8 @@ Use as few words as possible without losing meaning. These rules apply to every 
 ## Present actions clearly
 
 - Use headings, lists, or tables when they make the answer easier to scan, but use them sparingly.
-- Write steps as imperatives. State irreversible or visible consequences before the action.
+- Write rules, requirements, and steps as direct imperatives. Do not make the prohibited case the sentence subject and describe its treatment in passive voice. Write "Delete or rewrite tests that do not detect a broken feature" instead of "A test that would still pass with the feature broken is deleted or rewritten."
+- State irreversible or visible consequences before the action.
 - Explain an error before its fix. Never give an error code without a plain explanation.
 - For a message the user will send to someone else, write as a colleague and open with the message itself.
 
