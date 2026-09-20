@@ -25,7 +25,7 @@ Use as few words as possible without losing meaning. Apply every rule in this fi
 - Use chronology when sequence is the subject: "Startup loads the schema, registers validators, then accepts requests."
 - The specific relationship determines clause order. Use concrete subjects and verbs when the causal connection needs explicit explanation.
 - Rewrite explanations that end with vague reassurance such as "A does B, so C stays D" or "nothing gets lost." Substituting "because," "therefore," "which means," or "keeping" preserves the faulty structure.
-- Movement metaphors for data, causation, code placement, and integration are prohibited, including "carries," "rides," "flows through," "travels through," "threads through," "funnels," "pipes," "goes to," and "lands." Name the exact operation, such as stores, reads, writes, defines, merges, rebases, depends on, or conflicts with.
+- Movement metaphors for data, causation, code placement, and integration are prohibited, including "carries," "rides," "flows through," "travels through," "threads through," "funnels," "pipes," "goes to," "lands," "reach," "reaches," "reached," and "reaching." Name the exact operation, such as stores, reads, writes, defines, merges, rebases, depends on, or conflicts with.
 - Do not use "names," "describes," or similar vague verbs to state what a requirement, rule, document, field, or configuration does. State the behavior and required change directly. Write "Requirement 1 uses the export renderer as the text source. Change it to count each message separately."
 - Explain behavior before implementation. Put verified evidence beside the claim it supports, and match certainty to that evidence. Do not infer behavior from filenames or comments.
 
