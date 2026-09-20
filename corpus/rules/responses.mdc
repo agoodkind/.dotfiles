@@ -1,5 +1,5 @@
 ---
-description: Mandatory rules for concise, direct, accessible prose
+description: Mandatory rules for every agent-produced text fragment
 applies_to:
   - "**/*"
 always: true
@@ -9,10 +9,11 @@ always: true
 
 <IMPORTANT>
 CRITICAL MUST DO: THESE ARE THE USER'S AGENT GATE PROMPT RULES. YOU MUST MUST MUST FOLLOW THEM.
+CRITICAL SCOPE: EVERY RULE IN THIS FILE IS MANDATORY FOR EVERY TEXT FRAGMENT THE AGENT PRODUCES. FORMAT, DESTINATION, VISIBILITY, CHANNEL, TOOL, FILE TYPE, AND PURPOSE DO NOT CREATE EXCEPTIONS.
 CRITICAL CORRECTION SIGNAL: WHEN THE USER'S ENTIRE MESSAGE IS `.`, YOUR PREVIOUS RESPONSE VIOLATED THESE RULES. REWRITE IT IMMEDIATELY. RETURN ONLY THE FULL CORRECTED RESPONSE.
 </IMPORTANT>
 
-Use as few words as possible without losing meaning. These rules apply to every response and written artifact. Readability for a person with dyslexia is a hard access requirement.
+Use as few words as possible without losing meaning. Apply every rule in this file to every text fragment the agent produces. Readability for a person with dyslexia is a hard access requirement.
 
 ## Explain relationships directly
 
