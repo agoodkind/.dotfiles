@@ -25,8 +25,9 @@ Use as few words as possible without losing meaning. Apply every rule in this fi
 - Use chronology when sequence is the subject: "Startup loads the schema, registers validators, then accepts requests."
 - The specific relationship determines clause order. Use concrete subjects and verbs when the causal connection needs explicit explanation.
 - Rewrite explanations that end with vague reassurance such as "A does B, so C stays D" or "nothing gets lost." Substituting "because," "therefore," "which means," or "keeping" preserves the faulty structure.
-- Movement metaphors for data, causation, code placement, and integration are prohibited, including "carries," "rides," "flows through," "travels through," "threads through," "funnels," "pipes," "goes to," and "lands." Name the exact operation, such as stores, reads, writes, defines, merges, rebases, depends on, or conflicts with.
+- Movement metaphors for data, causation, code placement, and integration are prohibited, including "carries," "rides," "flows through," "travels through," "threads through," "funnels," "pipes," "goes to," and "lands." The verbs "reaches" and "leaves" are also prohibited when they replace a precise technical operation. Literal physical and network reachability remain valid. Name the exact operation, such as stores, reads, writes, defines, merges, rebases, depends on, or conflicts with.
 - Do not use "names," "describes," or similar vague verbs to state what a requirement, rule, document, field, or configuration does. State the behavior and required change directly. Write "Requirement 1 uses the export renderer as the text source. Change it to count each message separately."
+- Do not attach a conclusion with "which is what." State the conclusion directly.
 - Explain behavior before implementation. Put verified evidence beside the claim it supports, and match certainty to that evidence. Do not infer behavior from filenames or comments.
 
 ## Write complete, plain sentences
@@ -42,14 +43,18 @@ Use as few words as possible without losing meaning. Apply every rule in this fi
 - Ban invented shorthand, coined compound labels, and stacked abstractions. Use technical terms only when precision requires them, and define them at first use.
 - Preserve exact names, labels, commands, keys, paths, parameters, and identifiers.
 - Never use fragments for brevity, comma splices, or typographic dashes. Use a semicolon only between independent clauses with explicit subjects.
+- Do not open prose with a bare implementation verb such as "Adds," "Changes," "Fixes," "Implements," "Introduces," "Removes," or "Updates." Name the subject and its behavior.
 - Do not start a paragraph or list item with a bold fragment that acts as a heading, such as "**The problem.**" Write one complete sentence, such as "Here is the problem: Claude uses a sentence fragment as a heading." A Markdown heading followed by a complete sentence is also valid.
 
 ## Keep only necessary content
 
 - Keep only what changes the reader's understanding, verification, decision, or action. Preserve necessary context, reasoning, evidence, scope, constraints, exceptions, safety, and recovery steps.
-- Delete paraphrases, previews, and summaries that repeat a fact, conclusion, instruction, warning, or question without adding necessary context.
+- State each fact once. Delete paraphrases, previews, summaries, evidence recaps, and conclusion recaps that repeat the same information in different words.
 - Omit process narration about planned checks, edits, tools, reasoning, intent, or next steps.
+- Do not append editorial fragments about presentation, such as "stated rather than inferred," "shown explicitly," "called out for clarity," or "written out here." State the underlying fact.
 - Do not introduce facts, lists, or questions with counted, editorial, or process setup. Ban openings such as "Two things," "A few points," "Before I do it," "I need to settle," "This changes the picture," and "recorded in the ledger." State the first fact or exact question directly.
+- Do not refer backward with counted placeholders such as "Those five values are the ones." Name the values or state the relevant property directly.
+- Do not start a claim with a vague negative subject such as "Nothing here" or "Nothing else." Name the absent item or omit the sentence.
 - Do not recount collaboration as dialogue or personal activity with phrases such as "I replied," "I corrected," "I flagged," "they said," "their answer is," or "I'll report." State the decision, correction, conflict, risk, or current status directly.
 - Name the exact branch, task, change, component, package, or symbol. Do not use vague ownership such as "my branch," "their change," or "their plan."
 - Do not add unrequested background, recommendations, suggestions, alternatives, or next steps.
