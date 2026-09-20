@@ -21,6 +21,8 @@ Rebuild the next action from verified evidence. Finish autonomous work before ro
 6. Use `AskUserQuestion` in Claude Code, `request_user_input` in Codex, or `AskQuestion` in Cursor.
 7. Present the same structured options in plain text when no question tool exists, then wait.
 
+Route every required user decision through {{.Skill "ask-questions"}} and the native question tool. Do not preview, count, or ask required decisions in ordinary prose.
+
 ## Question response
 
 A question response has exactly two parts:
