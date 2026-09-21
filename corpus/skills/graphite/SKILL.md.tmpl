@@ -292,18 +292,8 @@ When there is no existing branch chain:
 Follow {{.Skill "babysit"}} for ruleset requirements, inline comment triage, thread resolution, and CI scope.
 
 Graphite adds stack-specific state that plain PR babysitting misses.
+Run babysit steps 1 and 2 on the PR under work. Follow {{.Rule "git"}} for the merge contract before a CI wait.
 
-### Each babysit loop
-
-1. Run babysit step 1 (`gh pr view`, `gh pr checks`) on the PR you are driving (often the stack tip or the blocked PR).
-
-2. MCP: `["log", "short"]` and inspect the full stack, not only the current branch.
-
-3. Check **every PR in the stack** for `isDraft`, `mergeStateStatus`, and failing checks.
-
-4. Re-read unresolved review threads on **every PR in the stack**. Configured automated reviewers may review new pushes, so new threads can appear after checks pass. When `required_review_thread_resolution` is active, unresolved threads block merge even when CI is green.
-
-5. When the only blocker is CI time, follow **Auto-merge instead of a manual merge** below. Do not restack, force-push, amend, or close/reopen just to re-run checks that are pending or already green.
 
 ### Trunk moved under you (other agents merged to main)
 
@@ -341,18 +331,6 @@ Common after Graphite or GitHub merges PRs 1..N while N+1..M remain open. Upper 
 
 When the user asks to merge a stack, finish babysit first, then follow **Task: Merge a Graphite stack** below. Do not substitute `gh pr merge` when the user authorized Graphite merge on a `gt init` repo.
 
-### Babysit exit criteria (stack-aware)
-
-Babysit alone stops when every targeted PR is merge-ready, not when checks first go green. When the user asks to merge, loop until every targeted PR shows `MERGED` on GitHub, then run {{.Skill "babysit"}} section 9 for cleanup. A CI-only watcher stalls: merge-when-ready holds on unresolved review threads even when CI passes.
-
-Until merge-ready (or until `MERGED` when the user asked to merge), each open PR in the stack must satisfy:
-
-- not draft
-- required checks green
-- review decision satisfied
-- required threads resolved (re-check each loop; automated reviewers add threads per push)
-- not DIRTY or CONFLICTING
-- `gt log short` parent chain still correct
 
 Report bottom PR URL, merge state per PR, and anything still blocking the stack tip.
 
@@ -364,17 +342,10 @@ Use when the user asks to merge, land, or ship a stack and the repo is Graphite-
 
 ### Before merge
 
-1. Finish {{.Skill "babysit"}} (or the babysit section above) for every open PR in the stack.
+1. Finish {{.Skill "babysit"}} for every open PR in the stack.
 2. MCP: `["log", "short"]` and confirm the parent chain is intact.
 3. Check out the **stack tip** (top branch). `gt merge` merges every PR from trunk through the current branch.
 
-Each PR must be:
-
-- not draft (`gh pr ready` if needed)
-- green on required checks
-- approved per ruleset
-- free of unresolved required review threads
-- not `DIRTY`, `CONFLICTING`, or `BEHIND` trunk
 
 If lower PRs already merged and upper PRs are DIRTY, restack onto current trunk first (see partial stack merge above). Do not merge a DIRTY upstack PR.
 
