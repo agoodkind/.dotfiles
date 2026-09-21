@@ -1,13 +1,13 @@
 ---
 name: babysit
-description: Use when a pull request needs review-thread triage, CI repair, conflict resolution, merge monitoring, an explicitly requested merge, or terminal cleanup.
+description: Use when a pull request needs review-thread triage, CI repair, conflict resolution, merge monitoring, an explicitly requested merge, land, or ship, or terminal cleanup.
 ---
 
-# Babysit PR
+# Pull request babysit
 
 Get this PR to a merge-ready state. Run the verification commands below, fix what is in scope, and loop until every ruleset requirement is satisfied. Babysit alone stops at merge-ready. Merge, terminal cleanup, and unresolved handoff run only when the sections below say to.
 
-Follow {{.Rule "git"}} for fetches, branch comparisons, signed commits, worktree safety, and containment-based cleanup. Use {{.Skill "graphite"}} only for a confirmed dependent pull request stack.
+Follow {{.Rule "git"}} for fetches, branch comparisons, signed commits, worktree safety, containment-based cleanup, and the merge contract. Use {{.Skill "graphite"}} only for a confirmed dependent pull request stack. On a Graphite stack, run this full loop on every open PR, including step 2.
 
 ## 1. Identify the PR and read merge state
 
@@ -15,42 +15,29 @@ Derive `owner/repo` from `gh repo view --json nameWithOwner` or from the PR JSON
 
 ```bash
 gh pr view --json number,headRefName,baseRefName,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,isDraft
-gh pr checks
 ```
 
-Read `mergeable`, `mergeStateStatus`, `reviewDecision`, and `statusCheckRollup` against the ruleset requirements in step 2.
-
-If `isDraft` is `true`, mark the PR ready for review before doing anything else, since a draft PR cannot be merged:
+If `isDraft` is `true`, mark the PR ready for review before anything else. A draft PR cannot be merged.
 
 ```bash
 gh pr ready
 ```
 
-A draft also shows `mergeStateStatus` of `DRAFT`, so marking it ready first lets the real merge state surface. Automated reviewers like Copilot and Bugbot do not comment on draft PRs either by default, so marking it ready is what triggers the review comments this loop then triages.
+A draft also shows `mergeStateStatus` of `DRAFT`. A `gh pr ready` run lets the real merge state surface. Automated reviewers like Copilot and Bugbot do not comment on draft PRs by default. That ready state is what triggers the review comments this loop then triages.
 
-## 2. Read ruleset merge requirements for the base branch
+## 2. Read the merge contract before a CI wait
 
-This repo uses GitHub rulesets, not classic branch protection. Read the effective rules for the PR base branch. `gh api` auto-populates `{owner}` and `{repo}` from the current repository, but the base branch is not a `gh api` placeholder, so substitute it from `gh pr view`:
+Follow {{.Rule "git"}} and read the active ruleset for the PR base branch before a CI wait. Required review threads, approvals, code-owner review, last-push approval, draft state, and conflicts block merge independently of check runs. Fix those during the first CI run. A wait on CI first, then a later non-check blocker, starts another full run.
 
-```bash
-BASE=$(gh pr view --json baseRefName --jq .baseRefName)
-gh api "repos/{owner}/{repo}/rules/branches/$BASE"
-```
+`gh pr checks` and `statusCheckRollup` are not the ruleset. Compare them to the required check names after the ruleset read.
 
-Or use `gh ruleset check --default` when the PR targets the default branch.
-
-Parse the returned rules:
-
-- `required_status_checks`: lists the checks that must pass before merge.
-- `pull_request`: contains `required_approving_review_count`, `require_code_owner_review`, `require_last_push_approval`, and `required_review_thread_resolution`.
-
-Only `active` rules are returned. Rules in `evaluate` or `disabled` enforcement do not gate merge.
+`mergeStateStatus` of `BLOCKED` is a summary of those ruleset gates. It is not a request for `--admin`.
 
 ## 3. Resolve merge conflicts
 
 Resolve merge conflicts while preserving intent on both the PR branch and the base branch. If intents truly conflict, abort the merge and ask the user for clarification before continuing.
 
-If `mergeStateStatus` is `BEHIND`, update the branch from base before re-checking CI, since another PR may have already fixed a failing check. Follow {{.Rule "git"}} for safe base and worktree handling. For a dependent Graphite stack, follow {{.Skill "graphite"}} for restacking and submission.
+If `mergeStateStatus` is `BEHIND`, update the branch from base before re-checking CI. Another PR may have already fixed a failing check. Follow {{.Rule "git"}} for safe base and worktree handling. For a dependent Graphite stack, follow {{.Skill "graphite"}} for restacking and submission.
 
 ## 4. Triage inline review comments
 
@@ -88,11 +75,11 @@ Read thread resolution state and stable thread IDs with GraphQL:
 
 Filter to unresolved threads first. Read only each comment body and the minimum location needed to act. Do not dump the full JSON payload.
 
-Automated reviewers (Copilot, Bugbot) re-comment on every push, so thread triage is recurring, not one-time. Each new push can add threads that block merge while `required_review_thread_resolution` is active. Re-read unresolved threads on every babysit loop.
+Automated reviewers (Copilot, Bugbot) re-comment on every push. Thread triage is recurring, not one-time. Each new push can add threads that block merge while `required_review_thread_resolution` is active. Re-read unresolved threads on every babysit loop.
 
-Do not delay a verified review fix to avoid restarting CI or triggering another automated review pass. A local fix that has not been published cannot receive CI or reviewer feedback, so prompt publication is part of the babysit loop. Use the repository-specific push command from local instructions when publishing.
+Do not delay a verified review fix to avoid restarting CI or triggering another automated review pass. A local fix that has not been published cannot receive CI or reviewer feedback. Prompt publication is part of the babysit loop. Use the repository-specific push command from local instructions when publishing.
 
-Validate automated review bot comments (for example Bugbot) before acting. Fix valid points. Reply and leave the thread open when you disagree or are unsure.
+Validate automated review bot comments (for example Bugbot) before acting. Fix valid points. Reply and leave the thread open when the bot is wrong or the concern is unsure.
 
 ## 5. Resolve threads once addressed
 
@@ -121,11 +108,11 @@ mutation {
 
 Do not ask the user for approval before resolving a thread after its concern is genuinely fixed or superseded. Resolve it autonomously after verifying the current code and relevant checks. When `required_review_thread_resolution` is active in the ruleset, every required thread must be resolved before merge.
 
-Treat every review state read before a reply or thread resolution as stale. Record the action time, then poll the pull request until each automated reviewer affected by that action publishes a completion signal after it. A check run must reach a terminal state. A newer review or edited summary counts only when it states the completed refresh result. Re-read reviews with their submission times, `reviewDecision`, review threads, checks, `mergeable`, and `mergeStateStatus` after that signal. A blocking review submitted before the latest reply or resolution does not prove that dismissal is required. Do not dismiss it, ask the user to dismiss it, or merge around it while the reviewer refresh is still pending. If the reviewer exposes no completion signal, keep the pull request in the babysit loop and report that the review refresh is pending.
+Treat every review state read before a reply or thread resolution as stale. Record the action time, then poll the pull request until each automated reviewer affected by that action publishes a completion signal after it. A check run must enter a terminal state. A newer review or edited summary counts only when it states the completed refresh result. Re-read reviews with their submission times, `reviewDecision`, review threads, checks, `mergeable`, and `mergeStateStatus` after that signal. A blocking review submitted before the latest reply or resolution does not prove that dismissal is required. Do not dismiss it, ask the user to dismiss it, or merge around it while the reviewer refresh is still pending. If the reviewer exposes no completion signal, keep the pull request in the babysit loop and report that the review refresh is pending.
 
 ## 6. Fix CI within PR scope
 
-Fix CI failures caused by changes within this PR's scope. Publish each scoped CI or review-thread fix as soon as it is locally verified, then re-run `gh pr checks`. Use the repository-specific push workflow from local instructions. Batch only the threads already present in the current poll. Do not hold a completed fix for possible future comments.
+Fix CI failures caused by changes within this PR's scope. Publish each scoped CI or review-thread fix as soon as it is locally verified, then re-run `gh pr checks`. Use the repository-specific push workflow from local instructions. Include every unresolved thread already present in the same push as any CI fix. Do not wait for comments that have not been posted yet.
 
 Never edit CI workflows or unrelated code just to make failures pass. Report back when that would be required.
 
@@ -146,17 +133,21 @@ When the session is ending and the PR is not merge-ready or terminal, run sectio
 
 Run this section only when the user explicitly asks to merge (for example "merge", "land", "ship", or "babysit and merge").
 
-**Preconditions:** section 7 requirements are satisfied, or only CI time remains with no real failure and threads resolved.
+Section 7 requirements are satisfied, or only CI time remains with no real failure and threads resolved.
 
 ### Admin bypass authorization
 
 Treat `admin merge` or `admin bypass` as a request for confirmation, not authorization. Ask through the native harness question tool required by {{.Skill "ask-questions"}}. Use `--admin` only after the user confirms that question for the current merge. Never infer the request from "merge", "land", "ship", urgency, available administrator rights, prior turns, or prior pull requests. If the native question tool is unavailable or the user does not confirm, do not use `--admin`. The confirmation expires after that merge attempt.
 
+Ask for an admin merge only when remaining in-scope work is empty and the leftover gate is a bypass the user must confirm.
+
 ### Merge paths
 
-- **Dependent Graphite stack:** follow {{.Skill "graphite"}} task **Merge a Graphite stack**. That skill owns stack order, merge-when-ready, dry-run behavior, and Graphite commands.
-- **One pull request:** use `gh pr merge --merge` or `--squash` per repository policy when fully green. Use `gh pr merge --auto` only when the sole blocker is CI time.
-- **Confirmed admin merge:** use `gh pr merge --admin` with the repository's allowed merge method only after the request and confirmation above.
+A dependent Graphite stack follows {{.Skill "graphite"}} task **Merge a Graphite stack**. That skill owns stack order, merge-when-ready, dry-run behavior, and Graphite commands.
+
+One pull request uses `gh pr merge --merge` or `--squash` per repository policy when fully green. Use `gh pr merge --auto` only when the sole blocker is CI time.
+
+A confirmed admin merge uses `gh pr merge --admin` with the repository's allowed merge method only after the request and confirmation above.
 
 Loop `gh pr view --json state` until `state` is `MERGED` or superseded `CLOSED` (see section 9). When auto-merge is armed, keep triaging new review threads on each loop.
 
@@ -166,11 +157,7 @@ When merge completes or the PR is superseded, run section 9.
 
 Run after section 8 completes, when babysit discovers the PR is already terminal, or when the user explicitly asks to clean up (even if the PR is still open).
 
-**Triggers:**
-
-- `MERGED` (normal land)
-- `CLOSED` with no `mergedAt` when the work was **superseded** (another PR landed the same changes, or the user closed it after confirming the branch is obsolete)
-- **User explicitly asks** to clean up branches and/or the worktree (for example "clean up", "remove the worktree", "we're done here")
+Cleanup runs for `MERGED` (normal land). Cleanup also runs for `CLOSED` with no `mergedAt` when the work was superseded (another PR landed the same changes, or the user closed it after confirming the branch is obsolete). Cleanup also runs when the user explicitly asks to clean up branches or the worktree (for example "clean up", "remove the worktree", "done here").
 
 Detect terminal PR state with:
 
@@ -179,54 +166,61 @@ gh pr view --json state,mergedAt,headRefName,baseRefName
 git worktree list
 ```
 
-**Cleanup sequence:**
+Record `headRefName`, feature worktree path (if any), PR `state`, and which checkout owns trunk (`git worktree list`).
 
-1. **Record** `headRefName`, feature worktree path (if any), PR `state`, and which checkout owns trunk (`git worktree list`).
-2. **Remote branch:** delete only when the PR is `MERGED` or superseded `CLOSED`. When the user asked to clean up while the PR is still `OPEN`, skip remote branch deletion unless the user explicitly confirmed abandoning the PR (deleting the remote branch closes an open PR). Use `git push origin --delete <branch>` or `gh api` delete-ref when deletion is allowed.
-3. **Local worktree and branch:** follow the fixed containment classification and removal mechanics in {{.Rule "git"}}. For Graphite stacks, use the deletion or synchronization path in {{.Skill "graphite"}} instead of deleting tracked branches with plain Git.
-4. **Reconcile trunk worktree:** from the checkout that **owns** trunk (never from a feature worktree):
-   ```bash
-   git -C <trunk-worktree> fetch origin
-   git -C <trunk-worktree> merge --ff-only origin/<trunk>
-   ```
-   Do not `git update-ref refs/heads/<trunk>` when trunk is checked out elsewhere.
+Delete the remote branch only when the PR is `MERGED` or superseded `CLOSED`. When the user asked to clean up while the PR is still `OPEN`, skip remote branch deletion unless the user explicitly confirmed abandoning the PR (deleting the remote branch closes an open PR). Use `git push origin --delete <branch>` or `gh api` delete-ref when deletion is allowed.
 
-**Graphite stacks:** follow {{.Skill "graphite"}} for stack cleanup order, then reconcile trunk once from its owning worktree.
+For the local worktree and branch, follow the fixed containment classification and removal mechanics in {{.Rule "git"}}. For Graphite stacks, use the deletion or synchronization path in {{.Skill "graphite"}} instead of deleting tracked branches with plain Git.
+
+Reconcile the trunk worktree from the checkout that owns trunk (never from a feature worktree):
+
+```bash
+git -C <trunk-worktree> fetch origin
+git -C <trunk-worktree> merge --ff-only origin/<trunk>
+```
+
+Do not `git update-ref refs/heads/<trunk>` when trunk is checked out elsewhere.
+
+For Graphite stacks, follow {{.Skill "graphite"}} for stack cleanup order, then reconcile trunk once from its owning worktree.
 
 Report: PR URL(s), branches deleted (remote/local), trunk commit after reconcile, worktree removed (or skipped and why).
 
 ## 10. Session end with no resolution
 
-Run when the babysit session is ending and the PR is **not** terminal: not `MERGED`, not superseded `CLOSED`, and not merge-ready with a clear path forward. Typical signals: context compaction, the user says they are stopping for now, or an agent turn limit is imminent.
+Run when the babysit session is ending and the PR is not terminal: not `MERGED`, not superseded `CLOSED`, and not merge-ready with a clear path forward. Typical signals: context compaction, the user says they are stopping for now, or an agent turn limit is imminent.
 
-**Goal:** preserve recoverable state in git and durable memory, then remove the feature worktree so it does not linger. Do **not** delete the PR branch on remote or local in this path; the work is still in flight.
+Preserve recoverable state in git and durable memory, then remove the feature worktree. Do not delete the PR branch on remote or local in this path. The work is still in flight.
 
-**Sequence:**
+Capture git state in the feature worktree:
 
-1. **Capture git state** in the feature worktree:
-   - If the tree is dirty, commit WIP on the PR branch with a message like `babysit handoff WIP` (stage only in-scope files; no `git add .`).
-   - Create a backup ref under `refs/backup/` only (never `refs/heads/`), matching split-to-prs and graphite conventions:
-     ```bash
-     git update-ref "refs/backup/babysit-$(git branch --show-current | tr / -)-$(date +%s)" HEAD
-     ```
-   - Push the PR branch and the backup ref to `origin` when the branch has not been pushed or the backup should survive locally-only loss:
-     ```bash
-     git push -u origin HEAD
-     git push origin "refs/backup/babysit-..."
-     ```
+- If the tree is dirty, commit WIP on the PR branch with a message like `babysit handoff WIP` (stage only in-scope files; no `git add .`).
+- Create a backup ref under `refs/backup/` only (never `refs/heads/`), matching split-to-prs and graphite conventions:
 
-2. **Record durable memory** so a future session can resume without relying on the compaction summary. Write one handoff block with: repo, PR number and URL, branch name, worktree path, last known blockers (CI, threads, conflicts), backup ref name, and the next concrete babysit step.
+```bash
+git update-ref "refs/backup/babysit-$(git branch --show-current | tr / -)-$(date +%s)" HEAD
+```
 
-   | Host capability | Action |
-   | --- | --- |
-   | Cursor (`cursor_dialog` available) | Upsert a user rule titled `Babysit handoff: <owner/repo> PR #<n>` with the handoff block as `content`. List existing rules first; `update` when the title matches, otherwise `add`. |
-   | Cursor memory unavailable | State once that durable memory could not be saved; point the user at the backup ref and PR URL for manual recovery. |
-   | Other agents | The pushed branch, backup ref, and clyde transcript (per {{.Skill "reorient"}}) are the durable record; include the handoff block in the final user-visible report. |
+- Push the PR branch and the backup ref to `origin` when the branch has not been pushed or the backup should survive locally-only loss:
 
-3. **Clean up the feature worktree** only (branches stay):
-   ```bash
-   git worktree remove <path>
-   ```
-   Use `--force` only when the tree is dirty after the WIP commit step failed and the user approved.
+```bash
+git push -u origin HEAD
+git push origin "refs/backup/babysit-..."
+```
+
+Record durable memory so a future session can resume without relying on the compaction summary. Write one handoff block with: repo, PR number and URL, branch name, worktree path, last known blockers (CI, threads, conflicts), backup ref name, and the next concrete babysit step.
+
+| Host capability | Action |
+| --- | --- |
+| Cursor (`cursor_dialog` available) | Upsert a user rule titled `Babysit handoff: <owner/repo> PR #<n>` with the handoff block as `content`. List existing rules first; `update` when the title matches, otherwise `add`. |
+| Cursor memory unavailable | State once that durable memory could not be saved; point the user at the backup ref and PR URL for manual recovery. |
+| Other agents | The pushed branch, backup ref, and clyde transcript (per {{.Skill "reorient"}}) are the durable record; include the handoff block in the final user-visible report. |
+
+Clean up the feature worktree only (branches stay):
+
+```bash
+git worktree remove <path>
+```
+
+Use `--force` only when the tree is dirty after the WIP commit step failed and the user approved.
 
 Report: PR URL, branch name, backup ref, whether memory was saved, worktree path removed, and the single next step for the next babysit session.
