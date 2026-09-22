@@ -166,6 +166,31 @@ func TestSyncPreflightsRepositoryCorpus(t *testing.T) {
 	if strings.Contains(string(rendered), "{{") {
 		t.Errorf("rendered writing rule still contains template markup:\n%s", string(rendered))
 	}
+
+	gitRule, err := os.ReadFile(filepath.Join(home, ".claude", "rules", "git.md"))
+	if err != nil {
+		t.Fatalf("reading rendered git rule: %v", err)
+	}
+	gitRuleText := string(gitRule)
+	if want := "[cleanup-git](../skills/cleanup-git/SKILL.md)"; !strings.Contains(gitRuleText, want) {
+		t.Errorf("rendered git rule missing cleanup skill link %q:\n%s", want, gitRuleText)
+	}
+	for _, duplicatedCommand := range []string{"git cherry", "git status --porcelain --ignored", "git worktree remove"} {
+		if strings.Contains(gitRuleText, duplicatedCommand) {
+			t.Errorf("rendered git rule duplicates cleanup command %q:\n%s", duplicatedCommand, gitRuleText)
+		}
+	}
+
+	cleanupSkill, err := os.ReadFile(filepath.Join(home, ".claude", "skills", "cleanup-git", "SKILL.md"))
+	if err != nil {
+		t.Fatalf("reading rendered cleanup skill: %v", err)
+	}
+	cleanupSkillText := string(cleanupSkill)
+	for _, requiredCommand := range []string{"git cherry", "git status --porcelain --ignored", "git worktree remove"} {
+		if !strings.Contains(cleanupSkillText, requiredCommand) {
+			t.Errorf("rendered cleanup skill missing cleanup command %q:\n%s", requiredCommand, cleanupSkillText)
+		}
+	}
 }
 
 func TestSyncRendersProviderFrontmatter(t *testing.T) {
