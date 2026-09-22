@@ -1,5 +1,5 @@
 ---
-description: Test design rules that require public-boundary end-to-end coverage and forbid mocks and inconsequential tests
+description: Rules for deciding when to add tests and how to test observable behavior
 applies_to:
   - "**/*"
 always: true
@@ -7,128 +7,12 @@ always: true
 
 # Testing
 
-Tests in every language must exercise real behavior end to end. Every test must enter through a public boundary, run the production code path under review, and assert an observable outcome a user, caller, or downstream system would notice.
+Write a new automated test when the change adds or changes observable runtime behavior, fixes a confirmed defect that could recur, or changes a public contract that needs regression coverage.
 
-Use real dependencies through the public boundary. Temporary databases, temporary directories, and local servers are valid only when the test exercises the complete production path. Do not use mocks, stubs, spies, test doubles, or recorded responses.
+Do not add a test when direct validation completely proves the requested change. Documentation, comments, formatting, metadata, generated output, and mechanical refactors usually need inspection, generation, linting, compilation, or an existing relevant test instead of a new test.
 
-## Forbidden patterns
+When a new test is necessary, write the smallest end-to-end test that enters through a public boundary, runs the production path under review, and asserts an outcome visible to a user, caller, operator, or downstream system.
 
-Do not replace any dependency with a mock, stub, spy, or test double.
+Use real dependencies through that public boundary. Temporary databases, temporary directories, and local servers are valid. Do not replace dependencies with mocks, stubs, spies, test doubles, or recorded responses.
 
-Do not write inconsequential tests. These include static file content checks, snapshot tests that only restate the fixture, tests that duplicate compiler or linter guarantees, and tests that lock in behavior that was already removed.
-
-Delete tests for deleted behavior instead of leaving them as documentation.
-
-Delete or rewrite tests that do not detect a broken feature.
-
-## Generic
-
-**Bad:** assert that `README.md` contains the string `Installation`.
-
-**Bad:** call a private helper with five mocked interfaces and assert each mock received one call.
-
-**Good:** invoke the public CLI, HTTP handler, or exported function with realistic input and assert status code, stdout, persisted state, or returned data.
-
-**Good:** run the job or workflow against a temporary workspace and assert the artifact the operator would inspect.
-
-## Go
-
-**Bad:** mock `Store`, `Clock`, `Logger`, `Metrics`, and `Notifier` in one test, then assert `store.Save` was called once.
-
-```go
-func TestHandleOrder_MocksOnly(t *testing.T) {
-    store := &mockStore{}
-    clock := &mockClock{now: time.Unix(1, 0)}
-    logger := &mockLogger{}
-    metrics := &mockMetrics{}
-    notifier := &mockNotifier{}
-
-    handleOrder(store, clock, logger, metrics, notifier, order{ID: "1"})
-
-    if store.saveCount != 1 {
-        t.Fatalf("save count = %d, want 1", store.saveCount)
-    }
-}
-```
-
-**Bad:** read a committed golden file and assert the generator still emits the same bytes without running generation.
-
-**Good:** start `httptest.NewServer` with the real handler, `POST` a realistic body, and assert the HTTP status and JSON fields.
-
-```go
-func TestCreateUser_Returns201(t *testing.T) {
-    server := httptest.NewServer(newApp(testDB(t)))
-    t.Cleanup(server.Close)
-
-    response, err := http.Post(
-        server.URL+"/users",
-        "application/json",
-        strings.NewReader(`{"email":"a@example.com"}`),
-    )
-    if err != nil {
-        t.Fatalf("Post: %v", err)
-    }
-    t.Cleanup(func() { _ = response.Body.Close() })
-
-    if response.StatusCode != http.StatusCreated {
-        t.Fatalf("status = %d, want %d", response.StatusCode, http.StatusCreated)
-    }
-}
-```
-
-**Good:** run the command with `os/exec` against a temp directory and assert the file on disk.
-
-```go
-func TestExportCommand_WritesCSV(t *testing.T) {
-    dir := t.TempDir()
-    out := filepath.Join(dir, "out.csv")
-
-    cmd := exec.Command("go", "run", "./cmd/export", "--out", out)
-    if output, err := cmd.CombinedOutput(); err != nil {
-        t.Fatalf("export: %v\n%s", err, output)
-    }
-
-    body, err := os.ReadFile(out)
-    if err != nil {
-        t.Fatalf("ReadFile: %v", err)
-    }
-    if !bytes.Contains(body, []byte("email")) {
-        t.Fatalf("csv missing header: %q", body)
-    }
-}
-```
-
-## Swift
-
-**Bad:** inject five protocol mocks into a view model test and assert each `didCall` flag flipped.
-
-```swift
-func testSubmit_onlyCallsDependencies() {
-    let store = MockStore()
-    let analytics = MockAnalytics()
-    let clock = MockClock()
-    let viewModel = CheckoutViewModel(store: store, analytics: analytics, clock: clock)
-
-    viewModel.submit(cart: .fixture)
-
-    XCTAssertEqual(store.saveCallCount, 1)
-    XCTAssertTrue(analytics.didTrackSubmit)
-}
-```
-
-**Bad:** assert `Info.plist` contains `CFBundleDisplayName`.
-
-**Bad:** keep a test named `testLegacyCheckoutFlow` after the legacy flow was deleted.
-
-**Good:** use a UI test that launches the app, taps the primary control, and asserts visible copy or navigation.
-
-```swift
-func testCheckoutButtonShowsConfirmation() throws {
-  let app = XCUIApplication()
-  app.launch()
-
-  app.buttons["Place order"].tap()
-
-  XCTAssertTrue(app.staticTexts["Order placed"].waitForExistence(timeout: 2))
-}
-```
+Delete tests for removed behavior. Delete or rewrite tests that would still pass when the protected behavior is broken. Do not add static content checks, fixture-only snapshots, or tests that duplicate compiler and linter guarantees.

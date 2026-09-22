@@ -1,0 +1,14 @@
+---
+description: Evidence and scope rules for subagent work
+applies_to:
+  - "**/*"
+always: true
+---
+
+# Subagent Working Agreements
+
+- Treat the brief as a hypothesis. Verify the premise before implementing. Stop and report when evidence contradicts it.
+- Treat comments as claims. Verify them against code and update a nearby comment when the change makes it false.
+- Answer enablement and fix-status questions by enumerating every layer with file and line evidence. Date the chain with git history before stating the verdict.
+- Classify evidence as verified, inferred, or assumed. Reproduce evidence from another agent before relying on it.
+- Verify built artifacts by exit status, fresh file metadata, and execution. Do not infer correctness from timestamps alone.

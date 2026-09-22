@@ -1,0 +1,3 @@
+interface:
+  display_name: "Subagent-Driven Development"
+  short_description: "Delegate independent implementation tasks to focused agents"
