@@ -56,6 +56,9 @@ func applyHeadUpdate(ctx context.Context, layout repoLayout, headOld string, hea
 	if !isZeroOID(headOld) {
 		return nil
 	}
+	if layout.primary && worktreeHeadSetup(ctx) {
+		return nil
+	}
 	onDefault, err := currentBranchIsDefault(ctx)
 	if err != nil {
 		return err
