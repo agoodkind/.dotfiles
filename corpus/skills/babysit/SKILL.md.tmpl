@@ -7,7 +7,7 @@ description: Use when a pull request needs review-thread triage, CI repair, conf
 
 Get this PR to a merge-ready state. Run the verification commands below, fix what is in scope, and loop until every ruleset requirement is satisfied. Babysit alone stops at merge-ready. Merge, terminal cleanup, and unresolved handoff run only when the sections below say to.
 
-Follow {{.Rule "git"}} for fetches, branch comparisons, signed commits, worktree safety, containment-based cleanup, and the merge contract. Use {{.Skill "graphite"}} only for a confirmed dependent pull request stack. On a Graphite stack, run this full loop on every open PR, including step 2.
+Follow {{.Rule "git"}} for fetches, branch comparisons, signed commits, worktree safety, and the merge contract. Use {{.Skill "cleanup-git"}} for plain Git branch and worktree cleanup. Use {{.Skill "graphite"}} only for a confirmed dependent pull request stack. On a Graphite stack, run this full loop on every open PR, including step 2.
 
 ## 1. Identify the PR and read merge state
 
@@ -168,9 +168,9 @@ git worktree list
 
 Record `headRefName`, feature worktree path (if any), PR `state`, and which checkout owns trunk (`git worktree list`).
 
-Delete the remote branch only when the PR is `MERGED` or superseded `CLOSED`. When the user asked to clean up while the PR is still `OPEN`, skip remote branch deletion unless the user explicitly confirmed abandoning the PR (deleting the remote branch closes an open PR). Use `git push origin --delete <branch>` or `gh api` delete-ref when deletion is allowed.
+For a plain Git pull request, invoke {{.Skill "cleanup-git"}} with the pull request branch, its local and remote refs, and its worktree as the bounded candidate set. The skill discovers each blocking path with `git status --porcelain --ignored` and adds it to that bounded set. It classifies ignored paths instead of treating a nonempty status as a keep verdict. It preserves the remote branch while the pull request is open unless the user explicitly abandons the pull request.
 
-For the local worktree and branch, follow the fixed containment classification and removal mechanics in {{.Rule "git"}}. For Graphite stacks, use the deletion or synchronization path in {{.Skill "graphite"}} instead of deleting tracked branches with plain Git.
+For Graphite stacks, use the deletion or synchronization path in {{.Skill "graphite"}} instead of deleting tracked branches with plain Git.
 
 Reconcile the trunk worktree from the checkout that owns trunk (never from a feature worktree):
 
