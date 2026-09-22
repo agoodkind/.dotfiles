@@ -27,7 +27,6 @@ kind              = "submodule-import"
 root              = "lib/Claude-Opus-5-tools"
 source_url        = "https://github.com/Lunarsong/Claude-Opus-5-tools.git"
 source_branch     = "main"
-working_agreement = "working-agreements.md"
 skills = [
   ".claude/skills/trace-the-chain/SKILL.md",
   ".claude/skills/adversarial-review/SKILL.md",
