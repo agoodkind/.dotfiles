@@ -15,5 +15,7 @@ For implementation questions, start with `extensionFilter` for the real source l
 
 Do one corrective pass when results are low-signal: tighten `extensionFilter`, raise `limit` if needed, and retry once. If the results are still dominated by docs or generated files, switch to native `grep`, `ripgrep`, or direct reads rather than repeatedly forcing the semantic server.
 
+Use `search_code` first for repository content searches performed through Git or GitHub CLI when the target repository has a searchable local index. This includes `git grep`, filtered `git show REF:PATH` or `git cat-file blob` output, `gh search code`, `gh api search/code`, and GitHub contents or blob API calls filtered with `--jq`, `jq`, `grep`, `rg`, `awk`, or `sed`. Apply the rule inside pipes, loops, and shell wrappers, and resolve `git -C` against its target repository. Use Git for history queries, diff metadata, and direct reads of known files. Use GitHub CLI for external repositories without a local semantic index.
+
 
 When launching subagents that need code discovery, tell them to follow this same policy and include the absolute repository path in the prompt.
