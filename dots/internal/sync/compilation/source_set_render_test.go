@@ -502,3 +502,62 @@ func TestRenderRulesAsInstructionDocFromSourceSetPreservesUnmanagedOutput(t *tes
 		t.Fatalf("unmanaged instruction document = %q, want %q", rendered, content)
 	}
 }
+
+func TestRenderRulesAsInstructionDocFromSourceSetOmitsRulesThatAreNotAlways(t *testing.T) {
+	destination := filepath.Join(t.TempDir(), "AGENTS.md")
+	sourceSet := CorpusSourceSet{
+		Rules: map[string]RuleSource{
+			"writing": {Always: false, Body: "writing body\n"},
+			"general": {Always: true, Body: "general body\n"},
+		},
+		Skills: map[string]SkillSource{},
+		Agents: map[string]AgentSource{},
+	}
+
+	if err := RenderRulesAsInstructionDocFromSourceSet(
+		sourceSet,
+		destination,
+		"Instructions",
+		RuleRenderStyle{},
+	); err != nil {
+		t.Fatalf("RenderRulesAsInstructionDocFromSourceSet() returned error: %v", err)
+	}
+	rendered, err := os.ReadFile(destination)
+	if err != nil {
+		t.Fatalf("reading instruction document: %v", err)
+	}
+	text := string(rendered)
+	if !strings.Contains(text, "## general") || !strings.Contains(text, "general body") {
+		t.Fatalf("instruction document missing always rule:\n%s", text)
+	}
+	if strings.Contains(text, "writing") {
+		t.Fatalf("instruction document included a rule with always set to false:\n%s", text)
+	}
+}
+
+func TestRenderRulesAsInstructionDocFromSourceSetRemovesManagedOutputWhenNoRuleIsAlways(t *testing.T) {
+	destination := filepath.Join(t.TempDir(), "AGENTS.md")
+	content := GeneratedAgentHTMLMarker + "\nmanaged\n"
+	if err := os.WriteFile(destination, []byte(content), 0o600); err != nil {
+		t.Fatalf("writing managed instruction document: %v", err)
+	}
+	sourceSet := CorpusSourceSet{
+		Rules: map[string]RuleSource{
+			"writing": {Always: false, Body: "writing body\n"},
+		},
+		Skills: map[string]SkillSource{},
+		Agents: map[string]AgentSource{},
+	}
+
+	if err := RenderRulesAsInstructionDocFromSourceSet(
+		sourceSet,
+		destination,
+		"Instructions",
+		RuleRenderStyle{},
+	); err != nil {
+		t.Fatalf("RenderRulesAsInstructionDocFromSourceSet() returned error: %v", err)
+	}
+	if _, err := os.Stat(destination); !os.IsNotExist(err) {
+		t.Fatalf("managed instruction document still exists: %v", err)
+	}
+}
