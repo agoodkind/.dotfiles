@@ -253,11 +253,8 @@ func runConfigSteps(options Options, dotfiles string, logger *telemetry.Logger, 
 		return err
 	}
 	if err := step("Syncing Cursor User Rules", false, func(ctx context.Context) error {
-		if options.SkipCursorSync {
-			logger.InfoContext(ctx, "  skipping cursor user rules sync")
-			return nil
-		}
-		return workspace.SyncCursorUserRules(ctx, dotfiles, logger)
+		logger.InfoContext(ctx, "  cursor cloud rule sync is disabled")
+		return nil
 	}); err != nil {
 		return err
 	}

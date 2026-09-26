@@ -1,8 +1,8 @@
 # Declarative agent-corpus fan-out.
 #
 # Each [[output]] writes one artifact from corpus/ to a user-wide destination.
-# The dots sync engine loads this file, joins each dest onto $HOME, skips rows
-# whose optional os does not match the running OS, and dispatches on kind.
+# The dots sync engine loads this file, joins each dest onto $HOME, skips a row
+# when its optional os does not match the running OS, and dispatches on kind.
 #
 # kind values:
 #   skills                rendered skill directories (needs ref_style)
@@ -18,7 +18,7 @@
 # Claude Code and Claude Desktop read skills from ~/.claude/skills.
 # VSCode also reads ~/.copilot/instructions, ~/.claude/rules, and ~/.agents/skills.
 # Claude Desktop shares ~/.claude with Claude Code.
-# Cursor global user rules are uploaded to the cloud API during dots sync (not from ~/.cursor/rules).
+# Cursor reads local rules from ~/.cursor/rules. Cloud user-rule upload is disabled.
 
 # Imported reliability methods from the branch-tracking submodule.
 [[source]]
@@ -75,6 +75,13 @@ rule_ext   = ".mdc"
 skill_dest = ".agents/skills"
 
 # Cursor
+[[output]]
+provider   = "cursor"
+kind       = "rule-files"
+dest       = ".cursor/rules"
+rule_ext   = ".mdc"
+skill_dest = ".agents/skills"
+
 [[output]]
 provider = "cursor"
 kind     = "agents"
