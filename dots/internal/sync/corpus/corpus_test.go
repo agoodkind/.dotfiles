@@ -99,6 +99,7 @@ func TestSyncRendersAndGatesByOS(t *testing.T) {
 	dotfiles := t.TempDir()
 	writeFile(t, filepath.Join(dotfiles, "corpus", "rules", "code.mdc"), "---\ndescription: c\napplies_to:\n  - \"*.go\"\nalways: false\n---\ncode body\n")
 	writeFile(t, filepath.Join(dotfiles, "corpus", "rules", "writing.mdc"), "---\ndescription: w\napplies_to:\n  - \"*.md\"\nalways: false\n---\nSkill: {{.Skill \"make-readable\"}}\n")
+	writeFile(t, filepath.Join(dotfiles, "corpus", "rules", "general.mdc"), "---\ndescription: g\napplies_to:\n  - \"**/*\"\nalways: true\n---\nAlways body {{.Skill \"make-readable\"}}\n")
 	writeFile(t, filepath.Join(dotfiles, "corpus", "skills", "enforce-rules", "SKILL.md.tmpl"), "---\nname: enforce-rules\n---\n\nOne: {{.Rule \"code\"}}\n")
 	writeFile(t, filepath.Join(dotfiles, "corpus", "skills", "make-readable", "SKILL.md.tmpl"), "---\nname: make-readable\n---\n")
 	writeFile(t, filepath.Join(dotfiles, "corpus", ManifestName),
@@ -137,6 +138,9 @@ func TestSyncRendersAndGatesByOS(t *testing.T) {
 	}
 	if want := "[make-readable](skills/make-readable/SKILL.md)"; !strings.Contains(string(doc), want) {
 		t.Errorf("instruction doc missing expanded skill link %q:\n%s", want, string(doc))
+	}
+	if strings.Contains(string(doc), "code body") || strings.Contains(string(doc), "## writing") {
+		t.Errorf("instruction doc included a rule with always set to false:\n%s", string(doc))
 	}
 	if _, err := os.Stat(filepath.Join(home, ".never", "NEVER.md")); !os.IsNotExist(err) {
 		t.Errorf("expected os-gated output to be skipped, stat err: %v", err)

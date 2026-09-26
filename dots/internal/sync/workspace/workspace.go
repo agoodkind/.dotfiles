@@ -17,13 +17,9 @@ import (
 
 	"goodkind.io/.dotfiles/internal/clock"
 	"goodkind.io/.dotfiles/internal/cmdexec"
-	"goodkind.io/.dotfiles/internal/cursor/logging"
-	"goodkind.io/.dotfiles/internal/cursor/syncer"
 	"goodkind.io/.dotfiles/internal/gitdir"
 	"goodkind.io/.dotfiles/internal/runner"
 	"goodkind.io/.dotfiles/internal/sync/common"
-	"goodkind.io/.dotfiles/internal/sync/compilation"
-	"goodkind.io/.dotfiles/internal/sync/corpus"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
@@ -415,34 +411,11 @@ func UpdateAuthorizedKeys(ctx context.Context, skipNetwork bool, logger *telemet
 	return nil
 }
 
-// SyncCursorUserRules syncs user rules to the Cursor editor on macOS.
+// SyncCursorUserRules does not upload corpus rules to the Cursor account.
 func SyncCursorUserRules(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
-	if runtime.GOOS != "darwin" {
-		return nil
-	}
-	if _, err := os.Stat(filepath.Clean(filepath.Join(os.Getenv("HOME"), "Library", "Application Support", "Cursor", "User", "globalStorage", "state.vscdb"))); err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		slog.WarnContext(ctx, "workspace: checking cursor state.vscdb", "err", err)
-		return fmt.Errorf("checking cursor state.vscdb: %w", err)
-	}
-	logging.ConfigureWithLogger(logger)
-	sourceSet, err := corpus.LoadSourceSet(dotfiles)
-	if err != nil {
-		slog.WarnContext(ctx, "workspace: loading corpus for cursor upload", "err", err)
-		return fmt.Errorf("loading corpus for cursor upload: %w", err)
-	}
-	style := compilation.RuleRenderStyle{SkillsRelDir: "../skills"}
-	rules, err := compilation.RenderRulesForUploadFromSourceSet(sourceSet, style)
-	if err != nil {
-		slog.WarnContext(ctx, "workspace: rendering corpus rules for cursor upload", "err", err)
-		return fmt.Errorf("rendering corpus rules for cursor upload: %w", err)
-	}
-	if err := syncer.Run(rules); err != nil {
-		slog.WarnContext(ctx, "workspace: running cursor syncer", "err", err)
-		return fmt.Errorf("running cursor syncer: %w", err)
-	}
+	_ = dotfiles
+	_ = logger
+	slog.InfoContext(ctx, "workspace: cursor cloud rule sync is disabled")
 	return nil
 }
 

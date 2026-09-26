@@ -21,7 +21,6 @@ import (
 	"goodkind.io/.dotfiles/internal/sync"
 	"goodkind.io/.dotfiles/internal/sync/common"
 	"goodkind.io/.dotfiles/internal/sync/corpus"
-	"goodkind.io/.dotfiles/internal/sync/workspace"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
@@ -129,8 +128,8 @@ func Run(ctx context.Context, args ...string) error {
 			func(syncCtx context.Context) error {
 				return corpus.Sync(syncCtx, dotfilesRoot(), installLogger)
 			},
-			func(syncCtx context.Context) error {
-				return workspace.SyncCursorUserRules(syncCtx, dotfilesRoot(), installLogger)
+			func(context.Context) error {
+				return nil
 			},
 		); err != nil {
 			slog.WarnContext(ctx, "syncing deferred agent configuration", "err", err)

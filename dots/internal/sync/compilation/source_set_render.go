@@ -375,7 +375,7 @@ func RenderRuleFilesFromSourceSet(sourceSet CorpusSourceSet, dst string, ext str
 
 // ValidateRulesAsInstructionDocFromSourceSet validates instruction-document rendering without writing files.
 func ValidateRulesAsInstructionDocFromSourceSet(sourceSet CorpusSourceSet, dst string, style RuleRenderStyle) error {
-	for _, name := range sortedRuleNames(sourceSet.Rules) {
+	for _, name := range alwaysRuleNames(sourceSet.Rules) {
 		if _, err := renderRuleTemplate(strings.TrimSpace(sourceSet.Rules[name].Body), style, name); err != nil {
 			slog.Warn("compilation: validating instruction rule", "name", name, "err", err)
 			return fmt.Errorf("rendering rule template %s: %w", name, err)
@@ -386,7 +386,7 @@ func ValidateRulesAsInstructionDocFromSourceSet(sourceSet CorpusSourceSet, dst s
 
 // RenderRulesAsInstructionDocFromSourceSet renders normalized rules into one managed instruction document.
 func RenderRulesAsInstructionDocFromSourceSet(sourceSet CorpusSourceSet, dst string, title string, style RuleRenderStyle) error {
-	names := sortedRuleNames(sourceSet.Rules)
+	names := alwaysRuleNames(sourceSet.Rules)
 	if len(names) == 0 {
 		return removeManagedRenderTarget(dst)
 	}
@@ -547,6 +547,18 @@ func sortedRuleNames(rules map[string]RuleSource) []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+func alwaysRuleNames(rules map[string]RuleSource) []string {
+	names := sortedRuleNames(rules)
+	included := make([]string, 0, len(names))
+	for _, name := range names {
+		if !rules[name].Always {
+			continue
+		}
+		included = append(included, name)
+	}
+	return included
 }
 
 func sortedSkillNames(skills map[string]SkillSource) []string {
