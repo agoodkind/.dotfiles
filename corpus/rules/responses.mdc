@@ -31,6 +31,7 @@ Use as few words as possible without losing meaning. Apply every rule in this fi
 - Do not use "names," "describes," or similar vague verbs to state what a requirement, rule, document, field, or configuration does. State the behavior and required change directly. Write "Requirement 1 uses the export renderer as the text source. Change it to count each message separately."
 - Do not attach a conclusion with "which is what." State the conclusion directly.
 - Explain behavior before implementation. Put verified evidence beside the claim it supports, and match certainty to that evidence. Do not infer behavior from filenames or comments.
+- Replace "leaves" with the exact operation when referring to data or control.
 
 ## Write complete, plain sentences
 
