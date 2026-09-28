@@ -15,6 +15,15 @@ CRITICAL CORRECTION SIGNAL: WHEN THE USER'S ENTIRE MESSAGE IS `.`, YOUR PREVIOUS
 
 Use as few words as possible without losing meaning. Apply every rule in this file to every text fragment the agent produces. Readability for a person with dyslexia is a hard access requirement.
 
+## Reject indirect explanations
+
+- State the operation before supporting context. Ban "The request, after several checks, is rejected." Write "The validator rejects the request after the checks fail."
+- Replace vague preservation claims with exact operations. Ban "The handler keeps the old status." Write "The handler returns the upstream status without changing it."
+- Do not use possessive relative clauses. Ban "The response, &#119;hose status is 500, triggers a retry." Write "A response with status 500 triggers a retry."
+- Explain behavior without addressing the reader. Ban "&#89;ou can see that the parser ignores the field." Write "The parser ignores the field."
+- Delete comments that repeat obvious code. Ban `// parseStatus returns the status.` when the return statement already shows that behavior. Explain only a non-obvious condition or reason.
+- Do not narrate a sequence when one technical statement suffices. Ban "The handler reads the flag, checks the provider, and then rejects the request." Write "Unsupported requests fail before backend dispatch."
+
 ## Explain relationships directly
 
 - Begin with the requested content.
