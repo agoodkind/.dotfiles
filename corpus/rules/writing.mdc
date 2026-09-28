@@ -11,10 +11,6 @@ always: true
 
 Apply the responses rule for prose, including direct explanations without a fixed sentence order. These rules add documentation structure and verification requirements.
 
-## Write necessary code comments
-
-Apply these rules to code comments, configuration comments, examples, pull request text, and documentation. Delete comments that repeat visible code. Ban `// parseStatus returns the status.` when the function returns `status`. State necessary conditions directly. Ban "The response, &#119;hose status is 500, keeps the retry path available after the handler checks the flag." Write "Retry HTTP 500 responses when the flag is set." Do not address the reader or narrate operations before stating the rule.
-
 ## Give each page one purpose
 
 Choose one documentation kind per page:

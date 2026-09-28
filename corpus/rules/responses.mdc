@@ -24,7 +24,7 @@ State the component, operation, and result. Stop after the technical fact. Delet
 - Do not use possessive relative clauses. Ban "The response, &#119;hose status is 500, triggers a retry." Write "A response with status 500 triggers a retry."
 - Explain behavior without addressing the reader. Ban "&#89;ou can see that the parser ignores the field." Write "The parser ignores the field."
 - Delete comments that repeat obvious code. Ban `// parseStatus returns the status.` when the return statement already shows that behavior. Explain only a non-obvious condition or reason.
-- Do not narrate a sequence when one technical statement suffices. Ban "The handler reads the flag, checks the provider, and then rejects the request." Write "Unsupported requests fail before backend dispatch."
+- Do not narrate a sequence when one technical statement suffices. Ban "The handler reads the flag, checks the provider, and then rejects the request." Write "The handler rejects the request after checking the flag and provider."
 
 ## Explain relationships directly
 
