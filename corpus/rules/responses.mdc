@@ -15,7 +15,9 @@ CRITICAL CORRECTION SIGNAL: WHEN THE USER'S ENTIRE MESSAGE IS `.`, YOUR PREVIOUS
 
 Use as few words as possible without losing meaning. Apply every rule in this file to every text fragment the agent produces. Readability for a person with dyslexia is a hard access requirement.
 
-## Reject indirect explanations
+## Use plain technical English
+
+State the component, operation, and result. Stop after the technical fact. Delete narration about the agent's work, repeated assurances, and commentary about the wording.
 
 - State the operation before supporting context. Ban "The request, after several checks, is rejected." Write "The validator rejects the request after the checks fail."
 - Replace vague preservation claims with exact operations. Ban "The handler keeps the old status." Write "The handler returns the upstream status."
