@@ -66,27 +66,24 @@ prevented by the dispatch lock, see Background Dispatch above):
   - Check git health (detached HEAD, rebase in progress, etc.).
   - Fetch from origin.
   - Compare HEAD to `origin/main` to determine if behind.
-  - Stash local changes if needed, pull `--ff`, pop stash.
+  - Stash local changes if needed, fast-forward from `origin/main`, restore the stash and index.
   - Sync submodules (`lib/zinit`, `lib/zsh-defer`).
 3. If new commits were pulled, run `sync.sh --quick --skip-git`.
 4. If no new commits, check if a weekly full update is due (7-day interval).
-  Weekly update runs `sync.sh --repair --skip-git`, zinit update, and
+  Weekly update runs `sync.sh --repair --skip-git`, zinit plugin updates, and
    brew/apt upgrade.
 
 ## Submodule Sync
 
-Submodules live under `lib/` and track upstream branches (not pinned SHAs).
+Local synchronization checks out the submodule revisions recorded in the parent commit.
 Run `git submodule status` for the current list.
 
-The sync logic in the Go sync implementation:
+The scheduled GitHub Action updates upstream revisions in a disposable checkout
+and creates a signed pull request. Local synchronization creates no pointer commits.
 
-1. `git submodule update --init` to ensure all submodules are checked out.
-2. For each submodule:
-  - Detect tracking branch (`main` or `master`) from `.gitmodules` or remote.
-  - `git fetch` (full output, not quiet).
-  - `git checkout <branch>`, then `git pull --rebase origin <branch>`.
-  - On failure: abort rebase, notify, preserve local state.
-3. Auto-commit submodule pointer updates when the parent index is clean.
+The Go sync implementation checks local submodule work before changing revisions.
+It fetches missing recorded commits and initializes missing submodules.
+It reports an error when an update would replace local work.
 
 ## Notification System
 
@@ -247,8 +244,8 @@ does not fully replicate a login session.
   logger and notification flow. Do not reintroduce bespoke shell log helpers.
 5. **Notifications**: Use `dotfiles_notify` to surface messages at next login.
   Always pass the log file path (or rely on `$DOTFILES_LOG` fallback).
-6. **Submodules**: These track upstream branches. Do not pin to specific SHAs.
-  The Go sync logic handles fetch/checkout/rebase.
+6. **Submodules**: Use recorded revisions locally. Update upstream revisions
+   through the scheduled pull request workflow. Do not create local pointer commits.
 7. **Bash version on macOS**: macOS ships bash 3.2 and non-login SSH sessions
   lack `/usr/local/bin` in PATH, breaking any bash 4+ feature. The fix is:
   - For any new top-level entry point script: source `bash/core/init.bash` as
