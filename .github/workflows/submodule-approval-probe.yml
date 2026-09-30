@@ -1,0 +1,17 @@
+name: Submodule approval permission probe
+
+on:
+  push:
+    branches: [eligible-submodule-validation]
+
+permissions:
+  actions: write
+
+jobs:
+  approval:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Approve the existing submodule PR workflow
+        run: gh api --method POST repos/agoodkind/.dotfiles/actions/runs/36749884201/approve
+        env:
+          GH_TOKEN: ${{ github.token }}
