@@ -1,0 +1,34 @@
+name: Approve submodule validation
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  actions: write
+  pull-requests: read
+  contents: read
+
+jobs:
+  approve:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'automation/submodule-updates' &&
+      github.event.pull_request.user.login == 'github-actions[bot]' &&
+      github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - name: Approve or retry pull request validation
+        run: bash .github/scripts/check-submodule-update.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPDATE_PR: ${{ github.event.pull_request.number }}
+          UPDATE_HEAD: ${{ github.event.pull_request.head.sha }}
+          UPDATE_BRANCH: automation/submodule-updates
+          UPDATE_RECOVER_MISSING: 'false'
