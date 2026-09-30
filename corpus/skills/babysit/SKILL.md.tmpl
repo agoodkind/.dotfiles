@@ -27,7 +27,24 @@ A draft also shows `mergeStateStatus` of `DRAFT`. A `gh pr ready` run lets the r
 
 ## 2. Read the merge contract before a CI wait
 
-Follow {{.Rule "git"}} and read the active ruleset for the PR base branch before a CI wait. Required review threads, approvals, code-owner review, last-push approval, draft state, and conflicts block merge independently of check runs. Fix those during the first CI run. A wait on CI first, then a later non-check blocker, starts another full run.
+Read the active GitHub ruleset for the PR base branch before a CI wait. Derive the repository and base branch from the target PR:
+
+```bash
+BASE=$(gh pr view --json baseRefName --jq .baseRefName)
+gh api "repos/{owner}/{repo}/rules/branches/$BASE"
+```
+
+`gh api` substitutes `{owner}` and `{repo}` from the current repository. `$BASE` must contain the target PR's base branch. For a PR targeting the default branch, `gh ruleset check --default` also checks the applicable rulesets.
+
+Parse the returned rules:
+
+- Read required check names from `required_status_checks.parameters.required_status_checks`.
+- Read approval count, code-owner approval, last-push approval, and thread resolution from `pull_request.parameters`.
+- Check other active requirements, including commit signatures and required deployments, when returned.
+
+The branch rules endpoint returns active rules. Rulesets in `evaluate` or `disabled` enforcement do not gate merge. Required reviewer checks and approvals come from the active ruleset; this skill does not add reviewer completion requirements.
+
+Required review threads, approvals, code-owner review, last-push approval, draft state, and conflicts block merge independently of check runs. Fix those during the first CI run.
 
 `gh pr checks` and `statusCheckRollup` are not the ruleset. Compare them to the required check names after the ruleset read.
 
@@ -79,7 +96,7 @@ Automated reviewers (Copilot, Bugbot) re-comment on every push. Thread triage is
 
 Do not delay a verified review fix to avoid restarting CI or triggering another automated review pass. A local fix that has not been published cannot receive CI or reviewer feedback. Prompt publication is part of the babysit loop. Use the repository-specific push command from local instructions when publishing.
 
-Validate automated review bot comments (for example Bugbot) before acting. Fix valid points. Reply and leave the thread open when the bot is wrong or the concern is unsure.
+Validate automated review bot comments against the current code, requirements, and relevant checks. Fix valid findings. When a finding is proven wrong, reply with the evidence and resolve the thread. Investigate uncertain findings before resolving them.
 
 ## 5. Resolve threads once addressed
 
@@ -106,9 +123,9 @@ mutation {
 }
 ```
 
-Do not ask the user for approval before resolving a thread after its concern is genuinely fixed or superseded. Resolve it autonomously after verifying the current code and relevant checks. When `required_review_thread_resolution` is active in the ruleset, every required thread must be resolved before merge.
+Resolve fixed, superseded, or disproven findings autonomously after verifying the current code and relevant checks. Reply with evidence before resolving a disproven finding. When `required_review_thread_resolution` is active in the ruleset, every required thread must be resolved before merge.
 
-Treat every review state read before a reply or thread resolution as stale. Record the action time, then poll the pull request until each automated reviewer affected by that action publishes a completion signal after it. A check run must enter a terminal state. A newer review or edited summary counts only when it states the completed refresh result. Re-read reviews with their submission times, `reviewDecision`, review threads, checks, `mergeable`, and `mergeStateStatus` after that signal. A blocking review submitted before the latest reply or resolution does not prove that dismissal is required. Do not dismiss it, ask the user to dismiss it, or merge around it while the reviewer refresh is still pending. If the reviewer exposes no completion signal, keep the pull request in the babysit loop and report that the review refresh is pending.
+After a push, reply, or thread resolution, re-read reviews, `reviewDecision`, review threads, checks, `mergeable`, and `mergeStateStatus`. Use the active GitHub ruleset to determine required checks and approvals. Wait for reviewer completion only when it is necessary to satisfy an active ruleset requirement. A reply or thread resolution does not create an additional reviewer requirement. An unavailable reviewer blocks merge only when an active ruleset requirement remains unsatisfied.
 
 ## 6. Fix CI within PR scope
 
@@ -118,12 +135,13 @@ Never edit CI workflows or unrelated code just to make failures pass. Report bac
 
 ## 7. Loop until merge-ready
 
-After each push, reply, or thread resolution, re-run steps 1 through 6 until the PR is merge-ready. Merge-ready means all of the following hold:
+After each push, reply, or thread resolution, re-run steps 1 through 6 until the PR is merge-ready. Verify these conditions against the active ruleset:
 
 - Required status checks are green.
 - `reviewDecision` satisfies the ruleset approval count and code-owner requirements.
 - Required review threads are resolved when `required_review_thread_resolution` is active (re-check each loop).
 - `mergeable` is not blocked by conflicts.
+- Every other active requirement, including signatures and deployments when required, is satisfied.
 
 When merge-ready, stop and report that the PR is ready to merge: required checks green, review decision satisfied, and required threads resolved. When not merge-ready yet, report checks, review decision, unresolved threads, and what still blocks merge. Do not arm auto-merge or merge unless the user explicitly asks (see section 8).
 
@@ -143,11 +161,11 @@ Ask for an admin merge only when remaining in-scope work is empty and the leftov
 
 ### Merge paths
 
-A dependent Graphite stack follows {{.Skill "graphite"}} task **Merge a Graphite stack**. That skill owns stack order, merge-when-ready, dry-run behavior, and Graphite commands.
+A dependent Graphite stack follows {{.Skill "graphite"}} task **Merge a Graphite stack**. That skill owns stack order, merge-when-ready, dry-run behavior, and Graphite commands. Use Graphite for every stack member. Never use `gh pr merge` for a Graphite stack member, including `--auto` or `--admin`.
 
-One pull request uses `gh pr merge --merge` or `--squash` per repository policy when fully green. Use `gh pr merge --auto` only when the sole blocker is CI time.
+A standalone pull request uses `gh pr merge --merge` or `--squash` per repository policy when fully green. Use `gh pr merge --auto` only for a standalone pull request when the sole blocker is CI time.
 
-A confirmed admin merge uses `gh pr merge --admin` with the repository's allowed merge method only after the request and confirmation above.
+A confirmed admin merge of a standalone pull request uses `gh pr merge --admin` with the repository's allowed merge method only after the request and confirmation above.
 
 Loop `gh pr view --json state` until `state` is `MERGED` or superseded `CLOSED` (see section 9). When auto-merge is armed, keep triaging new review threads on each loop.
 
