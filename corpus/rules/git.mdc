@@ -63,26 +63,4 @@ Use {{.Skill "cleanup-git"}} for every branch, remote ref, worktree, or cleanup-
 
 # Pull request merge
 
-The GitHub ruleset is the merge contract. A merge, land, or ship request for a GitHub pull request follows {{.Skill "babysit"}}. Read the active ruleset for the PR base branch before a CI wait. On a Graphite stack, run full babysit, including that ruleset read, on every open PR.
-
-This repository uses GitHub rulesets, not classic branch protection. `gh api` auto-populates `{owner}` and `{repo}` from the current repository. The base branch is not a `gh api` placeholder. Substitute it from `gh pr view`:
-
-```bash
-BASE=$(gh pr view --json baseRefName --jq .baseRefName)
-gh api "repos/{owner}/{repo}/rules/branches/$BASE"
-```
-
-Or use `gh ruleset check --default` when the PR targets the default branch.
-
-Parse the returned rules:
-
-- `required_status_checks`: lists the checks that must pass before merge.
-- `pull_request`: contains `required_approving_review_count`, `require_code_owner_review`, `require_last_push_approval`, and `required_review_thread_resolution`.
-
-Only `active` rules are returned. Rules in `evaluate` or `disabled` enforcement do not gate merge.
-
-Required review threads, approvals, code-owner review, last-push approval, draft state, and conflicts block merge independently of check runs. Fix those during the first CI run. A wait on CI first, then a later non-check blocker, starts another full run.
-
-`gh pr checks` and `statusCheckRollup` are not the ruleset. Compare them to the required check names after the ruleset read.
-
-`mergeStateStatus` of `BLOCKED` is a summary of those ruleset gates. It is not a request for `--admin`. Unresolved review threads already on the PR are work to finish before a CI wait or an admin-merge question.
+The active GitHub ruleset is the merge contract. Follow {{.Skill "babysit"}} to read the ruleset, verify merge requirements, and handle merge requests. On a Graphite stack, apply that procedure to every open PR.
