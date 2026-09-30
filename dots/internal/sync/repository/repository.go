@@ -414,7 +414,7 @@ func syncRecordedSubmodules(ctx context.Context, dotfiles string, previous strin
 			previousSubmodule = "HEAD"
 		}
 		if err := syncRecordedSubmodules(ctx, filepath.Join(dotfiles, sub), previousSubmodule, logger); err != nil {
-			return fmt.Errorf("submodule %s: %w", sub, err)
+			return err
 		}
 	}
 	return nil
@@ -422,11 +422,13 @@ func syncRecordedSubmodules(ctx context.Context, dotfiles string, previous strin
 
 func checkoutRecordedSubmodule(ctx context.Context, dotfiles string, sub string, logger *telemetry.Logger) error {
 	subAbs := filepath.Join(dotfiles, sub)
-	if _, err := os.Stat(filepath.Join(subAbs, ".git")); err != nil {
+	if _, err := os.Stat(filepath.Clean(filepath.Join(subAbs, ".git"))); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
+			slog.WarnContext(ctx, "repository: checking submodule git directory", "submodule", subAbs, "err", err)
 			return fmt.Errorf("checking submodule %s: %w", sub, err)
 		}
 		if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "submodule", "update", "--init", "--checkout", "--", sub); err != nil {
+			slog.WarnContext(ctx, "repository: initializing recorded submodule", "submodule", subAbs, "err", err)
 			return fmt.Errorf("initializing recorded submodule %s: %w", sub, err)
 		}
 		return nil
@@ -436,13 +438,10 @@ func checkoutRecordedSubmodule(ctx context.Context, dotfiles string, sub string,
 		return err
 	}
 	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "checkout", "--detach", "--no-overwrite-ignore", recorded); err != nil {
+		slog.WarnContext(ctx, "repository: checking out recorded submodule", "submodule", subAbs, "commit", recorded, "err", err)
 		return fmt.Errorf("checking out recorded submodule %s: %w", sub, err)
 	}
 	return nil
-}
-
-func restoreSubmoduleWorktrees(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
-	return syncDotfilesSubmodules(ctx, dotfiles, logger)
 }
 
 func checkSubmoduleUpdates(ctx context.Context, dotfiles string, target string, previous string, logger *telemetry.Logger) error {
@@ -451,61 +450,72 @@ func checkSubmoduleUpdates(ctx context.Context, dotfiles string, target string, 
 		return err
 	}
 	for _, sub := range subs {
-		staged, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "diff", "--cached", "--name-only", "--", sub)
-		if err != nil {
-			return fmt.Errorf("checking staged submodule %s: %w", sub, err)
-		}
-		if strings.TrimSpace(staged) != "" {
-			return fmt.Errorf("submodule %s has a staged gitlink change that blocks synchronization", sub)
-		}
-		subAbs := filepath.Join(dotfiles, sub)
-		if _, err := os.Stat(filepath.Join(subAbs, ".git")); err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				continue
-			}
-			return fmt.Errorf("checking submodule %s: %w", sub, err)
-		}
-		recorded, err := recordedSubmoduleCommit(ctx, dotfiles, target, sub, logger)
-		if err != nil {
+		if err := checkOneSubmoduleUpdate(ctx, dotfiles, sub, target, previous, logger); err != nil {
 			return err
 		}
-		if recorded == "" {
-			continue
+	}
+	return nil
+}
+
+func checkOneSubmoduleUpdate(ctx context.Context, dotfiles string, sub string, target string, previous string, logger *telemetry.Logger) error {
+	staged, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "diff", "--cached", "--name-only", "--", sub)
+	if err != nil {
+		slog.WarnContext(ctx, "repository: checking staged submodule", "repository", dotfiles, "submodule", sub, "err", err)
+		return fmt.Errorf("checking staged submodule %s: %w", sub, err)
+	}
+	if strings.TrimSpace(staged) != "" {
+		return fmt.Errorf("submodule %s has a staged gitlink change that blocks synchronization in %s", sub, dotfiles)
+	}
+	subAbs := filepath.Join(dotfiles, sub)
+	if _, err := os.Stat(filepath.Clean(filepath.Join(subAbs, ".git"))); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
 		}
-		if err := fetchRecordedSubmoduleCommit(ctx, subAbs, recorded, logger); err != nil {
-			return fmt.Errorf("submodule %s: %w", sub, err)
-		}
-		current, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "rev-parse", "HEAD")
-		if err != nil {
-			return fmt.Errorf("reading submodule %s HEAD: %w", sub, err)
-		}
-		current = strings.TrimSpace(current)
-		if current == recorded {
-			if err := checkSubmoduleUpdates(ctx, subAbs, recorded, current, logger); err != nil {
-				return fmt.Errorf("submodule %s: %w", sub, err)
-			}
-			continue
-		}
-		old, err := recordedSubmoduleCommit(ctx, dotfiles, previous, sub, logger)
-		if err != nil {
-			return err
-		}
-		if current != old && !gitCommandSucceeds(ctx, subAbs, "merge-base", "--is-ancestor", current, recorded) {
-			return fmt.Errorf("submodule %s has local commit %s outside recorded update %s", sub, current, recorded)
-		}
-		status, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "status", "--porcelain", "--untracked-files=all")
-		if err != nil {
-			return fmt.Errorf("checking submodule %s local files: %w", sub, err)
-		}
-		if strings.TrimSpace(status) != "" {
-			return fmt.Errorf("submodule %s has local file changes that block recorded update %s", sub, recorded)
-		}
-		if err := checkIgnoredFileCollisions(ctx, subAbs, recorded, logger); err != nil {
-			return fmt.Errorf("submodule %s: %w", sub, err)
-		}
+		slog.WarnContext(ctx, "repository: checking submodule git directory", "submodule", subAbs, "err", err)
+		return fmt.Errorf("checking submodule %s: %w", sub, err)
+	}
+	recorded, err := recordedSubmoduleCommit(ctx, dotfiles, target, sub, logger)
+	if err != nil {
+		return err
+	}
+	if recorded == "" {
+		return nil
+	}
+	if err := fetchRecordedSubmoduleCommit(ctx, subAbs, recorded, logger); err != nil {
+		return err
+	}
+	current, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "rev-parse", "HEAD")
+	if err != nil {
+		slog.WarnContext(ctx, "repository: reading submodule HEAD", "submodule", subAbs, "err", err)
+		return fmt.Errorf("reading submodule %s HEAD: %w", sub, err)
+	}
+	current = strings.TrimSpace(current)
+	if current == recorded {
 		if err := checkSubmoduleUpdates(ctx, subAbs, recorded, current, logger); err != nil {
-			return fmt.Errorf("submodule %s: %w", sub, err)
+			return err
 		}
+		return nil
+	}
+	old, err := recordedSubmoduleCommit(ctx, dotfiles, previous, sub, logger)
+	if err != nil {
+		return err
+	}
+	if current != old && !gitCommandSucceeds(ctx, subAbs, "merge-base", "--is-ancestor", current, recorded) {
+		return fmt.Errorf("submodule %s has local commit %s outside recorded update %s in %s", sub, current, recorded, subAbs)
+	}
+	status, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "status", "--porcelain", "--untracked-files=all")
+	if err != nil {
+		slog.WarnContext(ctx, "repository: checking submodule local files", "submodule", subAbs, "err", err)
+		return fmt.Errorf("checking submodule %s local files: %w", sub, err)
+	}
+	if strings.TrimSpace(status) != "" {
+		return fmt.Errorf("submodule %s has local file changes that block recorded update %s in %s", sub, recorded, subAbs)
+	}
+	if err := checkIgnoredFileCollisions(ctx, subAbs, recorded, logger); err != nil {
+		return err
+	}
+	if err := checkSubmoduleUpdates(ctx, subAbs, recorded, current, logger); err != nil {
+		return err
 	}
 	return nil
 }
@@ -513,14 +523,16 @@ func checkSubmoduleUpdates(ctx context.Context, dotfiles string, target string, 
 func checkIgnoredFileCollisions(ctx context.Context, repository string, target string, logger *telemetry.Logger) error {
 	ignored, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", repository, "ls-files", "--others", "--ignored", "--exclude-standard", "-z")
 	if err != nil {
-		return fmt.Errorf("checking ignored files: %w", err)
+		slog.WarnContext(ctx, "repository: checking ignored files", "repository", repository, "err", err)
+		return fmt.Errorf("checking ignored files in %s: %w", repository, err)
 	}
 	if ignored == "" {
 		return nil
 	}
 	tracked, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", repository, "ls-tree", "-r", "-z", target)
 	if err != nil {
-		return fmt.Errorf("reading recorded tree: %w", err)
+		slog.WarnContext(ctx, "repository: reading recorded tree", "repository", repository, "revision", target, "err", err)
+		return fmt.Errorf("reading recorded tree in %s: %w", repository, err)
 	}
 	for ignoredPath := range strings.SplitSeq(ignored, "\x00") {
 		if ignoredPath == "" {
@@ -532,7 +544,7 @@ func checkIgnoredFileCollisions(ctx context.Context, repository string, target s
 				continue
 			}
 			if ignoredPath == trackedPath || strings.HasPrefix(ignoredPath, trackedPath+"/") || strings.HasPrefix(trackedPath, ignoredPath+"/") {
-				return fmt.Errorf("ignored file %s conflicts with recorded path %s", ignoredPath, trackedPath)
+				return fmt.Errorf("ignored file %s conflicts with recorded path %s in %s", ignoredPath, trackedPath, repository)
 			}
 		}
 	}
@@ -544,7 +556,8 @@ func fetchRecordedSubmoduleCommit(ctx context.Context, submodule string, commit 
 		return nil
 	}
 	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", submodule, "fetch", "--no-recurse-submodules", "origin", commit); err != nil {
-		return fmt.Errorf("fetching recorded commit %s: %w", commit, err)
+		slog.WarnContext(ctx, "repository: fetching recorded submodule commit", "submodule", submodule, "commit", commit, "err", err)
+		return fmt.Errorf("fetching recorded commit %s in %s: %w", commit, submodule, err)
 	}
 	return nil
 }
@@ -552,6 +565,7 @@ func fetchRecordedSubmoduleCommit(ctx context.Context, submodule string, commit 
 func recordedSubmoduleCommit(ctx context.Context, dotfiles string, revision string, sub string, logger *telemetry.Logger) (string, error) {
 	output, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "ls-tree", revision, "--", sub)
 	if err != nil {
+		slog.WarnContext(ctx, "repository: reading recorded submodule", "repository", dotfiles, "submodule", sub, "revision", revision, "err", err)
 		return "", fmt.Errorf("reading recorded submodule %s: %w", sub, err)
 	}
 	if strings.TrimSpace(output) == "" {

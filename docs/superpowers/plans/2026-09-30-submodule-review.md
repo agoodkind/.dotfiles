@@ -3,6 +3,7 @@
 | Date | Branch | Class | Reviewer | Verdict | Catches | Escapes | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-09-30 | scheduled-submodule-updates | Repository synchronization and workflow recovery | Independent adversarial review | MERGE-READY for runtime | Recorded object fetching, staged gitlinks, ignored child files, partial rollback, workflow dispatch recovery | Parent index restoration and ignored parent files | All six independent runtime attacks pass after fixes. Live scheduled acceptance remains pending. |
+| 2026-09-30 | scheduled-submodule-updates | Scoped CI repairs | Independent regression review | MERGE-READY for runtime | None | None | All six safety fixtures passed again in 23.083 seconds. Freshsmoke tests passed after removing the deleted import prerequisite. |
 
 ## Reproduced results
 

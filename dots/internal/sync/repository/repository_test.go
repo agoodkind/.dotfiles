@@ -104,7 +104,6 @@ func TestDeclaredSubmodulePathsUsesGitConfigParsing(t *testing.T) {
 	if len(paths) != 1 || paths[0] != filepath.Join("lib", "demo path") {
 		t.Fatalf("declaredSubmodulePaths() = %q, want quoted path without comment", paths)
 	}
-
 }
 
 func runGit(t *testing.T, repoRoot string, args ...string) {
@@ -174,28 +173,6 @@ func TestSyncDotfilesSubmodulesLeavesDirtySubmoduleWorktreeUnchanged(t *testing.
 	logger := newTestLogger(t)
 	if err := syncDotfilesSubmodules(context.Background(), parent, logger); err != nil {
 		t.Fatalf("syncDotfilesSubmodules() returned error for unchanged pointer: %v", err)
-	}
-
-	content, err := os.ReadFile(trackedPath)
-	if err != nil {
-		t.Fatalf("reading dirty submodule file: %v", err)
-	}
-	if string(content) != string(dirtyContent) {
-		t.Fatalf("dirty submodule content = %q, want %q", content, dirtyContent)
-	}
-}
-
-func TestRestoreSubmoduleWorktreesPreservesDirtyFiles(t *testing.T) {
-	parent, submodule := createSubmoduleFixture(t, "main")
-	dirtyContent := []byte("local work\n")
-	trackedPath := filepath.Join(submodule, "tracked.txt")
-	if err := os.WriteFile(trackedPath, dirtyContent, 0o644); err != nil {
-		t.Fatalf("writing dirty submodule file: %v", err)
-	}
-
-	logger := newTestLogger(t)
-	if err := restoreSubmoduleWorktrees(context.Background(), parent, logger); err != nil {
-		t.Fatalf("restoreSubmoduleWorktrees() returned error: %v", err)
 	}
 
 	content, err := os.ReadFile(trackedPath)
@@ -415,7 +392,7 @@ func TestUpdateRepoUpdatesNestedRecordedVersion(t *testing.T) {
 	parent, outer := createSubmoduleFixture(t, "main")
 	source := strings.TrimSpace(runGitOutput(t, outer, "remote", "get-url", "origin"))
 	nested := filepath.Join(t.TempDir(), "nested")
-	if err := os.MkdirAll(nested, 0755); err != nil {
+	if err := os.MkdirAll(nested, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	runGit(t, nested, "init", "--initial-branch=main")
@@ -437,6 +414,11 @@ func TestUpdateRepoUpdatesNestedRecordedVersion(t *testing.T) {
 	runGit(t, consumer, "config", "fetch.recurseSubmodules", "false")
 	logger := newTestLogger(t)
 	updateRepoForTest(t, consumer, logger, false)
+	nestedConsumer := filepath.Join(consumer, "lib", "demo", "nested")
+	ignoreFile := filepath.Join(t.TempDir(), "ignore")
+	writeTestFile(t, ignoreFile, "cache.txt\n")
+	runGit(t, nestedConsumer, "config", "core.excludesFile", ignoreFile)
+	writeTestFile(t, filepath.Join(nestedConsumer, "cache.txt"), "nested cache\n")
 	writeTestFile(t, filepath.Join(nested, "data"), "new\n")
 	runGit(t, nested, "commit", "-am", "Update nested")
 	runGit(t, filepath.Join(source, "nested"), "fetch", "origin")
@@ -450,7 +432,6 @@ func TestUpdateRepoUpdatesNestedRecordedVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("nested update failed: %v", err)
 	}
-	nestedConsumer := filepath.Join(consumer, "lib", "demo", "nested")
 	expected := strings.TrimSpace(runGitOutput(t, nested, "rev-parse", "HEAD"))
 	if got := strings.TrimSpace(runGitOutput(t, nestedConsumer, "rev-parse", "HEAD")); got != expected {
 		t.Fatalf("nested HEAD = %s, want %s", got, expected)
@@ -458,6 +439,10 @@ func TestUpdateRepoUpdatesNestedRecordedVersion(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join(nestedConsumer, "data"))
 	if err != nil || string(content) != "new\n" {
 		t.Fatalf("nested content = %q, err = %v", content, err)
+	}
+	cache, err := os.ReadFile(filepath.Join(nestedConsumer, "cache.txt"))
+	if err != nil || string(cache) != "nested cache\n" {
+		t.Fatalf("nested ignored cache changed: %q, err = %v", cache, err)
 	}
 }
 
