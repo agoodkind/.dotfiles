@@ -47,3 +47,4 @@ jobs:
           UPDATE_BRANCH: automation/submodule-updates
           UPDATE_HEAD: ${{ steps.pull-request.outputs.pull-request-head-sha }}
           UPDATE_PR: ${{ steps.pull-request.outputs.pull-request-number }}
+          UPDATE_RECOVER_MISSING: 'true'

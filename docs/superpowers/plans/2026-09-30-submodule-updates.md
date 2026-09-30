@@ -30,7 +30,7 @@ Remove zinit self-update from weekly maintenance. Retain updates for plugins man
 
 Create a daily GitHub Action with manual dispatch. Update all declared submodules from their configured upstream branches in the disposable runner checkout. Create or update one signed pull request containing only gitlink changes.
 
-Use the repository GITHUB_TOKEN. Run CI, lint, and bootstrap validation on pull_request events. Approve pending runs only for the current signed update PR, its exact head, and the expected workflows. Use a pull_request_target workflow that executes trusted base code to approve new runs. Retry failed or canceled validation on unchanged open update PRs. Skip successful and running validation for the same commit. Keep all active GitHub ruleset requirements. Verify commit signatures and check names on the first live update PR. Do not bypass failed checks.
+Use the repository GITHUB_TOKEN. Run CI, lint, and bootstrap validation on pull_request events. Approve pending runs only for the current signed update PR, its exact head, and the expected workflows. Use a pull_request_target workflow that executes trusted base code to approve new runs. Recover missing runs by closing and reopening the same bot PR once from the scheduled updater. Retry failed or canceled validation on unchanged open update PRs. Skip successful and running validation for the same commit. Keep all active GitHub ruleset requirements. Verify commit signatures and check names on the first live update PR. Do not bypass failed checks.
 
 Add pull_request to CI. Keep manual workflow dispatch for diagnostics; GitHub excludes those runs from required PR checks. Declare the zsh-defer upstream branch explicitly in [.gitmodules](../../../.gitmodules).
 

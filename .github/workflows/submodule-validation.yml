@@ -31,3 +31,4 @@ jobs:
           UPDATE_PR: ${{ github.event.pull_request.number }}
           UPDATE_HEAD: ${{ github.event.pull_request.head.sha }}
           UPDATE_BRANCH: automation/submodule-updates
+          UPDATE_RECOVER_MISSING: 'false'
