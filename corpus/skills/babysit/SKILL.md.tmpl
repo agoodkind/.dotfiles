@@ -151,13 +151,15 @@ When the session is ending and the PR is not merge-ready or terminal, run sectio
 
 Run this section only when the user explicitly asks to merge (for example "merge", "land", "ship", or "babysit and merge").
 
+Treat that request as merge authorization for the specified pull request. Preserve the authorization across turns and routine CI or review repairs. Complete the required work and merge without requesting a second approval. Ask only when the requested pull request or merge scope changes and the existing authorization does not cover the action.
+
 Section 7 requirements are satisfied, or only CI time remains with no real failure and threads resolved.
 
 ### Admin bypass authorization
 
-Treat `admin merge` or `admin bypass` as a request for confirmation, not authorization. Ask through the native harness question tool required by {{.Skill "ask-questions"}}. Use `--admin` only after the user confirms that question for the current merge. Never infer the request from "merge", "land", "ship", urgency, available administrator rights, prior turns, or prior pull requests. If the native question tool is unavailable or the user does not confirm, do not use `--admin`. The confirmation expires after that merge attempt.
+Treat an explicit `admin merge` or `admin bypass` request as authorization to use `--admin` for the specified pull request. Do not require a second approval. Preserve that authorization across turns and retries within the requested scope. A request for a normal merge does not authorize an admin bypass. Do not infer bypass authorization from urgency, available administrator rights, or an unrelated pull request.
 
-Ask for an admin merge only when remaining in-scope work is empty and the leftover gate is a bypass the user must confirm.
+Finish remaining in-scope work before using an authorized admin bypass. Ask for bypass authorization only when the remaining gate requires it and the user has not already authorized it.
 
 ### Merge paths
 
@@ -165,7 +167,7 @@ A dependent Graphite stack follows {{.Skill "graphite"}} task **Merge a Graphite
 
 A standalone pull request uses `gh pr merge --merge` or `--squash` per repository policy when fully green. Use `gh pr merge --auto` only for a standalone pull request when the sole blocker is CI time.
 
-A confirmed admin merge of a standalone pull request uses `gh pr merge --admin` with the repository's allowed merge method only after the request and confirmation above.
+An authorized admin merge of a standalone pull request uses `gh pr merge --admin` with the repository's allowed merge method.
 
 Loop `gh pr view --json state` until `state` is `MERGED` or superseded `CLOSED` (see section 9). When auto-merge is armed, keep triaging new review threads on each loop.
 
