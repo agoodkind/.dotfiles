@@ -1,0 +1,48 @@
+name: Submodule updates
+
+on:
+  schedule:
+    - cron: '13 13 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: submodule-updates
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          submodules: recursive
+
+      - name: Update upstream submodule revisions
+        run: git submodule update --remote
+
+      - name: Create signed update pull request
+        id: pull-request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
+        with:
+          sign-commits: true
+          branch: automation/submodule-updates
+          delete-branch: true
+          add-paths: lib
+          commit-message: Update submodule revisions
+          title: Update external submodule revisions
+          body: |
+            External submodule branches have new commits. This PR updates their recorded revisions for local synchronization.
+
+      - name: Dispatch validation workflows
+        if: steps.pull-request.outputs.pull-request-number != ''
+        run: bash .github/scripts/check-submodule-update.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPDATE_BRANCH: automation/submodule-updates
+          UPDATE_HEAD: ${{ steps.pull-request.outputs.pull-request-head-sha }}

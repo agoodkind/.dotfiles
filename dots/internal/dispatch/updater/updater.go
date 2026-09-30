@@ -154,7 +154,7 @@ func doWeeklyUpdate(ctx context.Context, dotfiles, weeklyMarkerPath string, disp
 			append(os.Environ(), "DOTDOTFILES="+dotfiles),
 			"zsh",
 			"-c",
-			"source '$DOTDOTFILES/lib/zinit/zinit.zsh'; zinit self-update; zinit update --all --quiet",
+			"source \"$DOTDOTFILES/lib/zinit/zinit.zsh\"; zinit update --all --quiet",
 		)
 	}
 

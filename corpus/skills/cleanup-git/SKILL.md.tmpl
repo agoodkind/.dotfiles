@@ -159,6 +159,26 @@ MUST NOT use `git worktree remove --force` to bypass this review. MUST NOT disca
 
 MUST NOT move the trunk ref of a checkout owned by another worktree.
 
+#### Inspect initialized submodules
+
+Treat every initialized submodule, including nested submodules, as a child repository. A clean parent status does not prove that a submodule has no unique commits or ignored files.
+
+1. Record each submodule's absolute path, Git directory, HEAD object, local refs, and remote refs. Fetch its remote heads before comparisons. Run these commands in each child repository:
+
+   ```bash
+   git -C "$submodule_path" rev-parse --absolute-git-dir
+   git -C "$submodule_path" rev-parse HEAD
+   git -C "$submodule_path" for-each-ref --format='%(refname) %(objectname)' refs/heads refs/remotes
+   git -C "$submodule_path" status --porcelain --ignored --untracked-files=all
+   git -C "$submodule_path" submodule status --recursive
+   ```
+
+2. Apply STEPS 3 through 6 to every local ref and detached HEAD that removal could destroy. Read its PR context and every commit before source code. Compare the slice with the surviving submodule's upstream trunk and the superproject trunk's recorded gitlink. Do not infer containment from a clean status, a matching gitlink, or the existence of a remote. Preserve uniquely needed commits in a surviving repository and verify their objects and refs before removal; otherwise preserve the candidate worktree.
+3. Apply this step's regenerable, superseded, or unique classification to every tracked change, untracked file, and ignored file inside each submodule. Recurse into nested submodules. Inspect shared Git directories before deleting any repository metadata. Preserve metadata that another checkout uses.
+4. Record the surviving main and sibling checkouts' submodule registrations, HEAD objects, status, and tracked file contents before removal. Read registrations with `git -C "$surviving_worktree" config --local --get-regexp '^submodule\.'`; record an exit status of 1 as no registrations. Read submodule state with `git -C "$surviving_worktree" submodule status --recursive` and inspect each initialized child's files and status. Compare these records after removal.
+
+Never run `git submodule deinit` from a linked worktree during cleanup. It changes shared superproject configuration and can unregister submodules used by the main or sibling checkouts.
+
 ### STEP 8: REMOVE. MUST follow this order.
 
 After STEP 7 makes a contained worktree clean, MUST remove the worktree before its branch, passing the path as a quoted variable after `--`. A worktree path can contain whitespace, `;`, or `$()`, so substituting it as bare text runs whatever it spells:
@@ -167,6 +187,17 @@ After STEP 7 makes a contained worktree clean, MUST remove the worktree before i
 git worktree remove -- "$worktree_path"
 git worktree prune
 ```
+
+Git can reject a clean worktree with `working trees containing submodules cannot be moved or removed`. This structural refusal requires the initialized-submodule procedure in STEP 7; it is not a unique-work verdict. Complete that procedure instead of stopping or asking for cleanup depth.
+
+Use the native managed-worktree removal tool when available after classification. If native removal is unavailable or does not support initialized submodules, and Git refuses only because the fully classified worktree contains initialized submodules, remove the worktree with:
+
+```bash
+git worktree remove --force -- "$worktree_path"
+git worktree prune
+```
+
+Use `--force` only for that structural refusal after every child path and commit has a completed verdict and unique work has verified preservation. Do not use it to bypass dirty files, unclassified refs, locks, or shared Git metadata. Verify that the surviving checkouts' submodule registrations, HEAD objects, status, and tracked files match the records from STEP 7. Repair any removal-induced discrepancy before deleting the branch or claiming cleanup completed.
 
 MUST delete only the candidate that its OWN classification cleared. Deleting local `feature-x` requires local `feature-x` to have passed on its own ref.
 

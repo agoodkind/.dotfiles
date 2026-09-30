@@ -82,7 +82,7 @@ func runDotfilesUpdate(ctx context.Context, dotfiles string, logger *telemetry.L
 		clearStaleGitLocks(ctx, layout, logger)
 	}
 
-	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "fetch", "origin", "--prune"); err != nil {
+	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "fetch", "origin", "--prune", "--no-recurse-submodules"); err != nil {
 		return "fetch failed", fmt.Errorf("running git fetch: %w", err)
 	}
 
@@ -105,12 +105,19 @@ func runDotfilesUpdate(ctx context.Context, dotfiles string, logger *telemetry.L
 		return "", fmt.Errorf("unknown remote status: %s", remoteStatus)
 	}
 
+	if err := checkSubmoduleUpdates(ctx, dotfiles, "origin/main", "HEAD", logger); err != nil {
+		return "", err
+	}
 	hasChanges, err := hasLocalChanges(ctx, dotfiles, logger)
 	if err != nil {
 		return "", err
 	}
 	if hasChanges {
-		if conflicting, err := hasConflictingChanges(ctx, dotfiles, logger); err == nil && conflicting {
+		conflicting, err := hasConflictingChanges(ctx, dotfiles, logger)
+		if err != nil {
+			return "", err
+		}
+		if conflicting {
 			return "", fmt.Errorf("upstream changes conflict with local work (overlapping files)")
 		}
 		if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "stash", "--include-untracked"); err != nil {
@@ -146,7 +153,7 @@ func runDotfilesUpdate(ctx context.Context, dotfiles string, logger *telemetry.L
 }
 
 func syncPulledSubmodules(ctx context.Context, dotfiles string, prePullHead string, hadChanges bool, logger *telemetry.Logger) error {
-	if err := syncDotfilesSubmodules(ctx, dotfiles, logger); err != nil {
+	if err := syncRecordedSubmodules(ctx, dotfiles, prePullHead, logger); err != nil {
 		slog.WarnContext(ctx, "repository: syncing submodules after pull", "err", err)
 		rollbackErr := rollbackRepositoryUpdate(ctx, dotfiles, prePullHead, logger)
 		if hadChanges {
@@ -161,7 +168,7 @@ func syncPulledSubmodules(ctx context.Context, dotfiles string, prePullHead stri
 }
 
 func restoreStashedChanges(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
-	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "stash", "pop"); err != nil {
+	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "stash", "pop", "--index"); err != nil {
 		slog.ErrorContext(ctx, "repository: restoring stashed changes", "err", err)
 		return fmt.Errorf("restoring stashed changes: %w", err)
 	}
@@ -169,11 +176,15 @@ func restoreStashedChanges(ctx context.Context, dotfiles string, logger *telemet
 }
 
 func rollbackRepositoryUpdate(ctx context.Context, dotfiles string, head string, logger *telemetry.Logger) error {
+	previous, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "rev-parse", "HEAD")
+	if err != nil {
+		return fmt.Errorf("reading pre-rollback parent HEAD: %w", err)
+	}
 	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "reset", "--hard", head); err != nil {
 		slog.WarnContext(ctx, "repository: resetting parent repository", "head", head, "err", err)
 		return fmt.Errorf("resetting parent repository to %s: %w", head, err)
 	}
-	return restoreSubmoduleWorktrees(ctx, dotfiles, logger)
+	return syncRecordedSubmodules(ctx, dotfiles, strings.TrimSpace(previous), logger)
 }
 
 func firstError(current error, candidate error) error {
@@ -338,7 +349,7 @@ func hasConflictingChanges(ctx context.Context, dotfiles string, logger *telemet
 		slog.ErrorContext(ctx, "repository: hasConflictingChanges: git diff", "err", err)
 		return false, fmt.Errorf("running git diff: %w", err)
 	}
-	localChanged, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "diff", "--name-only")
+	localChanged, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "diff", "--name-only", "HEAD")
 	if err != nil {
 		slog.ErrorContext(ctx, "repository: hasConflictingChanges: git diff local", "err", err)
 		return false, fmt.Errorf("running git diff: %w", err)
@@ -368,165 +379,203 @@ func updateWithRevert(ctx context.Context, dotfiles string, hadChanges bool, log
 		return "", fmt.Errorf("running git rev-parse HEAD: %w", err)
 	}
 	prePullHead = strings.TrimSpace(prePullHead)
-	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "pull", "--ff-only", "origin/main"); err != nil {
-		_ = cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "reset", "--hard", prePullHead)
+	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "merge", "--ff-only", "--no-overwrite-ignore", "origin/main"); err != nil {
 		if hadChanges {
-			_ = cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "stash", "pop")
+			if restoreErr := restoreStashedChanges(ctx, dotfiles, logger); restoreErr != nil {
+				return prePullHead, fmt.Errorf("fast-forward merge failed: %w; restoring local changes: %w", err, restoreErr)
+			}
 		}
-		return prePullHead, fmt.Errorf("pull failed, rolled back")
+		return prePullHead, fmt.Errorf("fast-forward merge failed: %w", err)
 	}
 	return prePullHead, nil
 }
 
 func syncDotfilesSubmodules(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
+	return syncRecordedSubmodules(ctx, dotfiles, "HEAD", logger)
+}
+
+func syncRecordedSubmodules(ctx context.Context, dotfiles string, previous string, logger *telemetry.Logger) error {
+	if err := checkSubmoduleUpdates(ctx, dotfiles, "HEAD", previous, logger); err != nil {
+		return err
+	}
 	subs, err := declaredSubmodulePaths(ctx, dotfiles, logger)
 	if err != nil {
 		return err
 	}
-	if len(subs) == 0 {
-		return nil
-	}
-	// A lock abandoned in a submodule git directory fails every later checkout
-	// there, and nothing else in this flow would ever clear it.
-	if layout, layoutErr := gitdir.Resolve(ctx, dotfiles, logger); layoutErr == nil {
-		clearStaleGitLocks(ctx, layout, logger)
-	}
-	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "submodule", "update", "--init", "--recursive"); err != nil {
-		slog.WarnContext(ctx, "repository: initializing submodules", "err", err)
-		return fmt.Errorf("initializing submodules: %w", err)
-	}
 	for _, sub := range subs {
-		if err := syncOneSubmodule(ctx, dotfiles, sub, logger); err != nil {
-			if restoreErr := restoreSubmoduleWorktrees(ctx, dotfiles, logger); restoreErr != nil {
-				return fmt.Errorf("%w; restoring submodules failed: %w", err, restoreErr)
-			}
+		previousSubmodule, err := recordedSubmoduleCommit(ctx, dotfiles, previous, sub, logger)
+		if err != nil {
+			return err
+		}
+		if err := checkoutRecordedSubmodule(ctx, dotfiles, sub, logger); err != nil {
+			return err
+		}
+		if previousSubmodule == "" {
+			previousSubmodule = "HEAD"
+		}
+		if err := syncRecordedSubmodules(ctx, filepath.Join(dotfiles, sub), previousSubmodule, logger); err != nil {
 			return err
 		}
 	}
-
-	cachedDiff, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "diff", "--cached", "--name-only", "--ignore-submodules")
-	if err != nil {
-		return fmt.Errorf("checking staged parent changes: %w", err)
-	}
-	if strings.TrimSpace(cachedDiff) != "" {
-		return nil
-	}
-
-	pointerDirty := false
-	for _, sub := range subs {
-		if !gitCommandSucceeds(ctx, dotfiles, "diff", "--quiet", "--", sub) {
-			if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "add", "--", sub); err != nil {
-				_ = unstageSubmodulePointers(ctx, dotfiles, subs, logger)
-				return fmt.Errorf("staging submodule pointer %s: %w", sub, err)
-			}
-			if !gitCommandSucceeds(ctx, dotfiles, "diff", "--cached", "--quiet", "--", sub) {
-				pointerDirty = true
-			}
-		}
-	}
-	if pointerDirty {
-		commitArgs := []string{"-C", dotfiles, "commit", "-m", "Update submodule pointers", "--"}
-		commitArgs = append(commitArgs, subs...)
-		if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", commitArgs...); err != nil {
-			unstageErr := unstageSubmodulePointers(ctx, dotfiles, subs, logger)
-			if unstageErr != nil {
-				return fmt.Errorf("committing submodule pointers: %w; unstaging failed: %w", err, unstageErr)
-			}
-			return fmt.Errorf("committing submodule pointers: %w", err)
-		}
-	}
 	return nil
 }
 
-func restoreSubmoduleWorktrees(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
-	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "submodule", "update", "--init", "--recursive"); err != nil {
-		slog.WarnContext(ctx, "repository: restoring submodule worktrees", "err", err)
-		return fmt.Errorf("restoring submodule worktrees: %w", err)
-	}
-	return nil
-}
-
-func unstageSubmodulePointers(ctx context.Context, dotfiles string, subs []string, logger *telemetry.Logger) error {
-	args := []string{"-C", dotfiles, "reset", "--"}
-	args = append(args, subs...)
-	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", args...); err != nil {
-		slog.WarnContext(ctx, "repository: unstaging submodule pointers", "err", err)
-		return fmt.Errorf("unstaging submodule pointers: %w", err)
-	}
-	return nil
-}
-
-func syncOneSubmodule(ctx context.Context, dotfiles string, subPath string, logger *telemetry.Logger) error {
-	subAbs := filepath.Join(dotfiles, subPath)
+func checkoutRecordedSubmodule(ctx context.Context, dotfiles string, sub string, logger *telemetry.Logger) error {
+	subAbs := filepath.Join(dotfiles, sub)
 	if _, err := os.Stat(filepath.Clean(filepath.Join(subAbs, ".git"))); err != nil {
-		if !os.IsNotExist(err) {
-			logger.WarnContextWithErr(ctx, "stat submodule .git", err)
-			slog.WarnContext(ctx, "repository: stat submodule .git", "submodule", subPath, "err", err)
-			return fmt.Errorf("stat submodule .git: %w", err)
+		if !errors.Is(err, os.ErrNotExist) {
+			slog.WarnContext(ctx, "repository: checking submodule git directory", "submodule", subAbs, "err", err)
+			return fmt.Errorf("checking submodule %s: %w", sub, err)
+		}
+		if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "submodule", "update", "--init", "--checkout", "--", sub); err != nil {
+			slog.WarnContext(ctx, "repository: initializing recorded submodule", "submodule", subAbs, "err", err)
+			return fmt.Errorf("initializing recorded submodule %s: %w", sub, err)
 		}
 		return nil
 	}
-	branch, err := declaredSubmoduleBranch(ctx, dotfiles, subPath, logger)
+	recorded, err := recordedSubmoduleCommit(ctx, dotfiles, "HEAD", sub, logger)
 	if err != nil {
 		return err
 	}
-	if branch == "" {
-		switch {
-		case gitCommandSucceeds(ctx, subAbs, "rev-parse", "-q", "--verify", "origin/main"):
-			branch = "main"
-		case gitCommandSucceeds(ctx, subAbs, "rev-parse", "-q", "--verify", "origin/master"):
-			branch = "master"
-		default:
-			branch = "main"
-		}
-	}
-	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "fetch"); err != nil {
-		logger.WarnContextWithErr(ctx, "fetch submodule "+subPath, err)
-		return fmt.Errorf("fetching submodule %s: %w", subPath, err)
-	}
-	current, err := submoduleBranchIsCurrent(ctx, subAbs, branch, logger)
-	if err != nil {
-		return fmt.Errorf("checking submodule %s branch %s: %w", subPath, branch, err)
-	}
-	if current {
-		return nil
-	}
-	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "checkout", branch); err != nil {
-		logger.WarnContextWithErr(ctx, "checkout submodule "+subPath, err)
-		return fmt.Errorf("checking out submodule %s branch %s: %w", subPath, branch, err)
-	}
-	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "pull", "--rebase", "origin", branch); err != nil {
-		_ = cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "rebase", "--abort")
-		logger.WarnContextWithErr(ctx, "pull --rebase failed in "+subPath, err)
-		return fmt.Errorf("pulling submodule %s branch %s: %w", subPath, branch, err)
+	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "checkout", "--detach", "--no-overwrite-ignore", recorded); err != nil {
+		slog.WarnContext(ctx, "repository: checking out recorded submodule", "submodule", subAbs, "commit", recorded, "err", err)
+		return fmt.Errorf("checking out recorded submodule %s: %w", sub, err)
 	}
 	return nil
 }
 
-func submoduleBranchIsCurrent(
-	ctx context.Context,
-	submodule string,
-	branch string,
-	logger *telemetry.Logger,
-) (bool, error) {
-	currentBranch, err := cmdexec.OutputWithLoggerAndEnv(
-		ctx,
-		logger,
-		nil,
-		"git",
-		"-C",
-		submodule,
-		"branch",
-		"--show-current",
-	)
+func checkSubmoduleUpdates(ctx context.Context, dotfiles string, target string, previous string, logger *telemetry.Logger) error {
+	subs, err := declaredSubmodulePaths(ctx, dotfiles, logger)
 	if err != nil {
-		slog.WarnContext(ctx, "repository: reading current submodule branch", "submodule", submodule, "err", err)
-		return false, fmt.Errorf("reading current branch: %w", err)
+		return err
 	}
-	if strings.TrimSpace(currentBranch) != branch {
-		return false, nil
+	for _, sub := range subs {
+		if err := checkOneSubmoduleUpdate(ctx, dotfiles, sub, target, previous, logger); err != nil {
+			return err
+		}
 	}
-	return isMergeBaseAncestor(ctx, submodule, "origin/"+branch, "HEAD"), nil
+	return nil
+}
+
+func checkOneSubmoduleUpdate(ctx context.Context, dotfiles string, sub string, target string, previous string, logger *telemetry.Logger) error {
+	staged, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "diff", "--cached", "--name-only", "--", sub)
+	if err != nil {
+		slog.WarnContext(ctx, "repository: checking staged submodule", "repository", dotfiles, "submodule", sub, "err", err)
+		return fmt.Errorf("checking staged submodule %s: %w", sub, err)
+	}
+	if strings.TrimSpace(staged) != "" {
+		return fmt.Errorf("submodule %s has a staged gitlink change that blocks synchronization in %s", sub, dotfiles)
+	}
+	subAbs := filepath.Join(dotfiles, sub)
+	if _, err := os.Stat(filepath.Clean(filepath.Join(subAbs, ".git"))); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		slog.WarnContext(ctx, "repository: checking submodule git directory", "submodule", subAbs, "err", err)
+		return fmt.Errorf("checking submodule %s: %w", sub, err)
+	}
+	recorded, err := recordedSubmoduleCommit(ctx, dotfiles, target, sub, logger)
+	if err != nil {
+		return err
+	}
+	if recorded == "" {
+		return nil
+	}
+	if err := fetchRecordedSubmoduleCommit(ctx, subAbs, recorded, logger); err != nil {
+		return err
+	}
+	current, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "rev-parse", "HEAD")
+	if err != nil {
+		slog.WarnContext(ctx, "repository: reading submodule HEAD", "submodule", subAbs, "err", err)
+		return fmt.Errorf("reading submodule %s HEAD: %w", sub, err)
+	}
+	current = strings.TrimSpace(current)
+	if current == recorded {
+		if err := checkSubmoduleUpdates(ctx, subAbs, recorded, current, logger); err != nil {
+			return err
+		}
+		return nil
+	}
+	old, err := recordedSubmoduleCommit(ctx, dotfiles, previous, sub, logger)
+	if err != nil {
+		return err
+	}
+	if current != old && !gitCommandSucceeds(ctx, subAbs, "merge-base", "--is-ancestor", current, recorded) {
+		return fmt.Errorf("submodule %s has local commit %s outside recorded update %s in %s", sub, current, recorded, subAbs)
+	}
+	status, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", subAbs, "status", "--porcelain", "--untracked-files=all")
+	if err != nil {
+		slog.WarnContext(ctx, "repository: checking submodule local files", "submodule", subAbs, "err", err)
+		return fmt.Errorf("checking submodule %s local files: %w", sub, err)
+	}
+	if strings.TrimSpace(status) != "" {
+		return fmt.Errorf("submodule %s has local file changes that block recorded update %s in %s", sub, recorded, subAbs)
+	}
+	if err := checkIgnoredFileCollisions(ctx, subAbs, recorded, logger); err != nil {
+		return err
+	}
+	if err := checkSubmoduleUpdates(ctx, subAbs, recorded, current, logger); err != nil {
+		return err
+	}
+	return nil
+}
+
+func checkIgnoredFileCollisions(ctx context.Context, repository string, target string, logger *telemetry.Logger) error {
+	ignored, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", repository, "ls-files", "--others", "--ignored", "--exclude-standard", "-z")
+	if err != nil {
+		slog.WarnContext(ctx, "repository: checking ignored files", "repository", repository, "err", err)
+		return fmt.Errorf("checking ignored files in %s: %w", repository, err)
+	}
+	if ignored == "" {
+		return nil
+	}
+	tracked, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", repository, "ls-tree", "-r", "-z", target)
+	if err != nil {
+		slog.WarnContext(ctx, "repository: reading recorded tree", "repository", repository, "revision", target, "err", err)
+		return fmt.Errorf("reading recorded tree in %s: %w", repository, err)
+	}
+	for ignoredPath := range strings.SplitSeq(ignored, "\x00") {
+		if ignoredPath == "" {
+			continue
+		}
+		for record := range strings.SplitSeq(tracked, "\x00") {
+			metadata, trackedPath, valid := strings.Cut(record, "\t")
+			if !valid || strings.HasPrefix(metadata, "160000 ") {
+				continue
+			}
+			if ignoredPath == trackedPath || strings.HasPrefix(ignoredPath, trackedPath+"/") || strings.HasPrefix(trackedPath, ignoredPath+"/") {
+				return fmt.Errorf("ignored file %s conflicts with recorded path %s in %s", ignoredPath, trackedPath, repository)
+			}
+		}
+	}
+	return nil
+}
+
+func fetchRecordedSubmoduleCommit(ctx context.Context, submodule string, commit string, logger *telemetry.Logger) error {
+	if gitCommandSucceeds(ctx, submodule, "cat-file", "-e", commit+"^{commit}") {
+		return nil
+	}
+	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "git", "-C", submodule, "fetch", "--no-recurse-submodules", "origin", commit); err != nil {
+		slog.WarnContext(ctx, "repository: fetching recorded submodule commit", "submodule", submodule, "commit", commit, "err", err)
+		return fmt.Errorf("fetching recorded commit %s in %s: %w", commit, submodule, err)
+	}
+	return nil
+}
+
+func recordedSubmoduleCommit(ctx context.Context, dotfiles string, revision string, sub string, logger *telemetry.Logger) (string, error) {
+	output, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "ls-tree", revision, "--", sub)
+	if err != nil {
+		slog.WarnContext(ctx, "repository: reading recorded submodule", "repository", dotfiles, "submodule", sub, "revision", revision, "err", err)
+		return "", fmt.Errorf("reading recorded submodule %s: %w", sub, err)
+	}
+	if strings.TrimSpace(output) == "" {
+		return "", nil
+	}
+	fields := strings.Fields(output)
+	if len(fields) < 3 || fields[0] != "160000" {
+		return "", fmt.Errorf("submodule %s has no recorded gitlink in %s", sub, revision)
+	}
+	return fields[2], nil
 }
 
 type declaredSubmodule struct {
@@ -555,24 +604,6 @@ func declaredSubmodulePaths(
 		paths = append(paths, submodule.Path)
 	}
 	return paths, nil
-}
-
-func declaredSubmoduleBranch(
-	ctx context.Context,
-	dotfiles string,
-	subPath string,
-	logger *telemetry.Logger,
-) (string, error) {
-	submodules, err := declaredSubmodules(ctx, dotfiles, logger)
-	if err != nil {
-		return "", err
-	}
-	for _, submodule := range submodules {
-		if submodule.Path == subPath {
-			return submodule.Branch, nil
-		}
-	}
-	return "", nil
 }
 
 func declaredSubmodules(

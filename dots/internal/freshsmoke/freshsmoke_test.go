@@ -16,12 +16,6 @@ func TestInstallArgsIncludesSkipGitBeforeExtraArgs(t *testing.T) {
 	}
 }
 
-func TestRequiredSmokeSubmodulesIncludesReliabilityToolkit(t *testing.T) {
-	if !slices.Contains(requiredSmokeSubmodules, "lib/Claude-Opus-5-tools") {
-		t.Fatalf("requiredSmokeSubmodules = %v, want lib/Claude-Opus-5-tools", requiredSmokeSubmodules)
-	}
-}
-
 func TestAssertSmokeSubmodulesPresentAcceptsCheckedOutSubmodules(t *testing.T) {
 	repoRoot := t.TempDir()
 	for _, submodule := range requiredSmokeSubmodules {

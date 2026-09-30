@@ -20,27 +20,6 @@
 # Claude Desktop shares ~/.claude with Claude Code.
 # Cursor reads local rules from ~/.cursor/rules. Cloud user-rule upload is disabled.
 
-# Imported reliability methods from the branch-tracking submodule.
-[[source]]
-name              = "reliability"
-kind              = "submodule-import"
-root              = "lib/Claude-Opus-5-tools"
-source_url        = "https://github.com/Lunarsong/Claude-Opus-5-tools.git"
-source_branch     = "main"
-skills = [
-  ".claude/skills/trace-the-chain/SKILL.md",
-  ".claude/skills/adversarial-review/SKILL.md",
-  ".claude/skills/root-cause-debugging/SKILL.md",
-  ".claude/skills/empirical-validation/SKILL.md",
-]
-agents = [
-  ".claude/agents/code-implementer.md",
-  ".claude/agents/evidence-gatherer.md",
-]
-read_only_agents = [
-  "evidence-gatherer",
-]
-
 # Claude Code (and Claude Desktop)
 [[output]]
 provider  = "claude"
