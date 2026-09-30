@@ -39,10 +39,11 @@ jobs:
           body: |
             External submodule branches have new commits. This PR updates their recorded revisions for local synchronization.
 
-      - name: Dispatch validation workflows
+      - name: Approve or retry pull request validation
         if: steps.pull-request.outputs.pull-request-number != ''
         run: bash .github/scripts/check-submodule-update.sh
         env:
           GH_TOKEN: ${{ github.token }}
           UPDATE_BRANCH: automation/submodule-updates
           UPDATE_HEAD: ${{ steps.pull-request.outputs.pull-request-head-sha }}
+          UPDATE_PR: ${{ steps.pull-request.outputs.pull-request-number }}
