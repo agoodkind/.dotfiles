@@ -159,7 +159,7 @@ Link and Markdown rules:
 
 Media rules:
 
-- If screenshots, videos, or before/after comparisons belong in the PR body, apply the `pr-media` skill.
+- Attach relevant photo, screenshot, or video proof with the procedure in Step 7. State the observed behavior and environment beside the media.
 - Use a before/after table when the visual change is easier to review side by side.
 
 Comparison rules:
@@ -329,6 +329,45 @@ gh pr edit --body '<description>'
 ```
 
 If creation or update fails, report the error and stop.
+
+### Attach photo and video proof
+
+GitHub CLI uploads local images and videos with `--attach`. The repository requires push access for uploads. Other file types are not supported by this flag.
+
+1. Select media that demonstrates the reviewed behavior. Use a before/after table when the comparison helps review.
+2. Write the PR body or comment to a Markdown file. Reference each local image with meaningful alt text. Put each video reference alone in its paragraph:
+
+   ```markdown
+   The form retains entered values after the server rejects the save.
+
+   ![The form retains entered values and displays the save error](./proof.png)
+
+   The recording shows the failed save and successful retry.
+
+   ![](./proof.mp4)
+   ```
+
+3. Upload the referenced files with the command for the authorized PR action:
+
+   ```bash
+   gh pr create --title '<title>' --body-file ./pr-body.md --attach ./proof.png --attach ./proof.mp4
+   gh pr edit <pr-number> --body-file ./pr-body.md --attach ./proof.png --attach ./proof.mp4
+   gh pr comment <pr-number> --body-file ./proof-comment.md --attach ./proof.png --attach ./proof.mp4
+   ```
+
+   GitHub CLI replaces matching local references with uploaded URLs. It preserves image alt text from the Markdown. A video reference alone in a paragraph renders as a player; a reference within a sentence renders as a link.
+
+   Repeat `--attach` for multiple files. Attach each file only once per command. Files without matching body references are appended in flag order.
+
+   To append a photo without replacing an existing PR body, run:
+
+   ```bash
+   gh pr edit <pr-number> --attach './proof.png#The form displays the save error'
+   ```
+
+   The `#` suffix supplies image alt text for appended files. Without it, GitHub CLI uses the filename. Videos do not support alt text; describe the demonstrated behavior in adjacent prose.
+
+4. Re-read the saved PR body or comment and inspect it on GitHub. Verify that local references were replaced, images render, and videos play. If an upload fails, inspect the saved content before retrying. Some files may already have uploaded despite a nonzero exit status. Retry only missing attachments.
 
 ## Step 8: Return The Final Output
 
