@@ -11,7 +11,7 @@ if [[ "$CURRENT_HEAD" != "$UPDATE_HEAD" ]]; then
 fi
 
 for workflow in ci.yml lint.yml fresh-linux-bootstrap.yml fresh-macos-bootstrap.yml; do
-    VALIDATION_EXISTS=$(gh run list --workflow "$workflow" --branch "$UPDATE_BRANCH" --commit "$UPDATE_HEAD" --limit 1 --json status,conclusion --jq 'any(.[]; .status != "completed" or .conclusion == "success")')
+    VALIDATION_EXISTS=$(gh run list --workflow "$workflow" --event workflow_dispatch --branch "$UPDATE_BRANCH" --commit "$UPDATE_HEAD" --limit 1 --json status,conclusion --jq 'any(.[]; .status != "completed" or .conclusion == "success")')
     if [[ "$VALIDATION_EXISTS" == "true" ]]; then
         continue
     fi
