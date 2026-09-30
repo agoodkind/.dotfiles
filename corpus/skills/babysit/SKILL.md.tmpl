@@ -161,11 +161,11 @@ Ask for an admin merge only when remaining in-scope work is empty and the leftov
 
 ### Merge paths
 
-A dependent Graphite stack follows {{.Skill "graphite"}} task **Merge a Graphite stack**. That skill owns stack order, merge-when-ready, dry-run behavior, and Graphite commands.
+A dependent Graphite stack follows {{.Skill "graphite"}} task **Merge a Graphite stack**. That skill owns stack order, merge-when-ready, dry-run behavior, and Graphite commands. Use Graphite for every stack member. Never use `gh pr merge` for a Graphite stack member, including `--auto` or `--admin`.
 
-One pull request uses `gh pr merge --merge` or `--squash` per repository policy when fully green. Use `gh pr merge --auto` only when the sole blocker is CI time.
+A standalone pull request uses `gh pr merge --merge` or `--squash` per repository policy when fully green. Use `gh pr merge --auto` only for a standalone pull request when the sole blocker is CI time.
 
-A confirmed admin merge uses `gh pr merge --admin` with the repository's allowed merge method only after the request and confirmation above.
+A confirmed admin merge of a standalone pull request uses `gh pr merge --admin` with the repository's allowed merge method only after the request and confirmation above.
 
 Loop `gh pr view --json state` until `state` is `MERGED` or superseded `CLOSED` (see section 9). When auto-merge is armed, keep triaging new review threads on each loop.
 
