@@ -229,11 +229,6 @@ func runLinkSteps(options Options, dotfiles string, logger *telemetry.Logger, st
 	}); err != nil {
 		return err
 	}
-	if err := step("Syncing SSH config", false, func(ctx context.Context) error {
-		return workspace.SyncSSHConfig(ctx, dotfiles, logger)
-	}); err != nil {
-		return err
-	}
 	if err := step("Updating authorized keys", false, func(ctx context.Context) error {
 		return workspace.UpdateAuthorizedKeys(ctx, options.SkipNetwork, logger)
 	}); err != nil {

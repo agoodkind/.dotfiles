@@ -3,7 +3,6 @@
         "*.zsh": "shellscript",
         ".zshrc.*": "shellscript",
         "${workspaceFolder}/home/.ssh/config": "ssh_config",
-        "${workspaceFolder}/.ssh_config.local": "ssh_config",
         "${workspaceFolder}/lib/.gitconfig_incl": "gitconfig"
     },
     "files.exclude": {

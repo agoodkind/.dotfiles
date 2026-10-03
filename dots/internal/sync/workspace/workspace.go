@@ -309,43 +309,6 @@ func clearExistingHomeFile(ctx context.Context, homeFile string, backupPath stri
 	return backedUp, true
 }
 
-// SyncSSHConfig installs the SSH config symlink into ~/.ssh/config.
-func SyncSSHConfig(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
-	slog.InfoContext(ctx, "workspace: SyncSSHConfig")
-	if common.IsWorkLaptop() {
-		return nil
-	}
-	sshDir := filepath.Join(os.Getenv("HOME"), ".ssh")
-	if err := os.MkdirAll(filepath.Clean(sshDir), 0o700); err != nil {
-		slog.WarnContext(ctx, "workspace: creating ssh dir", "err", err)
-		return fmt.Errorf("creating ssh dir: %w", err)
-	}
-	if err := os.Chmod(filepath.Clean(sshDir), 0o700); err != nil {
-		slog.WarnContext(ctx, "workspace: setting ssh dir permissions", "err", err)
-		return fmt.Errorf("setting ssh dir permissions: %w", err)
-	}
-
-	src := filepath.Join(dotfiles, "lib", "ssh", "config")
-	dst := filepath.Join(sshDir, "config")
-	if _, err := os.Stat(src); err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		slog.WarnContext(ctx, "workspace: checking ssh config source", "err", err)
-		return fmt.Errorf("checking ssh config source: %w", err)
-	}
-	_ = os.Remove(filepath.Clean(dst))
-	if err := os.Symlink(src, dst); err != nil {
-		slog.WarnContext(ctx, "workspace: creating ssh config symlink", "err", err)
-		return fmt.Errorf("creating ssh config symlink: %w", err)
-	}
-	if err := os.Chmod(src, 0o600); err != nil {
-		slog.WarnContext(ctx, "workspace: setting ssh config permissions", "err", err)
-		return fmt.Errorf("setting ssh config permissions: %w", err)
-	}
-	return nil
-}
-
 // UpdateAuthorizedKeys fetches SSH public keys from GitHub and appends any new ones to ~/.ssh/authorized_keys.
 func UpdateAuthorizedKeys(ctx context.Context, skipNetwork bool, logger *telemetry.Logger) error {
 	slog.InfoContext(ctx, "workspace: UpdateAuthorizedKeys")
