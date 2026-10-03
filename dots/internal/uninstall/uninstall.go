@@ -101,7 +101,6 @@ func runUninstall(ctx context.Context, purgePackages bool) error {
 	if err := removeHomeSymlinks(ctx, dotfiles); err != nil {
 		return err
 	}
-	removeSSHSymlink(ctx, dotfiles)
 	removeCursorConfig(ctx, dotfiles)
 	removeClaudeConfig(ctx, dotfiles)
 	removeCodexConfig(ctx, dotfiles)
@@ -186,12 +185,6 @@ func removeHomeSymlinks(ctx context.Context, dotfiles string) error {
 		return fmt.Errorf("walking home dir %s: %w", homeDir, err)
 	}
 	return nil
-}
-
-func removeSSHSymlink(ctx context.Context, dotfiles string) {
-	if err := removeDotfilesSymlink(ctx, filepath.Join(os.Getenv("HOME"), ".ssh", "config"), dotfiles); err != nil {
-		logInfo(ctx, "Skipping ~/.ssh/config: "+err.Error())
-	}
 }
 
 func removeCursorConfig(ctx context.Context, dotfiles string) {

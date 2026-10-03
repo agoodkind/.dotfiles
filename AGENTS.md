@@ -158,7 +158,7 @@ is. A worktree's `.git` is a file rather than a directory.
 ## Work vs. Personal Separation
 
 - `WORK_DIR_PATH` env var (set in `~/.overrides.local`) signals a work laptop.
-- Work laptops skip SSH config sync and authorized_keys.
+- Work laptops skip authorized_keys updates.
 - `.githooks/pre-commit` blocks committing proprietary patterns. Override
 patterns live in `.githooks/deny-patterns.local` (gitignored).
 - `.zshrc.local` and `~/.overrides.local` hold machine-specific config
