@@ -41,7 +41,9 @@ if [[ "$DOTFILES_AGENT_SHELL" -eq 1 ]]; then
 fi
 
 function dotfiles_apply_paste_safe_shell_options() {
-    setopt NO_GLOB
+    # GLOB with NO_NOMATCH matches bash: a pattern that matches files expands,
+    # and a pattern that matches no file is passed to the command unchanged.
+    setopt GLOB
     setopt NO_NOMATCH
     unsetopt BANG_HIST
     unsetopt HISTSUBSTPATTERN
@@ -51,7 +53,7 @@ function dotfiles_apply_agent_shell_options() {
     dotfiles_apply_paste_safe_shell_options
 }
 
-# Agent compatibility: keep shell metacharacters literal in agent shells.
+# Agent compatibility: apply bash-compatible glob and history options in agent shells.
 # Non-interactive shells can apply this here. Interactive agent shells apply it
 # from .zshrc after startup code has had normal zsh glob behavior. Human
 # interactive shells apply the same paste-safe options at the end of .zshrc.

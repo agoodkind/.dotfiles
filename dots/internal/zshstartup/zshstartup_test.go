@@ -213,6 +213,36 @@ print -r -- "log builtin disabled"
 	}
 }
 
+func TestAgentShellGlobMatchesBash(t *testing.T) {
+	repoRoot := repositoryRoot(t)
+	homeDirectory := t.TempDir()
+	workDirectory := t.TempDir()
+	for _, name := range []string{"first.txt", "second.txt"} {
+		if err := os.WriteFile(filepath.Join(workDirectory, name), nil, 0o644); err != nil {
+			t.Fatalf("writing %s: %v", name, err)
+		}
+	}
+
+	cmd := exec.Command("zsh", "-c", "print -r -- *.txt 'unmatched:' missing_*.xyz url?key=value[1]")
+	cmd.Dir = workDirectory
+	cmd.Env = append(
+		os.Environ(),
+		"CODEX_CI=1",
+		"HOME="+homeDirectory,
+		"ZDOTDIR="+filepath.Join(repoRoot, "home"),
+		"ZSH_PERF=",
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("running agent shell glob command: %v\n%s", err, output)
+	}
+
+	expected := "first.txt second.txt unmatched: missing_*.xyz url?key=value[1]\n"
+	if string(output) != expected {
+		t.Fatalf("agent shell glob output = %q, expected %q", output, expected)
+	}
+}
+
 func repositoryRoot(t *testing.T) string {
 	t.Helper()
 
