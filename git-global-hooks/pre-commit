@@ -2,6 +2,7 @@
 source "$(dirname "$0")/email-guard.sh"
 source "$(dirname "$0")/chain-hook.sh"
 source "$(dirname "$0")/protected-branch-policy.sh"
+source "$(dirname "$0")/secret-scan.sh"
 
 protected_branch_names() {
     # is_protected_branch's reader can exit its while loop on the first match
@@ -70,6 +71,10 @@ if resolve_allowed_identity_fields; then
 fi
 
 if ! "$(dirname "$0")/invoke-dots-git-hook.sh" pre-commit "$@"; then
+    exit 1
+fi
+
+if ! secret_scan "$@"; then
     exit 1
 fi
 
