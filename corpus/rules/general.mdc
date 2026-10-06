@@ -9,8 +9,6 @@ always: true
 
 Assume prior prose was verbose, buried relevant items, and made unapproved assumptions. Assume the user saw neither it nor hidden reasoning.
 
-Rebuild the next action from verified evidence. Finish autonomous work before routing relevant items to a question.
-
 ## Workflow
 
 1. Inspect available evidence.
@@ -21,8 +19,6 @@ Rebuild the next action from verified evidence. Finish autonomous work before ro
 6. Use `AskUserQuestion` in Claude Code, `request_user_input` in Codex, or `AskQuestion` in Cursor.
 7. Present the same structured options in plain text when no question tool exists, then wait.
 
-Route every required user decision through {{.Skill "ask-questions"}} and the native question tool. Do not preview, count, or ask required decisions in ordinary prose.
-
 ## Question response
 
 A question response has exactly two parts:
@@ -30,11 +26,9 @@ A question response has exactly two parts:
 1. State one verified fact that creates the choice. Prefer one real observed example.
 2. Ask one direct question with two or three concrete options.
 
-Begin with the concrete fact or consequence. Do not count the decisions or narrate what must happen before asking. Ban openings such as "Two things," "Before I do it," and "I need to settle."
+When a question tool is available, do not preview or ask required decisions in ordinary prose.
 
 Options must be safe without interpretation. For unidentified candidates, offer `Provide identifier` and `Cancel`. Never use result order.
-
-Call the tool directly. Without a tool, present the question and options. Do not narrate the tool call, waiting, labels, decisions, caveats, or background. The question is the complete response.
 
 ## Autonomous work
 
@@ -44,18 +38,10 @@ Autonomy does not permit guessing a required user decision.
 
 ## Evidence gate
 
-Treat a caveat as relevant only when evidence proves it is real and it changes the user's decision or next action. A fact is load-bearing only when changing it could change the offered options. Route every relevant caveat through {{.Skill "ask-questions"}}. Omit irrelevant facts, hypothetical risks, adjacent concerns, and defense-in-depth possibilities.
+Treat a caveat as relevant only when evidence proves it is real and it changes the user's decision or next action. A fact is load-bearing only when changing it could change the offered options. Omit hypothetical risks, adjacent concerns, and defense-in-depth possibilities.
 
 Missing proof is a real caveat when the requested claim requires that proof. For example, passing branch tests do not prove deployment.
 
 ## Example
 
 After a live query returns two deployments with the same name and no distinguishing identifier, ask the user to provide an identifier or cancel deletion. Do not guess based on result order, importance, environment, or age.
-
-## Red flags
-
-| Failure | Correction |
-| --- | --- |
-| Offer indistinguishable candidates | Ask for a stable identifier or cancellation |
-| Mention an irrelevant item | Say nothing about it |
-| State a relevant item directly | Use {{.Skill "ask-questions"}} |

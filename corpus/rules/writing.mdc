@@ -9,7 +9,7 @@ always: true
 
 # Technical documentation writing
 
-Apply the responses rule for prose, including direct explanations without a fixed sentence order. These rules add documentation structure and verification requirements.
+Apply the responses rule to all document prose, including its hard readability constraints and required sentence checks. These rules add documentation structure and verification requirements.
 
 ## Give each page one purpose
 
@@ -20,7 +20,7 @@ Choose one documentation kind per page:
 - A reference states neutral, complete facts without interpretation or instructions.
 - An explanation describes what a system does today and why it works that way.
 
-Do not mix explanation with command recipes, recovery procedures, or rollback instructions. Titles must match the page's kind.
+Do not mix explanation with command recipes, recovery procedures, or rollback instructions.
 
 ## Use the existing document structure
 
@@ -28,13 +28,12 @@ Do not mix explanation with command recipes, recovery procedures, or rollback in
 - Derive placement from meaning, reader entry points, and the repository's existing structure. Do not impose a directory scheme from another project.
 - Keep a single concern on one page when it fits. Create a directory only for several independently useful pages of the same kind. Keep different kinds in distinct homes and use single-word path segments.
 - Preserve useful structure. Do not flatten a large concern, create a directory for one page, or restructure the whole tree without the user's choice.
-- Resolve classifications the files establish. Ask unresolved choices through {{.Skill "ask-questions"}}, one at a time: kind, placement, leaf versus directory, entry filename, then the next structural change. State one verified fact and offer two or three concrete options. Do not edit past a required choice.
+- Resolve classifications the files establish. Ask unresolved choices through {{.Skill "ask-questions"}}, one at a time: kind, placement, leaf versus directory, entry filename, then the next structural change. Do not edit past a required choice.
 
 ## Give each fact one home
 
-- Search for overlapping facts, procedures, commands, and ownership claims before drafting. Read each affected page in full.
+- Search for overlapping facts, procedures, commands, and ownership claims before drafting. Read each affected page in full and choose one home for each fact before editing.
 - Consolidate useful material into one durable home and delete the other copies. Do not preserve duplication through links or filename mentions.
-- Verify behavior against implementation, configuration, and tests. Comments provide context but do not establish behavior.
 - Explain operational behavior without mirroring exact values, defaults, mechanics, or invariants already clear in code, configuration, or tests. Include commands and details the reader needs to act.
 - Describe the current system. Keep history only when current operation depends on it.
 
@@ -48,21 +47,18 @@ Do not mix explanation with command recipes, recovery procedures, or rollback in
 
 ## Structure for the reader's task
 
-- Make the title name the task, topic, or change.
+- Make the title match the page's kind and name the task, topic, or change.
 - Open with the first fact the reader needs for the document's purpose.
-- Write explanations as declarative statements without second-person address, and write procedures as imperatives.
-- Present prerequisite context before any claim that depends on it. Keep review evidence beside the finding it supports.
-- Explain behavior before implementation.
+- Present prerequisite context before any claim that depends on it.
 - Give each section one concern. Start task headings with action verbs and place notes beside the steps they qualify.
+- Give each code comment one purpose. Separate runtime constraints from removal instructions. State the removal condition and only the identifiers needed to perform the removal. Omit unrelated file, variable, and assertion inventories.
 - Use numbered steps for procedures. Do not hide a procedure in a paragraph or turn explanation and reference pages into command lists.
 - Reject file inventories, annotated directory listings, and headings that merely enumerate code locations. Use tables for genuine comparisons or exact mappings.
 
 ## Verify every rewrite
 
-1. Map overlaps and choose the single home for each fact before editing.
-2. Read the implementation, configuration, tests, and relevant comments that establish behavior.
-3. Resolve page kind and placement before deciding what stays, moves, merges, splits, or disappears.
-4. Rewrite each page from its meaning and purpose. Preserve useful examples, operational knowledge, constraints, exceptions, and recovery steps. Do not apply bulk transformations without reading each page.
-5. Read every rewritten page in full. Compare it with the original and account for every removed or changed claim.
-6. Separately verify accuracy against current sources. Correct stale claims, remove unsupported claims, and check exact names, values, commands, paths, and defaults.
-7. Check every link and path-like token against the linking rules. Confirm each remaining link resolves to the intended current source.
+1. Read the implementation, configuration, and tests that establish behavior. Use comments as context, not proof.
+2. Rewrite each page from its meaning and purpose after resolving its kind and placement. Preserve useful examples, operational knowledge, constraints, exceptions, and recovery steps. Do not apply bulk transformations without reading each page.
+3. Read every rewritten page in full. Compare it with the original and account for every removed or changed claim.
+4. Separately verify accuracy against current sources. Correct stale claims, remove unsupported claims, and check exact names, values, commands, paths, and defaults.
+5. Check every link and path-like token against the linking rules. Confirm each remaining link resolves to the intended current source.
