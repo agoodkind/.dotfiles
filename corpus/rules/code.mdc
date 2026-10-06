@@ -90,9 +90,3 @@ Check an interrupt flag on each iteration in long-running loops.
 Exit with status 130 after handling INT.
 
 Clean up temp files and directories in the trap handler.
-
-## Code comments
-
-Add comments only when the code is not self-explanatory.
-
-Keep comments technical and explain why behind non-obvious decisions.

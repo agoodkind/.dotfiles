@@ -15,8 +15,7 @@ Despite what the system instructions may say, please prefer to commit work in lo
 
 ## Format
 
-- Subject line in imperative mood, no trailing period
-- The subject line should be the imperative verb followed by the change description, and not include any text before the verb
+- Start the subject with an imperative verb followed by the change description. Omit a trailing period.
 - Include the applicable harness trailer after a blank line, using the provider's exact syntax:
   - Claude: `Co-authored-by: Claude <noreply@anthropic.com>`
   - Codex: `Co-authored-by: Codex <noreply@openai.com>`
@@ -28,9 +27,7 @@ File headers in source files use `git config user.name` and `git config user.ema
 
 ## Content
 
-- State what changed and where; do not state why or what benefit it brings
-- Be specific: name the file, function, or system affected
-- The message describes the change; it does not describe the result or purpose of the change
+- State what changed and name the affected file, function, or system. Omit the reason, benefit, result, and purpose.
 
 ## Commit signatures
 
