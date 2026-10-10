@@ -59,6 +59,8 @@ Classify the change as one of:
 
 Before drafting, read the reviewer-relevant context that is available from the branch, existing PR body, user message, ticket links, Slack links, Glean when available, design docs, dependency PRs, dashboards, and artifacts.
 
+Read the documents and discussions that establish the requirement, design, or behavior under review, and include their relevant findings in the description with links beside the supported claims.
+
 Use that context to answer:
 
 - Why is this change needed now?
@@ -152,7 +154,8 @@ Writing rules:
 Link and Markdown rules:
 
 - Include links that help the reviewer understand or review the PR, including tickets, design docs, dashboards, artifacts, stacked PRs, dependency PRs, and related historical PRs when they are actually relevant.
-- Label non-obvious links by review purpose, such as `Stacked on`, `Depends on`, `Dashboard`, `Artifact`, or `Related`.
+- Include source discussions and reference documentation when they establish a requirement, explain a design decision, or define a contract that the reviewer must assess. Explain the relevant finding or decision in the body and use the link to identify its source.
+- Label non-obvious links by review purpose, such as `Design`, `Source`, `Reference`, `Stacked on`, `Depends on`, `Dashboard`, `Artifact`, or `Related`.
 - Do not include prep-only sources or sample inputs used only to draft the body.
 - Do not combine backticks and hyperlinks. If text is hyperlinked, leave the link text plain because many Markdown renderers break backticked link text.
 - Use backticks around unlinked symbols, classes, files, endpoints, flow IDs, metrics, and other code-like anchors.
@@ -180,8 +183,9 @@ Title: [ACME-241] Preserve profile edits when saving fails
 
 ### Problem
 
-Ticket: [ACME-241](https://example.com/issues/ACME-241)
-Artifact: [Failed profile save](https://example.com/artifacts/profile-save-failure)
+- Ticket: [ACME-241](https://example.com/issues/ACME-241)
+- Artifact: [Failed profile save](https://example.com/artifacts/profile-save-failure)
+- Reference: [Profile save behavior](https://example.com/reference/profile-save)
 
 A failed profile save reloads the last saved values and erases the edits, forcing people to reenter them before retrying.
 
@@ -193,12 +197,13 @@ This PR preserves the edits during a failed save and displays the error beside t
 ```markdown
 Title: [TICKET-12345] Publish account update events
 
-Depends on: https://github.com/example-org/example-repo/pull/123
+- Depends on: https://github.com/example-org/example-repo/pull/123
 
 ### New feature
 
-Ticket: [TICKET-12345](https://example.com/issues/TICKET-12345)
-Design: [Retire account replication](https://example.com/design/account-events)
+- Ticket: [TICKET-12345](https://example.com/issues/TICKET-12345)
+- Design: [Retire account replication](https://example.com/design/account-events)
+- Reference: [Account event payload](https://example.com/reference/account-events)
 
 Account consumers will lose their update source when the replication service retires under the linked migration plan.
 
@@ -212,8 +217,9 @@ Title: [ACME-310] Update PR skill workflow for existing PR state
 
 ### Problem
 
-Ticket: [ACME-310](https://example.com/issues/ACME-310)
-Related: [Report of an unwanted description edit](https://example.com/reports/pr-description-edit)
+- Ticket: [ACME-310](https://example.com/issues/ACME-310)
+- Related: [Report of an unwanted description edit](https://example.com/reports/pr-description-edit)
+- Reference: [PR editing workflow](https://example.com/reference/pr-editing)
 
 Agents can overwrite an open PR during a review because the workflow combines branch inspection with description edits.
 
@@ -229,7 +235,8 @@ Title: Clear stale retry warning after recovery
 
 ### Problem
 
-Related: [Retry behavior introduced by PR 123](https://github.com/example-org/example-repo/pull/123)
+- Related: [Retry behavior introduced by PR 123](https://github.com/example-org/example-repo/pull/123)
+- Source: [Retry design discussion](https://example.com/discussions/retry-behavior)
 
 A recovered save looks unsuccessful because the retry handler displays the earlier failure warning after the response succeeds.
 
@@ -243,14 +250,17 @@ This small follow-up has no ticket. The title and body omit ticket placeholders 
 Prefer:
 
 ```markdown
-Depends on: https://github.com/agency/repository/pull/13566
-Ticket: [AGENCY-11414](https://agency.ticket.net/browse/AGENCY-11414)
+- Depends on: https://github.com/agency/repository/pull/13566
+- Ticket: [AGENCY-11414](https://agency.ticket.net/browse/AGENCY-11414)
+- Design: [Account replication retirement](https://example.com/design/account-events)
+- Source: [Account migration decision](https://example.com/discussions/account-migration)
+- Reference: [Account event contract](https://example.com/reference/account-events)
 ```
 
 Avoid:
 
 ```markdown
-Ticket: [`AGENCY-11414`](https://agency.ticket.net/browse/AGENCY-11414)
+- Ticket: [`AGENCY-11414`](https://agency.ticket.net/browse/AGENCY-11414)
 ```
 
 ### User-Visible Behavior Comparison
@@ -260,7 +270,7 @@ Title: Preserve catalog sort after clearing filters
 
 ### Problem
 
-Related: [Catalog filter behavior](https://example.com/issues/catalog-sort-reset)
+- Related: [Catalog filter behavior](https://example.com/issues/catalog-sort-reset)
 
 `Clear filters` resets the catalog's sort order, requiring people to select their preferred order again.
 
@@ -281,8 +291,8 @@ Title: [ACME-218] Publish warehouse inventory changes
 
 ### New feature
 
-Ticket: [ACME-218](https://example.com/issues/ACME-218)
-Design: [Inventory event contract](https://example.com/design/inventory-events)
+- Ticket: [ACME-218](https://example.com/issues/ACME-218)
+- Design: [Inventory event contract](https://example.com/design/inventory-events)
 
 Warehouse displays remain stale between polls because the inventory service only provides full snapshots.
 
@@ -304,7 +314,7 @@ Title: Explain why upload is disabled
 
 ### Problem
 
-Related: [Upload usability report](https://example.com/reports/upload-disabled)
+- Related: [Upload usability report](https://example.com/reports/upload-disabled)
 
 People cannot identify why `Upload` is disabled because the dialog omits its file selection requirement.
 
