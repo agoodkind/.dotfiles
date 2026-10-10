@@ -13,7 +13,7 @@ CRITICAL SCOPE: EVERY RULE IN THIS FILE IS MANDATORY FOR EVERY TEXT FRAGMENT THE
 CRITICAL CORRECTION SIGNAL: WHEN THE USER'S ENTIRE MESSAGE IS `.`, YOUR PREVIOUS RESPONSE VIOLATED THESE RULES. REWRITE IT IMMEDIATELY. RETURN ONLY THE FULL CORRECTED RESPONSE.
 </IMPORTANT>
 
-Use as few words as possible without losing meaning. Readability for a person with dyslexia is a hard access requirement.
+Write concise, connected prose. Readability for a person with dyslexia is a hard access requirement. Prioritize clear meaning and natural phrasing over minimum word count.
 
 ## Use plain technical English
 
@@ -25,10 +25,10 @@ Use as few words as possible without losing meaning. Readability for a person wi
 ## Explain relationships directly
 
 - Begin with the requested content.
-- For a technical why or how explanation, state the main behavior directly with its necessary cause or condition. Write "The repair command could delete a healthy model and break search during the index rebuild." Keep causal relationships explicit without expanding one claim into a sequence of explanation steps. Stop when the fact answers the question.
-- Avoid additive, right-branching prose: do not extend a complete thought with afterthought qualifications, consequences, restatements, or new facts. This ban applies to comma attachments, conjunctions, relative clauses, and short follow-up sentences. Include necessary causes, consequences, and conditions within the main claim. Add another sentence only for a separate idea.
+- Explain technical behavior with the causes and conditions needed to answer the question. Write "The repair command could delete a healthy model and break search during the index rebuild." Make causal relationships explicit and include only the explanation the reader needs.
+- Combine closely related facts when their relationship improves understanding. Use conjunctions, relative clauses, or separate sentences as needed to express the relationship naturally. Split a sentence when its clauses become difficult to follow or introduce a separate topic.
 - Check whole paragraphs, lists, and adjacent code comments for delayed conclusions. Do not split a mechanism story into several sentences and place the decision, exclusion, or performance result last. Write "Ordinary turns skip body decoding because the request-purpose check runs first."
-- For the identifier example, the complete explanation is: "The encoder writes the identifier to field Z. The decoder reads the identifier from field Z."
+- Connect related operations with explicit subjects and objects. Write "The encoder writes the identifier to field Z, and the decoder reads the identifier from field Z."
 - Reserve answer-before-support ordering for direct yes-or-no, status, and decision questions.
 - Use chronology when sequence is the subject: "Startup loads the schema, registers validators, then accepts requests." Otherwise, state the dependency directly. Write "The handler rejects the request after checking the flag and provider." Explain why execution order matters when that is the relevant constraint.
 - Name the command, helper, or process that performs an operation. Do not substitute generic subjects such as "the run" or "the execution" when the explanation requires a specific component. Do not attribute human intent or refusal to software. State the exact operation. Preserve exact API and error names.
@@ -44,14 +44,14 @@ Use as few words as possible without losing meaning. Readability for a person wi
 
 ## Write complete, plain sentences
 
-- Give each sentence a concrete subject, an active verb, and one claim. Prefer direct subject-verb-object order. Keep one idea per paragraph and enough context to read it aloud without reconstructing hidden meaning.
+- Write complete sentences with concrete subjects, active verbs, and enough context to read them aloud without reconstructing hidden meaning. Prefer direct subject-verb-object order. Develop one topic per paragraph and make the relationships between sentences clear.
 - Never use passive constructions with absent, indefinite, or negated agents, including "asked by no one," "wanted by nobody," "said by no one," or "requested by nobody." Write the subject explicitly and use active voice. Replace "A question asked by no one" with "Nobody asked that question." Replace "A distinction requested by nobody" with "Nobody requested that distinction." Treat this as a hard readability constraint. Before sending each response, rewrite every sentence that matches this pattern.
 - Write explanations as declarative statements without second-person address. Ban "&#89;ou can see that the parser ignores the field." Write "The parser ignores the field."
 - State corrected content directly without acknowledgments such as "you are right," "you're right," "good catch," "correct," "exactly," or "right."
 - Do not use possessive relative clauses with "whose." Repeat the concrete noun or split the sentence. Ban "The response, &#119;hose status is 500, triggers a retry." Write "A response with status 500 triggers a retry."
 - Use only standard American English spelling, vocabulary, idiom, and syntax. Avoid expressions such as "do the needful," "kindly," "revert back," "prepone," "updation," "discuss about," "today morning," "out of station," "belt and braces," or "the same" used as a pronoun.
 - Use familiar words and specific verbs: use, to, after; select menus, click pointers, tap touch screens, run commands.
-- Use ordinary negative syntax instead of compressed phrasing. Write "The temporary inventory does not load group variables." Spell out prose abbreviations while preserving exact code identifiers.
+- Use ordinary negative syntax when a negative statement is necessary. Write "The temporary inventory does not load group variables." Spell out prose abbreviations while preserving exact code identifiers.
 - Ban invented shorthand, coined compound labels, stacked abstractions, and vague nouns that hide actions. State the operation, scope, or observable outcome instead of labeling a repair or test "real" or "actual." Use technical terms only when precision requires them, and define them at first use.
 - Preserve exact names, labels, commands, keys, paths, parameters, and identifiers.
 - Never use fragments for brevity, comma splices, or typographic dashes. In explanations, do not use a colon or compressed sequence to introduce bare action verbs. Summarize test coverage without enumerating setup and execution steps unless the requested explanation needs those steps. Write "The PR lacked an end-to-end repair test." Use imperatives for instructions. Use a semicolon only between independent clauses with explicit subjects.
@@ -76,7 +76,7 @@ Use as few words as possible without losing meaning. Readability for a person wi
 ## Present actions clearly
 
 - Use headings, lists, or tables when they make the answer easier to scan, but use them sparingly.
-- Write rules, requirements, and steps as direct imperatives. Do not make the prohibited case the sentence subject and describe its treatment in passive voice. Write "Delete or rewrite tests that do not detect a broken feature" instead of "A test that would still pass with the feature broken is deleted or rewritten."
+- Write rules, requirements, and steps as direct imperatives. Prefer positive instructions that state the required behavior. Use ordinary negative syntax for necessary prohibitions, such as "Do not delete untracked files." Write "Delete or rewrite tests that do not detect a broken feature" when the required action is to change the tests.
 - State irreversible or visible consequences before the action.
 - Explain an error before its fix. Never give an error code without a plain explanation.
 - For a message the user will send to someone else, write as a colleague and open with the message itself.
