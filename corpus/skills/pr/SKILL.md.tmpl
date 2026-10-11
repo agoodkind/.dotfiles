@@ -1,9 +1,13 @@
 ---
 name: pr
-description: Use when the user asks to create, update, reword, or review one pull request.
+description: Use whenever producing any type of prose. Apply the pull request workflow when creating, updating, rewording, or reviewing one pull request.
 ---
 
 # Create Or Revise Pull Request
+
+YOU MUST USE THIS SKILL WHEN PRODUCING ANY TYPE OF PROSE.
+
+Apply the prose and reference guidance to every written response. Run the GitHub workflow below when creating or revising a pull request.
 
 Use this workflow when the user asks to create, update, reword, or review a pull request description. Follow the steps in order. Do not skip the existing-PR check unless the user explicitly asks for a drafting-only exercise.
 
@@ -59,7 +63,7 @@ Classify the change as one of:
 
 Before drafting, read the reviewer-relevant context that is available from the branch, existing PR body, user message, ticket links, Slack links, Glean when available, design docs, dependency PRs, dashboards, and artifacts.
 
-Include supporting references when the change depends on requirements, design decisions, external tools, or API contracts. Read each source, explain its relevant finding in the description, and link beside the claim it supports. Use official documentation for tools and APIs and project specifications or source discussions for project decisions. A ticket link does not replace these references.
+Include supporting references when the change depends on requirements, design decisions, external tools, or API contracts. Read each source, explain its relevant finding in the description, and include a link to the source. Use official documentation for tools and APIs and project specifications or source discussions for project decisions. A ticket link does not replace these references.
 
 Use that context to answer:
 
@@ -95,7 +99,9 @@ Examples:
 
 Write for a lightly technical reviewer who may have no prior context. The reviewer should understand the behavioral or qualitative change in one pass.
 
-Default to two short paragraphs in this order:
+Use `Problem` or `New feature` for the main explanation, followed by `Changes`. Put the supporting links in a compact `References` section at the top or bottom of the description. Add `Impact`, `Rollout`, or `Demo` only when the section provides distinct information needed for review.
+
+Write the main explanation as two short paragraphs in this order:
 
 1. State the existing problem and its cause: "People lose their edits because the form reloads saved values after a failed save." Add the concrete consequence when it helps explain the problem.
 2. State what this PR changes and what people or systems can do afterward. Include only behavior the change supports.
@@ -108,12 +114,16 @@ Use this structure for a bug, limitation, or maintenance change:
 <!-- This template uses fictional behavior and placeholder links. -->
 ### Problem
 
-Ticket: https://agency.ticketing.net/browse/TICKET-12345
-Reference: [Applicable requirements or API contract](https://example.com/reference/contract)
-
 A user or system experiences a concrete problem because of the existing behavior or constraint. Explain the consequence when it adds useful context.
 
+### Changes
+
 This PR changes the relevant behavior. Explain the resulting capability or recovery.
+
+### References
+
+- Ticket: [TICKET-12345](https://agency.ticketing.net/browse/TICKET-12345)
+- Reference: [Applicable requirements or API contract](https://example.com/reference/contract)
 ```
 
 For a new capability, use this shape instead:
@@ -122,15 +132,18 @@ For a new capability, use this shape instead:
 <!-- This template uses fictional behavior and placeholder links. -->
 ### New feature
 
-Ticket: https://agency.ticketing.net/browse/TICKET-12345
-Reference: [Applicable requirements or API contract](https://example.com/reference/contract)
-
 A user or system cannot complete a concrete workflow because a needed capability is missing.
 
+### Changes
+
 This PR adds the capability. Explain what the user or system can do afterward.
+
+### References
+
+- Ticket: [TICKET-12345](https://agency.ticketing.net/browse/TICKET-12345)
+- Reference: [Applicable requirements or API contract](https://example.com/reference/contract)
 ```
 
-Choose `Problem` for a bug, limitation, or maintenance change. Choose `New feature` for a new capability. Add `Fix`, `Impact`, `Rollout`, or `Demo` only when it gives the reviewer distinct, load-bearing information.
 
 Before showing the draft, read its first prose sentence without the title or headings. It must identify the existing problem or unmet need. Rewrite an opening such as "X now does Y", "This PR adds Y", or "Updated X to do Y" to explain the problem first. A `Problem` heading alone does not satisfy this check. Use supported context from Step 3; do not invent a problem to fill the structure.
 
@@ -138,8 +151,6 @@ Apply {{.Rule "writing"}} in addition to the pull request-specific rules below.
 
 Writing rules:
 
-- Write PR prose as if it must pass review against Apple Human Interface Guidelines writing guidance: use simple plain language, fit the reviewer's context, write for accessibility, avoid jargon unless it is necessary, and leave no ambiguous claims.
-- Write every sentence as if Apple Marketing will critically review it for clarity, precision, restraint, and polish.
 - Prioritize readability by placing the problem first and writing complete, connected sentences with concrete subjects and verbs. Retain background and links that help a reviewer understand or verify the change, while removing narration, filler, repetition, and unasked recommendations.
 - Leave out every non-load-bearing detail. If a detail does not help the reviewer understand, verify, or safely ship the change, cut it.
 - Reject bloviating. `Bloviate` means to write verbosely and windily, so remove pompous, inflated, self-important, or low-substance prose.
@@ -157,6 +168,7 @@ Writing rules:
 
 Link and Markdown rules:
 
+- Use a few inline links where immediate source context helps explain a claim. Group the remaining references in the reference list, and link each source once.
 - Label non-obvious links by review purpose, such as `Design`, `Source`, `Reference`, `Stacked on`, `Depends on`, `Dashboard`, `Artifact`, or `Related`.
 - Do not include prep-only sources or sample inputs used only to draft the body.
 - Do not combine backticks and hyperlinks. If text is hyperlinked, leave the link text plain because many Markdown renderers break backticked link text.
@@ -186,13 +198,17 @@ Title: [ACME-241] Preserve profile edits when saving fails
 
 ### Problem
 
+A failed profile save reloads the last saved values and erases the edits, forcing people to reenter them before retrying.
+
+### Changes
+
+This PR preserves the edits during a failed save and displays the error beside the Save button for a retry.
+
+### References
+
 - Ticket: [ACME-241](https://example.com/issues/ACME-241)
 - Artifact: [Failed profile save](https://example.com/artifacts/profile-save-failure)
 - Reference: [Profile save behavior](https://example.com/reference/profile-save)
-
-A failed profile save reloads the last saved values and erases the edits, forcing people to reenter them before retrying.
-
-This PR preserves the edits during a failed save and displays the error beside the Save button for a retry.
 ```
 
 ### New Feature With Context
@@ -201,17 +217,20 @@ This PR preserves the edits during a failed save and displays the error beside t
 <!-- This example uses fictional behavior and placeholder links. -->
 Title: [TICKET-12345] Publish account update events
 
-- Depends on: https://github.com/example-org/example-repo/pull/123
-
 ### New feature
+
+Account consumers will lose their update source when the replication service retires under the linked migration plan.
+
+### Changes
+
+This PR publishes each committed account change with its reason, changed fields, and previous and current snapshots under the event contract introduced by the dependency PR.
+
+### References
 
 - Ticket: [TICKET-12345](https://example.com/issues/TICKET-12345)
 - Design: [Retire account replication](https://example.com/design/account-events)
 - Reference: [Account event payload](https://example.com/reference/account-events)
-
-Account consumers will lose their update source when the replication service retires under the linked migration plan.
-
-This PR publishes each committed account change with its reason, changed fields, and previous and current snapshots under the event contract introduced by the dependency PR.
+- Depends on: [Event infrastructure](https://github.com/example-org/example-repo/pull/123)
 ```
 
 ### Provider References
@@ -222,11 +241,16 @@ Title: [ACME-420] Add declarative service resources
 
 ### Problem
 
-- Ticket: [ACME-420](https://example.com/issues/ACME-420)
-
 `tofu plan` cannot show service configuration changes because deployment commands update services outside managed resources.
 
-This PR adds service resources that read configuration during [OpenTofu planning](https://opentofu.org/docs/cli/commands/plan/) and apply changes under the [resource lifecycle](https://opentofu.org/docs/language/resources/behavior/). The [deployment design](https://example.com/design/deployment) requires visible restarts and recovery after an interrupted apply.
+### Changes
+
+This PR adds service resources that read configuration during [OpenTofu planning](https://opentofu.org/docs/cli/commands/plan/) and apply changes under the resource lifecycle. The [deployment design](https://example.com/design/deployment) requires visible restarts and recovery after an interrupted apply.
+
+### References
+
+- Ticket: [ACME-420](https://example.com/issues/ACME-420)
+- Reference: [OpenTofu resource lifecycle](https://opentofu.org/docs/language/resources/behavior/)
 ```
 
 ### No Noisy Testing Section
@@ -237,13 +261,17 @@ Title: [ACME-310] Update PR skill workflow for existing PR state
 
 ### Problem
 
+Agents can overwrite an open PR during a review because the workflow combines branch inspection with description edits.
+
+### Changes
+
+This PR separates those actions and requires an explicit request before changing an open PR's description.
+
+### References
+
 - Ticket: [ACME-310](https://example.com/issues/ACME-310)
 - Related: [Report of an unwanted description edit](https://example.com/reports/pr-description-edit)
 - Reference: [PR editing workflow](https://example.com/reference/pr-editing)
-
-Agents can overwrite an open PR during a review because the workflow combines branch inspection with description edits.
-
-This PR separates those actions and requires an explicit request before changing an open PR's description.
 ```
 
 Do not add `## Testing` unless material verification actually ran for the behavior of the change.
@@ -256,12 +284,16 @@ Title: Clear stale retry warning after recovery
 
 ### Problem
 
-- Related: [Retry behavior introduced by PR 123](https://github.com/example-org/example-repo/pull/123)
-- Source: [Retry design discussion](https://example.com/discussions/retry-behavior)
-
 A recovered save looks unsuccessful because the retry handler displays the earlier failure warning after the response succeeds.
 
+### Changes
+
 This PR clears the warning when the retry succeeds and displays the save confirmation.
+
+### References
+
+- Related: [Retry behavior introduced by PR 123](https://github.com/example-org/example-repo/pull/123)
+- Source: [Retry design discussion](https://example.com/discussions/retry-behavior)
 ```
 
 This small follow-up has no ticket. The title and body omit ticket placeholders instead of inventing tracking context.
@@ -294,10 +326,9 @@ Title: Preserve catalog sort after clearing filters
 
 ### Problem
 
-- Related: [Catalog filter behavior](https://example.com/issues/catalog-sort-reset)
-- Reference: [Filter requirements](https://example.com/reference/catalog-filters)
-
 `Clear filters` resets the catalog's sort order, requiring people to select their preferred order again.
+
+### Changes
 
 This PR clears the filters while preserving the selected sort order.
 
@@ -305,6 +336,11 @@ This PR clears the filters while preserving the selected sort order.
 | --- | --- | --- |
 | `Clear filters` | Resets filters and sort order. | Resets filters. |
 | Sorting after clearing | Requires another selection. | Uses the existing selection. |
+
+### References
+
+- Related: [Catalog filter behavior](https://example.com/issues/catalog-sort-reset)
+- Reference: [Filter requirements](https://example.com/reference/catalog-filters)
 ```
 
 This table explains the user consequence. It does not list the changed screens, handlers, or state fields.
@@ -317,9 +353,9 @@ Title: [ACME-218] Publish warehouse inventory changes
 
 ### New feature
 
-- Ticket: [ACME-218](https://example.com/issues/ACME-218)
-
 Warehouse displays remain stale between polls because the inventory service only provides full snapshots.
+
+### Changes
 
 This PR adds event publishing to the inventory service under the [inventory event contract](https://example.com/design/inventory-events).
 
@@ -328,6 +364,10 @@ This PR adds event publishing to the inventory service under the [inventory even
 | Update source | Snapshot polling. | `inventory.changed` events. |
 | Update timing | The next poll. | After the change commits. |
 | Payload | Full inventory snapshot. | Item, location, quantity change, and resulting quantity. |
+
+### References
+
+- Ticket: [ACME-218](https://example.com/issues/ACME-218)
 ```
 
 This table defines the boundary reviewers must validate. It does not repeat publisher class names or serialization changes from the diff.
@@ -340,10 +380,9 @@ Title: Explain why upload is disabled
 
 ### Problem
 
-- Related: [Upload usability report](https://example.com/reports/upload-disabled)
-- Reference: [Upload requirements](https://example.com/reference/upload)
-
 People cannot identify why `Upload` is disabled because the dialog omits its file selection requirement.
+
+### Changes
 
 This PR explains that selecting a file enables `Upload`.
 
@@ -353,6 +392,11 @@ This PR explains that selecting a file enables `Upload`.
 | --- | --- |
 | ![Before Acme upload dialog](https://example.com/acme-upload-before.png) | ![After Acme upload dialog](https://example.com/acme-upload-after.png) |
 | The disabled action gives no recovery guidance. | Helper text explains that selecting a file enables `Upload`. |
+
+### References
+
+- Related: [Upload usability report](https://example.com/reports/upload-disabled)
+- Reference: [Upload requirements](https://example.com/reference/upload)
 ```
 
 This table tells the reviewer what changed visually and what outcome to inspect. It does not narrate spacing, color, or component edits already visible in the diff.

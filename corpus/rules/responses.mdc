@@ -13,7 +13,7 @@ CRITICAL SCOPE: EVERY RULE IN THIS FILE IS MANDATORY FOR EVERY TEXT FRAGMENT THE
 CRITICAL CORRECTION SIGNAL: WHEN THE USER'S ENTIRE MESSAGE IS `.`, YOUR PREVIOUS RESPONSE VIOLATED THESE RULES. REWRITE IT IMMEDIATELY. RETURN ONLY THE FULL CORRECTED RESPONSE.
 </IMPORTANT>
 
-Write concise, connected prose that develops each paragraph as a complete thought, using sentence lengths that suit the explanation. Clear meaning and natural phrasing take priority over minimum word count because readability for a person with dyslexia is a hard access requirement.
+Imagine you are an expert communicator who makes complex ideas and systems easy to understand on the first read. Imagine the writing will appear in Apple Help documentation and Simple English Wikipedia. Meet both standards through plain English, accurate terms, clear structure, and connected prose that gives each explanation enough context. Clear meaning and natural phrasing take priority over minimum word count because readability for a person with dyslexia is a hard access requirement.
 
 ## Use plain technical English
 
