@@ -160,7 +160,7 @@ Writing rules:
 - Include only details that help the reviewer understand, verify, or safely ship the PR.
 - The PR description gives high-level context. The PR diff shows the code change.
 - Do not add irrelevant adjacent context just because it is available.
-- Include a `## Testing` section only when actual material verification was run. Material verification includes meaningful commands, simulator checks, deployed checks, screenshots or videos, smoke tests, and other concrete evidence. If you are unsure whether the evidence is material, ask before adding `## Testing`. DO NOT ADD non-material checks like "lints passed", "rg found x", or anything that isn't directly related to the behavior of the change itself.
+- Include a `### Testing` section only when actual material verification was run. Material verification includes meaningful commands, simulator checks, deployed checks, screenshots or videos, smoke tests, and other concrete evidence. If you are unsure whether the evidence is material, ask before adding `### Testing`. DO NOT ADD non-material checks like "lints passed", "rg found x", or anything that isn't directly related to the behavior of the change itself.
 - Unit tests alone do NOT qualify as material verification. Do not include them in the PR narration.
 - Linting, formatting, and static checks do NOT qualify as material verification. Do not include them in the PR narration.
 - Do not mention unavailable test output, unrun tests, or missing verification unless it materially changes review risk.
@@ -273,7 +273,7 @@ This PR separates those actions and requires an explicit request before changing
 - Reference: [PR editing workflow](https://example.com/reference/pr-editing)
 ```
 
-Do not add `## Testing` unless material verification actually ran for the behavior of the change.
+Do not add `### Testing` unless material verification actually ran for the behavior of the change.
 
 ### Small Untracked Follow-Up
 
@@ -475,5 +475,5 @@ The Slack message is a human one-liner for the code review channel. It must star
 Example:
 
 ```text
-Strengthen `pr` skill discouragement of non-material `## Testing` sections https://github.com/example-org/example-repo/pull/123
+Strengthen `pr` skill discouragement of non-material `### Testing` sections https://github.com/example-org/example-repo/pull/123
 ```
