@@ -7,7 +7,7 @@ description: Use when the user asks to create, update, reword, or review one pul
 
 Use this workflow when the user asks to create, update, reword, or review a pull request description. Follow the steps in order. Do not skip the existing-PR check unless the user explicitly asks for a drafting-only exercise.
 
-Follow {{.Rule "git"}} for fetches, remote-tracking comparisons, signed commits, staging, and pushes. Apply {{.Rule "writing"}} and {{.Skill "make-readable"}} to every title, body, and final message. Use {{.Skill "split-to-prs"}} for any multi-PR split or stack decision.
+Follow {{.Rule "git"}} for fetches, remote-tracking comparisons, signed commits, staging, and pushes. Apply {{.Rule "writing"}} to every title, body, and final message. Use {{.Skill "split-to-prs"}} for any multi-PR split or stack decision.
 
 If the user asked to merge, land, or ship, stop and follow {{.Skill "babysit"}}.
 
@@ -59,7 +59,7 @@ Classify the change as one of:
 
 Before drafting, read the reviewer-relevant context that is available from the branch, existing PR body, user message, ticket links, Slack links, Glean when available, design docs, dependency PRs, dashboards, and artifacts.
 
-Read the documents and discussions that establish the requirement, design, or behavior under review, and include their relevant findings in the description with links beside the supported claims.
+Include supporting references when the change depends on requirements, design decisions, external tools, or API contracts. Read each source, explain its relevant finding in the description, and link beside the claim it supports. Use official documentation for tools and APIs and project specifications or source discussions for project decisions. A ticket link does not replace these references.
 
 Use that context to answer:
 
@@ -108,6 +108,7 @@ Use this structure for a bug, limitation, or maintenance change:
 ### Problem
 
 Ticket: https://agency.ticketing.net/browse/TICKET-12345
+Reference: [Applicable requirements or API contract](https://example.com/reference/contract)
 
 A user or system experiences a concrete problem because of the existing behavior or constraint. Explain the consequence when it adds useful context.
 
@@ -120,6 +121,7 @@ For a new capability, use this shape instead:
 ### New feature
 
 Ticket: https://agency.ticketing.net/browse/TICKET-12345
+Reference: [Applicable requirements or API contract](https://example.com/reference/contract)
 
 A user or system cannot complete a concrete workflow because a needed capability is missing.
 
@@ -130,7 +132,7 @@ Choose `Problem` for a bug, limitation, or maintenance change. Choose `New featu
 
 Before showing the draft, read its first prose sentence without the title or headings. It must identify the existing problem or unmet need. Rewrite an opening such as "X now does Y", "This PR adds Y", or "Updated X to do Y" to explain the problem first. A `Problem` heading alone does not satisfy this check. Use supported context from Step 3; do not invent a problem to fill the structure.
 
-Apply {{.Rule "writing"}} and {{.Skill "make-readable"}} in addition to the pull request-specific rules below.
+Apply {{.Rule "writing"}} in addition to the pull request-specific rules below.
 
 Writing rules:
 
@@ -153,8 +155,6 @@ Writing rules:
 
 Link and Markdown rules:
 
-- Include links that help the reviewer understand or review the PR, including tickets, design docs, dashboards, artifacts, stacked PRs, dependency PRs, and related historical PRs when they are actually relevant.
-- Include source discussions and reference documentation when they establish a requirement, explain a design decision, or define a contract that the reviewer must assess. Explain the relevant finding or decision in the body and use the link to identify its source.
 - Label non-obvious links by review purpose, such as `Design`, `Source`, `Reference`, `Stacked on`, `Depends on`, `Dashboard`, `Artifact`, or `Related`.
 - Do not include prep-only sources or sample inputs used only to draft the body.
 - Do not combine backticks and hyperlinks. If text is hyperlinked, leave the link text plain because many Markdown renderers break backticked link text.
@@ -174,11 +174,12 @@ Comparison rules:
 
 ## Examples
 
-Use these fictional examples as drafting patterns, replacing their illustrative links with the PR's actual review references.
+Adapt these fictional examples to the current PR's behavior and replace placeholder links with verified review sources.
 
 ### Problem Before Change
 
 ```markdown
+<!-- This example uses fictional behavior and placeholder links. -->
 Title: [ACME-241] Preserve profile edits when saving fails
 
 ### Problem
@@ -195,6 +196,7 @@ This PR preserves the edits during a failed save and displays the error beside t
 ### New Feature With Context
 
 ```markdown
+<!-- This example uses fictional behavior and placeholder links. -->
 Title: [TICKET-12345] Publish account update events
 
 - Depends on: https://github.com/example-org/example-repo/pull/123
@@ -210,9 +212,25 @@ Account consumers will lose their update source when the replication service ret
 This PR publishes each committed account change with its reason, changed fields, and previous and current snapshots under the event contract introduced by the dependency PR.
 ```
 
+### Provider References
+
+```markdown
+<!-- This project scenario is fictional. The OpenTofu references are official documentation. -->
+Title: [ACME-420] Add declarative service resources
+
+### Problem
+
+- Ticket: [ACME-420](https://example.com/issues/ACME-420)
+
+`tofu plan` cannot show service configuration changes because deployment commands update services outside managed resources.
+
+This PR adds service resources that read configuration during [OpenTofu planning](https://opentofu.org/docs/cli/commands/plan/) and apply changes under the [resource lifecycle](https://opentofu.org/docs/language/resources/behavior/). The [deployment design](https://example.com/design/deployment) requires visible restarts and recovery after an interrupted apply.
+```
+
 ### No Noisy Testing Section
 
 ```markdown
+<!-- This example uses fictional behavior and placeholder links. -->
 Title: [ACME-310] Update PR skill workflow for existing PR state
 
 ### Problem
@@ -231,6 +249,7 @@ Do not add `## Testing` unless material verification actually ran for the behavi
 ### Small Untracked Follow-Up
 
 ```markdown
+<!-- This example uses fictional behavior and placeholder links. -->
 Title: Clear stale retry warning after recovery
 
 ### Problem
@@ -250,6 +269,7 @@ This small follow-up has no ticket. The title and body omit ticket placeholders 
 Prefer:
 
 ```markdown
+<!-- These links are fictional placeholders for a formatting example. -->
 - Depends on: https://github.com/agency/repository/pull/13566
 - Ticket: [AGENCY-11414](https://agency.ticket.net/browse/AGENCY-11414)
 - Design: [Account replication retirement](https://example.com/design/account-events)
@@ -260,17 +280,20 @@ Prefer:
 Avoid:
 
 ```markdown
+<!-- This link is a fictional placeholder for a formatting example. -->
 - Ticket: [`AGENCY-11414`](https://agency.ticket.net/browse/AGENCY-11414)
 ```
 
 ### User-Visible Behavior Comparison
 
 ```markdown
+<!-- This example uses fictional behavior and placeholder links. -->
 Title: Preserve catalog sort after clearing filters
 
 ### Problem
 
 - Related: [Catalog filter behavior](https://example.com/issues/catalog-sort-reset)
+- Reference: [Filter requirements](https://example.com/reference/catalog-filters)
 
 `Clear filters` resets the catalog's sort order, requiring people to select their preferred order again.
 
@@ -287,6 +310,7 @@ This table explains the user consequence. It does not list the changed screens, 
 ### System Contract Comparison
 
 ```markdown
+<!-- This example uses fictional behavior and placeholder links. -->
 Title: [ACME-218] Publish warehouse inventory changes
 
 ### New feature
@@ -310,11 +334,13 @@ This table defines the boundary reviewers must validate. It does not repeat publ
 ### Visual Comparison
 
 ```markdown
+<!-- This example uses fictional behavior and placeholder links. -->
 Title: Explain why upload is disabled
 
 ### Problem
 
 - Related: [Upload usability report](https://example.com/reports/upload-disabled)
+- Reference: [Upload requirements](https://example.com/reference/upload)
 
 People cannot identify why `Upload` is disabled because the dialog omits its file selection requirement.
 
