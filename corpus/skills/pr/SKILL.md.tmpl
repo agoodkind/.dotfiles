@@ -318,17 +318,16 @@ Title: [ACME-218] Publish warehouse inventory changes
 ### New feature
 
 - Ticket: [ACME-218](https://example.com/issues/ACME-218)
-- Design: [Inventory event contract](https://example.com/design/inventory-events)
 
 Warehouse displays remain stale between polls because the inventory service only provides full snapshots.
 
-This PR publishes each committed inventory change with the item, location, quantity delta, and resulting quantity.
+This PR adds event publishing to the inventory service under the [inventory event contract](https://example.com/design/inventory-events).
 
 | Contract | Before | After |
 | --- | --- | --- |
 | Update source | Snapshot polling. | `inventory.changed` events. |
 | Update timing | The next poll. | After the change commits. |
-| Payload | Full inventory snapshot. | Changed item and quantities. |
+| Payload | Full inventory snapshot. | Item, location, quantity change, and resulting quantity. |
 ```
 
 This table defines the boundary reviewers must validate. It does not repeat publisher class names or serialization changes from the diff.
