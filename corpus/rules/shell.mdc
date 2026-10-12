@@ -36,4 +36,4 @@ Do not stack soft landings for the same failure. One recovery boundary is enough
 
 When any path claims an artifact is ready, verify it the same way. Do not skip the usability check on the path that just produced the artifact.
 
-Prefer the semantic MCP server's `search_code` instead of grepping for repo-wide discovery
+Prefer the semantic MCP server's `search_code` instead of grepping for repo-wide discovery.
