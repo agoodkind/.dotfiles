@@ -13,7 +13,7 @@ YOU MUST APPLY these rules to ALL forms of prose, including ANYTHING that uses n
 
 # General Rules
 
-- When describing any subject, keep each name its docs, API, or code already use. Do not replace one with a synonym, nickname, or shorthand.
+- When describing a subject, use the name established by its documentation, API, or code. Do not replace the name with a synonym, nickname, or shorthand.
 - Prefer to write using Basic English words, and use the most commonly understood word when the Basic English word sounds strange.
 - Give each sentence one subject, one verb, and one object and start a new sentence or paragraph for the next idea.
 - Avoid using unnecessary contractions.
