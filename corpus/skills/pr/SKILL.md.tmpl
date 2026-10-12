@@ -205,7 +205,7 @@ Title: [ACME-241] Preserve profile edits when saving fails
 
 ### Problem
 
-When a failed profile attempts to save, it reloads the last saved values and erases the edits.
+When a profile save fails, the form reloads the last saved values and erases the edits.
 This forces people to reenter them before retrying.
 
 This PR preserves the edits during a failed save and displays the error beside the Save button for a retry.
