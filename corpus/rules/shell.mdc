@@ -18,7 +18,7 @@ good:
 do_y
 other_command
 
-Avoid using buffered output, as it obscures the command out from the user.
+Avoid using buffered output, as it obscures the command output from the user.
 
 ## Scripting
 
