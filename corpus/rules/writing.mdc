@@ -74,7 +74,7 @@ Do not mix explanation with command recipes, recovery procedures, or rollback in
 
 ## Editing
 
-1. ALWAYS read the ENTIRE file before editing it: Read the current state of a file immediately before editing it. The user may have made changes since the file was last read, and edits should reflect the actual current content.
+1. Read the entire file immediately before editing it because the user may have changed it since the last read.
 2. When a user is requesting corrections to a page or document, do not edit other parts of the page that are not related to what the user requested changes on. Do not apply bulk transformations unless explicitly requested.
 3. Resolve each page from its meaning and purpose after resolving its type and placement.
 4. Preserve useful examples, operational knowledge, constraints, exceptions, and recovery steps.
