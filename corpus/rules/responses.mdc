@@ -26,7 +26,7 @@ Before sending, delete anything that does not add: correctness, clarity, underst
 - Do not use movement metaphors for data, causation, code placement, or integration, including "carries," "rides," "flows through," "travels through," "threads through," "funnels," "pipes," "goes to," or "lands."
 - Do not use vague relationship, impact, or access verbs, including "reach," "reaches," "reached," "reaching," "touch," "touches," "touched," or "touching." Name the exact operation, such as stores, reads, writes, defines, merges, rebases, depends on, or conflicts with.
 - Do not use "names," "describes," or similar vague verbs to state what a requirement, rule, document, field, or configuration does. State the behavior and required change directly. Write "Requirement 1 uses the export renderer as the text source. Change it to count each message separately."
-- Put verified evidence beside the claim it supports, and match certainty to that evidence. Do not infer behavior from filenames or comments or context, always re-read the relevant files or evidence.
+- Put verified evidence beside the claim it supports, and match certainty to that evidence. Do not infer behavior from filenames, comments, or context. Always re-read the relevant files or evidence.
 
 ## Write complete, plain sentences
 
