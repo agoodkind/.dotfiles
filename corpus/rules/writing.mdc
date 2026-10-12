@@ -69,7 +69,7 @@ Do not mix explanation with command recipes, recovery procedures, or rollback in
 - Present prerequisite context before any claim that depends on it.
 - Give each section one concern. Start task headings with action verbs and place notes beside the steps they qualify.
 - Give each code comment one purpose. Separate runtime constraints from removal instructions. State the removal condition and only the identifiers needed to perform the removal. Omit unrelated file, variable, and assertion inventories.
-- Use numbered steps for procedures and do not hide a an enumeration or procedure in prose.
+- Use numbered steps for procedures and do not hide an enumeration or procedure in prose.
 - Avoid and remove file inventories, annotated/enumerated directory listings, and headings that merely enumerate code locations. Use tables for genuine comparisons or exact mappings.
 
 ## Editing
