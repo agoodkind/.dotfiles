@@ -151,6 +151,8 @@ Apply {{.Rule "writing"}} in addition to the pull request-specific rules below.
 
 Writing rules:
 
+- Write PR prose as if it must pass review against Apple Human Interface Guidelines writing guidance: use simple plain language, fit the reviewer's context, write for accessibility, avoid jargon unless it is necessary, and leave no ambiguous claims.
+- Write every sentence as if Apple Marketing will critically review it for clarity, precision, restraint, and polish.
 - Prioritize readability by placing the problem first and writing complete, connected sentences with concrete subjects and verbs. Retain background and links that help a reviewer understand or verify the change, while removing narration, filler, repetition, and unasked recommendations.
 - Leave out every non-load-bearing detail. If a detail does not help the reviewer understand, verify, or safely ship the change, cut it.
 - Reject bloviating. `Bloviate` means to write verbosely and windily, so remove pompous, inflated, self-important, or low-substance prose.
@@ -168,6 +170,8 @@ Writing rules:
 
 Link and Markdown rules:
 
+- Include links that help the reviewer understand or review the PR, including tickets, design docs, dashboards, artifacts, stacked PRs, dependency PRs, and related historical PRs when they are actually relevant.
+- Include source discussions and reference documentation when they establish a requirement, explain a design decision, or define a contract that the reviewer must assess. Explain the relevant finding or decision in the body and use the link to identify its source.
 - Label non-obvious links by review purpose, such as `Design`, `Source`, `Reference`, `Stacked on`, `Depends on`, `Dashboard`, `Artifact`, or `Related`.
 - Do not include prep-only sources or sample inputs used only to draft the body.
 - Do not combine backticks and hyperlinks. If text is hyperlinked, leave the link text plain because many Markdown renderers break backticked link text.
@@ -192,22 +196,18 @@ Adapt these fictional examples to the current PR's behavior and replace placehol
 ### Problem Before Change
 
 ```markdown
-<!-- This example uses fictional behavior and placeholder links. -->
 Title: [ACME-241] Preserve profile edits when saving fails
-
-### Problem
-
-A failed profile save reloads the last saved values and erases the edits, forcing people to reenter them before retrying.
-
-### Changes
-
-This PR preserves the edits during a failed save and displays the error beside the Save button for a retry.
-
-### References
 
 - Ticket: [ACME-241](https://example.com/issues/ACME-241)
 - Artifact: [Failed profile save](https://example.com/artifacts/profile-save-failure)
 - Reference: [Profile save behavior](https://example.com/reference/profile-save)
+
+### Problem
+
+When a profile save fails, the form reloads the last saved values and erases the edits.
+This forces people to reenter them before retrying.
+
+This PR preserves the edits during a failed save and displays the error beside the Save button for a retry.
 ```
 
 ### New Feature With Context
@@ -218,7 +218,7 @@ Title: [TICKET-12345] Publish account update events
 
 ### New feature
 
-Account consumers will lose their update source when the replication service retires under the linked migration plan.
+Account consumers lose their update source when the replication service retires under the linked migration plan.
 
 ### Changes
 
@@ -258,19 +258,15 @@ This PR adds service resources that read configuration during [OpenTofu planning
 <!-- This example uses fictional behavior and placeholder links. -->
 Title: [ACME-310] Update PR skill workflow for existing PR state
 
+- Ticket: [ACME-310](https://example.com/issues/ACME-310)
+- Related: [Report of an unwanted description edit](https://example.com/reports/pr-description-edit)
+- Reference: [PR editing workflow](https://example.com/reference/pr-editing)
+
 ### Problem
 
 Agents can overwrite an open PR during a review because the workflow combines branch inspection with description edits.
 
-### Changes
-
 This PR separates those actions and requires an explicit request before changing an open PR's description.
-
-### References
-
-- Ticket: [ACME-310](https://example.com/issues/ACME-310)
-- Related: [Report of an unwanted description edit](https://example.com/reports/pr-description-edit)
-- Reference: [PR editing workflow](https://example.com/reference/pr-editing)
 ```
 
 Do not add `### Testing` unless material verification actually ran for the behavior of the change.
@@ -281,28 +277,23 @@ Do not add `### Testing` unless material verification actually ran for the behav
 <!-- This example uses fictional behavior and placeholder links. -->
 Title: Clear stale retry warning after recovery
 
+- Related: [Retry behavior introduced by PR 123](https://github.com/example-org/example-repo/pull/123)
+- Source: [Retry design discussion](https://example.com/discussions/retry-behavior)
+
 ### Problem
 
 A recovered save looks unsuccessful because the retry handler displays the earlier failure warning after the response succeeds.
 
-### Changes
-
 This PR clears the warning when the retry succeeds and displays the save confirmation.
-
-### References
-
-- Related: [Retry behavior introduced by PR 123](https://github.com/example-org/example-repo/pull/123)
-- Source: [Retry design discussion](https://example.com/discussions/retry-behavior)
 ```
 
-This small follow-up has no ticket. The title and body omit ticket placeholders instead of inventing tracking context.
+This small follow-up has no ticket, so the title and body omit ticket placeholders instead of inventing tracking context.
 
 ### Linked Text
 
 Prefer:
 
 ```markdown
-<!-- These links are fictional placeholders for a formatting example. -->
 - Depends on: https://github.com/agency/repository/pull/13566
 - Ticket: [AGENCY-11414](https://agency.ticket.net/browse/AGENCY-11414)
 - Design: [Account replication retirement](https://example.com/design/account-events)
@@ -313,7 +304,6 @@ Prefer:
 Avoid:
 
 ```markdown
-<!-- This link is a fictional placeholder for a formatting example. -->
 - Ticket: [`AGENCY-11414`](https://agency.ticket.net/browse/AGENCY-11414)
 ```
 
@@ -323,23 +313,17 @@ Avoid:
 <!-- This example uses fictional behavior and placeholder links. -->
 Title: Preserve catalog sort after clearing filters
 
+- Related: [Catalog filter behavior](https://example.com/issues/catalog-sort-reset)
+
 ### Problem
 
-`Clear filters` resets the catalog's sort order, requiring people to select their preferred order again.
+The `Clear filters` action resets the catalog's sort order, requiring people to select their preferred order again.
 
-### Changes
+This PR clears the filters while preserving the selected sort order, so people can continue browsing the catalog with their preferred sort.
 
-This PR clears the filters while preserving the selected sort order.
-
-| Behavior | Before | After |
-| --- | --- | --- |
-| `Clear filters` | Resets filters and sort order. | Resets filters. |
-| Sorting after clearing | Requires another selection. | Uses the existing selection. |
-
-### References
-
-- Related: [Catalog filter behavior](https://example.com/issues/catalog-sort-reset)
-- Reference: [Filter requirements](https://example.com/reference/catalog-filters)
+| Before | After |
+| --- | --- |
+| `Clear filters` removes the active filters and returns the catalog to the default sort, so people have to select their preferred order again. | `Clear filters` removes the active filters and leaves the selected sort order in place. |
 ```
 
 This table explains the user consequence. It does not list the changed screens, handlers, or state fields.
@@ -350,23 +334,18 @@ This table explains the user consequence. It does not list the changed screens, 
 <!-- This example uses fictional behavior and placeholder links. -->
 Title: [ACME-218] Publish warehouse inventory changes
 
+- Ticket: [ACME-218](https://example.com/issues/ACME-218)
+- Design: [Inventory event contract](https://example.com/design/inventory-events)
+
 ### New feature
 
-Warehouse displays remain stale between polls because the inventory service only provides full snapshots.
+Warehouse displays are becoming stale between polls because the inventory service only provides full snapshots.
 
-### Changes
+This PR publishes each committed inventory change with the item, location, quantity delta, and resulting quantity.
 
-This PR adds event publishing to the inventory service under the [inventory event contract](https://example.com/design/inventory-events).
-
-| Contract | Before | After |
-| --- | --- | --- |
-| Update source | Snapshot polling. | `inventory.changed` events. |
-| Update timing | The next poll. | After the change commits. |
-| Payload | Full inventory snapshot. | Item, location, quantity change, and resulting quantity. |
-
-### References
-
-- Ticket: [ACME-218](https://example.com/issues/ACME-218)
+| Before | After |
+| --- | --- |
+| Warehouse displays replace their stock from a full snapshot and remain stale until the next poll. | The inventory service publishes `inventory.changed` after the change commits, including the item, location, quantity delta, and resulting quantity. |
 ```
 
 This table defines the boundary reviewers must validate. It does not repeat publisher class names or serialization changes from the diff.
@@ -377,11 +356,11 @@ This table defines the boundary reviewers must validate. It does not repeat publ
 <!-- This example uses fictional behavior and placeholder links. -->
 Title: Explain why upload is disabled
 
+- Related: [Upload usability report](https://example.com/reports/upload-disabled)
+
 ### Problem
 
 People cannot identify why `Upload` is disabled because the dialog omits its file selection requirement.
-
-### Changes
 
 This PR explains that selecting a file enables `Upload`.
 
@@ -390,12 +369,7 @@ This PR explains that selecting a file enables `Upload`.
 | Before | After |
 | --- | --- |
 | ![Before Acme upload dialog](https://example.com/acme-upload-before.png) | ![After Acme upload dialog](https://example.com/acme-upload-after.png) |
-| The disabled action gives no recovery guidance. | Helper text explains that selecting a file enables `Upload`. |
-
-### References
-
-- Related: [Upload usability report](https://example.com/reports/upload-disabled)
-- Reference: [Upload requirements](https://example.com/reference/upload)
+| The disabled action does not provide actionable recovery guidance. | Helper text explains that selecting a file enables `Upload`. |
 ```
 
 This table tells the reviewer what changed visually and what outcome to inspect. It does not narrate spacing, color, or component edits already visible in the diff.
@@ -470,7 +444,10 @@ GitHub CLI uploads local images and videos with `--attach`. The repository requi
 
 After the GitHub change succeeds, output only the Slack message. Do not add operational preamble, status narration, separate PR URL blocks, fences, headings, or any other text.
 
-The Slack message is a human one-liner for the code review channel. It must start with a capital letter and end with the PR URL. Use single backticks around unlinked symbols and code-like terms.
+The Slack message is a human one-liner for the code review channel and must be a single sentence, starting with a capital letter and ending with the PR URL.
+Use single backticks around unlinked symbols and code-like terms.
+Do not narrate the user's conversation or changes made between the start and end of the task.
+The Slack message should state the changes in the entire PR compared with the default branch, not only the changes in the previous commit.
 
 Example:
 

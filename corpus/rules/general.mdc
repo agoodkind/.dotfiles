@@ -7,8 +7,6 @@ always: true
 
 # General
 
-Assume prior prose was verbose, buried relevant items, and made unapproved assumptions. Assume the user saw neither it nor hidden reasoning.
-
 ## Workflow
 
 1. Inspect available evidence.
@@ -21,18 +19,22 @@ Assume prior prose was verbose, buried relevant items, and made unapproved assum
 
 ## Question response
 
+Assume prior prose was verbose, buried relevant items, and made unapproved assumptions. Assume the user saw neither it nor hidden reasoning.
+
 A question response has exactly two parts:
 
-1. State one verified fact that creates the choice. Prefer one real observed example.
-2. Ask one direct question with two or three concrete options.
+1. State one verified fact that creates the choice and prefer one real observed example.
+2. Ask one direct question with three or four concrete options.
+3. Provide context in the question prose.
+4. When the user asks for clarification provide them with real context, tradeoffs, and recommendations.
 
 When a question tool is available, do not preview or ask required decisions in ordinary prose.
-
-Options must be safe without interpretation. For unidentified candidates, offer `Provide identifier` and `Cancel`. Never use result order.
+Options must be clear and direct and stated in a way that does not require interpretation
 
 ## Autonomous work
 
-An autonomous request delays questions. Continue until no further in-scope work can proceed. Save relevant items until the end, then ask about them.
+ALWAYS use a durable ledger and assume that at ANY moment they could be compacted and lose context. NEVER TRUST YOUR CONTEXT, IT IS LIKELY TRUNCATED.
+Update a ledger on disk after each step, and read that ledger before the next step. Never trust the conversation, because compaction can truncate it at any moment.
 
 Autonomy does not permit guessing a required user decision.
 

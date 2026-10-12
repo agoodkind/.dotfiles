@@ -7,15 +7,26 @@ applies_to:
 always: true
 ---
 
-# Technical documentation writing
+<EXTREMELY-IMPORTANT>
+YOU MUST APPLY these rules to ALL forms of prose, including ANYTHING that uses natural language. That includes code comments, PR descriptions, conversation responses, documentation, etc.
+</EXTREMELY-IMPORTANT>
 
-Apply the responses rule to all document prose, including its hard readability constraints and required sentence checks. These rules add documentation structure and verification requirements.
+# General Rules
+
+- When describing a subject, use the name established by its documentation, API, or code. Do not replace the name with a synonym, nickname, or shorthand.
+- Prefer to write using Basic English words, and use the most commonly understood word when the Basic English word sounds strange.
+- Give each sentence a clear subject and verb. Start a new sentence or paragraph for the next idea.
+- Avoid using unnecessary contractions.
+- Avoid using idioms that do not add clarity to the sentence. Do not use a phrase that does not mean what its words say.
+- Never write in the passive voice.
+- When an expert word is required, explain it with ordinary words in the same sentence.
+- Do not invent a new concept, or reword an existing one, in order to use fewer words.
 
 ## Give each page one purpose
 
-Choose one documentation kind per page:
+Choose one documentation purpose per page:
 
-- A tutorial teaches through a guided exercise. The writer is responsible for the learner's success.
+- A tutorial walks a new reader through one exercise from start to finish.
 - A how-to guide gives a competent reader steps to finish a real task.
 - A reference states neutral, complete facts without interpretation or instructions.
 - An explanation describes what a system does today and why it works that way.
@@ -24,26 +35,32 @@ Do not mix explanation with command recipes, recovery procedures, or rollback in
 
 ## Use the existing document structure
 
-- Read the surrounding document set before choosing paths. Record each page's path, size, kind, purpose, scope, and independently addressable topics.
-- Derive placement from meaning, reader entry points, and the repository's existing structure. Do not impose a directory scheme from another project.
-- Keep a single concern on one page when it fits. Create a directory only for several independently useful pages of the same kind. Keep different kinds in distinct homes and use single-word path segments.
-- Preserve useful structure. Do not flatten a large concern, create a directory for one page, or restructure the whole tree without the user's choice.
-- Resolve classifications the files establish. Ask unresolved choices through {{.Skill "ask-questions"}}, one at a time: kind, placement, leaf versus directory, entry filename, then the next structural change. Do not edit past a required choice.
+- Derive placement from meaning, reader entry points, and the repository's existing structure.
+- Do not impose a directory scheme from another project that does not fit this one.
+- Keep a single concern on one page when it fits and create a directory for several independently useful pages of the same type.
+- Keep different kinds in distinct homes and use single-word path segments.
+- Resolve classifications the files establish and ask unresolved choices through {{.Skill "ask-questions"}}, one at a time: type, placement, leaf versus directory, entry filename, then the next structural change.
 
 ## Give each fact one home
 
+- Consolidate useful material into one durable home and delete the other copies.
 - Search for overlapping facts, procedures, commands, and ownership claims before drafting. Read each affected page in full and choose one home for each fact before editing.
-- Consolidate useful material into one durable home and delete the other copies. Do not preserve duplication through links or filename mentions.
-- Explain operational behavior without mirroring exact values, defaults, mechanics, or invariants already clear in code, configuration, or tests. Include commands and details the reader needs to act.
-- Describe the current system. Keep history only when current operation depends on it.
+- Do not preserve duplication through links or filename mentions.
+- Explain operational behavior without mirroring exact values, defaults, mechanics, or invariants already clear in code, configuration, or tests.
+- Include context, background, commands and details that the reader needs to act.
+- Describe the current system and do not keep history unless the current operation depends on it.
 
 ## Link only when needed
 
-- Default to no link. Link only when the reader needs material this page deliberately omits, and name the relevant condition or topic first.
-- Link each destination at most once per page. Do not use links as navigation decoration or a substitute for consolidation.
 - Name a file, path, module, or symbol only when the reader must open, edit, or run that artifact to complete a step. Do not narrate where facts "live," "belong," or "are set."
-- Replacing a link with a bare filename or ownership phrase still violates that rule. Prefer the system's everyday nouns.
-- Required filenames and paths must be clickable Markdown links. Use relative links within the repository and absolute URLs outside it. Keep backticks out of link text.
+- Link each destination at most once per page and do not use links as navigation decoration or a substitute for consolidation.
+- Do not replace a link with a bare filename or ownership phrase.
+- Required filenames and paths must be clickable Markdown links.
+- Use relative links within the repository and absolute URLs outside it.
+- Keep backticks out of link text because it breaks the link.
+- Check every link and path-like token against these rules.
+- Confirm each remaining link resolves to the intended current source.
+- Do not add chats, old notes, files, or links that readers of the page cannot open.
 
 ## Structure for the reader's task
 
@@ -52,13 +69,13 @@ Do not mix explanation with command recipes, recovery procedures, or rollback in
 - Present prerequisite context before any claim that depends on it.
 - Give each section one concern. Start task headings with action verbs and place notes beside the steps they qualify.
 - Give each code comment one purpose. Separate runtime constraints from removal instructions. State the removal condition and only the identifiers needed to perform the removal. Omit unrelated file, variable, and assertion inventories.
-- Use numbered steps for procedures. Do not hide a procedure in a paragraph or turn explanation and reference pages into command lists.
-- Reject file inventories, annotated directory listings, and headings that merely enumerate code locations. Use tables for genuine comparisons or exact mappings.
+- Use numbered steps for procedures and do not hide an enumeration or procedure in prose.
+- Avoid and remove file inventories, annotated/enumerated directory listings, and headings that merely enumerate code locations. Use tables for genuine comparisons or exact mappings.
 
-## Verify every rewrite
+## Editing
 
-1. Read the implementation, configuration, and tests that establish behavior. Use comments as context, not proof.
-2. Rewrite each page from its meaning and purpose after resolving its kind and placement. Preserve useful examples, operational knowledge, constraints, exceptions, and recovery steps. Do not apply bulk transformations without reading each page.
-3. Read every rewritten page in full. Compare it with the original and account for every removed or changed claim.
-4. Separately verify accuracy against current sources. Correct stale claims, remove unsupported claims, and check exact names, values, commands, paths, and defaults.
-5. Check every link and path-like token against the linking rules. Confirm each remaining link resolves to the intended current source.
+1. Read the entire file immediately before editing it because the user may have changed it since the last read.
+2. When a user is requesting corrections to a page or document, do not edit other parts of the page that are not related to what the user requested changes on. Do not apply bulk transformations unless explicitly requested.
+3. Resolve each page from its meaning and purpose after resolving its type and placement.
+4. Preserve useful examples, operational knowledge, constraints, exceptions, and recovery steps.
+5. Separately verify accuracy against current sources and correct stale claims, remove unsupported claims, and check exact names, values, commands, paths, and defaults.

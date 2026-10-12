@@ -5,19 +5,35 @@ applies_to:
 always: true
 ---
 
-File editing: Read the current state of a file immediately before editing it. The user may have made changes since the file was last read, and edits should reflect the actual current content.
-
 Tools: Use bash and zsh compatible commands, one step at a time. Prefer vim or nvim for editing. For repo access use: gh repo clone <owner>/<repo> -- --depth 1
 
-Dates: Determine the current year dynamically using: date +"%Y-%m-%d %H:%M:%S %Z"
+Dates: Determine the current time and date dynamically using: date +"%Y-%m-%d %H:%M:%S %Z"
 
-Make sure to mind the shell actively in use, as bash quoting does not work in zsh.
+Quoting, globbing, expansion, and syntax: Check which shell is running, and use its quoting and expansion, because bash and zsh do not share those rules. Be sure to check the active options once at the start of the session to understand what options are and aren't active.
 
-Cross-system compatibility: Use `$EPOCHSECONDS` for Unix timestamps and zsh builtins or `printf` for date and file metadata formatting. This machine has both BSD and GNU variants of `stat` and `date` installed alongside each other (`gstat`, `gdate`), so prefer builtins that sidestep that ambiguity entirely.
+ONLY execute one simple command at a time like a human would. Avoid piping, chains joined by &&, ||, or ;, and command substitution.
+bad: VAR=xyz; do_y "$VAR" > xyz.txt | other_command
 
-Bootstrap entrypoints must work on a fresh macOS or Debian/Ubuntu host before optional tools are installed. Do not require `rg`, system `go`, `shfmt`, `ast-grep`, Rust tools, Go-installed tools, or catalog-installed binaries in code that runs before package provisioning finishes.
+good:
+do_y
+other_command
 
-SSH remote commands: When passing a command to `ssh host <command>`, quote the entire remote command string in single quotes (e.g. `ssh host 'somecommand --flag=value[index]'`) so that the local zsh shell passes the argument verbatim without glob expansion.
-For anything more complex than a single command, write the logic to a temp file via `mktemp`, `scp` it to the host, execute it there, and clean up afterward.
+Avoid using buffered output, as it obscures the command output from the user.
 
-Complex commands: For anything more complex than a single command locally, write the logic to a temp file via `mktemp`, execute it, and clean up afterward.
+## Scripting
+
+- Start scripts with an env shebang (`#!/usr/bin/env bash` or `#!/usr/bin/env zsh`).
+- Use snake_case for functions and local variables and UPPER_CASE for globals and constants.
+- Scope variables with `local` inside functions.
+- For conditionals, use a full `if / then / fi` block.
+- Use `|| true` only for truly optional best-effort calls, and say so in a comment.
+
+Do not silently default required inputs, treat required files as optional, or re-check tools and paths the environment already guarantees. If a later primary command is silenced or softened, make that command strict under `-e` instead of adding an extra precondition gate.
+
+Do not discard stderr from a command whose failure or empty output still drives a later decision. Control-flow probes must leave a visible reason on failure (exit code and a short stderr sample), or a follow-up log line that reports why they failed. Do not treat a missing helper as failure of the thing under test.
+
+Do not stack soft landings for the same failure. One recovery boundary is enough. When the script chooses among alternatives or falls through after a best-effort step, log the branch taken and the failure that caused the fallthrough.
+
+When any path claims an artifact is ready, verify it the same way. Do not skip the usability check on the path that just produced the artifact.
+
+Prefer the semantic MCP server's `search_code` instead of grepping for repo-wide discovery.
