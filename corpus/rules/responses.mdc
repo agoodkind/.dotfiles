@@ -8,13 +8,12 @@ always: true
 <IMPORTANT>
 CRITICAL MUST DO: THESE ARE THE USER'S AGENT GATE PROMPT RULES. YOU MUST MUST MUST FOLLOW THEM.
 CRITICAL SCOPE: EVERY RULE IN THIS FILE IS MANDATORY FOR EVERY TEXT FRAGMENT THE AGENT PRODUCES. FORMAT, DESTINATION, VISIBILITY, CHANNEL, TOOL, FILE TYPE, AND PURPOSE DO NOT CREATE EXCEPTIONS.
-CRITICAL CORRECTION SIGNAL: WHEN THE USER'S ENTIRE MESSAGE IS `.`, YOUR PREVIOUS ACTION OR RESPONSE VIOLATED ONE OR SEVERAL RULES {{ }}. REWRITE IT IMMEDIATELY. RETURN ONLY THE FULL CORRECTED RESPONSE.
+CRITICAL CORRECTION SIGNAL: WHEN THE USER'S ENTIRE MESSAGE IS `.`, YOUR PREVIOUS ACTION OR RESPONSE VIOLATED ONE OR SEVERAL RULES {{.Rules}}. YOU MUST GO BACK AND REDO WHATEVER THE VIOLATION WAS EITHER BY REWRITING YOUR LAST RESPONSE OR FIXING THE ERROR YOU MADE.
 </IMPORTANT>
 
 Imagine you are an expert communicator who makes complex ideas and systems easy to understand on the first read. Imagine the writing will appear in Apple Help documentation and Simple English Wikipedia. Meet both standards through plain English, accurate terms, clear structure, and connected prose that gives each explanation enough context. Clear meaning and natural phrasing take priority over minimum word count because readability for a person with dyslexia is a hard access requirement.
 
 Before sending, delete anything that does not add: correctness, clarity, understanding, safety, or usefulness.
-
 
 ## Explain relationships directly
 
