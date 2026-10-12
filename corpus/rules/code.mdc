@@ -13,33 +13,15 @@ applies_to:
 always: true
 ---
 
-# Code style
+## Errors
 
-These rules set multi-language code conventions for this repository.
-
-## JavaScript and TypeScript
-
-Define top-level functions with `function` declarations, not arrow functions (for example `function handleClick(event: FullyQualifiedType) { ... }`).
-
-Include types exhaustively in every JSDoc block.
-
-## Git
-
-Fetch before any diff, merge-base, log range, or branch comparison.
-
-Use the remote-tracking ref (for example `origin/main`, or `upstream/master` when that is the upstream) rather than the local branch name.
-
-Never move `refs/heads/<branch>` while that branch is checked out in another worktree. Use `origin/<branch>` for comparisons and `gt restack` for stack updates instead.
-
-When a branch ref moves out from under another checkout, that checkout's index and working tree can stay at the old commit even though HEAD follows the new ref.
+Let a missing required input, file, or dependency fail loudly with a clear, concise, and direct action. Do not hide failures with a default or fallback.
 
 ## Subagents
 
 Prefer fast Composer-based subagents for independent, bounded slices of work (search, exploration, isolated edits).
 
-Give each subagent a detailed, narrow prompt with concrete paths, the exact question or change, and the shape of the answer you need.
-
-Launch several subagents in parallel when their scopes are separate so the main thread stays smaller and token cost stays lower.
+Give each subagent a detailed, narrow prompt with concrete paths, the exact question or change, and the shape of the answer you need. DO NOT NARRATE THE USER's CONVERSATION. DO NOT MENTION ANYTHING UNRELATED TO THE DIRECT TASK AT HAND.
 
 ## Ruby
 
@@ -47,46 +29,8 @@ Use one guard clause per condition (for example `return unless x`, `return unles
 
 ## Cross-language scripts
 
-When code calls out to another language (AppleScript via `osascript`, SQL, shell via `subprocess`, and similar cases), write the script in its own file with the matching extension (`.applescript`, `.sql`, `.sh`).
+When code calls out to another language (AppleScript via `osascript`, SQL, shell via `subprocess`, and similar cases), write the script in its own file with the matching extension (`.applescript`, `.sql`, `.sh`). NEVER embed a different language inside another.
 
 Load that file at runtime and substitute dynamic values with the host language's templating primitives.
 
 This keeps each language in its own file where editors, linters, and syntax highlighting work correctly.
-
-## Shell
-
-Start scripts with a shebang (`#!/usr/bin/env bash` or `#!/usr/bin/env zsh`).
-
-Use snake_case for functions and local variables.
-
-Use UPPER_CASE for globals and constants.
-
-Use 4-space indentation and `[[...]]` for tests.
-
-Scope variables with `local` inside functions.
-
-Use `source` instead of `.`.
-
-For conditionals, use a full `if / then / fi` block.
-
-Prefer `set -euo pipefail` (or the zsh equivalent). Keep `-e` on. Express intentional fallthrough with an explicit `if` / `||`, never by dropping `-e`. Use `|| true` only for truly optional best-effort calls, and say so in a comment. Use a single-line `|| return 1` or `|| exit 1` for guard clauses on missing required prerequisites.
-
-Do not silently default required inputs, treat required files as optional, or re-check tools and paths the environment already guarantees. If a later primary command is silenced or softened, make that command strict under `-e` instead of adding an extra precondition gate.
-
-Do not discard stderr from a command whose failure or empty output still drives a later decision. Control-flow probes must leave a visible reason on failure (exit code and a short stderr sample), or a follow-up log line that reports why they failed. Do not treat a missing helper as failure of the thing under test.
-
-Do not stack soft landings for the same failure. One recovery boundary is enough. When the script chooses among alternatives or falls through after a best-effort step, log the branch taken and the failure that caused the fallthrough.
-
-When any path claims an artifact is ready, verify it the same way. Do not skip the usability check on the path that just produced the artifact.
-
-Scripts that spawn background processes must trap INT and TERM.
-
-Track PIDs in an array.
-
-Have the trap handler kill child processes.
-
-Check an interrupt flag on each iteration in long-running loops.
-
-Exit with status 130 after handling INT.
-
-Clean up temp files and directories in the trap handler.
