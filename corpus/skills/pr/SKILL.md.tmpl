@@ -1,13 +1,17 @@
 ---
 name: pr
-description: Use when the user asks to create, update, reword, or review one pull request.
+description: Use whenever producing any type of prose. Apply the pull request workflow when creating, updating, rewording, or reviewing one pull request.
 ---
 
 # Create Or Revise Pull Request
 
+YOU MUST USE THIS SKILL WHEN PRODUCING ANY TYPE OF PROSE.
+
+Apply the prose and reference guidance to every written response. Run the GitHub workflow below when creating or revising a pull request.
+
 Use this workflow when the user asks to create, update, reword, or review a pull request description. Follow the steps in order. Do not skip the existing-PR check unless the user explicitly asks for a drafting-only exercise.
 
-Follow {{.Rule "git"}} for fetches, remote-tracking comparisons, signed commits, staging, and pushes. Apply {{.Rule "writing"}} and {{.Skill "make-readable"}} to every title, body, and final message. Use {{.Skill "split-to-prs"}} for any multi-PR split or stack decision.
+Follow {{.Rule "git"}} for fetches, remote-tracking comparisons, signed commits, staging, and pushes. Apply {{.Rule "writing"}} to every title, body, and final message. Use {{.Skill "split-to-prs"}} for any multi-PR split or stack decision.
 
 If the user asked to merge, land, or ship, stop and follow {{.Skill "babysit"}}.
 
@@ -60,6 +64,7 @@ Classify the change as one of:
 Before drafting, read the reviewer-relevant context that is available from the branch, existing PR body, user message, ticket links, Slack links, Glean when available, design docs, dependency PRs, dashboards, and artifacts.
 
 Read the documents and discussions that establish the requirement, design, or behavior under review, and include their relevant findings in the description with links beside the supported claims.
+Include supporting references when the change depends on requirements, design decisions, external tools, or API contracts. Read each source, explain its relevant finding in the description, and include a link to the source. Use official documentation for tools and APIs and project specifications or source discussions for project decisions. A ticket link does not replace these references.
 
 Use that context to answer:
 
@@ -95,42 +100,55 @@ Examples:
 
 Write for a lightly technical reviewer who may have no prior context. The reviewer should understand the behavioral or qualitative change in one pass.
 
-Default to two short paragraphs in this order:
+Use `Problem` or `New feature`, followed by `Changes`. Use a few inline links where immediate source context helps explain a claim. Group the remaining links in a compact `References` section at the top or bottom of the description, and link each source once. Add `Impact`, `Rollout`, or `Demo` only when the section provides distinct information needed for review.
 
-1. State the existing problem and its cause: "People lose their edits because the form reloads saved values after a failed save." Add the concrete consequence when it helps explain the problem.
-2. State what this PR changes and what people or systems can do afterward. Include only behavior the change supports.
+Write the main explanation as two short paragraphs in this order:
+
+1. Under `Problem` or `New feature`, state the existing problem and its cause: "People lose their edits because the form reloads saved values after a failed save." Add the concrete consequence when it helps explain the problem.
+2. Under `Changes`, state what this PR changes and what people or systems can do afterward. Include only behavior the change supports.
 
 The problem is the load-bearing point in a PR body. Instructions to put the answer or result first mean putting that problem first, not opening with the completed change. The title still states what changed.
 
 Use this structure for a bug, limitation, or maintenance change:
 
 ```markdown
+<!-- This template uses fictional behavior and placeholder links. -->
 ### Problem
-
-Ticket: https://agency.ticketing.net/browse/TICKET-12345
 
 A user or system experiences a concrete problem because of the existing behavior or constraint. Explain the consequence when it adds useful context.
 
+### Changes
+
 This PR changes the relevant behavior. Explain the resulting capability or recovery.
+
+### References
+
+- Ticket: [TICKET-12345](https://agency.ticketing.net/browse/TICKET-12345)
+- Reference: [Applicable requirements or API contract](https://example.com/reference/contract)
 ```
 
 For a new capability, use this shape instead:
 
 ```markdown
+<!-- This template uses fictional behavior and placeholder links. -->
 ### New feature
-
-Ticket: https://agency.ticketing.net/browse/TICKET-12345
 
 A user or system cannot complete a concrete workflow because a needed capability is missing.
 
+### Changes
+
 This PR adds the capability. Explain what the user or system can do afterward.
+
+### References
+
+- Ticket: [TICKET-12345](https://agency.ticketing.net/browse/TICKET-12345)
+- Reference: [Applicable requirements or API contract](https://example.com/reference/contract)
 ```
 
-Choose `Problem` for a bug, limitation, or maintenance change. Choose `New feature` for a new capability. Add `Fix`, `Impact`, `Rollout`, or `Demo` only when it gives the reviewer distinct, load-bearing information.
 
 Before showing the draft, read its first prose sentence without the title or headings. It must identify the existing problem or unmet need. Rewrite an opening such as "X now does Y", "This PR adds Y", or "Updated X to do Y" to explain the problem first. A `Problem` heading alone does not satisfy this check. Use supported context from Step 3; do not invent a problem to fill the structure.
 
-Apply {{.Rule "writing"}} and {{.Skill "make-readable"}} in addition to the pull request-specific rules below.
+Apply {{.Rule "writing"}} in addition to the pull request-specific rules below.
 
 Writing rules:
 
@@ -145,7 +163,7 @@ Writing rules:
 - Include only details that help the reviewer understand, verify, or safely ship the PR.
 - The PR description gives high-level context. The PR diff shows the code change.
 - Do not add irrelevant adjacent context just because it is available.
-- Include a `## Testing` section only when actual material verification was run. Material verification includes meaningful commands, simulator checks, deployed checks, screenshots or videos, smoke tests, and other concrete evidence. If you are unsure whether the evidence is material, ask before adding `## Testing`. DO NOT ADD non-material checks like "lints passed", "rg found x", or anything that isn't directly related to the behavior of the change itself.
+- Include a `### Testing` section only when actual material verification was run. Material verification includes meaningful commands, simulator checks, deployed checks, screenshots or videos, smoke tests, and other concrete evidence. If you are unsure whether the evidence is material, ask before adding `### Testing`. DO NOT ADD non-material checks like "lints passed", "rg found x", or anything that isn't directly related to the behavior of the change itself.
 - Unit tests alone do NOT qualify as material verification. Do not include them in the PR narration.
 - Linting, formatting, and static checks do NOT qualify as material verification. Do not include them in the PR narration.
 - Do not mention unavailable test output, unrun tests, or missing verification unless it materially changes review risk.
@@ -174,20 +192,21 @@ Comparison rules:
 
 ## Examples
 
-Use these fictional examples as drafting patterns, replacing their illustrative links with the PR's actual review references.
+Adapt these fictional examples to the current PR's behavior and replace placeholder links with verified review sources.
 
 ### Problem Before Change
 
 ```markdown
 Title: [ACME-241] Preserve profile edits when saving fails
 
-### Problem
-
 - Ticket: [ACME-241](https://example.com/issues/ACME-241)
 - Artifact: [Failed profile save](https://example.com/artifacts/profile-save-failure)
 - Reference: [Profile save behavior](https://example.com/reference/profile-save)
 
-A failed profile save reloads the last saved values and erases the edits, forcing people to reenter them before retrying.
+### Problem
+
+When a failed profile attempts to save, it reloads the last saved values and erases the edits.
+This forces people to reenter them before retrying.
 
 This PR preserves the edits during a failed save and displays the error beside the Save button for a retry.
 ```
@@ -195,24 +214,49 @@ This PR preserves the edits during a failed save and displays the error beside t
 ### New Feature With Context
 
 ```markdown
+<!-- This example uses fictional behavior and placeholder links. -->
 Title: [TICKET-12345] Publish account update events
 
-- Depends on: https://github.com/example-org/example-repo/pull/123
-
 ### New feature
+
+Account consumers lose their update source when the replication service retires under the linked migration plan.
+
+### Changes
+
+This PR publishes each committed account change with its reason, changed fields, and previous and current snapshots under the event contract introduced by the dependency PR.
+
+### References
 
 - Ticket: [TICKET-12345](https://example.com/issues/TICKET-12345)
 - Design: [Retire account replication](https://example.com/design/account-events)
 - Reference: [Account event payload](https://example.com/reference/account-events)
+- Depends on: [Event infrastructure](https://github.com/example-org/example-repo/pull/123)
+```
 
-Account consumers will lose their update source when the replication service retires under the linked migration plan.
+### Provider References
 
-This PR publishes each committed account change with its reason, changed fields, and previous and current snapshots under the event contract introduced by the dependency PR.
+```markdown
+<!-- This scenario and its ticket and design links are fictional. The OpenTofu links are official documentation. -->
+Title: [ACME-420] Add declarative service resources
+
+### Problem
+
+`tofu plan` cannot show service configuration changes because deployment commands update services outside managed resources.
+
+### Changes
+
+This PR adds service resources that read configuration during [OpenTofu planning](https://opentofu.org/docs/cli/commands/plan/) and apply changes under the resource lifecycle. The [deployment design](https://example.com/design/deployment) requires visible restarts and recovery after an interrupted apply.
+
+### References
+
+- Ticket: [ACME-420](https://example.com/issues/ACME-420)
+- Reference: [OpenTofu resource lifecycle](https://opentofu.org/docs/language/resources/behavior/)
 ```
 
 ### No Noisy Testing Section
 
 ```markdown
+<!-- This example uses fictional behavior and placeholder links. -->
 Title: [ACME-310] Update PR skill workflow for existing PR state
 
 - Ticket: [ACME-310](https://example.com/issues/ACME-310)
@@ -226,11 +270,12 @@ Agents can overwrite an open PR during a review because the workflow combines br
 This PR separates those actions and requires an explicit request before changing an open PR's description.
 ```
 
-Do not add `## Testing` unless material verification actually ran for the behavior of the change.
+Do not add `### Testing` unless material verification actually ran for the behavior of the change.
 
 ### Small Untracked Follow-Up
 
 ```markdown
+<!-- This example uses fictional behavior and placeholder links. -->
 Title: Clear stale retry warning after recovery
 
 - Related: [Retry behavior introduced by PR 123](https://github.com/example-org/example-repo/pull/123)
@@ -267,6 +312,7 @@ Avoid:
 ### User-Visible Behavior Comparison
 
 ```markdown
+<!-- This example uses fictional behavior and placeholder links. -->
 Title: Preserve catalog sort after clearing filters
 
 - Related: [Catalog filter behavior](https://example.com/issues/catalog-sort-reset)
@@ -287,6 +333,7 @@ This table explains the user consequence. It does not list the changed screens, 
 ### System Contract Comparison
 
 ```markdown
+<!-- This example uses fictional behavior and placeholder links. -->
 Title: [ACME-218] Publish warehouse inventory changes
 
 - Ticket: [ACME-218](https://example.com/issues/ACME-218)
@@ -308,6 +355,7 @@ This table defines the boundary reviewers must validate. It does not repeat publ
 ### Visual Comparison
 
 ```markdown
+<!-- This example uses fictional behavior and placeholder links. -->
 Title: Explain why upload is disabled
 
 - Related: [Upload usability report](https://example.com/reports/upload-disabled)
@@ -318,7 +366,7 @@ People cannot identify why `Upload` is disabled because the dialog omits its fil
 
 This PR explains that selecting a file enables `Upload`.
 
-## Demo
+### Demo
 
 | Before | After |
 | --- | --- |
@@ -406,5 +454,5 @@ The slack message should be a direct statement of the change made of the entire 
 Example:
 
 ```text
-Strengthen `pr` skill discouragement of non-material `## Testing` sections https://github.com/example-org/example-repo/pull/123
+Strengthen `pr` skill discouragement of non-material `### Testing` sections https://github.com/example-org/example-repo/pull/123
 ```
