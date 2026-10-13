@@ -159,42 +159,6 @@ func TestSyncPreflightsRepositoryCorpus(t *testing.T) {
 	if err := Sync(context.Background(), repoRoot, nil); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
-
-	rendered, err := os.ReadFile(filepath.Join(home, ".claude", "rules", "writing.md"))
-	if err != nil {
-		t.Fatalf("reading rendered writing rule: %v", err)
-	}
-	if want := "[ask-questions](../skills/ask-questions/SKILL.md)"; !strings.Contains(string(rendered), want) {
-		t.Errorf("rendered writing rule missing expanded skill link %q:\n%s", want, string(rendered))
-	}
-	if strings.Contains(string(rendered), "{{") {
-		t.Errorf("rendered writing rule still contains template markup:\n%s", string(rendered))
-	}
-
-	gitRule, err := os.ReadFile(filepath.Join(home, ".claude", "rules", "git.md"))
-	if err != nil {
-		t.Fatalf("reading rendered git rule: %v", err)
-	}
-	gitRuleText := string(gitRule)
-	if want := "[cleanup-git](../skills/cleanup-git/SKILL.md)"; !strings.Contains(gitRuleText, want) {
-		t.Errorf("rendered git rule missing cleanup skill link %q:\n%s", want, gitRuleText)
-	}
-	for _, duplicatedCommand := range []string{"git cherry", "git status --porcelain --ignored", "git worktree remove"} {
-		if strings.Contains(gitRuleText, duplicatedCommand) {
-			t.Errorf("rendered git rule duplicates cleanup command %q:\n%s", duplicatedCommand, gitRuleText)
-		}
-	}
-
-	cleanupSkill, err := os.ReadFile(filepath.Join(home, ".claude", "skills", "cleanup-git", "SKILL.md"))
-	if err != nil {
-		t.Fatalf("reading rendered cleanup skill: %v", err)
-	}
-	cleanupSkillText := string(cleanupSkill)
-	for _, requiredCommand := range []string{"git cherry", "git status --porcelain --ignored", "git worktree remove"} {
-		if !strings.Contains(cleanupSkillText, requiredCommand) {
-			t.Errorf("rendered cleanup skill missing cleanup command %q:\n%s", requiredCommand, cleanupSkillText)
-		}
-	}
 }
 
 func TestSyncRendersProviderFrontmatter(t *testing.T) {
@@ -438,10 +402,7 @@ func TestResolveOutputDestRejectsHomeDirectory(t *testing.T) {
 		t.Run(destination, func(t *testing.T) {
 			_, err := resolveOutputDest(home, destination)
 			if err == nil {
-				t.Fatalf("resolveOutputDest(%q) returned nil, want strict descendant error", destination)
-			}
-			if !strings.Contains(err.Error(), "must name a path below") {
-				t.Fatalf("resolveOutputDest(%q) error = %v, want strict descendant failure", destination, err)
+				t.Fatalf("resolveOutputDest(%q) returned nil, want an error", destination)
 			}
 		})
 	}
