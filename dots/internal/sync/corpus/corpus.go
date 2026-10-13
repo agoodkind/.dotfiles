@@ -1,5 +1,5 @@
 // Package corpus renders the agent corpus to user-wide destinations from a
-// declarative TOML manifest. Each manifest output names a kind, a destination,
+// declarative TOML manifest. Each manifest output records a kind, a destination,
 // and the parameters that kind needs; the engine dispatches every output to the
 // matching compilation primitive.
 package corpus
@@ -56,7 +56,7 @@ const (
 	providerCopilot ProviderName = "copilot"
 )
 
-// RefStyleName names a skill rule-reference style.
+// RefStyleName is the skill rule-reference style.
 type RefStyleName string
 
 const (
@@ -185,6 +185,7 @@ func validateOutput(sourceSet compilation.CorpusSourceSet, output Output, home s
 		if styleErr != nil {
 			return styleErr
 		}
+		style.Harness = string(output.Provider)
 		renderSourceSet := sourceSet
 		if output.Provider == providerAgents {
 			renderSourceSet, err = withAgentFallbackSkills(sourceSet)
@@ -265,7 +266,7 @@ func resolveOutputDest(home string, relativeDest string) (string, error) {
 		return "", fmt.Errorf("output destination %q escapes home directory %s", relativeDest, cleanHome)
 	}
 	if cleanDest == "." {
-		return "", fmt.Errorf("output destination %q must name a path below %s", relativeDest, cleanHome)
+		return "", fmt.Errorf("output destination %q must be a path below %s", relativeDest, cleanHome)
 	}
 	joined := filepath.Clean(filepath.Join(cleanHome, cleanDest))
 	if !strings.HasPrefix(joined, cleanHome+string(os.PathSeparator)) {
@@ -305,6 +306,7 @@ func renderOutput(sourceSet compilation.CorpusSourceSet, output Output, home str
 		if styleErr != nil {
 			return styleErr
 		}
+		style.Harness = string(output.Provider)
 		renderSourceSet := sourceSet
 		if output.Provider == providerAgents {
 			renderSourceSet, err = withAgentFallbackSkills(sourceSet)
@@ -378,7 +380,7 @@ func resolveAgentFormat(provider ProviderName) (compilation.AgentTargetFormat, e
 }
 
 func resolveRuleRenderStyle(output Output, home string, dest string) (compilation.RuleRenderStyle, error) {
-	emptyStyle := compilation.RuleRenderStyle{SkillsRelDir: ""}
+	emptyStyle := compilation.RuleRenderStyle{SkillsRelDir: "", Harness: string(output.Provider)}
 	if output.SkillDest == "" {
 		return emptyStyle, nil
 	}
@@ -399,7 +401,7 @@ func resolveRuleRenderStyle(output Output, home string, dest string) (compilatio
 		slog.Error("corpus: computing skill link path", "provider", output.Provider, "err", err)
 		return emptyStyle, fmt.Errorf("computing skill link path for %s: %w", output.Provider, err)
 	}
-	return compilation.RuleRenderStyle{SkillsRelDir: filepath.ToSlash(skillsRelDir)}, nil
+	return compilation.RuleRenderStyle{SkillsRelDir: filepath.ToSlash(skillsRelDir), Harness: string(output.Provider)}, nil
 }
 
 func resolveRefStyle(name RefStyleName) (compilation.SkillRefStyle, error) {

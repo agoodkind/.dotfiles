@@ -13,12 +13,18 @@
 #
 # ref_style values (skills only): mdc | md
 #
+# To include for only one harness, write:
+#
+#   {{- if .For "claude" }}
+#   Claude-only text.
+#   {{- end }}
+#
 # Codex, VSCode Copilot, Cursor, and Zed read shared skills from ~/.agents/skills.
 # Recent Codex builds enable skills by default; older builds needed [features] skills = true in ~/.codex/config.toml.
 # Claude Code and Claude Desktop read skills from ~/.claude/skills.
 # VSCode also reads ~/.copilot/instructions, ~/.claude/rules, and ~/.agents/skills.
 # Claude Desktop shares ~/.claude with Claude Code.
-# Cursor reads local rules from ~/.cursor/rules. Cloud user-rule upload is disabled.
+# Cursor reads local rules from ~/.cursor/rules.
 
 # Claude Code (and Claude Desktop)
 [[output]]
