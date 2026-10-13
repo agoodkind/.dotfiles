@@ -75,11 +75,9 @@ For each branch name, MUST record `branch_name`, `local_ref`, `remote_ref`, `loc
 
 For each local or remote classification, MUST set `candidate_ref` and `candidate_oid` from that candidate's recorded pair. Use `local_ref` with `local_oid`, or use `remote_ref` with `remote_oid`. MUST NOT combine a ref from one pair with the object id from the other pair.
 
-### STEP 2: DROP TOOL CRUFT. MUST run before classification.
+### STEP 2: APPLY THE SAME REVIEW TO EVERY CANDIDATE.
 
-`graphite-base/*` refs are synthetic stack bases created by `gt`, never work branches. They are CRUFT BY DEFINITION, so MUST NOT spend the expensive reading of STEPS 4 and 5 on them, and MUST NOT ask the user about them.
-
-That prefix is a naming convention, not a namespace Git reserves for `gt`, so a real branch can carry it. MUST still run the cheap guards before deleting one: the mechanical checks in STEP 3, and the open pull request check in STEP 7. A `graphite-base/*` ref that has unique commits or an open pull request is somebody's branch. Keep it and say so.
+Apply STEPS 3 through 7 to every candidate, including refs that a stacking tool created. A branch prefix does not prove containment or authorize removal.
 
 ### STEP 3: COLLECT SUPPORTING MECHANICAL EVIDENCE FOR EVERY REF. MUST cover all of them.
 
@@ -129,7 +127,7 @@ These are NOT sufficient evidence on their own. Each one has produced a wrong ve
 | Symbol name present on trunk | A squash often renames the helper, so a matching name can be coincidence. |
 | Symbol name absent from trunk | Same reason, inverted. The behavior can land inlined into a caller. |
 | Package or file exists on trunk | Proves a package exists, not that this branch's step landed. |
-| PR state is CLOSED | Graphite closes intermediate stack PRs when the stack squashes. |
+| PR state is CLOSED | A closed pull request does not prove that trunk implements or deliberately removed its changes. |
 
 MUST cite a specific `file:line` ON TRUNK for every CONTAINED verdict. A symbol name may accompany that citation, never replace it. A verdict with no `file:line` is not a verdict.
 

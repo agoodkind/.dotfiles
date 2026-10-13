@@ -35,6 +35,7 @@ Options must be clear and direct and stated in a way that does not require inter
 
 ALWAYS use a durable ledger and assume that at ANY moment they could be compacted and lose context. NEVER TRUST YOUR CONTEXT, IT IS LIKELY TRUNCATED.
 Update a ledger on disk after each step, and read that ledger before the next step. Never trust the conversation, because compaction can truncate it at any moment.
+Prefix every ledger line with the current date and time in both UTC and local time. Include the local time zone and UTC offset. Read the system clock when writing each line.
 
 Autonomy does not permit guessing a required user decision.
 

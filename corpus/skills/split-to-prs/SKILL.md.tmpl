@@ -11,9 +11,9 @@ Follow {{.Rule "git"}} for fetches, comparisons, worktree safety, staging, signe
 
 ## Create independent or dependent pull requests
 
-Create one pull request for each smallest logically shippable slice that can pass continuous integration at its branch position. Create independent sibling branches from trunk by default. Use Graphite only when two or more slices have a real dependency. Graphite availability or repository initialization does not turn independent pull requests into a stack.
+Create one pull request for each smallest logically shippable slice that can pass continuous integration at its branch position. Create independent sibling branches from trunk by default. Use GitHub stacking only when two or more slices depend on each other. An installed extension or an existing stack does not change those dependencies.
 
-Execute a dependent stack through {{.Skill "graphite"}} task **Split work into a Graphite stack**. Execute independent pull requests through the plain Git path in section 3.
+Use the upstream {{.Skill "gh-stack"}} for dependent stacks and the execution steps in section 3 for each split.
 
 ## Reuse before recreate
 
@@ -61,7 +61,7 @@ For each PR number returned, run `gh pr view <number> --json body,title,url,stat
 
 Record every open PR number, branch, and URL. If the user mentioned a PR by number, confirm it with `gh pr view <number>`.
 
-Classify each dependency between slices. Do not use Graphite availability as the classification.
+Classify each dependency between slices. Determine dependencies from the behavior each slice requires.
 
 When `git worktree list` shows more than one checkout, record which path owns trunk before dividing the work:
 
@@ -69,7 +69,7 @@ When `git worktree list` shows more than one checkout, record which path owns tr
 git worktree list
 ```
 
-Follow {{.Rule "git"}} for trunk and worktree safety. A dependent stack also follows {{.Skill "graphite"}}.
+Follow {{.Rule "git"}} for trunk and worktree safety.
 
 ## 2. Build the split map
 
@@ -83,17 +83,11 @@ Default to independent PRs off the default branch. Stack PRs only when the depen
 
 Repurpose an existing open PR as the stack base when it covers the work and preserves its intent. Thin that branch to the bottom slice. Replace and close the PR only when the new split preserves all its intent and unique work. Honor any existing instruction to leave the PR untouched. Otherwise, reuse or replace it.
 
-Use a Graphite stack only for dependent slices. Use plain Git sibling branches for independent slices. Use plain Git when Graphite is unavailable for a dependent stack.
+Use GitHub stacking for dependent slices and plain Git sibling branches for independent slices.
 
 ## 3. Execute the split
 
-### Graphite path for a dependent stack
-
-Switch to {{.Skill "graphite"}} and run **Split work into a Graphite stack** with the split map. Do not reimplement those steps here.
-
-### Plain Git path
-
-Use this path for independent slices. Also use it when Graphite is unavailable for a dependent split.
+### Save the work
 
 If there is uncommitted work, save a recoverable snapshot without changing the working tree:
 
@@ -107,9 +101,15 @@ fi
 For each split-map entry:
 
 1. Reuse and thin its recorded branch when the entry covers an existing PR. Create a dependent branch from its recorded parent. Create only an independent branch from the remote trunk.
-2. Follow {{.Rule "git"}} to stage the slice, create a signed commit, verify it, and push it.
-3. Check out that branch and invoke {{.Skill "pr"}} to create or update the pull request.
+2. Use the branch's owning worktree to stage named paths and create a signed commit. Verify the commit under the Git rule. Push independent branches through the Git workflow.
+3. Create or update each independent pull request through the `pr` workflow.
+
+### Submit dependent branches
+
+1. Run stack commands from a suitable feature checkout. Do not switch the main checkout. Configure `rerere.enabled=true`, then adopt the recorded chain with `gh stack init <bottom-branch> <next-branch> ... --base <trunk>`. Use explicit branch names in bottom-to-top order. Preserve existing branches and pull request numbers.
+2. Inspect `gh stack view --json` and confirm the recorded chain. Set `remote.pushDefault` to the intended remote when the repository has multiple remotes.
+3. Submit the verified commits with `gh stack submit --auto`. Apply the `pr` workflow to every resulting title and body before marking drafts ready for review. Confirm each existing pull request retains its number and each base matches the recorded parent.
 
 ## 4. Report back
 
-Keep it short: PR titles and URLs, plus anything left on the starting branch or working tree. For Graphite splits, include the bottom PR URL and stack order. Before reporting, confirm stack PR numbers are sequential bottom to top. When they are not, apply **Stack position in titles** so each reported title includes ` (PR x/N)`. Per-PR final output (Slack one-liner and URL) comes from the `pr` skill Step 8. Do not delete the backup ref or original branch unless the user asks.
+Keep it short: PR titles and URLs, plus anything left on the starting branch or working tree. For dependent splits, include the bottom pull request URL and stack order. Before reporting, confirm stack PR numbers are sequential bottom to top. When they are not, apply **Stack position in titles** so each reported title includes ` (PR x/N)`. Per-PR final output (Slack one-liner and URL) comes from the `pr` skill Step 8. Do not delete the backup ref or original branch unless the user asks.

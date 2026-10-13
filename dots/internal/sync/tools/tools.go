@@ -33,6 +33,8 @@ const (
 	installMethodScript        installMethod = "script"
 	installMethodCargo         installMethod = "cargo"
 	installMethodGitHubRelease installMethod = "github-release"
+	installMethodGHExtension   installMethod = "gh-extension"
+	installMethodGHSkill       installMethod = "gh-skill"
 )
 
 // InstallCustomTools installs or updates the custom CLI tools defined in the catalog.
@@ -87,6 +89,13 @@ func installCustomTool(ctx context.Context, tool catalog.ToolDeclaration, strict
 		logger.WarnContext(ctx, "  skipping tool with no install method: "+tool.ID)
 		return nil
 	}
+	switch installMethod(tool.InstallMethod) {
+	case installMethodGHExtension:
+		return installGHExtension(ctx, tool, strictMode, logger)
+	case installMethodGHSkill:
+		return installGHSkill(ctx, tool, strictMode, logger)
+	case installMethodScript, installMethodCargo, installMethodGitHubRelease:
+	}
 	current := getCurrentToolVersion(ctx, tool.Bin, logger)
 	if strictMode && current != "" {
 		logger.InfoContext(ctx, "  "+tool.ID+" is installed ("+current+")")
@@ -115,6 +124,10 @@ func runToolInstall(ctx context.Context, tool catalog.ToolDeclaration, strictMod
 		return installToolViaCargo(ctx, tool, strictMode, logger)
 	case installMethodGitHubRelease:
 		return installToolFromGitHubRelease(ctx, tool.ID, tool.Bin, tool.Repo, resolveOSTag(tool), resolveArchTag(tool), tool.ArchiveExt, logger)
+	case installMethodGHExtension:
+		return installGHExtension(ctx, tool, strictMode, logger)
+	case installMethodGHSkill:
+		return installGHSkill(ctx, tool, strictMode, logger)
 	default:
 		logger.WarnContext(ctx, "  skipping tool with unknown install method: "+tool.ID+" ("+tool.InstallMethod+")")
 		return nil

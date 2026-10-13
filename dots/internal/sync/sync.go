@@ -302,7 +302,7 @@ func runUpdateSteps(options Options, dotfiles string, logger *telemetry.Logger, 
 		return err
 	}
 	if err := step("Installing custom tools", false, func(ctx context.Context) error {
-		if options.QuickMode {
+		if options.QuickMode || options.SkipNetwork {
 			return nil
 		}
 		return tools.InstallCustomTools(ctx, dotfiles, options.StrictMode, logger)

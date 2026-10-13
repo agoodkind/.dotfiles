@@ -170,12 +170,13 @@ func (d ruleTemplateData) Skill(name string) string {
 	return renderSkillLink(d.style, name)
 }
 
-// For reports whether the active render harness is one of the given providers.
+// For reports whether the active render harness matches one of the given providers.
 func (d ruleTemplateData) For(providers ...string) (bool, error) {
 	return matchHarness(d.style.Harness, providers)
 }
 
 func renderRuleTemplate(content string, style RuleRenderStyle, name string) (string, error) {
+	content = strings.ReplaceAll(content, "{{.Rules}}", "{{`{{.Rules}}`}}")
 	if !strings.Contains(content, "{{") {
 		return content, nil
 	}

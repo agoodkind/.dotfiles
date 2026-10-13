@@ -191,7 +191,7 @@ func (d *sourceSkillTemplateData) Rules() string            { return renderRules
 func (d *sourceSkillTemplateData) Rule(name string) string  { return renderRuleLink(d.style, name) }
 func (d *sourceSkillTemplateData) Skill(name string) string { return renderSkillSiblingLink(name) }
 
-// For reports whether the active render harness is one of names.
+// For reports whether the active render harness matches one of the supplied names.
 func (d *sourceSkillTemplateData) For(names ...string) (bool, error) {
 	return matchHarness(d.style.Harness, names)
 }

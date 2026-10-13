@@ -45,8 +45,10 @@ type ToolDeclaration struct {
 	Bin string `toml:"bin"`
 	// Repo is the GitHub repository slug (owner/name) for version and release lookup.
 	Repo string `toml:"repo"`
-	// InstallMethod is one of "script", "cargo", or "github-release".
+	// InstallMethod selects the installer for a binary, GitHub CLI extension, or skill.
 	InstallMethod string `toml:"install_method"`
+	// Destinations are skill directories relative to HOME for gh-skill installations.
+	Destinations []string `toml:"destinations"`
 	// Platforms restricts installation to the listed GOOS values. Empty means all platforms.
 	Platforms []string `toml:"platforms"`
 	// ScriptURL is the URL of the install script (used when InstallMethod is "script").

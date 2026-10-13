@@ -400,9 +400,12 @@ func TestResolveOutputDestRejectsHomeDirectory(t *testing.T) {
 	home := t.TempDir()
 	for _, destination := range []string{"", "."} {
 		t.Run(destination, func(t *testing.T) {
-			_, err := resolveOutputDest(home, destination)
+			resolved, err := resolveOutputDest(home, destination)
 			if err == nil {
 				t.Fatalf("resolveOutputDest(%q) returned nil, want an error", destination)
+			}
+			if resolved != "" {
+				t.Fatalf("resolveOutputDest(%q) returned path %q on failure", destination, resolved)
 			}
 		})
 	}
