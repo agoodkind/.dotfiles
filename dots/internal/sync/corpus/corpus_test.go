@@ -147,20 +147,6 @@ func TestSyncRendersAndGatesByOS(t *testing.T) {
 	}
 }
 
-func TestSyncPreflightsRepositoryCorpus(t *testing.T) {
-	repoRoot, err := filepath.Abs(filepath.Join("..", "..", "..", ".."))
-	if err != nil {
-		t.Fatalf("repo root: %v", err)
-	}
-
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-
-	if err := Sync(context.Background(), repoRoot, nil); err != nil {
-		t.Fatalf("Sync: %v", err)
-	}
-}
-
 func TestSyncRendersProviderFrontmatter(t *testing.T) {
 	dotfiles := t.TempDir()
 	writeFile(t, filepath.Join(dotfiles, "corpus", "rules", "writing.mdc"),

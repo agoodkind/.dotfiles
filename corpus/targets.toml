@@ -13,7 +13,7 @@
 #
 # ref_style values (skills only): mdc | md
 #
-# To include for only one harness, write:
+# Include text for only one harness as follows:
 #
 #   {{- if .For "claude" }}
 #   Claude-only text.

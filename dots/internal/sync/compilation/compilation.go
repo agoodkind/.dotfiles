@@ -142,7 +142,7 @@ func CreateHushLogin(ctx context.Context, _ *telemetry.Logger) error {
 type RuleRenderStyle struct {
 	// SkillsRelDir is the relative directory from the rendered rule location to generated skill directories.
 	SkillsRelDir string
-	// Harness is the output provider compared by {{if .For "provider"}}.
+	// Harness stores the output provider for conditional template rendering.
 	Harness string
 }
 
@@ -208,7 +208,7 @@ type SkillRefStyle struct {
 	RulesRelDir string
 	// RuleExt is the rule file extension including the leading dot.
 	RuleExt string
-	// Harness is the output provider compared by {{if .For "provider"}}.
+	// Harness stores the output provider for conditional template rendering.
 	Harness string
 }
 
