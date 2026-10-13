@@ -97,12 +97,13 @@ func installCustomTool(ctx context.Context, tool catalog.ToolDeclaration, strict
 	case installMethodScript, installMethodCargo, installMethodGitHubRelease:
 	}
 	current := getCurrentToolVersion(ctx, tool.Bin, logger)
-	if strictMode && current != "" {
+	minimumSatisfied := tool.MinimumVersion == "" || common.VersionAtLeast(current, tool.MinimumVersion)
+	if strictMode && current != "" && minimumSatisfied {
 		logger.InfoContext(ctx, "  "+tool.ID+" is installed ("+current+")")
 		return nil
 	}
 	if current == "" {
-		return runToolInstall(ctx, tool, strictMode, logger)
+		return installAndVerifyTool(ctx, tool, strictMode, logger)
 	}
 	latest, err := resolveLatestVersion(ctx, tool)
 	if err != nil {
@@ -112,7 +113,20 @@ func installCustomTool(ctx context.Context, tool catalog.ToolDeclaration, strict
 		logger.InfoContext(ctx, "  "+tool.ID+" is up to date ("+current+")")
 		return nil
 	}
-	return runToolInstall(ctx, tool, strictMode, logger)
+	return installAndVerifyTool(ctx, tool, strictMode, logger)
+}
+
+func installAndVerifyTool(ctx context.Context, tool catalog.ToolDeclaration, strictMode bool, logger *telemetry.Logger) error {
+	if err := runToolInstall(ctx, tool, strictMode, logger); err != nil {
+		return err
+	}
+	if tool.MinimumVersion != "" {
+		current := getCurrentToolVersion(ctx, tool.Bin, logger)
+		if !common.VersionAtLeast(current, tool.MinimumVersion) {
+			return fmt.Errorf("%s requires version %s or later after installation; version on PATH is %q", tool.ID, tool.MinimumVersion, current)
+		}
+	}
+	return nil
 }
 
 func runToolInstall(ctx context.Context, tool catalog.ToolDeclaration, strictMode bool, logger *telemetry.Logger) error {
@@ -502,7 +516,15 @@ func installFromDir(tool, dir string) error {
 
 func findArchiveToolBinary(dir string, tool string) (string, error) {
 	found, err := findArchiveEntry(dir, func(_ string, entry os.DirEntry) (bool, error) {
-		return entry.Name() == tool || strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name())) == tool, nil
+		if entry.Name() != tool && strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name())) != tool {
+			return false, nil
+		}
+		info, err := entry.Info()
+		if err != nil {
+			slog.Warn("reading archive executable", "name", entry.Name(), "err", err)
+			return false, fmt.Errorf("reading archive executable %s: %w", entry.Name(), err)
+		}
+		return info.Mode().IsRegular() && info.Mode()&0o111 != 0, nil
 	})
 	if err != nil || found != "" {
 		return found, err
@@ -528,7 +550,7 @@ func findArchiveEntry(dir string, matches func(string, os.DirEntry) (bool, error
 		}
 		if matched {
 			found = path
-			return filepath.SkipDir
+			return filepath.SkipAll
 		}
 		return nil
 	})

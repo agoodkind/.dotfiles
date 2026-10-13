@@ -69,6 +69,8 @@ type ToolDeclaration struct {
 	CrateName string `toml:"crate_name"`
 	// Version pins a tool when the latest upstream version is not compatible with the bootstrap toolchain.
 	Version string `toml:"version"`
+	// MinimumVersion requires an upgrade even during strict installation.
+	MinimumVersion string `toml:"minimum_version"`
 }
 
 // DispatchWorker represents a named background worker entry in the dispatch config.

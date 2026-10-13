@@ -1,5 +1,17 @@
 # Custom tool install declarations. Read at runtime by internal/catalog.
 [[tool]]
+id = "gh"
+bin = "gh"
+repo = "cli/cli"
+install_method = "github-release"
+platforms = ["linux"]
+minimum_version = "2.101.0"
+os_linux = "linux"
+arch_amd64 = "amd64"
+arch_arm64 = "arm64"
+archive_ext = ".tar.gz"
+
+[[tool]]
 id = "gh-stack"
 bin = "stack"
 repo = "github/gh-stack"
