@@ -140,20 +140,45 @@ func verifyGHSkill(skillPath string, tool catalog.ToolDeclaration) error {
 	if strings.TrimSuffix(document.Metadata.Repository, "/") != "https://github.com/"+tool.Repo || document.Metadata.TreeSHA == "" {
 		return fmt.Errorf("skill %s at %s lacks source metadata for %s; resolve the installation conflict", tool.Bin, skillPath, tool.Repo)
 	}
+	resolvedSkill, err := filepath.EvalSymlinks(skillPath)
+	if err != nil {
+		slog.Warn("resolving GitHub skill directory", "path", skillPath, "err", err)
+		return fmt.Errorf("resolving skill directory %s: %w", skillPath, err)
+	}
 	for _, match := range skillReferencePattern.FindAllStringSubmatch(parts[2], -1) {
 		reference := match[1]
 		if reference == "" {
 			reference = match[2]
 		}
 		reference = strings.SplitN(reference, "#", 2)[0]
-		info, err := os.Stat(filepath.Join(skillPath, filepath.FromSlash(reference)))
-		if err != nil {
-			slog.Warn("reading GitHub skill reference", "reference", reference, "err", err)
-			return fmt.Errorf("reading skill reference %s: %w", reference, err)
+		if err := verifySkillReference(resolvedSkill, reference); err != nil {
+			return err
 		}
-		if !info.Mode().IsRegular() {
-			return fmt.Errorf("skill reference %s must be a regular file", reference)
-		}
+	}
+	return nil
+}
+
+func verifySkillReference(skillPath, reference string) error {
+	resolved, err := filepath.EvalSymlinks(filepath.Join(skillPath, filepath.FromSlash(reference)))
+	if err != nil {
+		slog.Warn("resolving GitHub skill reference", "reference", reference, "err", err)
+		return fmt.Errorf("resolving skill reference %s: %w", reference, err)
+	}
+	relative, err := filepath.Rel(skillPath, resolved)
+	if err != nil {
+		slog.Warn("checking GitHub skill reference directory", "reference", reference, "err", err)
+		return fmt.Errorf("checking skill reference %s: %w", reference, err)
+	}
+	if relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("skill reference %s resolves outside skill directory", reference)
+	}
+	info, err := os.Stat(resolved)
+	if err != nil {
+		slog.Warn("reading GitHub skill reference", "reference", reference, "err", err)
+		return fmt.Errorf("reading skill reference %s: %w", reference, err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("skill reference %s must be a regular file", reference)
 	}
 	return nil
 }

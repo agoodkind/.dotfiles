@@ -70,6 +70,19 @@ func TestGitHubInstallersIntegration(t *testing.T) {
 	runGitHubIntegrationChild(t, ctx, "conflict")
 	assertGitHubIntegrationTree(t, filepath.Join(home, ".agents", "skills", "gh-stack"), agentsSkill)
 	assertGitHubIntegrationTree(t, filepath.Join(home, ".claude", "skills", "gh-stack"), claudeSkill)
+	writeGitHubIntegrationCatalog(t, configDir, "github/gh-stack")
+	outside := filepath.Join(home, "outside-reference.md")
+	if err := os.WriteFile(outside, []byte("external reference\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reference := filepath.Join(home, ".agents", "skills", "gh-stack", "references", "commands.md")
+	if err := os.Remove(reference); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, reference); err != nil {
+		t.Fatal(err)
+	}
+	runGitHubIntegrationChild(t, ctx, "escape")
 }
 
 func writeGitHubIntegrationCatalog(t *testing.T, configDir, repository string) {
@@ -111,6 +124,20 @@ func runGitHubInstallerIntegrationStage(t *testing.T) {
 		}
 	})
 	repository := os.Getenv("DOTFILES_GH_INTEGRATION_REPOSITORY")
+	if os.Getenv("DOTFILES_GH_INTEGRATION_STAGE") == "escape" {
+		err := tools.InstallCustomTools(ctx, repository, true, logger)
+		if err == nil {
+			t.Fatal("The installer accepted a reference outside the skill directory.")
+		}
+		logContent, readErr := os.ReadFile(filepath.Join(os.Getenv("HOME"), "installer.log"))
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		if !strings.Contains(string(logContent), "resolves outside skill directory") {
+			t.Fatalf("The installer did not report the reference boundary failure: %v", err)
+		}
+		return
+	}
 	if os.Getenv("DOTFILES_GH_INTEGRATION_STAGE") == "conflict" {
 		err := tools.InstallCustomTools(ctx, repository, true, logger)
 		if err == nil {

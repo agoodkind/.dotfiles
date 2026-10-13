@@ -192,7 +192,7 @@ For every pull request, invoke {{.Skill "cleanup-git"}} with the pull request br
 
 For a stack, pass only terminal branches and their worktrees as cleanup candidates. Do not use `gh stack sync --prune` to skip the cleanup review.
 
-Reconcile the trunk worktree from the checkout that owns trunk (never from a feature worktree):
+Reconcile trunk once after cleanup from the checkout that owns trunk (never from a feature worktree):
 
 ```bash
 git -C <trunk-worktree> fetch origin
@@ -200,8 +200,6 @@ git -C <trunk-worktree> merge --ff-only origin/<trunk>
 ```
 
 Do not `git update-ref refs/heads/<trunk>` when trunk is checked out elsewhere.
-
-Reconcile trunk once from its owning worktree after stack cleanup.
 
 Report: PR URL(s), branches deleted (remote/local), trunk commit after reconcile, worktree removed (or skipped and why).
 
