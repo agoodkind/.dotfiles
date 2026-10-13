@@ -41,7 +41,7 @@ type AptRepo struct {
 type ToolDeclaration struct {
 	// ID is the canonical tool identifier (matches the catalog.toml [[tool]] id field).
 	ID string `toml:"id"`
-	// Bin is the binary name used to invoke the tool and check its version.
+	// Bin selects the binary, extension subcommand, or skill name for installation.
 	Bin string `toml:"bin"`
 	// Repo is the GitHub repository slug (owner/name) for version and release lookup.
 	Repo string `toml:"repo"`

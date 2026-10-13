@@ -83,6 +83,22 @@ func TestGitHubInstallersIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	runGitHubIntegrationChild(t, ctx, "escape")
+	if err := os.Remove(reference); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(reference, agentsSkill["references/commands.md"], 0o600); err != nil {
+		t.Fatal(err)
+	}
+	skillPath := filepath.Join(home, ".agents", "skills", "gh-stack")
+	linkedSkill := filepath.Join(home, "linked-gh-stack")
+	if err := os.Rename(skillPath, linkedSkill); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(linkedSkill, skillPath); err != nil {
+		t.Fatal(err)
+	}
+	runGitHubIntegrationChild(t, ctx, "linked")
+	assertGitHubIntegrationTree(t, linkedSkill, agentsSkill)
 }
 
 func writeGitHubIntegrationCatalog(t *testing.T, configDir, repository string) {
@@ -124,6 +140,20 @@ func runGitHubInstallerIntegrationStage(t *testing.T) {
 		}
 	})
 	repository := os.Getenv("DOTFILES_GH_INTEGRATION_REPOSITORY")
+	if os.Getenv("DOTFILES_GH_INTEGRATION_STAGE") == "linked" {
+		err := tools.InstallCustomTools(ctx, repository, false, logger)
+		if err != nil {
+			t.Fatalf("Non-strict installation returned an error instead of a warning: %v", err)
+		}
+		logContent, readErr := os.ReadFile(filepath.Join(os.Getenv("HOME"), "installer.log"))
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		if !strings.Contains(string(logContent), "symlinked skill directory") {
+			t.Fatal("The installer did not report rejection of the symlinked directory.")
+		}
+		return
+	}
 	if os.Getenv("DOTFILES_GH_INTEGRATION_STAGE") == "escape" {
 		err := tools.InstallCustomTools(ctx, repository, true, logger)
 		if err == nil {

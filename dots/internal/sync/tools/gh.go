@@ -95,7 +95,10 @@ func skillDestination(home, relative string) (string, error) {
 
 func installGHSkillAt(ctx context.Context, tool catalog.ToolDeclaration, destination string, strictMode bool, logger *telemetry.Logger) error {
 	skillPath := filepath.Join(destination, tool.Bin)
-	_, err := os.Lstat(skillPath)
+	info, err := os.Lstat(skillPath)
+	if err == nil && info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("symlinked skill directory %s requires a local installation before updating", skillPath)
+	}
 	switch {
 	case os.IsNotExist(err):
 		if err := cmdexec.RunWithLogger(ctx, logger, "gh", "skill", "install", tool.Repo, tool.Bin, "--dir", destination); err != nil {
