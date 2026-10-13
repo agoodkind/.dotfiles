@@ -524,7 +524,7 @@ func findArchiveToolBinary(dir string, tool string) (string, error) {
 			slog.Warn("reading archive executable", "name", entry.Name(), "err", err)
 			return false, fmt.Errorf("reading archive executable %s: %w", entry.Name(), err)
 		}
-		return info.Mode().IsRegular() && info.Mode()&0o111 != 0, nil
+		return info.Mode().IsRegular(), nil
 	})
 	if err != nil || found != "" {
 		return found, err

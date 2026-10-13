@@ -99,6 +99,28 @@ func TestGitHubInstallersIntegration(t *testing.T) {
 	}
 	runGitHubIntegrationChild(t, ctx, "linked")
 	assertGitHubIntegrationTree(t, linkedSkill, agentsSkill)
+	if err := os.Remove(skillPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(linkedSkill, skillPath); err != nil {
+		t.Fatal(err)
+	}
+	outsideDestination := t.TempDir()
+	claudeDestination := filepath.Join(home, ".claude", "skills")
+	if err := os.Rename(claudeDestination, filepath.Join(home, "stored-claude-skills")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outsideDestination, claudeDestination); err != nil {
+		t.Fatal(err)
+	}
+	runGitHubIntegrationChild(t, ctx, "destination")
+	entries, err := os.ReadDir(outsideDestination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatal("The installer wrote files outside HOME through a destination symlink.")
+	}
 }
 
 func writeGitHubIntegrationCatalog(t *testing.T, configDir, repository string) {
@@ -140,6 +162,20 @@ func runGitHubInstallerIntegrationStage(t *testing.T) {
 		}
 	})
 	repository := os.Getenv("DOTFILES_GH_INTEGRATION_REPOSITORY")
+	if os.Getenv("DOTFILES_GH_INTEGRATION_STAGE") == "destination" {
+		err := tools.InstallCustomTools(ctx, repository, true, logger)
+		if err == nil {
+			t.Fatal("The installer accepted a destination outside HOME.")
+		}
+		logContent, readErr := os.ReadFile(filepath.Join(os.Getenv("HOME"), "installer.log"))
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		if !strings.Contains(string(logContent), "resolves outside home directory") {
+			t.Fatalf("The installer did not report the destination boundary failure: %v", err)
+		}
+		return
+	}
 	if os.Getenv("DOTFILES_GH_INTEGRATION_STAGE") == "linked" {
 		err := tools.InstallCustomTools(ctx, repository, false, logger)
 		if err != nil {

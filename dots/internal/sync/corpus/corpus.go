@@ -149,7 +149,7 @@ func Sync(ctx context.Context, dotfiles string, logger *telemetry.Logger) error 
 		if output.OS != "" && output.OS != runtime.GOOS {
 			continue
 		}
-		dest, err := resolveOutputDest(home, output.Dest)
+		dest, err := ResolveOutputDest(home, output.Dest)
 		if err != nil {
 			return err
 		}
@@ -165,7 +165,7 @@ func preflightOutputPlans(sourceSet compilation.CorpusSourceSet, outputs []Outpu
 		if output.OS != "" && output.OS != runtime.GOOS {
 			continue
 		}
-		dest, err := resolveOutputDest(home, output.Dest)
+		dest, err := ResolveOutputDest(home, output.Dest)
 		if err != nil {
 			return err
 		}
@@ -258,7 +258,8 @@ func validateRuleFileOutput(sourceSet compilation.CorpusSourceSet, output Output
 	return nil
 }
 
-func resolveOutputDest(home string, relativeDest string) (string, error) {
+// ResolveOutputDest rejects destinations outside the resolved home directory.
+func ResolveOutputDest(home string, relativeDest string) (string, error) {
 	cleanHome := filepath.Clean(home)
 	cleanDest := filepath.Clean(relativeDest)
 

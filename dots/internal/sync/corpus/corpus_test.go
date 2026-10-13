@@ -386,12 +386,12 @@ func TestResolveOutputDestRejectsHomeDirectory(t *testing.T) {
 	home := t.TempDir()
 	for _, destination := range []string{"", "."} {
 		t.Run(destination, func(t *testing.T) {
-			resolved, err := resolveOutputDest(home, destination)
+			resolved, err := ResolveOutputDest(home, destination)
 			if err == nil {
-				t.Fatalf("resolveOutputDest(%q) returned nil, want an error", destination)
+				t.Fatalf("ResolveOutputDest(%q) returned nil, want an error", destination)
 			}
 			if resolved != "" {
-				t.Fatalf("resolveOutputDest(%q) returned path %q on failure", destination, resolved)
+				t.Fatalf("ResolveOutputDest(%q) returned path %q on failure", destination, resolved)
 			}
 		})
 	}
@@ -405,12 +405,12 @@ func TestResolveOutputDestRejectsSymlinkEscape(t *testing.T) {
 		t.Fatalf("creating destination symlink: %v", err)
 	}
 
-	_, err := resolveOutputDest(home, filepath.Join("linked", "agents"))
+	_, err := ResolveOutputDest(home, filepath.Join("linked", "agents"))
 	if err == nil {
-		t.Fatal("resolveOutputDest() returned nil, want symlink containment error")
+		t.Fatal("ResolveOutputDest() returned nil, want symlink containment error")
 	}
 	if !strings.Contains(err.Error(), "resolves outside home directory") {
-		t.Fatalf("resolveOutputDest() error = %v, want resolved containment failure", err)
+		t.Fatalf("ResolveOutputDest() error = %v, want resolved containment failure", err)
 	}
 }
 
@@ -425,11 +425,11 @@ func TestResolveOutputDestRejectsDestinationSymlinkEscape(t *testing.T) {
 		t.Fatalf("creating destination symlink: %v", err)
 	}
 
-	_, err := resolveOutputDest(home, filepath.Join(".codex", "agents"))
+	_, err := ResolveOutputDest(home, filepath.Join(".codex", "agents"))
 	if err == nil {
-		t.Fatal("resolveOutputDest() returned nil, want destination symlink error")
+		t.Fatal("ResolveOutputDest() returned nil, want destination symlink error")
 	}
 	if !strings.Contains(err.Error(), "resolves outside home directory") {
-		t.Fatalf("resolveOutputDest() error = %v, want destination symlink failure", err)
+		t.Fatalf("ResolveOutputDest() error = %v, want destination symlink failure", err)
 	}
 }

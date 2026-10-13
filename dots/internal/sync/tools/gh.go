@@ -11,6 +11,7 @@ import (
 
 	"goodkind.io/.dotfiles/internal/catalog"
 	"goodkind.io/.dotfiles/internal/cmdexec"
+	"goodkind.io/.dotfiles/internal/sync/corpus"
 	"goodkind.io/.dotfiles/internal/telemetry"
 	"gopkg.in/yaml.v3"
 )
@@ -74,23 +75,16 @@ func installGHSkill(ctx context.Context, tool catalog.ToolDeclaration, strictMod
 		return fmt.Errorf("resolving skill installation home: %w", err)
 	}
 	for _, relative := range tool.Destinations {
-		destination, err := skillDestination(home, relative)
+		destination, err := corpus.ResolveOutputDest(home, relative)
 		if err != nil {
-			return err
+			slog.WarnContext(ctx, "resolving skill destination", "destination", relative, "err", err)
+			return fmt.Errorf("resolving skill destination %s: %w", relative, err)
 		}
 		if err := installGHSkillAt(ctx, tool, destination, strictMode, logger); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func skillDestination(home, relative string) (string, error) {
-	clean := filepath.Clean(relative)
-	if filepath.IsAbs(clean) || clean == "." || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("skill destination %q must be a directory below HOME", relative)
-	}
-	return filepath.Join(home, clean), nil
 }
 
 func installGHSkillAt(ctx context.Context, tool catalog.ToolDeclaration, destination string, strictMode bool, logger *telemetry.Logger) error {
