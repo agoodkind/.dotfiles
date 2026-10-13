@@ -202,7 +202,7 @@ func runCursorSync(args []string) int {
 		logError("loading corpus for cursor upload", err)
 		return 1
 	}
-	style := compilation.RuleRenderStyle{SkillsRelDir: "../skills"}
+	style := compilation.RuleRenderStyle{SkillsRelDir: "../skills", Harness: "cursor"}
 	rules, err := compilation.RenderRulesForUploadFromSourceSet(sourceSet, style)
 	if err != nil {
 		logError("rendering corpus rules for cursor upload", err)

@@ -33,7 +33,8 @@ File headers in source files use `git config user.name` and `git config user.ema
 
 - Create agent-authored commits with `git commit -S`.
 - Before pushing, inspect the branch-local commit range `origin/main..HEAD`, and for each commit in that range confirm both `git verify-commit <sha>` or `%G?` status and the raw `gpgsig` header from `git cat-file commit <sha>`.
-- Rebase and Graphite restack recreate commits. Confirm `rebase.gpgSign=true` before either operation, then repeat the same `origin/main..HEAD` verification for every rewritten commit.
+- Git rebase and `gh stack rebase` recreate commits. Confirm `rebase.gpgSign=true` before rebasing, then repeat the same `origin/main..HEAD` verification for every rewritten commit on each affected branch before submission.
+- Use separate `gh stack rebase`, signature verification, and `gh stack submit --auto` operations. Do not use `gh stack sync` to rewrite commits because it pushes before a separate signature check.
 - Do not treat `%G? = N` as an unsigned-commit result until `gpg.ssh.allowedSignersFile` is configured and the raw commit object lacks `gpgsig`.
 
 ## Examples
@@ -60,4 +61,4 @@ Use {{.Skill "cleanup-git"}} for every branch, remote ref, worktree, or cleanup-
 
 # Pull request merge
 
-The active GitHub ruleset is the merge contract. Follow {{.Skill "babysit"}} to read the ruleset, verify merge requirements, and handle merge requests. On a Graphite stack, apply that procedure to every open PR.
+The active GitHub ruleset is the merge contract. Follow {{.Skill "babysit"}} to read the ruleset, verify merge requirements, and handle merge requests. On a GitHub stack, apply that procedure to every open pull request in the authorized merge set.

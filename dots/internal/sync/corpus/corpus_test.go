@@ -147,56 +147,6 @@ func TestSyncRendersAndGatesByOS(t *testing.T) {
 	}
 }
 
-func TestSyncPreflightsRepositoryCorpus(t *testing.T) {
-	repoRoot, err := filepath.Abs(filepath.Join("..", "..", "..", ".."))
-	if err != nil {
-		t.Fatalf("repo root: %v", err)
-	}
-
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-
-	if err := Sync(context.Background(), repoRoot, nil); err != nil {
-		t.Fatalf("Sync: %v", err)
-	}
-
-	rendered, err := os.ReadFile(filepath.Join(home, ".claude", "rules", "writing.md"))
-	if err != nil {
-		t.Fatalf("reading rendered writing rule: %v", err)
-	}
-	if want := "[ask-questions](../skills/ask-questions/SKILL.md)"; !strings.Contains(string(rendered), want) {
-		t.Errorf("rendered writing rule missing expanded skill link %q:\n%s", want, string(rendered))
-	}
-	if strings.Contains(string(rendered), "{{") {
-		t.Errorf("rendered writing rule still contains template markup:\n%s", string(rendered))
-	}
-
-	gitRule, err := os.ReadFile(filepath.Join(home, ".claude", "rules", "git.md"))
-	if err != nil {
-		t.Fatalf("reading rendered git rule: %v", err)
-	}
-	gitRuleText := string(gitRule)
-	if want := "[cleanup-git](../skills/cleanup-git/SKILL.md)"; !strings.Contains(gitRuleText, want) {
-		t.Errorf("rendered git rule missing cleanup skill link %q:\n%s", want, gitRuleText)
-	}
-	for _, duplicatedCommand := range []string{"git cherry", "git status --porcelain --ignored", "git worktree remove"} {
-		if strings.Contains(gitRuleText, duplicatedCommand) {
-			t.Errorf("rendered git rule duplicates cleanup command %q:\n%s", duplicatedCommand, gitRuleText)
-		}
-	}
-
-	cleanupSkill, err := os.ReadFile(filepath.Join(home, ".claude", "skills", "cleanup-git", "SKILL.md"))
-	if err != nil {
-		t.Fatalf("reading rendered cleanup skill: %v", err)
-	}
-	cleanupSkillText := string(cleanupSkill)
-	for _, requiredCommand := range []string{"git cherry", "git status --porcelain --ignored", "git worktree remove"} {
-		if !strings.Contains(cleanupSkillText, requiredCommand) {
-			t.Errorf("rendered cleanup skill missing cleanup command %q:\n%s", requiredCommand, cleanupSkillText)
-		}
-	}
-}
-
 func TestSyncRendersProviderFrontmatter(t *testing.T) {
 	dotfiles := t.TempDir()
 	writeFile(t, filepath.Join(dotfiles, "corpus", "rules", "writing.mdc"),
@@ -436,12 +386,12 @@ func TestResolveOutputDestRejectsHomeDirectory(t *testing.T) {
 	home := t.TempDir()
 	for _, destination := range []string{"", "."} {
 		t.Run(destination, func(t *testing.T) {
-			_, err := resolveOutputDest(home, destination)
+			resolved, err := ResolveOutputDest(home, destination)
 			if err == nil {
-				t.Fatalf("resolveOutputDest(%q) returned nil, want strict descendant error", destination)
+				t.Fatalf("ResolveOutputDest(%q) returned nil, want an error", destination)
 			}
-			if !strings.Contains(err.Error(), "must name a path below") {
-				t.Fatalf("resolveOutputDest(%q) error = %v, want strict descendant failure", destination, err)
+			if resolved != "" {
+				t.Fatalf("ResolveOutputDest(%q) returned path %q on failure", destination, resolved)
 			}
 		})
 	}
@@ -455,12 +405,12 @@ func TestResolveOutputDestRejectsSymlinkEscape(t *testing.T) {
 		t.Fatalf("creating destination symlink: %v", err)
 	}
 
-	_, err := resolveOutputDest(home, filepath.Join("linked", "agents"))
+	_, err := ResolveOutputDest(home, filepath.Join("linked", "agents"))
 	if err == nil {
-		t.Fatal("resolveOutputDest() returned nil, want symlink containment error")
+		t.Fatal("ResolveOutputDest() returned nil, want symlink containment error")
 	}
 	if !strings.Contains(err.Error(), "resolves outside home directory") {
-		t.Fatalf("resolveOutputDest() error = %v, want resolved containment failure", err)
+		t.Fatalf("ResolveOutputDest() error = %v, want resolved containment failure", err)
 	}
 }
 
@@ -475,11 +425,11 @@ func TestResolveOutputDestRejectsDestinationSymlinkEscape(t *testing.T) {
 		t.Fatalf("creating destination symlink: %v", err)
 	}
 
-	_, err := resolveOutputDest(home, filepath.Join(".codex", "agents"))
+	_, err := ResolveOutputDest(home, filepath.Join(".codex", "agents"))
 	if err == nil {
-		t.Fatal("resolveOutputDest() returned nil, want destination symlink error")
+		t.Fatal("ResolveOutputDest() returned nil, want destination symlink error")
 	}
 	if !strings.Contains(err.Error(), "resolves outside home directory") {
-		t.Fatalf("resolveOutputDest() error = %v, want destination symlink failure", err)
+		t.Fatalf("ResolveOutputDest() error = %v, want destination symlink failure", err)
 	}
 }

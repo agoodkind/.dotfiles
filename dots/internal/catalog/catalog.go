@@ -41,12 +41,14 @@ type AptRepo struct {
 type ToolDeclaration struct {
 	// ID is the canonical tool identifier (matches the catalog.toml [[tool]] id field).
 	ID string `toml:"id"`
-	// Bin is the binary name used to invoke the tool and check its version.
+	// Bin selects the binary, extension subcommand, or skill name for installation.
 	Bin string `toml:"bin"`
 	// Repo is the GitHub repository slug (owner/name) for version and release lookup.
 	Repo string `toml:"repo"`
-	// InstallMethod is one of "script", "cargo", or "github-release".
+	// InstallMethod selects the installer for a binary, GitHub CLI extension, or skill.
 	InstallMethod string `toml:"install_method"`
+	// Destinations are skill directories relative to HOME for gh-skill installations.
+	Destinations []string `toml:"destinations"`
 	// Platforms restricts installation to the listed GOOS values. Empty means all platforms.
 	Platforms []string `toml:"platforms"`
 	// ScriptURL is the URL of the install script (used when InstallMethod is "script").
@@ -67,6 +69,8 @@ type ToolDeclaration struct {
 	CrateName string `toml:"crate_name"`
 	// Version pins a tool when the latest upstream version is not compatible with the bootstrap toolchain.
 	Version string `toml:"version"`
+	// MinimumVersion requires an upgrade even during strict installation.
+	MinimumVersion string `toml:"minimum_version"`
 }
 
 // DispatchWorker represents a named background worker entry in the dispatch config.

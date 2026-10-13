@@ -33,6 +33,8 @@ const (
 	installMethodScript        installMethod = "script"
 	installMethodCargo         installMethod = "cargo"
 	installMethodGitHubRelease installMethod = "github-release"
+	installMethodGHExtension   installMethod = "gh-extension"
+	installMethodGHSkill       installMethod = "gh-skill"
 )
 
 // InstallCustomTools installs or updates the custom CLI tools defined in the catalog.
@@ -87,13 +89,21 @@ func installCustomTool(ctx context.Context, tool catalog.ToolDeclaration, strict
 		logger.WarnContext(ctx, "  skipping tool with no install method: "+tool.ID)
 		return nil
 	}
+	switch installMethod(tool.InstallMethod) {
+	case installMethodGHExtension:
+		return installGHExtension(ctx, tool, strictMode, logger)
+	case installMethodGHSkill:
+		return installGHSkill(ctx, tool, strictMode, logger)
+	case installMethodScript, installMethodCargo, installMethodGitHubRelease:
+	}
 	current := getCurrentToolVersion(ctx, tool.Bin, logger)
-	if strictMode && current != "" {
+	minimumSatisfied := tool.MinimumVersion == "" || common.VersionAtLeast(current, tool.MinimumVersion)
+	if strictMode && current != "" && minimumSatisfied {
 		logger.InfoContext(ctx, "  "+tool.ID+" is installed ("+current+")")
 		return nil
 	}
 	if current == "" {
-		return runToolInstall(ctx, tool, strictMode, logger)
+		return installAndVerifyTool(ctx, tool, strictMode, logger)
 	}
 	latest, err := resolveLatestVersion(ctx, tool)
 	if err != nil {
@@ -103,7 +113,20 @@ func installCustomTool(ctx context.Context, tool catalog.ToolDeclaration, strict
 		logger.InfoContext(ctx, "  "+tool.ID+" is up to date ("+current+")")
 		return nil
 	}
-	return runToolInstall(ctx, tool, strictMode, logger)
+	return installAndVerifyTool(ctx, tool, strictMode, logger)
+}
+
+func installAndVerifyTool(ctx context.Context, tool catalog.ToolDeclaration, strictMode bool, logger *telemetry.Logger) error {
+	if err := runToolInstall(ctx, tool, strictMode, logger); err != nil {
+		return err
+	}
+	if tool.MinimumVersion != "" {
+		current := getCurrentToolVersion(ctx, tool.Bin, logger)
+		if !common.VersionAtLeast(current, tool.MinimumVersion) {
+			return fmt.Errorf("%s requires version %s or later after installation; version on PATH is %q", tool.ID, tool.MinimumVersion, current)
+		}
+	}
+	return nil
 }
 
 func runToolInstall(ctx context.Context, tool catalog.ToolDeclaration, strictMode bool, logger *telemetry.Logger) error {
@@ -115,6 +138,10 @@ func runToolInstall(ctx context.Context, tool catalog.ToolDeclaration, strictMod
 		return installToolViaCargo(ctx, tool, strictMode, logger)
 	case installMethodGitHubRelease:
 		return installToolFromGitHubRelease(ctx, tool.ID, tool.Bin, tool.Repo, resolveOSTag(tool), resolveArchTag(tool), tool.ArchiveExt, logger)
+	case installMethodGHExtension:
+		return installGHExtension(ctx, tool, strictMode, logger)
+	case installMethodGHSkill:
+		return installGHSkill(ctx, tool, strictMode, logger)
 	default:
 		logger.WarnContext(ctx, "  skipping tool with unknown install method: "+tool.ID+" ("+tool.InstallMethod+")")
 		return nil
@@ -489,7 +516,15 @@ func installFromDir(tool, dir string) error {
 
 func findArchiveToolBinary(dir string, tool string) (string, error) {
 	found, err := findArchiveEntry(dir, func(_ string, entry os.DirEntry) (bool, error) {
-		return entry.Name() == tool || strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name())) == tool, nil
+		if entry.Name() != tool && strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name())) != tool {
+			return false, nil
+		}
+		info, err := entry.Info()
+		if err != nil {
+			slog.Warn("reading archive executable", "name", entry.Name(), "err", err)
+			return false, fmt.Errorf("reading archive executable %s: %w", entry.Name(), err)
+		}
+		return info.Mode().IsRegular(), nil
 	})
 	if err != nil || found != "" {
 		return found, err
@@ -515,7 +550,7 @@ func findArchiveEntry(dir string, matches func(string, os.DirEntry) (bool, error
 		}
 		if matched {
 			found = path
-			return filepath.SkipDir
+			return filepath.SkipAll
 		}
 		return nil
 	})

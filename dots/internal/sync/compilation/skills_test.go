@@ -259,7 +259,7 @@ func TestRenderSkillDirsSkillLink(t *testing.T) {
 	writeTestFile(
 		t,
 		filepath.Join(skillsDir, "split-to-prs", "SKILL.md.tmpl"),
-		"---\nname: split-to-prs\ndescription: d\n---\n\nSee {{.Skill \"graphite\"}}.\n",
+		"---\nname: split-to-prs\ndescription: d\n---\n\nSee {{.Skill \"shared\"}}.\n",
 	)
 	dst := filepath.Join(t.TempDir(), "skills")
 	if err := RenderSkillDirs(skillsDir, dst, SkillRefMDC); err != nil {
@@ -269,7 +269,7 @@ func TestRenderSkillDirsSkillLink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading rendered skill: %v", err)
 	}
-	want := "See [graphite](../graphite/SKILL.md)."
+	want := "See [shared](../shared/SKILL.md)."
 	if !strings.Contains(string(rendered), want) {
 		t.Errorf("rendered skill missing skill link\nwant substring:\n%s\ngot:\n%s", want, string(rendered))
 	}
