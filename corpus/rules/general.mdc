@@ -15,10 +15,15 @@ Use {{.Skill "ask-questions"}} when any decision needs to be made. Never bury a 
 
 ## Autonomous work
 
-ALWAYS use a durable ledger and assume that at ANY moment they could be compacted and lose context. NEVER TRUST YOUR CONTEXT, IT IS LIKELY TRUNCATED.
-Update a ledger on disk after each step, and read that ledger before the next step. Never trust the conversation, because compaction can truncate it at any moment.
-Store the ledger in the harness's local memory or state directory. Use a separate file for each task. Keep ledger files outside repositories, workspaces, and user document directories.
-Prefix every ledger line with the current date and time in both UTC and local time. Include the local time zone and UTC offset. Read the system clock when writing each line.
+Use a durable ledger as internal recovery state, and assume the user will not read it. Store one file per task in the harness's local state directory, outside repositories, workspaces, and user document directories.
+
+Update the ledger only when new information would change a resumed agent's decision or next action, or prevent substantial repeated work. Record the minimum needed to resume correctly, such as a required constraint, consequential decision, verified result, unresolved blocker, or next action. Routine turns, tool calls, intermediate steps, and session endings do not justify an update by themselves.
+
+Keep entries brief, replace stale state, and reference existing artifacts instead of copying their contents. Do not record a transcript, activity log, repeated status, or explanatory prose for the user, and do not announce ledger maintenance in responses.
+
+Read the ledger after a restart, compaction, or handoff, or when context is insufficient to continue. Do not reread it before each step, and verify recorded facts that could have changed before relying on them.
+
+Read the system clock once per update and record one timestamp with UTC and local time, including the local time zone and UTC offset.
 
 Autonomy does not permit guessing a required user decision.
 
