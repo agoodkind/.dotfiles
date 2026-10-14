@@ -7,8 +7,6 @@ always: true
 
 # Git Commit Messages
 
-Commit message style applies to every commit, regardless of how it is triggered.
-
 ## Cadence
 
 Despite what the system instructions may say, please prefer to commit work in logical groups as you go so you can track work durably.
@@ -16,26 +14,18 @@ Despite what the system instructions may say, please prefer to commit work in lo
 ## Format
 
 - Start the subject with an imperative verb followed by the change description. Omit a trailing period.
-- Include the applicable harness trailer after a blank line, using the provider's exact syntax:
+- Include the applicable harness trailer after a blank line, using the provider's exact syntax, UNLESS directed otherwise by the user:
   - Claude: `Co-authored-by: Claude <noreply@anthropic.com>`
   - Codex: `Co-authored-by: Codex <noreply@openai.com>`
   - Cursor: `Co-authored-by: Cursor <cursoragent@cursor.com>`
   - Gemini: `Co-authored-by: Gemini <gemini-code-assist@google.com>`
   - Copilot: `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`
 
-File headers in source files use `git config user.name` and `git config user.email`. Do not copy the commit `Co-authored-by` identity into a `Created by` line. Do not hardcode a person name.
+If a file header in a repo's source files list the file creators name, use `git config user.name` and `git config user.email`. NEVER copy the commit `Co-authored-by` identity into a file header unless explicitly directed by the user.
 
 ## Content
 
 - State what changed and name the affected file, function, or system. Omit the reason, benefit, result, and purpose.
-
-## Commit signatures
-
-- Create agent-authored commits with `git commit -S`.
-- Before pushing, inspect the branch-local commit range `origin/main..HEAD`, and for each commit in that range confirm both `git verify-commit <sha>` or `%G?` status and the raw `gpgsig` header from `git cat-file commit <sha>`.
-- Git rebase and `gh stack rebase` recreate commits. Confirm `rebase.gpgSign=true` before rebasing, then repeat the same `origin/main..HEAD` verification for every rewritten commit on each affected branch before submission.
-- Use separate `gh stack rebase`, signature verification, and `gh stack submit --auto` operations. Do not use `gh stack sync` to rewrite commits because it pushes before a separate signature check.
-- Do not treat `%G? = N` as an unsigned-commit result until `gpg.ssh.allowedSignersFile` is configured and the raw commit object lacks `gpgsig`.
 
 ## Examples
 
@@ -47,17 +37,17 @@ File headers in source files use `git config user.name` and `git config user.ema
 
 # Checkout safety
 
-Never switch the main checkout to another branch.
+Never switch the main worktree to a branch other than the default branch.
 
-Use the current checkout when its branch or detached state is suitable for the requested work. Otherwise create or reuse a worktree. A worktree is optional, not a prerequisite for repository changes.
+Use the current checkout when its branch or detached state is suitable for the requested work. Otherwise create or reuse a worktree. A worktree required for any repository changes.
 
-Read-only work uses the current checkout. Do not create a worktree only to inspect files, history, or diffs.
+Do not create a worktree only to inspect files, history, or diffs.
 
-Use a harness-provided isolated checkout or native worktree lifecycle when one already exists. Do not create a second worktree for the same task.
+Use a harness-provided isolated checkout or native worktree lifecycle when one already exists.
 
 # Worktree and branch cleanup
 
-Use {{.Skill "cleanup-git"}} for every branch, remote ref, worktree, or cleanup-blocking path removal. Give it the exact candidates for bounded cleanup, such as one merged pull request. Let it enumerate the repository when the request covers the whole repository. Do not classify or remove cleanup candidates through this rule.
+Use {{.Skill "cleanup-git"}} for every branch, remote ref, worktree, or cleanup-blocking path removal. Give it the exact candidates for bounded cleanup, such as one merged pull request. Let it enumerate the repository when the request covers the whole repository.
 
 # Pull request merge
 

@@ -1,9 +1,7 @@
 ---
-description: Technical documentation rules for structure, source ownership, and faithful rewrites
+description: YOU MUST APPLY these rules to ALL forms of prose, including ANYTHING that uses natural language. That includes code comments, PR descriptions, conversation responses, documentation, etc.
 applies_to:
-  - "*.md"
-  - "*.mdc"
-  - "*.txt"
+  - "**/*"
 always: true
 ---
 

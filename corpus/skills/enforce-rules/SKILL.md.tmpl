@@ -11,9 +11,10 @@ Read these files in full before producing any output:
 
 {{.Rules}}
 
-When the user asks for a redo, apply the redo command to the claim that was false, overconfident, or unsupported, and regenerate the whole response when its tone was overconfident throughout: [redo/SKILL.md](../redo/SKILL.md)
+When this skill is active and the user invokes it, go back and evaluate the last set of actions you perfomed, determine what rule you violated, and redo/fix any actions that violated the rule, then regenerate the whole response.
+Do NOT make the user invoke this skill again.
 
-Follow every rule file for the duration of this task.
+Follow every rule file without hesitation or deviation.
 
 {{.RuleBody "responses"}}
 
@@ -21,16 +22,16 @@ Follow every rule file for the duration of this task.
 
 ## Dash Prohibition
 
-Never use em dashes (Unicode U+2014), en dashes (Unicode U+2013), or any other Unicode dash variant in output. This includes:
+Never use em dashes en dashes, or any other Unicode dash variant in output. This includes:
 
 - The em dash character (Unicode U+2014) and the en dash character (Unicode U+2013).
 - Constructions that function like em dash phrases, such as inserting a parenthetical clause between dashes in the middle of a sentence.
 
 If a sentence would naturally use an em dash, rewrite the sentence entirely so that no dash is needed. Acceptable alternatives:
 
-- Split the sentence into two sentences.
-- Use a comma, colon, semicolon, or parentheses to join the clauses.
 - Restructure the sentence so the aside becomes its own clause with an explicit subject and verb.
+- Rewrite the sentence entirely so that no dash is needed.
+- Determine if the sentence actually matters and rewrite or remove it if not.
 
 ### Examples
 
@@ -47,7 +48,7 @@ If a sentence would naturally use an em dash, rewrite the sentence entirely so t
 > The config file &ndash; usually in the root directory &ndash; was missing.
 
 **Good** (rewritten with commas):
-> The config file, usually in the root directory, was missing.
+> The root directory's config file was missing.
 
 ## Applying These Rules
 

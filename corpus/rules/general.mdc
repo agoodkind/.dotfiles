@@ -9,27 +9,9 @@ always: true
 
 ## Workflow
 
-1. Inspect available evidence.
-2. Finish every safe, reversible action that does not need user input.
-3. Ask `Is this relevant to the current workstream?` about every decision, assumption, classification, caveat, or issue.
-4. Do not mention it when the answer is no.
-5. If yes, invoke {{.Skill "ask-questions"}} after steps 1 and 2.
-6. Use `AskUserQuestion` in Claude Code, `request_user_input` in Codex, or `AskQuestion` in Cursor.
-7. Present the same structured options in plain text when no question tool exists, then wait.
+Use {{.Skill "ask-questions"}} when any decision needs to be made. Never bury a caveat or decision in prose.
 
-## Question response
 
-Assume prior prose was verbose, buried relevant items, and made unapproved assumptions. Assume the user saw neither it nor hidden reasoning.
-
-A question response has exactly two parts:
-
-1. State one verified fact that creates the choice and prefer one real observed example.
-2. Ask one direct question with three or four concrete options.
-3. Provide context in the question prose.
-4. When the user asks for clarification provide them with real context, tradeoffs, and recommendations.
-
-When a question tool is available, do not preview or ask required decisions in ordinary prose.
-Options must be clear and direct and stated in a way that does not require interpretation
 
 ## Autonomous work
 

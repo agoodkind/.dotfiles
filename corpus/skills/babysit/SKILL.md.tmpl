@@ -13,13 +13,13 @@ Follow {{.Rule "git"}} for fetches, branch comparisons, signed commits, worktree
 
 Derive `owner/repo` from `gh repo view --json nameWithOwner` or from the PR JSON.
 
-```bash
+```shell
 gh pr view --json number,headRefName,baseRefName,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,isDraft
 ```
 
 If `isDraft` is `true`, mark the PR ready for review before anything else. A draft PR cannot be merged.
 
-```bash
+```shell
 gh pr ready
 ```
 
@@ -27,22 +27,117 @@ A draft also shows `mergeStateStatus` of `DRAFT`. A `gh pr ready` run lets the r
 
 ## 2. Read the merge contract before a CI wait
 
-Read the active GitHub ruleset for the PR base branch before a CI wait. Derive the repository and base branch from the target PR:
+Read the active GitHub ruleset for the PR base branch before a CI wait. Run both `gh ruleset check` and the GraphQL query in this section on every pass. Derive the repository and base branch from the target PR:
 
-```bash
-BASE=$(gh pr view --json baseRefName --jq .baseRefName)
-gh api "repos/{owner}/{repo}/rules/branches/$BASE"
+```shell
+gh pr view --json baseRefName
 ```
 
-`gh api` substitutes `{owner}` and `{repo}` from the current repository. `$BASE` must contain the target PR's base branch. For a PR targeting the default branch, `gh ruleset check --default` also checks the applicable rulesets.
+Type the `baseRefName` value in place of `<base-branch>`.
 
-Parse the returned rules:
+```shell
+gh ruleset check <base-branch>
+```
+
+`gh ruleset check` prints the rules that apply to `<base-branch>`. The branch name does not need to exist.
+
+```shell
+gh api --paginate "repos/{owner}/{repo}/rules/branches/<base-branch>"
+```
+
+`gh api` substitutes `{owner}` and `{repo}` from the current repository. `--paginate` follows pages after the first 30 results. The branch rules request returns every active rule that applies to `<base-branch>`, including rules configured on the repository or the organization.
+
+List every ruleset with the rules and checks nested inside it:
+
+```graphql
+{
+  repository(owner: "OWNER", name: "REPO") {
+    rulesets(first: 100, includeParents: true) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        databaseId
+        name
+        enforcement
+        target
+        source { __typename }
+        conditions { refName { include exclude } }
+        rules(first: 100) {
+          pageInfo { hasNextPage endCursor }
+          nodes {
+            type
+            parameters {
+              ... on BranchNamePatternParameters { name negate operator pattern }
+              ... on CodeCoverageParameters { maxCoverageDrop minimumCoverage }
+              ... on CodeQualityParameters { severity }
+              ... on CodeScanningParameters {
+                codeScanningTools { alertsThreshold securityAlertsThreshold tool }
+              }
+              ... on CommitAuthorEmailPatternParameters { name negate operator pattern }
+              ... on CommitMessagePatternParameters { name negate operator pattern }
+              ... on CommitterEmailPatternParameters { name negate operator pattern }
+              ... on CopilotCodeReviewParameters { reviewDraftPullRequests reviewOnPush }
+              ... on FileExtensionRestrictionParameters { restrictedFileExtensions }
+              ... on FilePathRestrictionParameters { restrictedFilePaths }
+              ... on MaxFilePathLengthParameters { maxFilePathLength }
+              ... on MaxFileSizeParameters { maxFileSize }
+              ... on MergeQueueParameters {
+                checkResponseTimeoutMinutes
+                groupingStrategy
+                maxEntriesToBuild
+                maxEntriesToMerge
+                mergeMethod
+                minEntriesToMerge
+                minEntriesToMergeWaitMinutes
+              }
+              ... on PullRequestParameters {
+                allowedMergeMethods
+                dismissStaleReviewsOnPush
+                dismissalRestriction { allowedActors enabled }
+                requireCodeOwnerReview
+                requireLastPushApproval
+                requiredApprovingReviewCount
+                requiredReviewThreadResolution
+                requiredReviewers { filePatterns minimumApprovals reviewerId }
+              }
+              ... on RequiredDeploymentsParameters { requiredDeploymentEnvironments }
+              ... on RequiredStatusChecksParameters {
+                doNotEnforceOnCreate
+                strictRequiredStatusChecksPolicy
+                requiredStatusChecks { context integrationId }
+              }
+              ... on TagNamePatternParameters { name negate operator pattern }
+              ... on UpdateParameters { updateAllowsFetchAndMerge }
+              ... on WorkflowsParameters {
+                doNotEnforceOnCreate
+                workflows { path ref repositoryId sha }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Type the repository owner in place of `OWNER` and the repository name in place of `REPO`. When `pageInfo.hasNextPage` is true, run the query again and type the printed `endCursor` into `after` on that connection.
+
+Rulesets with enforcement `EVALUATE` or `DISABLED` do not gate merge.
+
+Parse the branch rules response:
 
 - Read required check names from `required_status_checks.parameters.required_status_checks`.
 - Read approval count, code-owner approval, last-push approval, and thread resolution from `pull_request.parameters`.
 - Check other active requirements, including commit signatures and required deployments, when returned.
 
-The branch rules endpoint returns active rules. Rulesets in `evaluate` or `disabled` enforcement do not gate merge. Required reviewer checks and approvals come from the active ruleset; this skill does not add reviewer completion requirements.
+Parse each GraphQL rule:
+
+- Read `type` and every selected `parameters` field.
+- Read required check names from `requiredStatusChecks.context` when `type` is `REQUIRED_STATUS_CHECKS`.
+- Read approval count, code-owner approval, last-push approval, and thread resolution from the `PULL_REQUEST` parameters.
+- Read a null `parameters` value from `type`, including `REQUIRED_SIGNATURES`.
+
+Required reviewer checks and approvals come from the active ruleset; this skill does not add reviewer completion requirements.
 
 Required review threads, approvals, code-owner review, last-push approval, draft state, and conflicts block merge independently of check runs. Fix those during the first CI run.
 
@@ -60,11 +155,16 @@ If `mergeStateStatus` is `BEHIND`, update the branch from base before re-checkin
 
 Inline diff comments are separate from PR timeline comments.
 
-List inline comments. The PR number is not a `gh api` placeholder, so substitute it from `gh pr view`:
+List inline comments. The PR number is not a `gh api` placeholder.
 
-```bash
-NUM=$(gh pr view --json number --jq .number)
-gh api "repos/{owner}/{repo}/pulls/$NUM/comments"
+```shell
+gh pr view --json number
+```
+
+Type the `number` value in place of `<number>`.
+
+```shell
+gh api "repos/{owner}/{repo}/pulls/<number>/comments"
 ```
 
 Read thread resolution state and stable thread IDs with GraphQL:
@@ -157,9 +257,9 @@ Section 7 requirements are satisfied, or only CI time remains with no real failu
 
 ### Admin bypass authorization
 
-Treat an explicit `admin merge` or `admin bypass` request as authorization to use `--admin` for the specified pull request. Do not require a second approval. Preserve that authorization across turns and retries within the requested scope. A request for a normal merge does not authorize an admin bypass. Do not infer bypass authorization from urgency, available administrator rights, or an unrelated pull request.
+Treat an explicit `admin merge` or `admin bypass` request as authorization to use `--admin` for the specified pull request. Preserve that authorization across turns and retries within the requested scope. A request for a normal merge does not authorize an admin bypass. Do not infer bypass authorization from urgency, available administrator rights, or an unrelated pull request.
 
-Finish remaining in-scope work before using an authorized admin bypass. Ask for bypass authorization only when the remaining gate requires it and the user has not already authorized it.
+Finish remaining in-scope work before using an authorized admin bypass. Never ask for bypass authorization if the user has not explicitly asked for it.
 
 ### Merge paths
 
@@ -177,11 +277,11 @@ When merge completes or the PR is superseded, run section 9.
 
 Run after section 8 completes, when babysit discovers the PR is already terminal, or when the user explicitly asks to clean up (even if the PR is still open).
 
-Cleanup runs for `MERGED` (normal land). Cleanup also runs for `CLOSED` with no `mergedAt` when the work was superseded (another PR landed the same changes, or the user closed it after confirming the branch is obsolete). Cleanup also runs when the user explicitly asks to clean up branches or the worktree (for example "clean up", "remove the worktree", "done here").
+Cleanup runs for `MERGED` (normal land). Cleanup also runs for `CLOSED` with no `mergedAt` when the work was superseded (another PR landed the same changes, or the user confirmed that the closed pull request branch is obsolete). Cleanup also runs when the user explicitly asks to clean up branches or the worktree (for example "clean up", "remove the worktree", "done here").
 
 Detect terminal PR state with:
 
-```bash
+```shell
 gh pr view --json state,mergedAt,headRefName,baseRefName
 git worktree list
 ```
@@ -194,7 +294,7 @@ For a stack, pass only terminal branches and their worktrees as cleanup candidat
 
 Reconcile trunk once after cleanup from the checkout that owns trunk (never from a feature worktree):
 
-```bash
+```shell
 git -C <trunk-worktree> fetch origin
 git -C <trunk-worktree> merge --ff-only origin/<trunk>
 ```
@@ -214,13 +314,13 @@ Capture git state in the feature worktree:
 - If the tree is dirty, commit WIP on the PR branch with a message like `babysit handoff WIP` (stage only in-scope files; no `git add .`).
 - Create a backup ref under `refs/backup/` only (never `refs/heads/`), matching the split-to-prs convention:
 
-```bash
+```shell
 git update-ref "refs/backup/babysit-$(git branch --show-current | tr / -)-$(date +%s)" HEAD
 ```
 
 - Push the PR branch and the backup ref to `origin` when the branch has not been pushed or the backup should survive locally-only loss:
 
-```bash
+```shell
 git push -u origin HEAD
 git push origin "refs/backup/babysit-..."
 ```
@@ -235,7 +335,7 @@ Record durable memory so a future session can resume without relying on the comp
 
 Clean up the feature worktree only (branches stay):
 
-```bash
+```shell
 git worktree remove <path>
 ```
 

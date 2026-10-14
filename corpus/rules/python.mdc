@@ -5,16 +5,53 @@ applies_to:
 always: true
 ---
 
-Python version: Use the latest stable Python release for all repos. Set `requires-python`, `mypy python_version`, `basedpyright pythonVersion`, and `ruff target-version` to match in `pyproject.toml`.
+## Set the Python version
 
-Build and dependencies: Build with `hatchling` and manage dependencies with `uv` using `[dependency-groups] dev` (not `[project.optional-dependencies]`). Every MCP server repo needs a one-touch `install.sh` and an up-to-date `README.md` with prerequisites, setup, and development instructions.
+Use the latest stable Python release for all repos. Set `requires-python`, `mypy python_version`, `basedpyright pythonVersion`, and `ruff target-version` to that release in `pyproject.toml`.
 
-Type annotations: Every function, method, parameter, and return type must be fully typed with parameterized generics (`dict[str, float]`, `list[CsvRow]`, `Callable[[str], bool]`). `Any` and `object` are banned as type annotations; use `JsonValue`, a concrete union, or a Pydantic model instead. Narrow types at boundaries with `isinstance`, `TypeGuard`, or Pydantic `model_validate`, and use concrete types from that point forward.
+## Build and manage dependencies
 
-Data modeling: Use Pydantic `BaseModel` for all structured data. Use `Field(alias="camelCase")` with `model_config = ConfigDict(populate_by_name=True)` when field names must match an external API's camelCase wire format, use snake_case for Python field names with attribute-style access, and use `model_dump(by_alias=True)` when serializing back.
+Build with `hatchling`. Manage dependencies with `uv`, and put development dependencies in `[dependency-groups] dev`. Do not put development dependencies in `[project.optional-dependencies]`.
 
-Required practices: Start every module with `from __future__ import annotations`. Set line length to 90 and let `ruff format` handle wrapping. Use explicit `if`/`else` blocks instead of ternaries. Use explicit loops instead of nested or multi-clause comprehensions; single-clause comprehensions are fine when they fit naturally on one line. Write full-word variable names like `attempt_count` and `error_message`; single-letter names are fine for numeric loop indices (`i`/`j`/`k`). Extract literal values into named constants. When a linter rule fires, fix the code or restructure it so the rule no longer applies.
+Every Model Context Protocol (MCP) server repo needs an `install.sh` that finishes setup in one run. Keep `README.md` current. Include prerequisites, setup, and development instructions in that file.
 
-Style: Write readable code by breaking complex expressions into intermediate variables with descriptive names and extracting repeated patterns into functions or utilities.
+## Annotate types
 
-Toolchain: Run `make check` before committing. `mypy` (strict, `disallow_any_explicit`, `disallow_any_generics`, `disallow_subclassing_any`) enforces full typing. `basedpyright` (strict) replaces `pyright` and adds stricter defaults. `ruff check` enforces import order, naming, and patterns with rule sets `F`, `E`, `W`, `I`, `N`, `UP`, `ANN`, `B`, `A`, `C4`, `RET`, `SIM`, `TC`, `PYI`, `PT`, `RUF` (ignored: `TC001`, `TC003`, `RET504`, `SIM108`, `N815`). `ruff format` owns all whitespace. `ban-object` (`scripts/ban_object.py`) rejects bare `object` in type annotations. `make fmt` runs `ruff format` and `ruff check --fix`.
+Fully type every function, method, parameter, and return value. Write a generic with its type parameters, as in `dict[str, float]`, `list[CsvRow]`, or `Callable[[str], bool]`.
+
+Do not use `Any` or `object` as a type annotation. Use `JsonValue`, a concrete union, or a Pydantic model.
+
+Narrow a type at a boundary with `isinstance`, `TypeGuard`, or Pydantic `model_validate`. Use the concrete type after that check.
+
+## Model structured data
+
+Use Pydantic `BaseModel` for all structured data.
+
+When external API JSON uses camelCase keys, set `Field(alias="camelCase")` and `model_config = ConfigDict(populate_by_name=True)`. Use snake_case for each Python attribute. Read each value as an attribute. Serialize with `model_dump(by_alias=True)`.
+
+## Follow required practices
+
+- Start every module with `from __future__ import annotations`.
+- Set the line length to 90. `ruff format` wraps lines.
+- Write an `if` / `else` block. Do not write a ternary expression.
+- Write an explicit loop when a comprehension has more than one clause. Keep a single-clause comprehension when it fits on one line.
+- Write a full-word variable, such as `attempt_count` or `error_message`. Use a single letter only for a numeric loop index (`i`, `j`, or `k`).
+- Extract each literal value into a named constant.
+- When a linter reports a rule, fix or restructure the code.
+
+## Write readable code
+
+Break a complex expression into intermediate variables. Use a descriptive label for each variable. Extract a repeated pattern into a function or utility.
+
+## Run the toolchain
+
+Run `make check` before committing.
+
+- `mypy` enforces full typing. The required settings are `strict`, `disallow_any_explicit`, `disallow_any_generics`, and `disallow_subclassing_any`.
+- Run `basedpyright` in strict mode. Do not use `pyright`. `basedpyright` applies stricter defaults.
+- `ruff check` enforces import order, naming, and code patterns.
+- Enable pyflakes (`F`), pycodestyle (`E` and `W`), isort, pep8-naming (`N`), pyupgrade (`UP`), flake8-annotations (`ANN`), flake8-bugbear (`B`), flake8-builtins (`A`), flake8-comprehensions (`C4`), flake8-return (`RET`), flake8-simplify (`SIM`), flake8-type-checking (`TC`), flake8-pyi (`PYI`), flake8-pytest-style (`PT`), and the Ruff set (`RUF`).
+- Ignore `TC001`, `TC003`, `RET504`, `SIM108`, and `N815`.
+- `ruff format` applies all whitespace.
+- `ban-object` (`scripts/ban_object.py`) rejects a bare `object` in a type annotation.
+- `make fmt` runs `ruff format` and `ruff check --fix`.
