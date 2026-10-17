@@ -21,20 +21,44 @@ YOU MUST APPLY these rules to ALL forms of prose, including ANYTHING that uses n
 - When an expert word is required, explain it with ordinary words in the same sentence.
 - Do not invent a new concept, or reword an existing one, in order to use fewer words.
 
+Examples:
+
+- **Bad:** "The subsystem commences initialization subsequent to database connectivity establishment."
+- **Good:** "The service starts after connecting to the database."
+
+- **Bad:** "The migration is executed by the worker after the checkpoint is written."
+- **Good:** "The worker saves a checkpoint before running the migration so it can resume after a failure."
+
+- **Bad:** "The query returned no results."
+- **Good:** "The query did not return any matching records."
+
+- **Bad:** "The system performs cache harmonization to maintain data freshness."
+- **Good:** "The service updates cached records when the database changes."
+
 - Do not split a single claim into a setup sentence followed by a short, dramatic conclusion. State the claim directly and preserve the context needed to understand it.
   - **Bad:** "There are many ways to build an index. This is not one."
-  - **Good:** "This approach scans the source records on every request without creating an index that subsequent queries can reuse."
+  - **Good:** "This approach scans the source records for every query without building a reusable index."
 
-- Prefer complete, connected sentences that explain what happens, why it happens, and the consequences when relevant. Avoid sequences of short sentences that create artificial emphasis through contrast, repetition, or reversal. Do not sacrifice context or useful explanations for brevity.
+- Prefer complete, connected prose without forcing related ideas into a single long sentence. Separate distinct ideas when doing so improves readability, but do not break one idea into short sentences for dramatic emphasis, contrast, repetition, or reversal. Preserve the context needed to understand what happens, why it happens, and the consequences when relevant.
   - **Bad:** "This is not a performance problem. It is a correctness problem."
   - **Bad:** "The problem affects correctness."
-  - **Good:** "The index can return outdated results because updates to the source data do not invalidate existing entries."
+  - **Good:** "The index can return outdated results because source record updates do not invalidate existing entries."
   - **Bad:** "The cache does not store the original data. The database does."
-  - **Good:** "The database stores the original records, while the cache stores temporary copies to reduce repeated database queries."
+  - **Good:** "The database stores the original records, and the cache holds temporary copies to reduce repeated queries."
+
+- Remove verbosity, repetition, and information that does not contribute to the reader's understanding or next action. Preserve necessary context and explanations without adding redundant clauses or obvious consequences. Do not make sentences longer merely to avoid short sentences.
+  - **Bad:** "The cleanup worker checks for expired records every two minutes and removes them from the database, which prevents expired records from accumulating indefinitely."
+  - **Good:** "The cleanup worker deletes expired database records every two minutes."
+  - **Bad:** "The application reads `DATABASE_URL` during startup to establish its database connection, so configure valid credentials before starting the service."
+  - **Good:** "Set `DATABASE_URL` to a valid connection string before starting the service."
+  - **Bad:** "The API checks the required fields before accepting a request and returns a validation error that identifies any missing fields so callers can correct the request."
+  - **Good:** "The API rejects requests with missing required fields and identifies those fields in the error response."
 
 - Present measurements, comparisons, results, and enumerations in tables or structured lists instead of prose. Use tables for values, metrics, and comparisons, and lists for distinct items or steps. Keep labels concise and include enough context to explain what the data represents. Place explanations outside the structure only when necessary.
   - **Bad:** "The first run took 120 ms, the second took 95 ms, and the third took 87 ms."
   - **Good:**
+
+    Query execution times:
 
     | Run | Duration |
     |---|---|
@@ -43,7 +67,10 @@ YOU MUST APPLY these rules to ALL forms of prose, including ANYTHING that uses n
     | 3 | 87 ms |
 
   - **Bad:** "The system supports JSON, YAML, and TOML."
-  - **Good:** "The system supports the following config file formats:"
+  - **Good:**
+
+    Supported configuration formats:
+
     - JSON
     - YAML
     - TOML
@@ -59,6 +86,46 @@ Choose one documentation purpose per page:
 
 Do not mix explanation with command recipes, recovery procedures, or rollback instructions.
 
+Examples:
+
+- **Bad:**
+
+  > # How search indexing works
+  >
+  > The index maps search terms to records so queries can find matches without scanning the dataset. To rebuild the index, stop the indexing worker and run `searchctl rebuild`.
+
+- **Good (explanation):**
+
+  > # How search indexing works
+  >
+  > The index maps search terms to records so queries can find matches without scanning the dataset. The indexing worker updates these mappings when source records change.
+
+- **Good (how-to):**
+
+  > # Rebuild the search index
+  >
+  > Rebuilding the index interrupts indexing, so perform this procedure during a maintenance window.
+  >
+  > 1. Stop the indexing worker.
+  > 2. Run `searchctl rebuild`.
+  > 3. Restart the indexing worker after the rebuild finishes.
+  >
+  > If the rebuild fails, delete the incomplete index before retrying.
+
+- **Bad:**
+
+  > # Configuration reference
+  >
+  > `INDEX_BATCH_SIZE` controls the number of records per batch and defaults to 500. Increase it to 1000 and restart the service to improve throughput.
+
+- **Good (reference):**
+
+  > # Configuration reference
+  >
+  > | Setting | Default | Description |
+  > |---|---|---|
+  > | `INDEX_BATCH_SIZE` | 500 | Maximum records processed per batch |
+
 ## Use the existing document structure
 
 - Derive placement from meaning, reader entry points, and the repository's existing structure.
@@ -66,6 +133,26 @@ Do not mix explanation with command recipes, recovery procedures, or rollback in
 - Keep a single concern on one page when it fits and create a directory for several independently useful pages of the same type.
 - Keep different kinds in distinct homes and use single-word path segments.
 - Resolve classifications the files establish and ask unresolved choices through {{.Skill "ask-questions"}}, one at a time: type, placement, leaf versus directory, entry filename, then the next structural change.
+
+Examples:
+
+When the repository already stores maintenance procedures under `docs/maintenance`:
+
+- **Bad:** `docs/platform/operations/search/rebuild.md`
+- **Good:** `docs/maintenance/rebuild-search-index.md`
+
+When preparation, execution, and verification form one procedure:
+
+- **Bad:**
+  - `docs/search/rebuild/prepare.md`
+  - `docs/search/rebuild/execute.md`
+  - `docs/search/rebuild/verify.md`
+- **Good:** `docs/search/rebuild.md`, containing the preparation, execution, and verification steps.
+
+When the repository already separates explanations from how-to guides:
+
+- **Bad:** `docs/explanation/rebuild-search-index.md`
+- **Good:** `docs/how-to/rebuild-search-index.md`
 
 ## Give each fact one home
 
@@ -75,6 +162,42 @@ Do not mix explanation with command recipes, recovery procedures, or rollback in
 - Explain operational behavior without mirroring exact values, defaults, mechanics, or invariants already clear in code, configuration, or tests.
 - Include context, background, commands and details that the reader needs to act.
 - Describe the current system and do not keep history unless the current operation depends on it.
+
+Examples:
+
+- **Bad (setup guide):**
+
+  > The connection timeout defaults to 30 seconds. Set `REQUEST_TIMEOUT` to 30 seconds unless the upstream service needs more time.
+
+- **Bad (troubleshooting guide):**
+
+  > Requests time out after 30 seconds by default. Increase `REQUEST_TIMEOUT` when upstream responses are slow.
+
+- **Good (configuration reference):**
+
+  > | Setting | Default | Description |
+  > |---|---|---|
+  > | `REQUEST_TIMEOUT` | 30 seconds | Maximum time to wait for an upstream response |
+
+- **Good (troubleshooting guide):**
+
+  > If upstream requests time out, inspect the upstream service logs to identify slow operations before adjusting the timeout.
+
+- **Bad:**
+
+  > The indexer processes 500 records per batch, uses four workers, and retries failed batches three times.
+
+- **Good:**
+
+  > The indexer processes records in batches so workers can retry failed work without rebuilding the complete index.
+
+- **Bad:**
+
+  > Previously, the indexer scanned every source record before the project introduced incremental indexing, which replaced full scans with change tracking.
+
+- **Good:**
+
+  > The indexer tracks source record changes and updates the affected entries without scanning the complete dataset.
 
 ## Link only when needed
 
@@ -88,6 +211,32 @@ Do not mix explanation with command recipes, recovery procedures, or rollback in
 - Confirm each remaining link resolves to the intended current source.
 - Do not add chats, old notes, files, or links that readers of the page cannot open.
 
+Examples:
+
+- **Bad:**
+
+  > The request validator lives in `src/api/validate.ts`, which contains the logic for checking required fields before accepting requests.
+
+- **Good:**
+
+  > The API rejects requests with missing required fields and identifies them in the error response.
+
+- **Bad:**
+
+  > Before modifying the writing requirements, open `corpus/rules/writing.mdc`.
+
+- **Good (from a repository-root document):**
+
+  > Before modifying the writing requirements, read [writing.mdc](corpus/rules/writing.mdc).
+
+- **Bad:**
+
+  > The parser converts input records into structured fields. For more details about validation, see the parser implementation.
+
+- **Good:**
+
+  > The parser converts input records into structured fields and rejects values that do not match the expected schema.
+
 ## Structure for the reader's task
 
 - Make the title match the page's kind and name the task, topic, or change.
@@ -98,6 +247,76 @@ Do not mix explanation with command recipes, recovery procedures, or rollback in
 - Use numbered steps for procedures and do not hide an enumeration or procedure in prose.
 - Avoid and remove file inventories, annotated/enumerated directory listings, and headings that merely enumerate code locations. Use tables for genuine comparisons or exact mappings.
 
+Examples:
+
+- **Bad:**
+
+  > # Database
+  >
+  > 1. Run `app start`.
+  > 2. Check the startup logs.
+  >
+  > Before performing these steps, configure `DATABASE_URL` with valid credentials because the service requires a database connection during startup.
+
+- **Good:**
+
+  > # Start the service
+  >
+  > Configure the database connection before starting the service.
+  >
+  > 1. Set `DATABASE_URL` to a valid connection string.
+  > 2. Run `app start`.
+  > 3. Check the startup logs for database connection errors.
+
+- **Bad:**
+
+  > To rebuild the index, stop the worker, delete the existing index files, run the rebuild command, and restart the worker after the rebuild finishes.
+
+- **Good:**
+
+  > ## Rebuild the search index
+  >
+  > Stop the indexing worker before deleting the index files to prevent writes during the rebuild.
+  >
+  > 1. Stop the indexing worker.
+  > 2. Delete the existing index files.
+  > 3. Run the index rebuild command.
+  > 4. Restart the indexing worker.
+
+- **Bad:**
+
+  ```go
+  // Accept requests without a version header for older clients.
+  // Compatibility tests cover this fallback, which can be removed
+  // after all supported clients include the header.
+  ```
+
+- **Good (runtime constraint):**
+
+  ```go
+  // Accept requests without a version header because older
+  // supported clients still omit it.
+  ```
+
+- **Good (removal condition):**
+
+  ```go
+  // Remove this fallback after the minimum supported client
+  // version always sends a version header.
+  ```
+
+- **Bad:**
+
+  > ## Important notes
+  >
+  > The service requires database credentials, the worker retries failed jobs, and the default batch size is 500.
+
+- **Good:**
+
+  > ## Configure database credentials
+  >
+  > Set `DATABASE_URL` to a connection string that permits the service to read and update the required tables.
+
 ## Editing
 
 1. Read the entire file immediately before editing it because the user may have changed it since the last read.
@@ -105,3 +324,47 @@ Do not mix explanation with command recipes, recovery procedures, or rollback in
 3. Resolve each page from its meaning and purpose after resolving its type and placement.
 4. Preserve useful examples, operational knowledge, constraints, exceptions, and recovery steps.
 5. Separately verify accuracy against current sources and correct stale claims, remove unsupported claims, and check exact names, values, commands, paths, and defaults.
+
+Examples:
+
+When the maximum upload size changes from 10 MB to 25 MB:
+
+- **Original:**
+
+  > The API accepts uploads up to 10 MB and leaves the original file unchanged if an upload fails, allowing the client to retry safely.
+
+- **Bad:**
+
+  > The API accepts uploads up to 25 MB.
+
+- **Good:**
+
+  > The API accepts uploads up to 25 MB and leaves the original file unchanged if an upload fails, allowing the client to retry safely.
+
+When the retry limit changes from two attempts to three:
+
+- **Original:**
+
+  > The worker retries each failed job twice before marking it as failed, and operators can retry the job after correcting the underlying error.
+
+- **Bad:**
+
+  > The worker automatically retries failed jobs several times before operators need to investigate.
+
+- **Good:**
+
+  > The worker retries each failed job three times before marking it as failed, and operators can retry the job after correcting the underlying error.
+
+When a cleanup interval changes from one minute to two minutes:
+
+- **Original:**
+
+  > The cleanup worker deletes expired database records every minute.
+
+- **Bad:**
+
+  > The system manages record expiration through a background process that periodically removes old database entries.
+
+- **Good:**
+
+  > The cleanup worker deletes expired database records every two minutes.
