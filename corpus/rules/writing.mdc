@@ -54,6 +54,12 @@ Examples:
   - **Bad:** "The API checks the required fields before accepting a request and returns a validation error that identifies any missing fields so callers can correct the request."
   - **Good:** "The API rejects requests with missing required fields and identifies those fields in the error response."
 
+- Explain behavior by stating the operation and its controlling condition. Ask for decisions by stating the available choices and the specific items they affect.
+  - **Bad:** "The cleanup code selects volumes."
+  - **Good:** "The cleanup code checks whether each volume name starts with the data disk prefix."
+  - **Bad:** "Decide which rules to enable."
+  - **Good:** "Should the `env` rule keep auditing or start blocking commands?"
+
 - Present measurements, comparisons, results, and enumerations in tables or structured lists instead of prose. Use tables for values, metrics, and comparisons, and lists for distinct items or steps. Keep labels concise and include enough context to explain what the data represents. Place explanations outside the structure only when necessary.
   - **Bad:** "The first run took 120 ms, the second took 95 ms, and the third took 87 ms."
   - **Good:**
