@@ -21,6 +21,33 @@ YOU MUST APPLY these rules to ALL forms of prose, including ANYTHING that uses n
 - When an expert word is required, explain it with ordinary words in the same sentence.
 - Do not invent a new concept, or reword an existing one, in order to use fewer words.
 
+- Do not split a single claim into a setup sentence followed by a short, dramatic conclusion. State the claim directly and preserve the context needed to understand it.
+  - **Bad:** "There are many ways to build an index. This is not one."
+  - **Good:** "This approach scans the source records on every request without creating an index that subsequent queries can reuse."
+
+- Prefer complete, connected sentences that explain what happens, why it happens, and the consequences when relevant. Avoid sequences of short sentences that create artificial emphasis through contrast, repetition, or reversal. Do not sacrifice context or useful explanations for brevity.
+  - **Bad:** "This is not a performance problem. It is a correctness problem."
+  - **Bad:** "The problem affects correctness."
+  - **Good:** "The index can return outdated results because updates to the source data do not invalidate existing entries."
+  - **Bad:** "The cache does not store the original data. The database does."
+  - **Good:** "The database stores the original records, while the cache stores temporary copies to reduce repeated database queries."
+
+- Present measurements, comparisons, results, and enumerations in tables or structured lists instead of prose. Use tables for values, metrics, and comparisons, and lists for distinct items or steps. Keep labels concise and include enough context to explain what the data represents. Place explanations outside the structure only when necessary.
+  - **Bad:** "The first run took 120 ms, the second took 95 ms, and the third took 87 ms."
+  - **Good:**
+
+    | Run | Duration |
+    |---|---|
+    | 1 | 120 ms |
+    | 2 | 95 ms |
+    | 3 | 87 ms |
+
+  - **Bad:** "The system supports JSON, YAML, and TOML."
+  - **Good:** "The system supports the following config file formats:"
+    - JSON
+    - YAML
+    - TOML
+
 ## Give each page one purpose
 
 Choose one documentation purpose per page:
