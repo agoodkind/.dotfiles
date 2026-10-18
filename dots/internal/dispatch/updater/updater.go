@@ -93,7 +93,7 @@ func Run(
 	}
 	if err := doWeeklyUpdate(ctx, dotfiles, weeklyMarkerPath, dispatchLogger); err != nil {
 		dispatchLogger.ErrorContextWithErr(ctx, "updater: weekly update failed", err)
-		notifyf("warn", "Weekly sync completed with non-critical issues")
+		notifyf("warn", "Weekly maintenance failed; check the dispatch log")
 		return err
 	}
 	notifyf("success", "Weekly sync completed (zinit, nvim, repair)")
@@ -158,7 +158,9 @@ func doWeeklyUpdate(ctx context.Context, dotfiles, weeklyMarkerPath string, disp
 		)
 	}
 
-	doBrewUpgrade(ctx, dispatchLogger)
+	if err := doBrewUpgrade(ctx, dispatchLogger); err != nil {
+		return fmt.Errorf("upgrading Homebrew packages: %w", err)
+	}
 	doAptUpgrade(ctx, dispatchLogger)
 
 	now := strconv.FormatInt(clock.Now().Unix(), 10)
@@ -236,8 +238,8 @@ func truncateSHA(value string) string {
 	return value[:width]
 }
 
-func doBrewUpgrade(ctx context.Context, dispatchLogger *telemetry.Logger) {
-	doBrewUpgradeWith(ctx, dispatchLogger, runtime.GOOS, realBrewCommands{}, catalog.DefaultPackageConfig())
+func doBrewUpgrade(ctx context.Context, dispatchLogger *telemetry.Logger) error {
+	return doBrewUpgradeWith(ctx, dispatchLogger, runtime.GOOS, realBrewCommands{}, catalog.DefaultPackageConfig())
 }
 
 type brewCommandRunner interface {
@@ -272,18 +274,26 @@ func doBrewUpgradeWith(
 	goos string,
 	commands brewCommandRunner,
 	cfg *catalog.PackageConfig,
-) {
+) error {
 	if goos != "darwin" {
-		return
+		return nil
 	}
 	if commands == nil || !commands.HasCommand("brew") {
-		return
+		return nil
 	}
 	macos.TrustCatalogTaps(ctx, commands, cfg)
-	_, _ = commands.Output(ctx, dispatchLogger, "brew", "update")
-	_, _ = commands.Output(ctx, dispatchLogger, "brew", "upgrade")
-	_, _ = commands.Output(ctx, dispatchLogger, "brew", "upgrade", "--cask", "--greedy")
-	_, _ = commands.Output(ctx, dispatchLogger, "brew", "cleanup", "--prune=all")
+	for _, arguments := range [][]string{
+		{"update"},
+		{"upgrade", "--no-ask"},
+		{"upgrade", "--cask", "--greedy", "--no-ask"},
+		{"cleanup", "--prune=all"},
+	} {
+		if _, err := commands.Output(ctx, dispatchLogger, "brew", arguments...); err != nil {
+			slog.WarnContext(ctx, "updater: Homebrew maintenance failed", "args", arguments, "err", err)
+			return fmt.Errorf("brew %s: %w", strings.Join(arguments, " "), err)
+		}
+	}
+	return nil
 }
 
 func doAptUpgrade(ctx context.Context, dispatchLogger *telemetry.Logger) {
