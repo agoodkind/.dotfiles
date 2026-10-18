@@ -27,6 +27,9 @@ Before sending, delete anything that does not add: correctness, clarity, underst
 - Do not use vague relationship, impact, or access verbs, including "reach," "reaches," "reached," "reaching," "touch," "touches," "touched," or "touching." Name the exact operation, such as stores, reads, writes, defines, merges, rebases, depends on, or conflicts with.
 - Do not use "names," "describes," or similar vague verbs to state what a requirement, rule, document, field, or configuration does. State the behavior and required change directly. Write "Requirement 1 uses the export renderer as the text source. Change it to count each message separately."
 - Put verified evidence beside the claim it supports, and match certainty to that evidence. Do not infer behavior from filenames, comments, or context. Always re-read the relevant files or evidence.
+- Identify the specific subject, method, and purpose of a test or action, and give the measurements and baseline for any comparison. Obtain missing context from the source or ask a concrete question before drawing a conclusion.
+  - **Bad:** "A LAN client used ISP-1 for a public speed test."
+  - **Good (fictional example):** "To check ISP-1's advertised download rate, laptop `lab01` ran Ookla Speedtest using ISP-1."
 
 ## Write complete, plain sentences
 

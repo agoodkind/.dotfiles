@@ -81,6 +81,18 @@ Examples:
     - YAML
     - TOML
 
+- Introduce each table with a short sentence explaining its purpose, followed by a concise label ending in a colon. Explain necessary caveats afterward, including what the evidence cannot establish and why that matters to the conclusion or decision.
+  - **Bad:** "A LAN client used ISP-1 for a public speed test. The test did not measure faster links or isolate the cause of the lower download result."
+  - **Good (fictional example):**
+
+    The test checks ISP-1's download speed against its advertised rate.
+
+    Test results:
+
+    | Device | Connection | Test service | Advertised download | Measured download |
+    |---|---|---|---|---|
+    | Laptop `lab01` | ISP-1 | Ookla Speedtest | 900 Mbps | 420 Mbps |
+
 ## Give each page one purpose
 
 Choose one documentation purpose per page:
