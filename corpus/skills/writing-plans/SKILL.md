@@ -128,9 +128,12 @@ implementation code block only when they do not determine the algorithm.]
 
 - [ ] **Step 2: Add a test when the testing rule requires one**
 
+Use a public entry point with real dependencies. Specify realistic input, the
+production path, and a result visible to a user, caller, or downstream system.
+
 ```python
 def test_specific_behavior() -> None:
-    result = function(input)
+    result = public_api.function(input)
     assert result == expected
 ```
 
