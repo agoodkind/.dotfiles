@@ -1,25 +1,205 @@
 ---
 name: brainstorming
-description: Use when a request is open-ended and material product, behavior, or architecture choices remain unresolved.
+description: Use before creative work, including features, components, behavior changes, and new plans in software or other fields.
 ---
+
+<!-- Source: https://github.com/obra/superpowers/blob/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/brainstorming/SKILL.md -->
 
 # Brainstorming
 
-Turn an open-ended request into a clear implementation direction.
+Find out what the user wants and why before building. An agent can build a
+working result from an incomplete understanding of the request.
 
-1. Inspect the current project and the user's stated constraints.
-2. Identify the intended outcome, users, success criteria, and boundaries.
-3. Ask only for missing choices that would materially change the result.
-4. Present two or three approaches when a real tradeoff exists. State the recommended approach and its costs.
-5. Describe the selected behavior, interfaces, error handling, and verification at the level needed for implementation.
-6. Record a design document only when the user requests one, repository conventions require one, or the design is too large to remain clear in the task context.
+People may still be working out what they want. Good questions help them
+develop the idea. Understanding the purpose helps the agent make decisions
+that the request does not explicitly cover.
 
-Proceed once the request and available evidence determine an implementation direction. A planning-only request ends with the design or recommendation instead of implementation.
+## Assess the Request
 
-## Existing codebases
+Identify what the request establishes about the intended result and its purpose.
 
-Follow established patterns after reading the relevant implementation. Include only refactors required by the requested behavior. Split the work when independent subsystems would otherwise create one oversized change.
+- Complete a quick, clear task when the request supplies every material detail,
+  such as changing an icon to cornflower blue. State the completed change.
+- Start a conversation when a material detail remains unclear.
 
-## Visual comparisons
+## Open the Conversation
 
-Use [visual-companion.md](visual-companion.md) when the user asks for visual exploration or accepts a visual comparison that materially improves a layout, mockup, or architecture decision.
+Use this order in the first message:
+
+1. State that the user can skip the questions and request immediate work.
+   If the user chooses that option, finish brainstorming. State any significant
+   choice about platform, language, or medium in one plain sentence, then use
+   the normal workflow to complete the request.
+2. Ask one open question about a real moment or a concrete picture. For example,
+   ask what happened the last time the need arose, or ask about the people who
+   will attend an event.
+
+Keep the first message limited to the skip option and the open question.
+
+## Develop the Conversation
+
+End each message with one question in a single sentence. Do not append a list
+of example answers. Match the user's vocabulary and level of knowledge. Avoid
+process jargon.
+
+Write clearly and concisely. Present the most important findings first and
+offer further details when useful.
+
+Ask open questions first. The user's own account explains intent without
+restricting the discussion to the agent's proposed options. Offer a short
+menu when the user cannot answer. Propose something concrete when the user
+requests a guess or a recommendation.
+
+Establish the choices about medium, tools, materials, and resources early.
+For an app, these include the platform, programming language, and libraries.
+For art, these include the medium. Identify which choices the user wants to
+make, which choices the agent can make, and which resources already exist.
+Discuss choices when the user has strong preferences or relevant skills.
+State sensible defaults plainly when the user delegates those choices.
+Build on the tools and patterns that existing work already uses.
+
+Record an agent-selected choice as the agent's decision. Attribute a decision
+to the user only when the user made it.
+
+Use these topics to guide exploration. Do not read the list aloud as questions:
+
+- Establish the kind of result and what makes it distinct.
+- Establish why the work matters now and what success means.
+- Establish goals, non-goals, and outcomes that would constitute failure even
+  if the result technically worked.
+- Explore examples that the user liked or disliked.
+- Inspect the current state and previous attempts.
+- Identify the details that matter to the user.
+
+Anchor questions in specifics. Ask about the last occurrence, the single most
+important capability, or an outcome that would disappoint the user. A concrete
+guess that the user can correct can help more than another abstract question.
+
+Inspect the project, the user's relevant files and data, or the web when that
+inspection would resolve a question. Report the relevant findings.
+
+Consider several approaches privately before proposing one. Discard weak
+approaches and approaches that conflict with the user's purpose. Present a
+comparison only when it helps the user decide.
+
+Offer the visual companion when a visual would explain the subject better
+than text. Relevant subjects include:
+
+- Show an artifact the user will view, such as a screen, page, printout, or sign.
+- Show a layout for a screen, room, or schedule.
+- Show a sequence of operations or events.
+- Show options that differ visually.
+- Show a structure with a diagram, timeline, or map.
+
+After the user accepts the companion, use mockups, comparisons, and clickable
+throwaway prototypes to support the discussion.
+
+Offer a spike when a quick throwaway build would clarify the request or test
+feasibility. Complete the spike directly when the user requests one. A spike
+skips the normal plan, implementation, and review process. Label its output as
+throwaway and explain what the experiment established.
+
+## Reflect the Understanding
+
+Summarize each part once its purpose, audience, or behavior becomes clear.
+Use about 200-300 words for that part, then ask about the next part. Alternate
+summaries and questions throughout the conversation. Use the final summary to
+cover any remaining details.
+
+Distinguish the agent's assumptions from the user's stated requirements.
+End each summary by asking what is wrong or missing.
+
+Before presenting a summary, check whether it concerns an artifact the user
+will view, such as a screen, page, schedule, or printout. If the user has not
+received the visual companion offer, present the offer in its own message
+first. Present the summary in the next message. Include a mockup beside the
+summary after the user accepts the companion.
+
+## Size the Work
+
+Classify the work once the intended result becomes clear. State the size in
+plain words and allow the user to change it.
+
+Choose the design format and subsequent workflow from the task size:
+
+| Size | Full description | Subsequent work |
+|---|---|---|
+| A quick, clear task | Use the request itself. | Complete the task. |
+| A small change | Explain the design in chat. | Use the normal implementation workflow. |
+| A project with a written design | Write a design document. | Create a full plan with [writing-plans](../writing-plans/SKILL.md) for software. |
+
+Reassess the size if the scope grows during the task. Explain the change and
+use the larger task's workflow.
+
+For several independent projects, establish an order with the user and
+brainstorm one project at a time.
+
+## Write the Design
+
+For a project, write a plain design document that a capable builder in the
+domain can plan from without asking the user to repeat the discussion.
+Include the following information:
+
+- Explain the intended result and its purpose.
+- State goals, non-goals, and outcomes that would constitute failure.
+- State constraints.
+- Preserve the user's implementation choices as the user made them.
+- Identify decisions the builder can make.
+
+For a software repository, save and commit the design under
+`docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`. Ask for a location
+outside a software repository. Follow the user's preferred location when
+the user supplies one.
+
+Dispatch a fresh subagent with [builder-check-prompt.md](builder-check-prompt.md)
+to check whether the document supplies enough information to plan the work.
+Complete that check before presenting the document. Without a subagent tool,
+review the document from the builder's perspective.
+
+Resolve the reviewer's questions according to the available evidence:
+
+- Add an answer that the conversation or project already supplies.
+- Decide a minor detail when a capable builder could choose it without
+  changing the intended result. Mark it as the agent's decision.
+- Ask the user when only the user can answer and the answer changes the result.
+
+Present the questions that require the user in one message, with the most
+important question first. Update the document with the answers. Present the
+document with a short list of agent-selected decisions for the user to check.
+Limit the builder check to one round of user questions.
+
+After writing the design document, create the implementation plan. For
+software, invoke writing-plans as the next skill.
+
+## Check Common Mistakes
+
+Use these checks when the discussion suggests a shortcut:
+
+| Proposed shortcut | Required behavior |
+|---|---|
+| Offer options immediately to reduce effort. | Ask the user to explain the need before restricting the discussion to options. |
+| Choose defaults without stating them. | State the defaults plainly and invite correction. |
+| Explain the process before asking about the request. | Ask the substantive question directly. |
+| Keep implementing a successful spike. | Treat retaining the spike's output as a new request and reassess its scope. |
+
+## Use the Visual Companion
+
+The visual companion uses a browser tab to present mockups, diagrams, and
+prototypes. Acceptance makes the tool available for suitable questions.
+Continue using text for questions that do not benefit from a visual.
+
+Offer the companion the first time a visual would improve understanding.
+Do not offer it at the start of every task. Put the offer in its own message:
+
+> Would a browser tab with mockups help explain this choice?
+
+If the user declines, continue in text. Do not offer the companion again
+unless the user requests it.
+
+Choose the presentation for each question. Use the browser for mockups,
+layouts, diagrams, and visual comparisons. Use text for requirements, scope,
+tradeoffs, and conceptual choices. A question about a user interface can
+still require a text discussion.
+
+After the user accepts, read [visual-companion.md](visual-companion.md) before
+starting the server.
