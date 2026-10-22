@@ -386,3 +386,9 @@ When a cleanup interval changes from one minute to two minutes:
 - **Good:**
 
   > The cleanup worker deletes expired database records every two minutes.
+
+- State the required action directly instead of starting with “The + artifact” and explaining its purpose or status.
+  - **Bad:** “The tag preserves that evidence in the commit history.”
+  - **Good:** “Link to the reproduction results.”
+  - **Bad:** “The proposed correction still needs build and hardware tests.”
+  - **Good:** “Build the patched kernel and test it on hardware.”
