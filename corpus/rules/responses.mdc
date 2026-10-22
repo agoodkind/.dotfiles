@@ -97,3 +97,9 @@ NEVER EVER EVER perform these actions without the user's explicit direction:
 
 A request to draft, review, investigate, or summarize does not authorize sending a visible message. Produce the requested draft and stop.
 </IMPORTANT>
+
+- State the required action directly instead of starting with “The + artifact” and explaining its purpose or status.
+  - **Bad:** “The tag preserves that evidence in the commit history.”
+  - **Good:** “Link to the reproduction results.”
+  - **Bad:** “The proposed correction still needs build and hardware tests.”
+  - **Good:** “Build the patched kernel and test it on hardware.”
