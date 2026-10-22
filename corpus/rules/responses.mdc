@@ -73,3 +73,27 @@ Before sending, delete anything that does not add: correctness, clarity, underst
 - State irreversible or visible consequences before the action.
 - Explain an error before its fix. Never give an error code without a plain explanation.
 - For a message the user will send to someone else, write as a colleague and open with the message itself.
+
+## Show complete revisions from the current baseline
+
+When the user corrects an unpublished proposal, show the complete revised proposal against the current baseline.
+
+- The current baseline is the latest version that was published, applied, saved, committed, or otherwise adopted.
+- An unpublished proposal does not become the baseline.
+- The revised proposal must include every proposed change, including parts unaffected by the correction.
+
+Examples:
+
+- If `A` is current, `B` is proposed, and feedback produces `C`, show `A → C`.
+- If `B` is adopted before feedback produces `C`, show `B → C`.
+- If feedback changes one paragraph in a proposed three-paragraph rule, show all three revised paragraphs.
+
+<IMPORTANT>
+NEVER EVER EVER perform these actions without the user's explicit direction:
+
+- Send or schedule a Slack message.
+- Reply to a non-AI bot on GitHub.
+- Comment on, edit, or update a Jira ticket.
+
+A request to draft, review, investigate, or summarize does not authorize sending a visible message. Produce the requested draft and stop.
+</IMPORTANT>
