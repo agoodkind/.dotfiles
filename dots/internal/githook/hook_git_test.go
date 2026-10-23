@@ -3,6 +3,7 @@ package githook
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"os/exec"
@@ -106,7 +107,7 @@ func TestClaudeDetachSubmoduleAwayFromGitlinkIsRefused(t *testing.T) {
 	}
 }
 
-func TestClaudeCommitOnDefaultBranchIsRefused(t *testing.T) {
+func TestClaudeCommitOnUnprotectedDefaultBranchIsAllowed(t *testing.T) {
 	fixture := newSubmoduleFixture(t)
 	enableAgentPolicy(t, fixture.root)
 	if output, err := runGitResult(t, fixture.superproject, "submodule", "update", "--init", submodulePath); err != nil {
@@ -119,15 +120,12 @@ func TestClaudeCommitOnDefaultBranchIsRefused(t *testing.T) {
 	for _, repo := range []string{fixture.superproject, submodule} {
 		before := gitOutputForTest(t, repo, "rev-parse", "HEAD")
 		output, err := runGitResult(t, repo, "commit", "--allow-empty", "-m", "agent commit")
-		if err == nil {
-			t.Fatalf("git commit on main in %s succeeded, want refusal\n%s", repo, output)
-		}
-		if !strings.Contains(output, protectedCommitRefusal) {
-			t.Fatalf("commit refusal in %s missing %q:\n%s", repo, protectedCommitRefusal, output)
+		if err != nil {
+			t.Fatalf("git commit on unprotected main in %s failed: %v\n%s", repo, err, output)
 		}
 		after := gitOutputForTest(t, repo, "rev-parse", "HEAD")
-		if after != before {
-			t.Fatalf("HEAD in %s moved from %s to %s after refused commit", repo, before, after)
+		if after == before {
+			t.Fatalf("HEAD in %s did not change after allowed commit", repo)
 		}
 	}
 }
@@ -205,8 +203,6 @@ const (
 	nestedSubmodulePath = "grammars/swift"
 	// nonASCIISubmodulePath is C-quoted by ls-files unless -z is passed.
 	nonASCIISubmodulePath = "third_party/modé"
-	// protectedCommitRefusal is printed by git-global-hooks/pre-commit.
-	protectedCommitRefusal = "error: commit blocked on protected branch main"
 )
 
 type submoduleFixture struct {
@@ -349,4 +345,129 @@ func runGitResult(t *testing.T, dir string, args ...string) (string, error) {
 	command.Dir = dir
 	output, err := command.CombinedOutput()
 	return string(output), err
+}
+
+func TestClaudePrimaryBranchGuardWithoutUpstream(t *testing.T) {
+	for _, operation := range [][]string{{"switch", "-c", "feature"}, {"checkout", "--detach"}} {
+		t.Run(strings.Join(operation, " "), func(t *testing.T) {
+			repo := newSeededRepo(t, "main")
+			mustGit(t, repo, "config", "goodkind.protectedBranchEnforcePath", repo)
+			t.Setenv("CLAUDECODE", "1")
+			enableGlobalHooks(t, repo)
+			output, err := runGitResult(t, repo, operation...)
+			if err == nil || !strings.Contains(output, msgLeaveDefault) {
+				t.Fatalf("git %v error = %v, want default branch refusal:\n%s", operation, err, output)
+			}
+			if branch := gitOutputForTest(t, repo, "symbolic-ref", "--short", "HEAD"); branch != "main" {
+				t.Fatalf("branch after refused operation = %q, want main", branch)
+			}
+		})
+	}
+}
+
+func TestClaudeUnprotectedPrimaryMutations(t *testing.T) {
+	for _, origin := range []string{"", "https://gitlab.com/example/project.git", "https://github.com/invalid"} {
+		t.Run(origin, func(t *testing.T) {
+			repo := newSeededRepo(t, "main")
+			mustGit(t, repo, "config", "goodkind.protectedBranchEnforcePath", repo)
+			if origin != "" {
+				mustGit(t, repo, "remote", "add", "origin", origin)
+			}
+			t.Setenv("CLAUDECODE", "1")
+			enableGlobalHooks(t, repo)
+			output, err := runGitResult(t, repo, "commit", "--allow-empty", "-m", "allowed")
+			if err != nil {
+				t.Fatalf("unprotected commit failed: %v\n%s", err, output)
+			}
+			if origin == "https://github.com/invalid" && !strings.Contains(output, "lookup failed") {
+				t.Fatalf("failed lookup did not report its error:\n%s", output)
+			}
+			if err := os.WriteFile(filepath.Join(repo, "change.txt"), []byte("stash\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			mustGit(t, repo, "add", "change.txt")
+			mustGit(t, repo, "stash", "push", "-m", "allowed")
+			mustGit(t, repo, "stash", "pop")
+		})
+	}
+}
+
+func TestProtectionHelperTargets(t *testing.T) {
+	repo := newSeededRepo(t, "main")
+	file := filepath.Join(repo, "file.txt")
+	if err := os.WriteFile(file, []byte("test\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	missing := filepath.Join(repo, "new", "file.txt")
+	for _, args := range [][]string{{repo}, {file}, {missing}, {"--dir-only", repo}, {"--dir-only", file}, {"--dir-only", missing}} {
+		command := exec.Command(filepath.Join(globalHooksDir(t), "github-pr-protection.sh"), args...)
+		output, err := command.CombinedOutput()
+		if err != nil || strings.TrimSpace(string(output)) != `{"pr_protected":false}` {
+			t.Fatalf("helper %v = %s, %v; want false", args, output, err)
+		}
+	}
+}
+
+func TestProtectionHelperLiveGitHub(t *testing.T) {
+	protectedRepo := os.Getenv("DOTFILES_TEST_PROTECTED_REPO")
+	unprotectedRepo := os.Getenv("DOTFILES_TEST_UNPROTECTED_REPO")
+	if protectedRepo == "" || unprotectedRepo == "" {
+		t.Skip("set DOTFILES_TEST_PROTECTED_REPO and DOTFILES_TEST_UNPROTECTED_REPO to GitHub owner/repository values")
+	}
+	for _, scenario := range []struct {
+		repository string
+		protected  bool
+	}{{protectedRepo, true}, {unprotectedRepo, false}} {
+		t.Run(scenario.repository, func(t *testing.T) {
+			repo := newSeededRepo(t, "main")
+			mustGit(t, repo, "commit", "--allow-empty", "-m", "second")
+			mustGit(t, repo, "remote", "add", "origin", "https://github.com/"+scenario.repository+".git")
+			mustGit(t, repo, "config", "goodkind.protectedBranchEnforcePath", repo)
+			t.Setenv("GH_REPO", "github.com/cli/cli")
+			command := exec.Command(filepath.Join(globalHooksDir(t), "github-pr-protection.sh"), filepath.Join(repo, "new", "file.txt"))
+			output, err := command.Output()
+			if err != nil {
+				t.Fatalf("live helper: %v", err)
+			}
+			var result struct {
+				Protected bool `json:"pr_protected"`
+			}
+			if err := json.Unmarshal(output, &result); err != nil {
+				t.Fatalf("decode helper: %v", err)
+			}
+			if result.Protected != scenario.protected {
+				t.Fatalf("helper protection = %t, want %t", result.Protected, scenario.protected)
+			}
+			t.Setenv("CLAUDECODE", "1")
+			enableGlobalHooks(t, repo)
+			before := gitOutputForTest(t, repo, "rev-parse", "HEAD")
+			commitOutput, err := runGitResult(t, repo, "commit", "--allow-empty", "-m", "protection test")
+			if scenario.protected {
+				if err == nil || !strings.Contains(commitOutput, "commit blocked on protected branch") {
+					t.Fatalf("protected commit error = %v, output:\n%s", err, commitOutput)
+				}
+				if after := gitOutputForTest(t, repo, "rev-parse", "HEAD"); after != before {
+					t.Fatalf("protected commit changed HEAD from %s to %s", before, after)
+				}
+			} else if err != nil {
+				t.Fatalf("unprotected commit failed: %v\n%s", err, commitOutput)
+			}
+			for _, operation := range [][]string{{"rebase", "--force-rebase", "HEAD~1"}, {"stash", "push", "-m", "protection test"}} {
+				if operation[0] == "stash" {
+					if err := os.WriteFile(filepath.Join(repo, "change.txt"), []byte("stash\n"), 0o600); err != nil {
+						t.Fatal(err)
+					}
+					mustGit(t, repo, "add", "change.txt")
+				}
+				output, err := runGitResult(t, repo, operation...)
+				if scenario.protected {
+					if err == nil || !strings.Contains(output, "agent harness cannot") {
+						t.Fatalf("protected git %v error = %v, output:\n%s", operation, err, output)
+					}
+				} else if err != nil {
+					t.Fatalf("unprotected git %v failed: %v\n%s", operation, err, output)
+				}
+			}
+		})
+	}
 }

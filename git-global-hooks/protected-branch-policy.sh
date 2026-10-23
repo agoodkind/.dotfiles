@@ -5,11 +5,9 @@ protected_branch_policy_applies() {
     local configured_paths
     local enforced_path
 
-    if ! git rev-parse --verify --quiet '@{upstream}' >/dev/null; then
+    if ! repository_root="$(git rev-parse --show-toplevel)"; then
         return 1
     fi
-
-    repository_root="$(git rev-parse --show-toplevel)"
     repository_root="$(cd "$repository_root" && pwd -P)"
     if ! configured_paths="$(git config --get-all goodkind.protectedBranchEnforcePath)"; then
         configured_paths=""
