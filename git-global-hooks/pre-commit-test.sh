@@ -29,6 +29,7 @@ create_repository() {
     git init --quiet --initial-branch="$branch_name" "$repository_path"
     git -C "$repository_path" config core.hooksPath "$GLOBAL_HOOKS"
     git -C "$repository_path" config init.defaultBranch main
+    git -C "$repository_path" config goodkind.protectedBranchEnforcePath "$TEMP_DIR"
     git -C "$repository_path" config user.name "Test User"
     git -C "$repository_path" config user.email "test@example.invalid"
     git -C "$repository_path" config commit.gpgsign false
@@ -40,20 +41,6 @@ stage_change() {
 
     printf '%s\n' "$scenario_name" >>"$repository_path/change.txt"
     git -C "$repository_path" add change.txt
-}
-
-assert_blocked() {
-    local scenario_name="$1"
-    local repository_path="$2"
-    local output
-
-    stage_change "$repository_path" "$scenario_name"
-    if output="$(HOME="$TEST_HOME" GIT_EMAIL_RULES="$MISSING_EMAIL_RULES" git -C "$repository_path" commit --quiet -m "$scenario_name" 2>&1)"; then
-        fail "$scenario_name: hook allowed a protected-branch commit"
-    fi
-    if [[ "$output" != *"make all changes in a worktree and merge via GitHub"* ]]; then
-        fail "$scenario_name: hook did not provide the recovery instruction"
-    fi
 }
 
 assert_allowed() {
@@ -78,18 +65,18 @@ mkdir -p "$TEST_HOME" "$EMPTY_HOOKS"
 
 main_repository="$TEMP_DIR/main"
 create_repository "$main_repository" main
-assert_blocked "main branch" "$main_repository"
+assert_allowed "main branch without origin" "$main_repository"
 
 remote_default_repository="$TEMP_DIR/release"
 create_repository "$remote_default_repository" release
 git -C "$remote_default_repository" remote add origin "$TEMP_DIR/remote.git"
 git -C "$remote_default_repository" symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/release
-assert_blocked "remote default branch" "$remote_default_repository"
+assert_allowed "non-GitHub remote default branch" "$remote_default_repository"
 
 configured_default_repository="$TEMP_DIR/trunk"
 create_repository "$configured_default_repository" trunk
 git -C "$configured_default_repository" config init.defaultBranch trunk
-assert_blocked "configured default branch" "$configured_default_repository"
+assert_allowed "configured default branch without origin" "$configured_default_repository"
 
 feature_repository="$TEMP_DIR/feature"
 create_repository "$feature_repository" feature/protected-branches

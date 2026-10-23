@@ -34,7 +34,7 @@ func applyRefUpdates(ctx context.Context, layout repoLayout, updates []refUpdate
 			headOld = update.oldValue
 			headNew = update.newValue
 		case isStashRef(update.refName):
-			if layout.primary {
+			if layout.primary && primaryMutationsBlocked(ctx) {
 				return refuse(msgPrimaryStash, hintPrimaryStash)
 			}
 		}
@@ -64,12 +64,20 @@ func applyHeadUpdate(ctx context.Context, layout repoLayout, headOld string, hea
 		return err
 	}
 	if layout.primary && onDefault {
+		if !currentHeadExists(ctx) {
+			return nil
+		}
 		if pinnedSubmoduleCheckout(ctx, headNew) {
 			return nil
 		}
 		return refuse(msgLeaveDefault, hintLeaveDefault)
 	}
 	return nil
+}
+
+func currentHeadExists(ctx context.Context) bool {
+	_, err := gitOutput(ctx, "rev-parse", "--verify", "HEAD")
+	return err == nil
 }
 
 func applySymbolicHead(ctx context.Context, layout repoLayout, target string) error {
@@ -101,7 +109,7 @@ func applyPrimaryWrite(ctx context.Context) error {
 	if !layout.ready {
 		return nil
 	}
-	if layout.primary {
+	if layout.primary && primaryMutationsBlocked(ctx) {
 		return refuse(msgPrimaryWrite, hintPrimaryWrite)
 	}
 	return nil

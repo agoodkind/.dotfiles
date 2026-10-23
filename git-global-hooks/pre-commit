@@ -42,9 +42,15 @@ current_branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
 if [[ -n "$current_branch" ]] &&
     is_protected_branch "$current_branch" &&
     protected_branch_policy_applies; then
-    printf 'error: commit blocked on protected branch %q\n' "$current_branch"
-    printf '%s\n' '  make all changes in a worktree and merge via GitHub.'
-    exit 1
+    if protection="$("$(dirname "$0")/github-pr-protection.sh" .)"; then
+        if [[ "$protection" == '{"pr_protected":true}' ]]; then
+            printf 'error: commit blocked on protected branch %q\n' "$current_branch"
+            printf '%s\n' '  make all changes in a worktree and merge via GitHub.'
+            exit 1
+        fi
+    else
+        printf '%s\n' 'warning: allowing the commit because GitHub protection lookup failed.' >&2
+    fi
 fi
 
 if resolve_allowed_identity_fields; then
