@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // RuleTargetFormat selects provider-specific front matter for rendered rule files.

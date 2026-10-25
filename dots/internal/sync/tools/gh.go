@@ -9,11 +9,11 @@ import (
 	"regexp"
 	"strings"
 
+	"go.yaml.in/yaml/v3"
 	"goodkind.io/.dotfiles/internal/catalog"
 	"goodkind.io/.dotfiles/internal/cmdexec"
 	"goodkind.io/.dotfiles/internal/sync/corpus"
 	"goodkind.io/.dotfiles/internal/telemetry"
-	"gopkg.in/yaml.v3"
 )
 
 type ghSkillDocument struct {
