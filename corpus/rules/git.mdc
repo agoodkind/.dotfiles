@@ -48,6 +48,7 @@ Use a harness-provided isolated checkout or native worktree lifecycle when one a
 # Worktree and branch cleanup
 
 Use {{.Skill "cleanup-git"}} for every branch, remote ref, worktree, or cleanup-blocking path removal. Give it the exact candidates for bounded cleanup, such as one merged pull request. Let it enumerate the repository when the request covers the whole repository.
+PLEASE CLEAN UP AFTER EVERY SINGLE OPERATION.
 
 # Pull request merge
 
