@@ -301,7 +301,16 @@ git -C <trunk-worktree> merge --ff-only origin/<trunk>
 
 Do not `git update-ref refs/heads/<trunk>` when trunk is checked out elsewhere.
 
-Report: PR URL(s), branches deleted (remote/local), trunk commit after reconcile, worktree removed (or skipped and why).
+Immediately before the final report, refresh the PR and its reviews from GitHub:
+
+```shell
+gh pr view <number> --repo <owner>/<repo> --json state,mergedAt,headRefOid,reviewDecision,statusCheckRollup
+gh api --paginate "repos/<owner>/<repo>/pulls/<number>/reviews"
+```
+
+Use the newest check attempt for each check name, GitHub App, and reviewed commit. Read the latest review assessment before reporting an AI review as complete or unfinished. Provider errors in an earlier attempt do not establish the final outcome. When reassessment completes the review, report the recovered result. If the refresh fails, state that the current review status could not be verified.
+
+Report: PR URL(s), branches deleted (remote/local), trunk commit after reconcile, worktree removed (or skipped and why), and the freshly verified review status when relevant.
 
 ## 10. Session end with no resolution
 
