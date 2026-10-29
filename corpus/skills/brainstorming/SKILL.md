@@ -4,6 +4,7 @@ description: Use before creative work, including features, components, behavior 
 ---
 
 <!-- Source: https://github.com/obra/superpowers/blob/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/brainstorming/SKILL.md -->
+<!-- Approach selection and design approval source: https://github.com/obra/superpowers/blob/2ce8aa15d05bd57213e6f746f953aafb7ded7a8b/skills/brainstorming/SKILL.md -->
 
 # Brainstorming
 
@@ -78,9 +79,14 @@ guess that the user can correct can help more than another abstract question.
 Inspect the project, the user's relevant files and data, or the web when that
 inspection would resolve a question. Report the relevant findings.
 
-Consider several approaches privately before proposing one. Discard weak
-approaches and approaches that conflict with the user's purpose. Present a
-comparison only when it helps the user decide.
+After understanding the request, present approaches in a separate message
+before writing the design. Consider several real alternatives. Discard weak
+alternatives, including those that conflict with the user's purpose or the
+existing work. When alternatives remain, present the two or three remaining approaches. Ground each
+approach in the project and explain its tradeoffs. Recommend one approach,
+explain why, and ask the user to choose. If only one approach makes sense,
+explain why the alternatives do not fit. Apply this comparison to how the
+result will be built. First ask the user to explain the intended result.
 
 Offer the visual companion when a visual would explain the subject better
 than text. Relevant subjects include:
@@ -117,16 +123,20 @@ summary after the user accepts the companion.
 
 ## Size the Work
 
-Classify the work once the intended result becomes clear. State the size in
-plain words and allow the user to change it.
+Classify the work once the intended result becomes clear and the user chooses
+an approach. State the size in plain words and allow the user to change it.
 
 Choose the design format and subsequent workflow from the task size:
 
 | Size | Full description | Subsequent work |
 |---|---|---|
 | A quick, clear task | Use the request itself. | Complete the task. |
-| A small change | Explain the design in chat. | Use the normal implementation workflow. |
-| A project with a written design | Write a design document. | Create a full plan with [writing-plans](../writing-plans/SKILL.md) for software. |
+| A small change | Write a short design document that records the discussion. | Obtain design approval before planning. |
+| A project with a written design | Write a full design document. | Obtain design approval before planning. |
+
+Include an Approaches section in each design document. Record the
+approaches considered, the tradeoffs of each, the user's choice, and the reason
+for that choice. Ask the user to choose an approach before writing the design.
 
 Reassess the size if the scope grows during the task. Explain the change and
 use the larger task's workflow.
@@ -136,22 +146,26 @@ brainstorm one project at a time.
 
 ## Write the Design
 
-For a project, write a plain design document that a capable builder in the
-domain can plan from without asking the user to repeat the discussion.
+For a small change or a project, write a plain design document that a capable
+builder in the domain can plan from without asking the user to repeat the discussion.
 Include the following information:
 
 - Explain the intended result and its purpose.
 - State goals, non-goals, and outcomes that would constitute failure.
 - State constraints.
+- Explain the approaches, their tradeoffs, and the user's choice.
 - Preserve the user's implementation choices as the user made them.
 - Identify decisions the builder can make.
+
+For a small change, cover each point in one or two lines and present the short
+design directly to the user. The small change does not require a builder check.
 
 For a software repository, save and commit the design under
 `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`. Ask for a location
 outside a software repository. Follow the user's preferred location when
 the user supplies one.
 
-Dispatch a fresh subagent with [builder-check-prompt.md](builder-check-prompt.md)
+For a project, dispatch a fresh subagent with [builder-check-prompt.md](builder-check-prompt.md)
 to check whether the document supplies enough information to plan the work.
 Complete that check before presenting the document. Without a subagent tool,
 review the document from the builder's perspective.
@@ -168,8 +182,18 @@ important question first. Update the document with the answers. Present the
 document with a short list of agent-selected decisions for the user to check.
 Limit the builder check to one round of user questions.
 
-After writing the design document, create the implementation plan. For
-software, invoke writing-plans as the next skill.
+Wait for the user to approve the short design for a small change or the full
+design for a project before building. Building includes writing product code,
+scaffolding, installing dependencies, creating projects, and invoking an
+implementation skill. Reading and exploring can continue before approval.
+
+The approval requirement ends when the user opts out of the questions. A spike
+the user approves may proceed as a throwaway build. Treat retaining its output
+as a new request and obtain design approval before continuing that work.
+
+After design approval, create the implementation plan. For software, invoke
+[writing-plans](../writing-plans/SKILL.md) as the next skill. Do not invoke
+another skill before it.
 
 ## Check Common Mistakes
 

@@ -197,20 +197,31 @@ without dispatching a subagent:
 Fix issues directly. Complete one review pass rather than repeatedly reviewing
 the same plan.
 
-## Select the Execution Method
+## Execution Handoff
 
-After saving and reviewing the plan, provide its link. Preserve an execution
-method the user has already supplied. Otherwise, select a method based on task
-dependencies, the number of tasks, and the cost of a shipped mistake.
+<!-- Source: https://github.com/obra/superpowers/blob/2ce8aa15d05bd57213e6f746f953aafb7ded7a8b/skills/writing-plans/SKILL.md#execution-handoff -->
 
-Compare the available execution methods:
+After saving and self-reviewing the plan, link it for the user
+to read. If the user has already explicitly supplied an execution method, ask
+the user to review the plan and confirm it captures the intended result; wait for that
+review before implementation, then use the preserved method. Otherwise, ask
+the user to review the plan and choose an execution method before implementation.
 
-| Method | Implementation and review | Context cost |
-|---|---|---|
-| Subagent-driven | Use a fresh implementer for each task and a fresh reviewer before starting the next task. Review the complete branch afterward. | Create a fresh context for each implementation task and review. |
-| Native | Implement all tasks in the current session. Then use one fresh reviewer on the most capable model to check the complete branch. | Use fewer fresh contexts and defer independent review until the complete branch exists. |
+When the user has not already supplied an execution method, use this prompt:
 
-State the selected method and its reason. Use
-[subagent-driven-development](../subagent-driven-development/SKILL.md) for the
-subagent method and [executing-plans](../executing-plans/SKILL.md) for the native
-method.
+> The plan is complete. [Insert a link to the saved plan.] Which execution approach should the agent use?
+
+- Subagent-driven execution uses a fresh subagent to implement each task and a fresh reviewer to check it before the next one starts, then a whole-branch review at the end. This method costs a fresh context per task and per review.
+- Native execution uses the session agent to implement every task in this session, then one fresh reviewer on the most capable model checks the whole branch. This method costs one implementation context and one final reviewer context. Independent review occurs at the end. A mid-tier session model can use the plan's design decisions to implement the tasks.
+
+> For this plan I recommend <one of the two>, because <one sentence from the plan: how much the tasks depend on each other's interfaces, how many there are, what a shipped mistake would cost>. Does the plan capture the intended result, and which approach should the agent use?
+
+When the user has already supplied an execution method, use this prompt:
+
+> The plan is complete. [Insert a link to the saved plan.] Does it capture the intended result?
+
+If the user chooses subagent-driven execution, use
+[subagent-driven-development](../subagent-driven-development/SKILL.md).
+
+If the user chooses native execution, use
+[executing-plans](../executing-plans/SKILL.md).
