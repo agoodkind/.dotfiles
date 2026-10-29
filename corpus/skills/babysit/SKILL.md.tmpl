@@ -233,6 +233,14 @@ Fix CI failures caused by changes within this PR's scope. Publish each scoped CI
 
 Never edit CI workflows or unrelated code just to make failures pass. Report back when that would be required.
 
+### Read live job logs
+
+GitHub streams running job logs in its [Actions web interface](https://github.blog/enterprise-software/ci-cd/build-ci-cd-pipeline-github-actions-four-steps/). When a running job's log download returns HTTP 404 or `gh run view --log` refuses it, use an available, authenticated browser to open the job and expand the running step. Read the output as it updates. A failed log download does not establish that live output is unavailable.
+
+Use the browser skill for the available browser. If browser access is disabled or authentication prevents access, report that specific limitation. Continue checking the existing run with `gh run watch` or the jobs API. Those commands report job and step status; they do not stream log text. Do not restart a job merely because its logs cannot be downloaded.
+
+GitHub CLI's [log streaming request](https://github.com/cli/cli/issues/3484) remains open. The unofficial [octotail](https://github.com/getbettr/octotail) project obtains authenticated WebSocket subscriptions through a browser and proxy, then tails those subscriptions in a terminal. Its documented setup requires browser credentials and a trusted proxy certificate. Review its current compatibility and obtain authorization for that setup before using it; do not present it as an API-only replacement for `gh run watch`.
+
 ## 7. Loop until merge-ready
 
 After each push, reply, or thread resolution, re-run steps 1 through 6 until the PR is merge-ready. Verify these conditions against the active ruleset:
