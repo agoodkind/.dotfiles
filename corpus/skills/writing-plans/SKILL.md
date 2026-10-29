@@ -201,15 +201,17 @@ the same plan.
 
 <!-- Source: https://github.com/obra/superpowers/blob/2ce8aa15d05bd57213e6f746f953aafb7ded7a8b/skills/writing-plans/SKILL.md#execution-handoff -->
 
-After saving and self-reviewing the plan, link it for the user
-to read. If the user has already explicitly supplied an execution method, ask
+After saving and self-reviewing the plan, explain its design, task scope, and
+material decisions in chat. Include the information needed for approval in
+the conversation and provide the saved plan as an optional reference.
+If the user has already explicitly supplied an execution method, ask
 the user to review the plan and confirm it captures the intended result; wait for that
 review before implementation, then use the preserved method. Otherwise, ask
 the user to review the plan and choose an execution method before implementation.
 
 When the user has not already supplied an execution method, use this prompt:
 
-> The plan is complete. [Insert a link to the saved plan.] Which execution approach should the agent use?
+> [Present the proposed work in chat and include an optional link to the saved plan.] Which execution approach should the agent use?
 
 - Subagent-driven execution uses a fresh subagent to implement each task and a fresh reviewer to check it before the next one starts, then a whole-branch review at the end. This method costs a fresh context per task and per review.
 - Native execution uses the session agent to implement every task in this session, then one fresh reviewer on the most capable model checks the whole branch. This method costs one implementation context and one final reviewer context. Independent review occurs at the end. A mid-tier session model can use the plan's design decisions to implement the tasks.
@@ -218,7 +220,7 @@ When the user has not already supplied an execution method, use this prompt:
 
 When the user has already supplied an execution method, use this prompt:
 
-> The plan is complete. [Insert a link to the saved plan.] Does it capture the intended result?
+> [Present the proposed work in chat and include an optional link to the saved plan.] Does it capture the intended result?
 
 If the user chooses subagent-driven execution, use
 [subagent-driven-development](../subagent-driven-development/SKILL.md).

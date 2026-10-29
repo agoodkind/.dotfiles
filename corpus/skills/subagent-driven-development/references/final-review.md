@@ -19,14 +19,14 @@ current head, findings, report, and diff. Save the fix commit list, statistics,
 and full diff in one file. Use [re-review-prompt.md](../re-review-prompt.md)
 for that review.
 
-Assess remaining findings using the decisions in the five-round limit in
+Assess remaining findings using the guidance in
 [fix-loop.md](fix-loop.md). Record reasons for deferred findings and identify
 the smallest change needed for findings that affect dependent work. Do not run
 a second fix wave. Report unresolved findings that affect completion.
 
 Before removing the private plan workspace, report material decisions and
 unresolved findings to the user. Collect every `Ruling:` entry, including
-preflight decisions, deferred findings, and decisions after the five-round
-limit. Report each decision in order with its cost if wrong. Delete only this
+preflight decisions and deferred findings. Report each decision in order with
+its cost if wrong. Delete only this
 plan's workspace after the final review is clean and its fixes are integrated.
 Follow the repository's branch completion and cleanup rules.

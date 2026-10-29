@@ -16,21 +16,20 @@ Before the loop starts, handle these findings separately:
   acting. Do not dismiss a finding because the plan mandates the behavior.
   Do not dispatch a fix that contradicts the plan without a recorded decision.
 
-Everything else enters the loop. A fix round is one fix dispatch plus one
-scoped re-review. Allow at most five rounds per task.
+For confirmed findings, dispatch a fix and a scoped re-review. Assess disputed
+findings against the specification before requesting a fix. Use evidence of
+progress to decide whether to resume the implementer, change the approach, or
+escalate a blocker.
 
-For rounds one through three, resume the original implementer. Send the open
+Resume the original implementer when its context remains useful. Send the open
 findings verbatim. The implementer already knows the task, the code, and its
 decisions. If the harness cannot resume a subagent, dispatch a fresh implementer
 with the brief path, report path, and findings. The report preserves the prior
 work for the new implementer.
 
-For rounds four and five, dispatch a fresh implementer on a more capable model.
-Supply the brief path, report path, and open findings. Tell the implementer how
-many times the previous implementer attempted the task and ask it to read the
-report for those attempts. A fresh implementer can reassess a problem after
-three unsuccessful rounds. Use this framing: "A prior implementer attempted
-this task [N] times. Read the report file for what was tried and own the task."
+Dispatch a fresh implementer when the current approach stops producing useful
+progress. Use a more capable model when the unresolved problem requires it.
+Supply the brief path, report path, open findings, and previous attempts.
 
 In every round, the implementer fixes the findings, runs verification for the
 amended work, appends a fix report to the same report file, and returns a short
@@ -49,16 +48,16 @@ in one file in the plan's private workspace. Dispatch
 [re-review-prompt.md](../re-review-prompt.md) with the findings list, brief,
 report file, and output path.
 
-After each round, record the round number, addressed and open findings, and
+After each fix, record the addressed and open findings and
 commit range when those details are needed to resume. The controller does not
 fix findings directly. The controller resumes the implementer and dispatches
 a reviewer for the fix.
 
-Use this format for a round entry:
+Use this format for a recovery entry:
 
-`Task <N>: fix round <R>/5 (<X> addressed, <Y> open; <finding one-liners>; commits <a7>..<b7>)`
+`Task <N>: fixes (<X> addressed, <Y> open; <finding one-liners>; commits <a7>..<b7>)`
 
-After the fifth re-review, stop dispatching fixes and assess each open finding:
+Assess each open finding when its evidence is available:
 
 - Defer a finding when the reviewer is wrong or the finding is contestable.
   Record why the code can remain as it is. Include that decision in the final
@@ -71,5 +70,4 @@ After the fifth re-review, stop dispatching fixes and assess each open finding:
   every path forward requires a guess. Use
   `Task <N>: Ruling: <finding>; <what was decided and why>`.
 
-Assess open findings at the five-round limit. Record every decision and do not
-silently discard findings.
+Record every material decision and do not silently discard findings.

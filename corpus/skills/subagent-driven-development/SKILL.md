@@ -60,8 +60,8 @@ small mechanical diff does not need the most capable model; a subtle
 concurrency change does. Scoped re-reviews of small fix diffs take a cheap to
 mid-tier model.
 
-For fix-loop rounds four and five, use a model at least one tier above the
-implementer that got stuck.
+Use a more capable model when the remaining findings require judgment beyond
+the current implementer's capability.
 
 Specify the model explicitly when dispatching a subagent. An omitted model
 inherits the session's model, which may be the most capable and most expensive.
@@ -108,7 +108,7 @@ the task review before starting the next task. Do not delegate an open design
 decision as an implementation task.
 
 Record the commit before dispatching each implementer. Record the implementer's
-agent identity for fix rounds one through three. Supply the task brief, the
+agent identity for follow-up fixes. Supply the task brief, the
 interfaces and decisions from earlier tasks, the global constraints, and the
 report path. Keep exact values in the task brief. Ask the implementer to write
 the full report to that path and return a short status, commit list, test
@@ -176,10 +176,9 @@ For findings the reviewer cannot verify from the diff, read
 ## Resolve Review Findings
 
 When a review finds a specification gap or a critical or important issue,
-follow [fix-loop.md](references/fix-loop.md). Read it before every fix round.
+follow [fix-loop.md](references/fix-loop.md).
 
-Do not start the next task while a critical or important finding remains open,
-unless the fifth round ended and the controller recorded a decision to defer it.
+Resolve blocking findings before starting the next task.
 Mark the task complete after the review is clean or every open finding has a
 recorded decision. Include the task's commit range and review result in the
 recovery state when that information is needed to resume.

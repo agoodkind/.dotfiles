@@ -157,8 +157,8 @@ Include the following information:
 - Preserve the user's implementation choices as the user made them.
 - Identify decisions the builder can make.
 
-For a small change, cover each point in one or two lines and present the short
-design directly to the user. The small change does not require a builder check.
+For a small change, cover each point in one or two lines and discuss the short
+design in chat. The small change does not require a builder check.
 
 For a software repository, save and commit the design under
 `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`. Ask for a location
@@ -167,7 +167,7 @@ the user supplies one.
 
 For a project, dispatch a fresh subagent with [builder-check-prompt.md](builder-check-prompt.md)
 to check whether the document supplies enough information to plan the work.
-Complete that check before presenting the document. Without a subagent tool,
+Complete that check before presenting the final design in chat. Without a subagent tool,
 review the document from the builder's perspective.
 
 Resolve the reviewer's questions according to the available evidence:
@@ -178,12 +178,16 @@ Resolve the reviewer's questions according to the available evidence:
 - Ask the user when only the user can answer and the answer changes the result.
 
 Present the questions that require the user in one message, with the most
-important question first. Update the document with the answers. Present the
-document with a short list of agent-selected decisions for the user to check.
+important question first. Update the document with the answers. Discuss the
+design in chat, including its scope, behavior, constraints, tradeoffs, and
+agent-selected decisions. Include enough detail in chat for the user to assess
+and approve the design. Treat the saved document as an optional reference;
+do not require the user to open it to review or approve the design.
 Limit the builder check to one round of user questions.
 
-Wait for the user to approve the short design for a small change or the full
-design for a project before building. Building includes writing product code,
+Wait for the user to approve the design presented in chat before building.
+Keep the saved document consistent with that approved design.
+Building includes writing product code,
 scaffolding, installing dependencies, creating projects, and invoking an
 implementation skill. Reading and exploring can continue before approval.
 
