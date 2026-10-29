@@ -16,6 +16,8 @@ Correct confirmed issues, verify the corrections, and report any unresolved
 findings that affect completion. Record reasons for deferring or rejecting a
 finding.
 
+Keep the private plan workspace when unresolved findings prevent completion.
+
 Before removing the private plan workspace, report material decisions and
 unresolved findings to the user. Collect every `Ruling:` entry, including
 preflight decisions and deferred findings. Report each decision in order with

@@ -79,14 +79,15 @@ guess that the user can correct can help more than another abstract question.
 Inspect the project, the user's relevant files and data, or the web when that
 inspection would resolve a question. Report the relevant findings.
 
-After understanding the request, present approaches in a separate message
+First ask the user to explain the intended result. After understanding the
+request, present implementation approaches in a separate message
 before writing the design. Consider several real alternatives. Discard weak
 alternatives, including those that conflict with the user's purpose or the
-existing work. When alternatives remain, present the two or three remaining approaches. Ground each
+existing work. When alternatives remain, present the two or three remaining
+approaches. Ground each
 approach in the project and explain its tradeoffs. Recommend one approach,
 explain why, and ask the user to choose. If only one approach makes sense,
-explain why the alternatives do not fit. Apply this comparison to how the
-result will be built. First ask the user to explain the intended result.
+explain why the alternatives do not fit.
 
 Offer the visual companion when a visual would explain the subject better
 than text. Relevant subjects include:

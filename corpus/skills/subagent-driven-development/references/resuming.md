@@ -8,5 +8,5 @@ If the ledger's first line identifies this plan file, tasks with a
 `Task <N>: complete` line are done. Do not dispatch them again. Resume at the
 first task without that line. When the last entry for a task records unresolved
 findings, resume from those findings. A ledger that identifies another
-plan belongs to that plan. Leave it in place and start a fresh ledger for the
+plan records progress for that plan. Do not change it. Start a fresh ledger for the
 current plan.

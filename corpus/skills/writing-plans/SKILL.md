@@ -244,6 +244,9 @@ the user to review the plan and confirm it captures the intended result; wait fo
 review before implementation, then use the preserved method. Otherwise, ask
 the user to review the plan and choose an execution method before implementation.
 
+The blockquotes below are message templates. Replace bracketed instructions
+and angle-bracketed placeholders with actual content before sending them.
+
 When the user has not already supplied an execution method, use this prompt:
 
 > [Present the proposed work in chat and include an optional link to the saved plan.] Which execution approach should the agent use?
