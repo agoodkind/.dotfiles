@@ -33,6 +33,41 @@ Split a specification covering independent subsystems into separate plans
 when brainstorming has not already divided the project. Each plan should
 produce working software that supports independent verification.
 
+## Track Workstreams
+
+Group related work into workstreams with one concrete outcome per group.
+Use the user's preferred issue tracker and project. Determine that preference
+from the conversation and repository instructions. Ask the user when the
+tracker or project remains unclear.
+
+After plan approval, create one issue for each workstream. Search for an
+existing issue with matching scope first and reuse it when available. Include
+the outcome, scope, acceptance criteria, dependencies, and a link to the plan
+in each issue. Use the tracker through its available integration or CLI.
+
+Record each issue's identifier and URL in the plan. Map the issue to its
+workstream, implementation tasks, and related pull requests or stack layers.
+Update that mapping when the workstream boundaries change.
+
+## Plan Pull Request Boundaries
+
+Assess whether the planned change is too large to review as one coherent pull
+request. Choose boundaries from distinct behavior, dependencies, and reviewer
+needs. Use the installed [gh-stack](https://github.com/github/gh-stack/blob/v0.3.0/skills/gh-stack/SKILL.md)
+skill when dependent parts need separate pull requests. Keep independent parts
+on separate branches based on the default branch.
+
+For a stack, record each layer's scope, parent branch, assigned tasks, and
+verification in the plan. Order prerequisite changes before the changes that
+depend on them. Each layer must support review and verification against its
+parent. Create the planned stack before implementing its tasks rather than
+implementing the complete change on one branch and splitting it afterward.
+
+Discuss the proposed pull request boundaries in chat as part of plan review.
+If the change grows during implementation, update the boundaries and task
+assignments before continuing. Follow the gh-stack skill for branch placement,
+rebasing, and submission commands.
+
 ## Define the File Structure
 
 Before defining tasks, map each file that the plan will create or modify and
@@ -197,20 +232,36 @@ without dispatching a subagent:
 Fix issues directly. Complete one review pass rather than repeatedly reviewing
 the same plan.
 
-## Select the Execution Method
+## Execution Handoff
 
-After saving and reviewing the plan, provide its link. Preserve an execution
-method the user has already supplied. Otherwise, select a method based on task
-dependencies, the number of tasks, and the cost of a shipped mistake.
+<!-- Source: https://github.com/obra/superpowers/blob/2ce8aa15d05bd57213e6f746f953aafb7ded7a8b/skills/writing-plans/SKILL.md#execution-handoff -->
 
-Compare the available execution methods:
+After saving and self-reviewing the plan, explain its design, task scope, and
+material decisions in chat. Include the information needed for approval in
+the conversation and provide the saved plan as an optional reference.
+If the user has already explicitly supplied an execution method, ask
+the user to review the plan and confirm it captures the intended result; wait for that
+review before implementation, then use the preserved method. Otherwise, ask
+the user to review the plan and choose an execution method before implementation.
 
-| Method | Implementation and review | Context cost |
-|---|---|---|
-| Subagent-driven | Use a fresh implementer for each task and a fresh reviewer before starting the next task. Review the complete branch afterward. | Create a fresh context for each implementation task and review. |
-| Native | Implement all tasks in the current session. Then use one fresh reviewer on the most capable model to check the complete branch. | Use fewer fresh contexts and defer independent review until the complete branch exists. |
+The blockquotes below are message templates. Replace bracketed instructions
+and angle-bracketed placeholders with actual content before sending them.
 
-State the selected method and its reason. Use
-[subagent-driven-development](../subagent-driven-development/SKILL.md) for the
-subagent method and [executing-plans](../executing-plans/SKILL.md) for the native
-method.
+When the user has not already supplied an execution method, use this prompt:
+
+> [Present the proposed work in chat and include an optional link to the saved plan.] Which execution approach should the agent use?
+
+- Subagent-driven execution uses a fresh subagent to implement each task and a fresh reviewer to check it before the next one starts, then a whole-branch review at the end. This method costs a fresh context per task and per review.
+- Native execution uses the session agent to implement every task in this session, then one fresh reviewer on the most capable model checks the whole branch. This method costs one implementation context and one final reviewer context. Independent review occurs at the end. A mid-tier session model can use the plan's design decisions to implement the tasks.
+
+> For this plan I recommend <one of the two>, because <one sentence from the plan: how much the tasks depend on each other's interfaces, how many there are, what a shipped mistake would cost>. Does the plan capture the intended result, and which approach should the agent use?
+
+When the user has already supplied an execution method, use this prompt:
+
+> [Present the proposed work in chat and include an optional link to the saved plan.] Does it capture the intended result?
+
+If the user chooses subagent-driven execution, use
+[subagent-driven-development](../subagent-driven-development/SKILL.md).
+
+If the user chooses native execution, use
+[executing-plans](../executing-plans/SKILL.md).

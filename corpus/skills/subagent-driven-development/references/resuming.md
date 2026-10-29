@@ -1,0 +1,12 @@
+<!-- Source: https://github.com/obra/superpowers/blob/2ce8aa15d05bd57213e6f746f953aafb7ded7a8b/skills/subagent-driven-development/references/resuming.md -->
+
+# Resuming From an Existing Ledger
+
+The plan's private workspace already contains a ledger.
+
+If the ledger's first line identifies this plan file, tasks with a
+`Task <N>: complete` line are done. Do not dispatch them again. Resume at the
+first task without that line. When the last entry for a task records unresolved
+findings, resume from those findings. A ledger that identifies another
+plan records progress for that plan. Do not change it. Start a fresh ledger for the
+current plan.
