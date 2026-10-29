@@ -33,6 +33,22 @@ Split a specification covering independent subsystems into separate plans
 when brainstorming has not already divided the project. Each plan should
 produce working software that supports independent verification.
 
+## Track Workstreams
+
+Group related work into workstreams with one concrete outcome per group.
+Use the user's preferred issue tracker and project. Determine that preference
+from the conversation and repository instructions. Ask the user when the
+tracker or project remains unclear.
+
+After plan approval, create one issue for each workstream. Search for an
+existing issue with matching scope first and reuse it when available. Include
+the outcome, scope, acceptance criteria, dependencies, and a link to the plan
+in each issue. Use the tracker through its available integration or CLI.
+
+Record each issue's identifier and URL in the plan. Map the issue to its
+workstream, implementation tasks, and related pull requests or stack layers.
+Update that mapping when the workstream boundaries change.
+
 ## Plan Pull Request Boundaries
 
 Assess whether the planned change is too large to review as one coherent pull
