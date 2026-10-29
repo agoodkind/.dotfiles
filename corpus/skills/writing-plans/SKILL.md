@@ -33,6 +33,25 @@ Split a specification covering independent subsystems into separate plans
 when brainstorming has not already divided the project. Each plan should
 produce working software that supports independent verification.
 
+## Plan Pull Request Boundaries
+
+Assess whether the planned change is too large to review as one coherent pull
+request. Choose boundaries from distinct behavior, dependencies, and reviewer
+needs. Use the installed [gh-stack](https://github.com/github/gh-stack/blob/v0.3.0/skills/gh-stack/SKILL.md)
+skill when dependent parts need separate pull requests. Keep independent parts
+on separate branches based on the default branch.
+
+For a stack, record each layer's scope, parent branch, assigned tasks, and
+verification in the plan. Order prerequisite changes before the changes that
+depend on them. Each layer must support review and verification against its
+parent. Create the planned stack before implementing its tasks rather than
+implementing the complete change on one branch and splitting it afterward.
+
+Discuss the proposed pull request boundaries in chat as part of plan review.
+If the change grows during implementation, update the boundaries and task
+assignments before continuing. Follow the gh-stack skill for branch placement,
+rebasing, and submission commands.
+
 ## Define the File Structure
 
 Before defining tasks, map each file that the plan will create or modify and

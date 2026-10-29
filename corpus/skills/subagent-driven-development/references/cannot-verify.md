@@ -6,4 +6,4 @@ The task reviewer may report requirements that cannot be verified from the diff
 because they concern unchanged code or span tasks. These items do not block the
 rest of the review. Resolve each item before marking the task complete. The
 controller has the plan and context across tasks. When an item is a real gap,
-treat it as a failed specification review and include it in the fix loop.
+correct the gap and verify the result before marking the task complete.

@@ -21,5 +21,5 @@ Write the table to the plan's private recovery state. Assess every finding
 against the plan text before execution begins and record the decision. If the
 scan is clean, proceed without comment. Use the specification as the binding
 authority for each conflict and record each decision beside its row before
-dispatching Task 1. The review loop checks conflicts that emerge during
+dispatching Task 1. Task reviews check conflicts that emerge during
 implementation.

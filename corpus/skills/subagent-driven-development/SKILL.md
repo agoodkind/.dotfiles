@@ -57,8 +57,7 @@ Dispatch the final whole-branch review on the most capable available model.
 
 Choose review models according to the diff's size, complexity, and risk. A
 small mechanical diff does not need the most capable model; a subtle
-concurrency change does. Scoped re-reviews of small fix diffs take a cheap to
-mid-tier model.
+concurrency change does.
 
 Use a more capable model when the remaining findings require judgment beyond
 the current implementer's capability.
@@ -162,7 +161,7 @@ Do not add open-ended review directives without a concrete, task-specific
 reason. Do not ask the reviewer to repeat tests that the implementer already
 ran on the same code. Do not instruct the reviewer to ignore or downgrade a
 possible finding. Resolve any requirement the reviewer cannot verify from the
-diff. Add a confirmed gap to the fix loop.
+diff and correct confirmed gaps.
 
 The reviewer checks the diff against every task requirement. The review must
 identify missing, extra, or misunderstood work. The reviewer also checks code
@@ -175,10 +174,9 @@ For findings the reviewer cannot verify from the diff, read
 
 ## Resolve Review Findings
 
-When a review finds a specification gap or a critical or important issue,
-follow [fix-loop.md](references/fix-loop.md).
-
-Resolve blocking findings before starting the next task.
+Assess findings against the specification and current code. Correct confirmed
+issues and verify the corrections. Record why a disputed finding does not
+require a change. Resolve blocking findings before starting the next task.
 Mark the task complete after the review is clean or every open finding has a
 recorded decision. Include the task's commit range and review result in the
 recovery state when that information is needed to resume.

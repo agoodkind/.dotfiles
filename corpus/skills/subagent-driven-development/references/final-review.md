@@ -7,22 +7,14 @@ Complete every task before the final branch review.
 Prepare a review package with the branch's starting commit as the base and the
 current commit as the head. Include the commit list, diff statistics, and full
 diff. Dispatch the final reviewer on the most capable available model. Give the
-reviewer the plan, package, and deferred minor and parked findings. The reviewer
+reviewer the plan, package, and deferred findings and decisions. The reviewer
 decides which findings require fixes before merge. Save the commit list,
 statistics, and full diff in one file in the plan's private workspace.
 
-If the final branch review returns findings, dispatch one fix subagent with the
-complete findings list. Do not dispatch one fixer per finding. Each fixer would
-need to reconstruct the same context and repeat verification. Run exactly one
-scoped re-review of the resulting fix diff. Give the reviewer the fix base,
-current head, findings, report, and diff. Save the fix commit list, statistics,
-and full diff in one file. Use [re-review-prompt.md](../re-review-prompt.md)
-for that review.
-
-Assess remaining findings using the guidance in
-[fix-loop.md](fix-loop.md). Record reasons for deferred findings and identify
-the smallest change needed for findings that affect dependent work. Do not run
-a second fix wave. Report unresolved findings that affect completion.
+Assess the final review's findings against the specification and current code.
+Correct confirmed issues, verify the corrections, and report any unresolved
+findings that affect completion. Record reasons for deferring or rejecting a
+finding.
 
 Before removing the private plan workspace, report material decisions and
 unresolved findings to the user. Collect every `Ruling:` entry, including
