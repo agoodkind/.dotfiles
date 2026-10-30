@@ -3,7 +3,7 @@ set -euo pipefail
 
 source "$(dirname "$0")/chain-hook.sh"
 
-stdin_file="$(mktemp)"
+stdin_file="$(mktemp "${TMPDIR:-/tmp}/reference-transaction.XXXXXX")"
 cleanup() {
     rm -f "$stdin_file"
 }
