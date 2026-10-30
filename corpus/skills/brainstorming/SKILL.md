@@ -23,6 +23,11 @@ Identify what the request establishes about the intended result and its purpose.
   such as changing an icon to cornflower blue. State the completed change.
 - Start a conversation when a material detail remains unclear.
 
+Before the first question, inspect the existing project and any context the
+request provides. Read the relevant files and related material until the
+current behavior and the scope of the requested change are clear. Do not ask
+for information that the project or supplied context already provides.
+
 ## Open the Conversation
 
 Use this order in the first message:
@@ -75,6 +80,9 @@ Use these topics to guide exploration. Do not read the list aloud as questions:
 Anchor questions in specifics. Ask about the last occurrence, the single most
 important capability, or an outcome that would disappoint the user. A concrete
 guess that the user can correct can help more than another abstract question.
+
+Make each question specific to the project and the discussion. When the reason
+for a question is not already clear, explain what the answer would change.
 
 Inspect the project, the user's relevant files and data, or the web when that
 inspection would resolve a question. Report the relevant findings.
