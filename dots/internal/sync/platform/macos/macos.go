@@ -3,6 +3,7 @@ package macos
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -12,6 +13,7 @@ import (
 
 	"goodkind.io/.dotfiles/internal/catalog"
 	"goodkind.io/.dotfiles/internal/cmdexec"
+	"goodkind.io/.dotfiles/internal/homebrew"
 	"goodkind.io/.dotfiles/internal/runner"
 	"goodkind.io/.dotfiles/internal/sync/common"
 	"goodkind.io/.dotfiles/internal/sync/platform"
@@ -58,16 +60,21 @@ type sudoChecker interface {
 	HasSudoAccess(ctx context.Context, logger *telemetry.Logger) bool
 }
 
+type packageMaintainer interface {
+	MaintainPackages(ctx context.Context, logger *telemetry.Logger, logPath string) (homebrew.Result, error)
+}
+
 // Deps holds the macOS installer dependencies.
 type Deps struct {
-	Commands commandRunner
-	Lookup   commandLookup
-	Download downloader
-	Files    fileSystem
-	Env      environment
-	Catalog  catalogProvider
-	Paths    pathResolver
-	Sudo     sudoChecker
+	Commands    commandRunner
+	Lookup      commandLookup
+	Download    downloader
+	Files       fileSystem
+	Env         environment
+	Catalog     catalogProvider
+	Paths       pathResolver
+	Sudo        sudoChecker
+	Maintenance packageMaintainer
 }
 
 // Installer applies macOS-specific sync steps.
@@ -88,14 +95,15 @@ func New(deps Deps, toolchainInstaller *toolchain.Installer) platform.Installer 
 func NewRealDeps() Deps {
 	productionDeps := realDeps{}
 	return Deps{
-		Commands: productionDeps,
-		Lookup:   productionDeps,
-		Download: productionDeps,
-		Files:    productionDeps,
-		Env:      productionDeps,
-		Catalog:  productionDeps,
-		Paths:    productionDeps,
-		Sudo:     productionDeps,
+		Commands:    productionDeps,
+		Lookup:      productionDeps,
+		Download:    productionDeps,
+		Files:       productionDeps,
+		Env:         productionDeps,
+		Catalog:     productionDeps,
+		Paths:       productionDeps,
+		Sudo:        productionDeps,
+		Maintenance: productionDeps,
 	}
 }
 
@@ -133,6 +141,16 @@ func (installer *Installer) Install(ctx context.Context, request platform.Reques
 	if err := installer.installMacPackages(ctx, request.StrictMode, request.Logger); err != nil {
 		return err
 	}
+	var packageErr error
+	if installer.deps.Lookup.HasCommand("brew") && installer.deps.Catalog.PackageConfig() != nil {
+		packageErr = installer.upgradeMacPackages(ctx, request.Logger)
+	}
+	if packageErr != nil {
+		var partial homebrew.PartialError
+		if !errors.As(packageErr, &partial) {
+			return packageErr
+		}
+	}
 	if err := installer.toolchain.InstallRustupIfNeeded(ctx, request.Logger); err != nil {
 		slog.WarnContext(ctx, "platform/macos: install rustup", "err", err)
 		return fmt.Errorf("install rustup: %w", err)
@@ -140,7 +158,7 @@ func (installer *Installer) Install(ctx context.Context, request platform.Reques
 	if err := installer.installTouchIDHelper(ctx, request.Logger); err != nil {
 		return err
 	}
-	return installer.ensureMacPatchIfNeeded(ctx, request.Logger)
+	return errors.Join(packageErr, installer.ensureMacPatchIfNeeded(ctx, request.Logger))
 }
 
 func (installer *Installer) ensureHomebrewInstalled(ctx context.Context, logger *telemetry.Logger) error {
@@ -307,7 +325,7 @@ func (installer *Installer) installMacPackages(ctx context.Context, strictMode b
 	if err := installer.installMacCasks(ctx, cfg, strictMode, logger); err != nil {
 		return err
 	}
-	return installer.upgradeMacPackages(ctx, strictMode, logger)
+	return nil
 }
 
 const (
@@ -424,20 +442,17 @@ func (installer *Installer) uninstallConflictingSpeedtestFormulae(
 	return nil
 }
 
-func (installer *Installer) upgradeMacPackages(ctx context.Context, strictMode bool, logger *telemetry.Logger) error {
-	if err := installer.deps.Commands.RunWithLogger(ctx, logger, "brew", "upgrade"); err != nil {
-		common.WarnContext(ctx, logger, "  brew upgrade failed, continuing")
-		if strictMode {
-			slog.WarnContext(ctx, "running brew upgrade", "err", err)
-			return fmt.Errorf("running brew upgrade: %w", err)
-		}
+func (installer *Installer) upgradeMacPackages(ctx context.Context, logger *telemetry.Logger) error {
+	if installer.deps.Maintenance == nil {
+		return fmt.Errorf("macOS package maintenance requires a maintenance dependency")
 	}
-	if err := installer.deps.Commands.RunWithLogger(ctx, logger, "brew", "upgrade", "--cask", "--greedy"); err != nil {
-		common.WarnContext(ctx, logger, "  brew cask upgrade failed, continuing")
-		if strictMode {
-			slog.WarnContext(ctx, "running brew cask upgrade", "err", err)
-			return fmt.Errorf("running brew cask upgrade: %w", err)
-		}
+	result, err := installer.deps.Maintenance.MaintainPackages(ctx, logger, common.SyncLogPath())
+	if err != nil {
+		slog.WarnContext(ctx, "running Homebrew maintenance", "err", err)
+		return fmt.Errorf("running Homebrew maintenance: %w", err)
+	}
+	if result.Failures > 0 {
+		return homebrew.PartialError(result)
 	}
 	return nil
 }
@@ -543,6 +558,15 @@ func brewPackageName(packageName string) string {
 }
 
 type realDeps struct{}
+
+func (realDeps) MaintainPackages(ctx context.Context, logger *telemetry.Logger, logPath string) (homebrew.Result, error) {
+	result, err := homebrew.Run(ctx, logger, logPath)
+	if err != nil {
+		slog.WarnContext(ctx, "running Homebrew maintenance", "err", err)
+		return result, fmt.Errorf("running Homebrew maintenance: %w", err)
+	}
+	return result, nil
+}
 
 func (realDeps) RunWithLogger(ctx context.Context, logger *telemetry.Logger, command string, args ...string) error {
 	if err := cmdexec.RunWithLogger(ctx, logger, command, args...); err != nil {

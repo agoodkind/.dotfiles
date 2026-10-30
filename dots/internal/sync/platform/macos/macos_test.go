@@ -280,12 +280,6 @@ func TestInstallMacPackagesTrustsTapQualifiedFormulae(t *testing.T) {
 	if containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--formula", "bat"}) {
 		t.Fatal("did not expect brew trust for core formula bat")
 	}
-	if !containsCommandCall(commands.runCalls, "brew", []string{"upgrade"}) {
-		t.Fatal("expected brew upgrade after formula install")
-	}
-	if !containsCommandCall(commands.runCalls, "brew", []string{"upgrade", "--cask", "--greedy"}) {
-		t.Fatal("expected brew upgrade --cask --greedy after formula install")
-	}
 }
 
 func TestInstallMacPackagesTrustsTapQualifiedCasks(t *testing.T) {
