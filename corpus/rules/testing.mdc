@@ -13,6 +13,6 @@ Do not add a test when direct validation completely proves the requested change.
 
 When a new test is necessary, write the smallest end-to-end test that enters through a public boundary, runs the production path under review, and asserts an outcome visible to a user, caller, operator, or downstream system.
 
-Use real dependencies through that public boundary. Temporary databases, temporary directories, and local servers are valid. Do not replace dependencies with mocks, stubs, spies, test doubles, or recorded responses.
+Strongly prefer real dependencies through the public boundary. Temporary databases, temporary directories, and local servers are valid. Strongly avoid replacing dependencies with mocks, stubs, spies, test doubles, or recorded responses.
 
 Delete tests for removed behavior. Delete or rewrite tests that would still pass when the protected behavior is broken. Do not add static content checks, fixture-only snapshots, or tests that duplicate compiler and linter guarantees.
