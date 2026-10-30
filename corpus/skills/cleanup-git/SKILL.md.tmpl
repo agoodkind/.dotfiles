@@ -34,23 +34,6 @@ Classify the tracked and nonignored untracked changes before removing a worktree
 
 ## Classify and remove candidates
 
-### Mark a worktree for later cleanup
-
-When the current task cannot remove its own worktree after completing the
-cleanup review, record the current date in `safe-to-cleanup` in that worktree's
-Git directory. Run `git rev-parse --git-path safe-to-cleanup` in the worktree to
-find the marker path. Write the date in `YYYY-MM-DD` format. Report that the
-worktree and branch remain for a later cleanup request.
-
-When the user requests cleanup of marked worktrees, enumerate the repository's
-worktrees with `git worktree list --porcelain`. For each worktree, run
-`git -C "$worktree_path" rev-parse --git-path safe-to-cleanup` and check the
-returned path for the marker. Review each marked worktree and its branch under
-the steps below using their current state. A marker does not establish that
-the worktree or branch is safe to remove. Remove an eligible worktree before
-deleting its branch. If the app protects the worktree, report the worktree and
-branch as remaining instead of bypassing that protection.
-
 ### Step 1: Set scope, refresh, and enumerate candidates
 
 Use bounded scope when the request identifies exact cleanup candidates, such as one merged pull request. Include the local ref, matching remote ref, worktree, and tracked or nonignored untracked paths that block removal. Do not add unrelated branches or worktrees.
