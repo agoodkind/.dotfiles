@@ -9,7 +9,8 @@ description: Review changed code for reuse, simplicity, and efficiency, then app
 
 Improve the quality of changed code by reviewing reuse, simplification,
 efficiency, and the underlying mechanism, then fixing the findings. Limit this
-review to code quality. Preserve intended behavior and follow the repository
+review to code quality. Do not search for correctness bugs. Use `/code-review`
+for a bug review. Preserve intended behavior and follow the repository
 instructions and conventions.
 
 ## Phase 0: Gather the diff
@@ -18,17 +19,25 @@ Run `git diff @{upstream}...HEAD` to get the unified diff under review. If the
 branch does not have an upstream, compare HEAD with the repository's actual
 base branch, or use `git diff HEAD~1` for a single-commit review.
 
-If the working tree contains uncommitted changes, or the range diff is empty,
-also run `git diff HEAD` and include those changes. If the user specifies a
-pull request, branch, file path, or commit range, review that target instead.
-Treat the resulting diff as the review scope.
+If the user specifies a pull request, branch, file path, symbol, commit range,
+or other area, review that target instead. Otherwise, run `git diff --no-color`
+and `git diff --cached --no-color` and include both unstaged and staged changes
+in the scope. If the range diff and local diffs are empty, review concrete
+files, symbols, or changes mentioned in the conversation. If the conversation
+does not identify a scope, review `git show --stat --patch --no-color HEAD`.
+Preserve unrelated changes and inspect outside the scope only to understand
+existing patterns.
 
 ## Phase 1: Review the changes
 
 Use four independent review agents, one per area below. Give each agent the
 diff. Run the agents concurrently within the host's limits, scheduling the
-remaining reviewers as slots become available. If review agents are
-unavailable, perform all four checks directly.
+remaining reviewers as slots become available. Each agent must use the same
+model as the parent and must only report findings. Agents must not edit files,
+run formatters, create worktrees, or commit. If the diff is too large, provide
+the file list, relevant hunks, and a scope summary. If review agents are
+unavailable, perform all four checks directly and state in the final summary
+that the review used a single pass without subagents.
 
 Require each finding to include `file`, `line`, a one-line `summary`, and the
 concrete cost: what the code duplicates, wastes, or makes harder to maintain.
@@ -74,3 +83,6 @@ Skip a finding when its fix would change intended behavior, require changes
 well outside the reviewed diff, or address a false positive. Note the skip
 briefly. Finish with a brief summary of the fixes and skipped findings, or
 state that the review did not identify a useful change.
+
+Run the most relevant lightweight checks for changed files when practical.
+Report any checks that could not run or were skipped.
