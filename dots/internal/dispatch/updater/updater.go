@@ -13,14 +13,12 @@ import (
 	"strings"
 	"time"
 
-	"goodkind.io/.dotfiles/internal/catalog"
 	"goodkind.io/.dotfiles/internal/clock"
 	"goodkind.io/.dotfiles/internal/cmdexec"
 	"goodkind.io/.dotfiles/internal/gitdir"
 	"goodkind.io/.dotfiles/internal/runner"
 	syncer "goodkind.io/.dotfiles/internal/sync"
 	"goodkind.io/.dotfiles/internal/sync/common"
-	"goodkind.io/.dotfiles/internal/sync/platform/macos"
 	"goodkind.io/.dotfiles/internal/sync/repository"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
@@ -91,12 +89,17 @@ func Run(
 	if statusDir != "" {
 		_ = os.WriteFile(filepath.Join(statusDir, "status"), []byte("weekly"), 0o600)
 	}
-	if err := doWeeklyUpdate(ctx, dotfiles, weeklyMarkerPath, dispatchLogger); err != nil {
+	partial, err := doWeeklyUpdate(ctx, dotfiles, weeklyMarkerPath, dispatchLogger)
+	if err != nil {
 		dispatchLogger.ErrorContextWithErr(ctx, "updater: weekly update failed", err)
-		notifyf("warn", "Weekly sync completed with non-critical issues")
+		notifyf("error", "Weekly maintenance did not complete: "+err.Error())
 		return err
 	}
-	notifyf("success", "Weekly sync completed (zinit, nvim, repair)")
+	if partial {
+		notifyf("warn", "Weekly maintenance completed with errors; the next attempt follows the weekly schedule")
+	} else {
+		notifyf("success", "Weekly sync completed (zinit, nvim, repair)")
+	}
 	return nil
 }
 
@@ -124,11 +127,11 @@ func runSyncOnly(ctx context.Context, dotfiles string, dispatchLogger *telemetry
 	return nil
 }
 
-func doWeeklyUpdate(ctx context.Context, dotfiles, weeklyMarkerPath string, dispatchLogger *telemetry.Logger) error {
+func doWeeklyUpdate(ctx context.Context, dotfiles, weeklyMarkerPath string, dispatchLogger *telemetry.Logger) (bool, error) {
 	if dotfiles != "" {
 		_ = os.Setenv("DOTDOTFILES", dotfiles)
 	}
-	runErr := syncer.Run(ctx, syncer.Options{
+	syncResult, runErr := syncer.RunWithResult(ctx, syncer.Options{
 		RepairMode:     true,
 		QuickMode:      false,
 		SkipGit:        true,
@@ -142,9 +145,12 @@ func doWeeklyUpdate(ctx context.Context, dotfiles, weeklyMarkerPath string, disp
 	if runErr != nil {
 		dispatchLogger.WarnContextWithErr(ctx, "updater: weekly sync exited with non-zero status", runErr)
 		slog.WarnContext(ctx, "updater: weekly sync exited with non-zero status", "err", runErr)
-		return fmt.Errorf("running weekly sync: %w", runErr)
+		return false, fmt.Errorf("running weekly sync: %w", runErr)
 	}
-	dispatchLogger.InfoContext(ctx, "updater: weekly sync exited successfully")
+	if err := ctx.Err(); err != nil {
+		return false, fmt.Errorf("running weekly maintenance: %w", err)
+	}
+	dispatchLogger.InfoContext(ctx, "updater: weekly sync completed")
 
 	zinitPath := filepath.Join(dotfiles, "lib", "zinit", "zinit.zsh")
 	if _, err := os.Stat(zinitPath); err == nil {
@@ -158,15 +164,20 @@ func doWeeklyUpdate(ctx context.Context, dotfiles, weeklyMarkerPath string, disp
 		)
 	}
 
-	doBrewUpgrade(ctx, dispatchLogger)
 	doAptUpgrade(ctx, dispatchLogger)
 
+	if err := ctx.Err(); err != nil {
+		return false, fmt.Errorf("running weekly maintenance: %w", err)
+	}
 	now := strconv.FormatInt(clock.Now().Unix(), 10)
 	if weeklyMarkerPath == "" {
 		weeklyMarkerPath = filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "weekly_update")
 	}
-	_ = os.WriteFile(filepath.Clean(weeklyMarkerPath), []byte(now), 0o600)
-	return nil
+	if err := os.WriteFile(filepath.Clean(weeklyMarkerPath), []byte(now), 0o600); err != nil {
+		dispatchLogger.ErrorContextWithErr(ctx, "writing weekly maintenance marker", err)
+		return false, fmt.Errorf("writing weekly maintenance marker: %w", err)
+	}
+	return syncResult.Failures > 0, nil
 }
 
 func needsWeeklyUpdate(weekPath string, weekDurationHours int64) bool {
@@ -234,56 +245,6 @@ func truncateSHA(value string) string {
 		return value
 	}
 	return value[:width]
-}
-
-func doBrewUpgrade(ctx context.Context, dispatchLogger *telemetry.Logger) {
-	doBrewUpgradeWith(ctx, dispatchLogger, runtime.GOOS, realBrewCommands{}, catalog.DefaultPackageConfig())
-}
-
-type brewCommandRunner interface {
-	HasCommand(name string) bool
-	CommandSucceeds(ctx context.Context, command string, args ...string) bool
-	Output(ctx context.Context, logger *telemetry.Logger, command string, args ...string) (string, error)
-}
-
-type realBrewCommands struct{}
-
-func (realBrewCommands) HasCommand(name string) bool {
-	return runner.HasCommand(name)
-}
-
-func (realBrewCommands) CommandSucceeds(ctx context.Context, command string, args ...string) bool {
-	_, err := cmdexec.OutputWithLoggerAndEnv(ctx, nil, nil, command, args...)
-	return err == nil
-}
-
-func (realBrewCommands) Output(ctx context.Context, logger *telemetry.Logger, command string, args ...string) (string, error) {
-	output, err := cmdexec.OutputWithLogger(ctx, logger, command, args...)
-	if err != nil {
-		slog.WarnContext(ctx, "updater: brew command", "command", command, "err", err)
-		return output, fmt.Errorf("run %s: %w", command, err)
-	}
-	return output, nil
-}
-
-func doBrewUpgradeWith(
-	ctx context.Context,
-	dispatchLogger *telemetry.Logger,
-	goos string,
-	commands brewCommandRunner,
-	cfg *catalog.PackageConfig,
-) {
-	if goos != "darwin" {
-		return
-	}
-	if commands == nil || !commands.HasCommand("brew") {
-		return
-	}
-	macos.TrustCatalogTaps(ctx, commands, cfg)
-	_, _ = commands.Output(ctx, dispatchLogger, "brew", "update")
-	_, _ = commands.Output(ctx, dispatchLogger, "brew", "upgrade")
-	_, _ = commands.Output(ctx, dispatchLogger, "brew", "upgrade", "--cask", "--greedy")
-	_, _ = commands.Output(ctx, dispatchLogger, "brew", "cleanup", "--prune=all")
 }
 
 func doAptUpgrade(ctx context.Context, dispatchLogger *telemetry.Logger) {
