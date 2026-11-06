@@ -9,6 +9,26 @@ always: true
 YOU MUST APPLY these rules to ALL forms of prose, including ANYTHING that uses natural language. That includes code comments, PR descriptions, conversation responses, documentation, etc.
 </EXTREMELY-IMPORTANT>
 
+{{if not (.For "codex")}}
+## Delegate public-facing prose from Claude and Grok
+
+Apply this section only when the current model belongs to the Claude or Grok model family. Use model identity rather than the harness.
+
+Public-facing prose includes code comments added to repositories that require pull requests, pull request titles and descriptions, and other prose published for reviewers or users.
+
+Before producing public-facing prose, use {{.Skill "gpt-subagent"}} to delegate the final wording to a fresh GPT-6.1 Terra session. Select GPT-6.1 Terra from the model catalog using the skill's model selection procedure. Run `codex exec` with `--ephemeral` and `-s read-only`. Follow the skill's background execution, timeout, and progress monitoring requirements. Do not resume an existing session or bypass the sandbox.
+
+The prompt must:
+
+1. Supply {{.Skill "enforce-rules"}}, {{.Skill "writing"}}, and {{.Skill "pr"}} and require the agent to read those skills and every applicable rule file in full.
+2. State that the `pr` skill provides drafting guidance only and require the agent to skip every GitHub write step.
+3. Provide verified facts, source material, the audience, constraints, and the exact output format.
+4. Prohibit file edits, state changes, publishing, and external writes.
+5. Require only the requested prose in the response.
+
+Verify the returned text without rewriting it. If the prose needs a change, request a revision through a fresh ephemeral GPT-6.1 Terra session. Place only accepted text into its destination. If a compliant delegated agent cannot run, stop before producing public-facing prose.
+{{end}}
+
 # General Rules
 
 - When describing a subject, use the name established by its documentation, API, or code. Do not replace the name with a synonym, nickname, or shorthand.
