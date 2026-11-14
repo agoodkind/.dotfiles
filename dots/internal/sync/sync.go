@@ -41,14 +41,25 @@ type Options struct {
 
 var commandLogger *telemetry.Logger
 
+// Result reports noncritical failures from a completed sync.
+type Result struct {
+	Failures int
+}
+
 // Run executes the full dotfiles sync pipeline with the given options.
 func Run(ctx context.Context, options Options) error {
+	_, err := RunWithResult(ctx, options)
+	return err
+}
+
+// RunWithResult executes sync and reports continued step failures.
+func RunWithResult(ctx context.Context, options Options) (Result, error) {
 	dotfiles := resolveDotfilesEnv()
 	ctx = telemetry.WithRun(ctx)
 
 	logger, logPath, err := openSyncLogger()
 	if err != nil {
-		return err
+		return Result{Failures: 0}, err
 	}
 	defer logger.Close()
 	commandLogger = logger
@@ -64,10 +75,10 @@ func Run(ctx context.Context, options Options) error {
 
 	lockFile, flockFdInt, alreadyRunning, err := acquireSyncLock(ctx, logger)
 	if err != nil {
-		return err
+		return Result{Failures: 0}, err
 	}
 	if alreadyRunning {
-		return nil
+		return Result{Failures: 0}, nil
 	}
 	defer lockFile.Close()
 	defer syscall.Flock(flockFdInt, syscall.LOCK_UN)
@@ -101,32 +112,33 @@ func Run(ctx context.Context, options Options) error {
 	}
 
 	if err := runLinkSteps(options, dotfiles, logger, runStep); err != nil {
-		return err
+		return Result{Failures: 0}, err
 	}
 	if err := runConfigSteps(options, dotfiles, logger, runStep); err != nil {
-		return err
+		return Result{Failures: 0}, err
 	}
 	if err := runUpdateSteps(options, dotfiles, logger, runStep); err != nil {
-		return err
+		return Result{Failures: 0}, err
 	}
 	if err := runCompilationSteps(dotfiles, logger, runStep); err != nil {
-		return err
+		return Result{Failures: 0}, err
 	}
 
 	if len(failed) > 0 {
 		msg := strings.Join(failed, ", ")
 		notify("warn", "sync completed with non-critical failures: "+msg)
 		logger.WarnContext(ctx, "Completed with non-critical failures: "+msg)
+	} else if !isWorktree {
+		logger.SuccessContext(ctx, "Dotfiles synced")
 	}
 
 	if isWorktree {
 		notify("info", "Dotfiles sync ran as a dry run from linked worktree "+worktreeLayout.Root+". Run sync from "+worktreeLayout.MainWorktree()+" to apply changes.")
 		logger.SuccessContext(ctx, "Dotfiles worktree dry run completed")
-		return nil
+		return Result{Failures: len(failed)}, nil
 	}
 
-	logger.SuccessContext(ctx, "Dotfiles synced")
-	return nil
+	return Result{Failures: len(failed)}, nil
 }
 
 func forceWorktreeDryRun(ctx context.Context, dotfiles string, options *Options, logger *telemetry.Logger) (gitdir.Info, bool) {
