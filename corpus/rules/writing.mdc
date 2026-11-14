@@ -10,6 +10,7 @@ YOU MUST APPLY these rules to ALL forms of prose, including ANYTHING that uses n
 </EXTREMELY-IMPORTANT>
 
 {{if not (.For "codex")}}
+
 ## Delegate public-facing prose from Claude and Grok
 
 Apply this section only when the current model belongs to the Claude or Grok model family. Use model identity rather than the harness.
@@ -36,24 +37,25 @@ Verify the returned text without rewriting it. If the prose needs a change, requ
 - Give each sentence a clear subject and verb. Start a new sentence or paragraph for the next idea.
 - Express absence or nonoccurrence with a negative verb phrase before the object. Do not use an affirmative verb followed by “no,” “none,” “nothing,” or “nobody” to negate the object. Rewrite with ordinary forms such as “does not,” “did not,” or “cannot.” Check every sentence for this pattern before sending.
 - Avoid using unnecessary contractions.
-- Avoid using idioms that do not add clarity to the sentence. Do not use a phrase that does not mean what its words say.
+- Avoid using idioms that do not add clarity to the sentence.
+- Do not use a phrase that does not mean what its words say.
 - Never write in the passive voice.
 - When an expert word is required, explain it with ordinary words in the same sentence.
-- Do not invent a new concept, or reword an existing one, in order to use fewer words.
+- Do not invent a new concept, or reword an existing one in order to use fewer words.
 
 Examples:
 
 - **Bad:** "The subsystem commences initialization subsequent to database connectivity establishment."
-- **Good:** "The service starts after connecting to the database."
+- **Good:** "<Xyz> service only starts after connecting to the database."
 
 - **Bad:** "The migration is executed by the worker after the checkpoint is written."
-- **Good:** "The worker saves a checkpoint before running the migration so it can resume after a failure."
+- **Good:** "<Xyz> worker saves a checkpoint before running the migration so it can resume after a failure."
 
 - **Bad:** "The query returned no results."
-- **Good:** "The query did not return any matching records."
+- **Good:** "<Xyz> query did not return any matching records."
 
 - **Bad:** "The system performs cache harmonization to maintain data freshness."
-- **Good:** "The service updates cached records when the database changes."
+- **Good:** "<Xyz> service updates cached records when the database changes."
 
 - Do not split a single claim into a setup sentence followed by a short, dramatic conclusion. State the claim directly and preserve the context needed to understand it.
   - **Bad:** "There are many ways to build an index. This is not one."
@@ -64,7 +66,7 @@ Examples:
   - **Bad:** "The problem affects correctness."
   - **Good:** "The index can return outdated results because source record updates do not invalidate existing entries."
   - **Bad:** "The cache does not store the original data. The database does."
-  - **Good:** "The database stores the original records, and the cache holds temporary copies to reduce repeated queries."
+  - **Good:** "The database stores the original records and the cache holds temporary copies to reduce repeated queries."
 
 - Remove verbosity, repetition, and information that does not contribute to the reader's understanding or next action. Preserve necessary context and explanations without adding redundant clauses or obvious consequences. Do not make sentences longer merely to avoid short sentences.
   - **Bad:** "The cleanup worker checks for expired records every two minutes and removes them from the database, which prevents expired records from accumulating indefinitely."
@@ -87,7 +89,7 @@ Examples:
     Query execution times:
 
     | Run | Duration |
-    |---|---|
+    | --- | --- |
     | 1 | 120 ms |
     | 2 | 95 ms |
     | 3 | 87 ms |
@@ -280,10 +282,14 @@ Examples:
 - Make the title match the page's kind and name the task, topic, or change.
 - Open with the first fact the reader needs for the document's purpose.
 - Present prerequisite context before any claim that depends on it.
-- Give each section one concern. Start task headings with action verbs and place notes beside the steps they qualify.
-- Give each code comment one purpose. Separate runtime constraints from removal instructions. State the removal condition and only the identifiers needed to perform the removal. Omit unrelated file, variable, and assertion inventories.
+- Give each section one concern.
+- Start task headings with action verbs and place notes beside the steps they qualify.
+- Give each code comment one purpose.
+- Separate runtime constraints from removal instructions.
+- Omit unrelated file, variable, and assertion inventories.
 - Use numbered steps for procedures and do not hide an enumeration or procedure in prose.
-- Avoid and remove file inventories, annotated/enumerated directory listings, and headings that merely enumerate code locations. Use tables for genuine comparisons or exact mappings.
+- Avoid and remove file inventories, annotated/enumerated directory listings, and headings that merely enumerate code locations.
+- Use tables only for genuine comparisons or exact mappings.
 
 Examples:
 
@@ -405,7 +411,7 @@ When a cleanup interval changes from one minute to two minutes:
 
 - **Good:**
 
-  > The cleanup worker deletes expired database records every two minutes.
+  > <Xyz> cleanup worker deletes expired database records every two minutes.
 
 - State the required action directly instead of starting with “The + artifact” and explaining its purpose or status.
   - **Bad:** “The tag preserves that evidence in the commit history.”
