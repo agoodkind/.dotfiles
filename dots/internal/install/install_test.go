@@ -20,6 +20,7 @@ func TestSSHPublicKeyCandidatesPrefersDefaultKey(t *testing.T) {
 	if err := os.MkdirAll(sshDir, 0o755); err != nil {
 		t.Fatalf("creating ssh dir: %v", err)
 	}
+
 	for _, path := range []string{
 		filepath.Join(sshDir, "work.pub"),
 		filepath.Join(sshDir, "id_ed25519.pub"),
@@ -62,10 +63,12 @@ func TestRunHelpSkipsInstallLockAndSummary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading install log: %v", err)
 	}
+
 	logText := string(logBytes)
 	if !strings.Contains(logText, "Usage: dots install") {
 		t.Fatalf("install log did not include usage output:\n%s", logText)
 	}
+
 	if strings.Contains(logText, "The installer will set up this machine") {
 		t.Fatalf("install log unexpectedly included install summary:\n%s", logText)
 	}
@@ -89,9 +92,11 @@ func TestRunHelpIgnoresActiveInstallLock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("acquireInstallLock() returned error: %v", err)
 	}
+
 	if alreadyRunning {
 		t.Fatal("acquireInstallLock() reported already running for a fresh temp home")
 	}
+
 	defer releaseStatus()
 	defer lockFile.Close()
 
@@ -104,13 +109,19 @@ func TestRunHelpIgnoresActiveInstallLock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading install log: %v", err)
 	}
+
 	logText := string(logBytes)
 	if !strings.Contains(logText, "Usage: dots install") {
 		t.Fatalf("install log did not include usage output:\n%s", logText)
 	}
-	if strings.Contains(logText, "Another dotfiles install is already running in a different terminal.") {
+
+	if strings.Contains(
+		logText,
+		"Another dotfiles install is already running in a different terminal.",
+	) {
 		t.Fatalf("install help unexpectedly respected the active install lock:\n%s", logText)
 	}
+
 	if strings.Contains(logText, "The installer will set up this machine") {
 		t.Fatalf("install log unexpectedly included install summary:\n%s", logText)
 	}
@@ -124,6 +135,7 @@ func TestAcquireInstallLockReleaseRemovesMatchingStatusDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("acquireInstallLock() returned error: %v", err)
 	}
+
 	if alreadyRunning {
 		t.Fatal("acquireInstallLock() reported already running for a fresh temp home")
 	}
@@ -131,6 +143,7 @@ func TestAcquireInstallLockReleaseRemovesMatchingStatusDir(t *testing.T) {
 	if err := lockFile.Close(); err != nil {
 		t.Fatalf("closing lock file: %v", err)
 	}
+
 	releaseStatus()
 
 	statusPath := filepath.Join(home, ".cache", "dotfiles_install.lock")
@@ -147,6 +160,7 @@ func TestAcquireInstallLockReleasePreservesReplacedStatusDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("acquireInstallLock() returned error: %v", err)
 	}
+
 	if alreadyRunning {
 		t.Fatal("acquireInstallLock() reported already running for a fresh temp home")
 	}
@@ -156,9 +170,11 @@ func TestAcquireInstallLockReleasePreservesReplacedStatusDir(t *testing.T) {
 	if err := os.WriteFile(statusPIDPath, []byte("999999"), 0o600); err != nil {
 		t.Fatalf("rewriting status pid: %v", err)
 	}
+
 	if err := lockFile.Close(); err != nil {
 		t.Fatalf("closing lock file: %v", err)
 	}
+
 	releaseStatus()
 
 	if _, err := os.Stat(statusPath); err != nil {
@@ -178,6 +194,7 @@ func TestReadLineReusesBufferedStdin(t *testing.T) {
 	if gotFirst != "first line" {
 		t.Fatalf("first readLine() = %q, want %q", gotFirst, "first line")
 	}
+
 	if gotSecond != "second line" {
 		t.Fatalf("second readLine() = %q, want %q", gotSecond, "second line")
 	}
@@ -196,6 +213,7 @@ func TestCollectGitConfigInputsMarksSigningKeyDecisionResolved(t *testing.T) {
 	if err := os.MkdirAll(sshDir, 0o755); err != nil {
 		t.Fatalf("creating ssh dir: %v", err)
 	}
+
 	for _, path := range []string{
 		filepath.Join(sshDir, "id_ed25519.pub"),
 		filepath.Join(sshDir, "work.pub"),
@@ -209,8 +227,12 @@ func TestCollectGitConfigInputsMarksSigningKeyDecisionResolved(t *testing.T) {
 	if !pending.signingKeyResolved {
 		t.Fatal("collectGitConfigInputs() did not mark the signing key decision as resolved")
 	}
+
 	if pending.signingKey != "" {
-		t.Fatalf("collectGitConfigInputs() signingKey = %q, want empty after skip", pending.signingKey)
+		t.Fatalf(
+			"collectGitConfigInputs() signingKey = %q, want empty after skip",
+			pending.signingKey,
+		)
 	}
 }
 
@@ -220,6 +242,7 @@ func TestResolveSigningKeyHonorsResolvedPendingDecision(t *testing.T) {
 	if signingKey != "" {
 		t.Fatalf("resolveSigningKey() signingKey = %q, want empty after resolved skip", signingKey)
 	}
+
 	if keyCommand != "" {
 		t.Fatalf("resolveSigningKey() keyCommand = %q, want empty after resolved skip", keyCommand)
 	}
@@ -234,6 +257,7 @@ func TestResolveSigningKeyReadErrorIsNonFatal(t *testing.T) {
 	if err := os.MkdirAll(sshDir, 0o755); err != nil {
 		t.Fatalf("creating ssh dir: %v", err)
 	}
+
 	keyPath := filepath.Join(sshDir, "id_ed25519.pub")
 	if err := os.WriteFile(keyPath, []byte("ssh-ed25519 AAAA unreadable"), 0o000); err != nil {
 		t.Fatalf("writing unreadable key: %v", err)
@@ -243,6 +267,7 @@ func TestResolveSigningKeyReadErrorIsNonFatal(t *testing.T) {
 	if signingKey != "" {
 		t.Fatalf("resolveSigningKey() signingKey = %q, want empty on read failure", signingKey)
 	}
+
 	if keyCommand != "" {
 		t.Fatalf("resolveSigningKey() keyCommand = %q, want empty on read failure", keyCommand)
 	}
@@ -254,6 +279,7 @@ func TestDeferRepositoryDependentSyncsSkipsCorpusAndCursor(t *testing.T) {
 	if !options.SkipCorpusSync {
 		t.Fatal("deferRepositoryDependentSyncs() did not skip corpus sync")
 	}
+
 	if !options.SkipCursorSync {
 		t.Fatal("deferRepositoryDependentSyncs() did not skip Cursor sync")
 	}
@@ -276,6 +302,7 @@ func TestRunDeferredAgentSyncRunsCorpusBeforeCursor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("runDeferredAgentSync() returned error: %v", err)
 	}
+
 	if !slices.Equal(calls, []string{"corpus", "cursor"}) {
 		t.Fatalf("runDeferredAgentSync() calls = %v, want corpus then cursor", calls)
 	}
@@ -288,12 +315,20 @@ func TestInstallScriptGuardsMissingTargetDirectoryBeforeFind(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading install.sh: %v", err)
 	}
+
 	scriptText := string(scriptBytes)
 	if !strings.Contains(scriptText, `if [ -d "$DOTDOTFILES" ]; then`) {
-		t.Fatalf("install.sh should guard missing target directories before running find:\n%s", scriptText)
+		t.Fatalf(
+			"install.sh should guard missing target directories before running find:\n%s",
+			scriptText,
+		)
 	}
+
 	if !strings.Contains(scriptText, `find "$DOTDOTFILES"`) {
-		t.Fatalf("install.sh no longer contains the target directory probe this test expects:\n%s", scriptText)
+		t.Fatalf(
+			"install.sh no longer contains the target directory probe this test expects:\n%s",
+			scriptText,
+		)
 	}
 }
 
@@ -304,7 +339,9 @@ func TestInstallScriptUsesBootstrapDownloadTimeouts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading install.sh: %v", err)
 	}
+
 	scriptText := string(scriptBytes)
+
 	for _, snippet := range []string{
 		`--connect-timeout "${DOTS_DOWNLOAD_CONNECT_TIMEOUT:-20}"`,
 		`--max-time "${DOTS_DOWNLOAD_MAX_TIME:-600}"`,
@@ -312,7 +349,11 @@ func TestInstallScriptUsesBootstrapDownloadTimeouts(t *testing.T) {
 		`--timeout="${DOTS_DOWNLOAD_CONNECT_TIMEOUT:-20}"`,
 	} {
 		if !strings.Contains(scriptText, snippet) {
-			t.Fatalf("install.sh is missing bootstrap download timeout snippet %q:\n%s", snippet, scriptText)
+			t.Fatalf(
+				"install.sh is missing bootstrap download timeout snippet %q:\n%s",
+				snippet,
+				scriptText,
+			)
 		}
 	}
 }
@@ -323,5 +364,6 @@ func repoRootFromInstallTests(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("getting working directory: %v", err)
 	}
+
 	return filepath.Clean(filepath.Join(workingDirectory, "..", "..", ".."))
 }

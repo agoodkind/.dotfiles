@@ -6,7 +6,9 @@ import (
 )
 
 // ErrUsage is returned when git-hook is invoked with no hook name or an unknown one.
-var ErrUsage = errors.New("usage: dots git-hook {reference-transaction|pre-commit|pre-rebase} [args]")
+var ErrUsage = errors.New(
+	"usage: dots git-hook {reference-transaction|pre-commit|pre-rebase} [args]",
+)
 
 const (
 	msgLeaveDefault   = "error: agent harness cannot leave the default branch on the primary checkout."
@@ -29,6 +31,7 @@ func (r *RefusalError) Error() string {
 	if r == nil {
 		return ""
 	}
+
 	return strings.Join(r.lines, "\n")
 }
 

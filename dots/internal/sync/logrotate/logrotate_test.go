@@ -31,15 +31,18 @@ func TestRotateOnlyTouchesLogsPastTheTrigger(t *testing.T) {
 	if err := Rotate(context.Background(), rotation, logger); err != nil {
 		t.Fatalf("Rotate returned error: %v", err)
 	}
+
 	waitForCompressedBackup(t, filepath.Dir(oversized), "dispatch")
 
 	oversizedInfo, err := os.Stat(oversized)
 	if err != nil {
 		t.Fatalf("stat rotated log: %v", err)
 	}
+
 	if oversizedInfo.Size() != 0 {
 		t.Fatalf("live log size = %d, want 0 after rotation", oversizedInfo.Size())
 	}
+
 	if backups := backupCount(t, filepath.Dir(oversized), "dispatch"); backups != 1 {
 		t.Fatalf("backup count = %d, want 1", backups)
 	}
@@ -48,6 +51,7 @@ func TestRotateOnlyTouchesLogsPastTheTrigger(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat small log: %v", err)
 	}
+
 	if smallInfo.Size() != 1024 {
 		t.Fatalf("small log size = %d, want 1024 (it should not have rotated)", smallInfo.Size())
 	}
@@ -75,6 +79,7 @@ func TestRotateReportsAFailedRotation(t *testing.T) {
 	if err := os.Chmod(logDir, 0o500); err != nil {
 		t.Fatalf("removing write permission on %s: %v", logDir, err)
 	}
+
 	t.Cleanup(func() { _ = os.Chmod(logDir, 0o755) })
 
 	logger, _ := newTestLogger(t)
@@ -85,6 +90,7 @@ func TestRotateReportsAFailedRotation(t *testing.T) {
 	if err == nil {
 		t.Fatal("Rotate returned nil for a log it could not rename, want an error")
 	}
+
 	if !strings.Contains(err.Error(), "dispatch.log") {
 		t.Fatalf("Rotate error = %v, want it to name the log that failed to rotate", err)
 	}
@@ -119,6 +125,7 @@ func TestRotateLeavesLogsThisRunHasOpen(t *testing.T) {
 	if err := Rotate(context.Background(), rotation, logger); err != nil {
 		t.Fatalf("Rotate returned error: %v", err)
 	}
+
 	waitForCompressedBackup(t, filepath.Dir(otherLog), "dots")
 
 	assertSize(t, dispatchLog, 2*bytesPerMB, "the dispatch log is open and must not rotate")
@@ -132,6 +139,7 @@ func TestRotateLeavesLogsThisRunHasOpen(t *testing.T) {
 	if err := logger.Close(); err != nil {
 		t.Fatalf("closing logger: %v", err)
 	}
+
 	logged := readFile(t, logPath)
 	if !strings.Contains(logged, "in use by this run") {
 		t.Fatalf("log does not name the logs it left alone: %s", logged)
@@ -157,6 +165,7 @@ func TestPruneStartupLogsRemovesAbandonedSnapshotsAndOldLogs(t *testing.T) {
 
 	// One more log than the retention limit, each a minute older than the last.
 	totalLogs := startupLogRetention + 5
+
 	logNames := make([]string, 0, totalLogs)
 	for i := range totalLogs {
 		name := filepath.Join(startupDir, formatLogName(i))
@@ -205,6 +214,7 @@ func writeLog(t *testing.T, path string, size int) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("creating log dir: %v", err)
 	}
+
 	if err := os.WriteFile(path, make([]byte, size), 0o600); err != nil {
 		t.Fatalf("writing log %s: %v", path, err)
 	}
@@ -215,6 +225,7 @@ func writeAt(t *testing.T, path string, modTime time.Time) {
 	if err := os.WriteFile(path, []byte("{}\n"), 0o600); err != nil {
 		t.Fatalf("writing %s: %v", path, err)
 	}
+
 	if err := os.Chtimes(path, modTime, modTime); err != nil {
 		t.Fatalf("setting mod time on %s: %v", path, err)
 	}
@@ -233,29 +244,39 @@ func writeAt(t *testing.T, path string, modTime time.Time) {
 // is still being written to.
 func waitForCompressedBackup(t *testing.T, dir string, prefix string) {
 	t.Helper()
+
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		entries, err := os.ReadDir(dir)
 		if err == nil {
 			matches := 0
 			compressed := 0
+
 			for _, entry := range entries {
 				name := entry.Name()
 				if !strings.HasPrefix(name, prefix+"-") {
 					continue
 				}
+
 				matches++
 				if strings.HasSuffix(name, ".gz") {
 					compressed++
 				}
 			}
+
 			if matches == 1 && compressed == 1 {
 				return
 			}
 		}
+
 		time.Sleep(10 * time.Millisecond)
 	}
-	t.Fatalf("timed out waiting for exactly one compressed backup with prefix %q in %s", prefix, dir)
+
+	t.Fatalf(
+		"timed out waiting for exactly one compressed backup with prefix %q in %s",
+		prefix,
+		dir,
+	)
 }
 
 func backupCount(t *testing.T, dir string, prefix string) int {
@@ -264,13 +285,16 @@ func backupCount(t *testing.T, dir string, prefix string) int {
 	if err != nil {
 		t.Fatalf("reading %s: %v", dir, err)
 	}
+
 	count := 0
+
 	for _, entry := range entries {
 		name := entry.Name()
 		if strings.HasPrefix(name, prefix+"-") {
 			count++
 		}
 	}
+
 	return count
 }
 
@@ -280,6 +304,7 @@ func assertSize(t *testing.T, path string, want int, why string) {
 	if err != nil {
 		t.Fatalf("stat %s: %v", path, err)
 	}
+
 	if info.Size() != int64(want) {
 		t.Fatalf("%s size = %d, want %d: %s", filepath.Base(path), info.Size(), want, why)
 	}
@@ -292,7 +317,9 @@ func newTestLogger(t *testing.T) (*telemetry.Logger, string) {
 	if err != nil {
 		t.Fatalf("creating logger: %v", err)
 	}
+
 	t.Cleanup(func() { _ = logger.Close() })
+
 	return logger, logPath
 }
 
@@ -302,6 +329,7 @@ func readFile(t *testing.T, path string) string {
 	if err != nil {
 		t.Fatalf("reading %s: %v", path, err)
 	}
+
 	return string(content)
 }
 

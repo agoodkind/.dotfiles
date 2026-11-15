@@ -24,19 +24,35 @@ type fakeCommandOutput struct {
 	err   error
 }
 
-func (runner *fakeCommandRunner) RunWithLogger(_ context.Context, _ *telemetry.Logger, command string, args ...string) error {
-	runner.runCalls = append(runner.runCalls, commandCall{command: command, args: append([]string{}, args...)})
+func (runner *fakeCommandRunner) RunWithLogger(
+	_ context.Context,
+	_ *telemetry.Logger,
+	command string,
+	args ...string,
+) error {
+	runner.runCalls = append(
+		runner.runCalls,
+		commandCall{command: command, args: append([]string{}, args...)},
+	)
 	if err, ok := runner.runErrs[debianCommandKey(command, args...)]; ok {
 		return err
 	}
+
 	return nil
 }
 
-func (runner *fakeCommandRunner) OutputWithLoggerAndEnv(_ context.Context, _ *telemetry.Logger, _ []string, command string, args ...string) (string, error) {
+func (runner *fakeCommandRunner) OutputWithLoggerAndEnv(
+	_ context.Context,
+	_ *telemetry.Logger,
+	_ []string,
+	command string,
+	args ...string,
+) (string, error) {
 	output, ok := runner.outputs[debianCommandKey(command, args...)]
 	if !ok {
 		return "", errors.New("missing output")
 	}
+
 	return output.value, output.err
 }
 
@@ -62,8 +78,16 @@ type fakePrivilegedRunner struct {
 	installed map[string]string
 }
 
-func (runner *fakePrivilegedRunner) Run(_ context.Context, _ *telemetry.Logger, command string, args ...string) error {
-	runner.calls = append(runner.calls, commandCall{command: command, args: append([]string{}, args...)})
+func (runner *fakePrivilegedRunner) Run(
+	_ context.Context,
+	_ *telemetry.Logger,
+	command string,
+	args ...string,
+) error {
+	runner.calls = append(
+		runner.calls,
+		commandCall{command: command, args: append([]string{}, args...)},
+	)
 	if command == "install" && len(args) >= 4 && args[0] == "-m" {
 		src := args[2]
 		dest := args[3]
@@ -71,12 +95,15 @@ func (runner *fakePrivilegedRunner) Run(_ context.Context, _ *telemetry.Logger, 
 			if runner.installed == nil {
 				runner.installed = map[string]string{}
 			}
+
 			runner.installed[dest] = string(data)
 		}
 	}
+
 	if err, ok := runner.errs[debianCommandKey(command, args...)]; ok {
 		return err
 	}
+
 	return nil
 }
 
@@ -95,6 +122,7 @@ func (repos fakeAptRepos) Download(_ context.Context, fileURL string) ([]byte, e
 	if !ok {
 		return nil, errors.New("missing download")
 	}
+
 	return data, nil
 }
 
@@ -159,12 +187,17 @@ func TestInstallUbuntuPPAsRunsExpectedCommands(t *testing.T) {
 		},
 	}
 
-	installer.installUbuntuPPAs(context.Background(), platform.Host{
-		GOOS:         platform.GOOSLinux,
-		Distribution: platform.DistributionUbuntu,
-	}, &catalog.PackageConfig{
-		UbuntuPPAs: []string{"ppa:example/test"},
-	}, nil)
+	installer.installUbuntuPPAs(
+		context.Background(),
+		platform.Host{
+			GOOS:         platform.GOOSLinux,
+			Distribution: platform.DistributionUbuntu,
+		},
+		&catalog.PackageConfig{
+			UbuntuPPAs: []string{"ppa:example/test"},
+		},
+		nil,
+	)
 
 	want := []commandCall{
 		{command: "apt-get", args: []string{"install", "-y", "-qq", "software-properties-common"}},
@@ -187,12 +220,17 @@ func TestInstallUbuntuPPAsSkipsUnpublishedPPA(t *testing.T) {
 		},
 	}
 
-	installer.installUbuntuPPAs(context.Background(), platform.Host{
-		GOOS:         platform.GOOSLinux,
-		Distribution: platform.DistributionUbuntu,
-	}, &catalog.PackageConfig{
-		UbuntuPPAs: []string{"ppa:has/release", "ppa:no/release"},
-	}, nil)
+	installer.installUbuntuPPAs(
+		context.Background(),
+		platform.Host{
+			GOOS:         platform.GOOSLinux,
+			Distribution: platform.DistributionUbuntu,
+		},
+		&catalog.PackageConfig{
+			UbuntuPPAs: []string{"ppa:has/release", "ppa:no/release"},
+		},
+		nil,
+	)
 
 	want := []commandCall{
 		{command: "apt-get", args: []string{"install", "-y", "-qq", "software-properties-common"}},
@@ -200,7 +238,11 @@ func TestInstallUbuntuPPAsSkipsUnpublishedPPA(t *testing.T) {
 		{command: "apt-get", args: []string{"update", "-qq"}},
 	}
 	if !reflect.DeepEqual(privileged.calls, want) {
-		t.Fatalf("privileged calls = %#v, want %#v (unpublished PPA must be skipped without poisoning apt)", privileged.calls, want)
+		t.Fatalf(
+			"privileged calls = %#v, want %#v (unpublished PPA must be skipped without poisoning apt)",
+			privileged.calls,
+			want,
+		)
 	}
 }
 
@@ -214,7 +256,12 @@ func TestParsePPAOwnerName(t *testing.T) {
 		wantOK    bool
 	}{
 		{input: "ppa:fujiapple/trippy", wantOwner: "fujiapple", wantName: "trippy", wantOK: true},
-		{input: "zhangsongcui3371/fastfetch", wantOwner: "zhangsongcui3371", wantName: "fastfetch", wantOK: true},
+		{
+			input:     "zhangsongcui3371/fastfetch",
+			wantOwner: "zhangsongcui3371",
+			wantName:  "fastfetch",
+			wantOK:    true,
+		},
 		{input: "ppa:noslash", wantOwner: "", wantName: "", wantOK: false},
 		{input: "ppa:/missing-owner", wantOwner: "", wantName: "", wantOK: false},
 		{input: "ppa:owner/", wantOwner: "", wantName: "", wantOK: false},
@@ -222,7 +269,16 @@ func TestParsePPAOwnerName(t *testing.T) {
 	for _, test := range tests {
 		owner, name, ok := parsePPAOwnerName(test.input)
 		if owner != test.wantOwner || name != test.wantName || ok != test.wantOK {
-			t.Fatalf("parsePPAOwnerName(%q) = (%q, %q, %v), want (%q, %q, %v)", test.input, owner, name, ok, test.wantOwner, test.wantName, test.wantOK)
+			t.Fatalf(
+				"parsePPAOwnerName(%q) = (%q, %q, %v), want (%q, %q, %v)",
+				test.input,
+				owner,
+				name,
+				ok,
+				test.wantOwner,
+				test.wantName,
+				test.wantOK,
+			)
 		}
 	}
 }
@@ -250,14 +306,20 @@ func TestInstallSnapPackageUsesSnapCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("installSnapPackage() returned error: %v", err)
 	}
+
 	if len(privileged.calls) != 1 {
 		t.Fatalf("privileged call count = %d, want 1", len(privileged.calls))
 	}
+
 	if privileged.calls[0].command != "snap" {
 		t.Fatalf("privileged command = %q, want snap", privileged.calls[0].command)
 	}
+
 	if !reflect.DeepEqual(privileged.calls[0].args, []string{"install", "--classic", "nvim"}) {
-		t.Fatalf("privileged args = %#v, want snap install --classic nvim", privileged.calls[0].args)
+		t.Fatalf(
+			"privileged args = %#v, want snap install --classic nvim",
+			privileged.calls[0].args,
+		)
 	}
 }
 
@@ -282,10 +344,12 @@ func TestInstallDebianPackagesAddsOoklaRepoAndSpeedtest(t *testing.T) {
 		deps: Deps{
 			Commands: commands,
 			Lookup:   fakeCommandLookup{commands: map[string]bool{"apt-get": true}},
-			Catalog: fakeCatalogProvider{packageConfig: &catalog.PackageConfig{
-				AptSpecific: []string{"curl", "speedtest"},
-				AptRepos:    []catalog.AptRepo{ooklaAptRepo()},
-			}},
+			Catalog: fakeCatalogProvider{
+				packageConfig: &catalog.PackageConfig{
+					AptSpecific: []string{"curl", "speedtest"},
+					AptRepos:    []catalog.AptRepo{ooklaAptRepo()},
+				},
+			},
 			Privileged: privileged,
 			AptRepos: fakeAptRepos{
 				codename: "noble",
@@ -299,27 +363,42 @@ func TestInstallDebianPackagesAddsOoklaRepoAndSpeedtest(t *testing.T) {
 		},
 	}
 
-	if err := installer.installDebianPackages(context.Background(), platform.Host{
-		GOOS:         platform.GOOSLinux,
-		Distribution: platform.DistributionUbuntu,
-	}, nil); err != nil {
+	if err := installer.installDebianPackages(
+		context.Background(),
+		platform.Host{
+			GOOS:         platform.GOOSLinux,
+			Distribution: platform.DistributionUbuntu,
+		},
+		nil,
+	); err != nil {
 		t.Fatalf("installDebianPackages() returned error: %v", err)
 	}
 
-	if !debianContainsCommand(privileged.calls, "apt-get", []string{"remove", "-y", "-qq", "speedtest-cli"}) {
+	if !debianContainsCommand(
+		privileged.calls,
+		"apt-get",
+		[]string{"remove", "-y", "-qq", "speedtest-cli"},
+	) {
 		t.Fatal("expected apt-get remove speedtest-cli")
 	}
+
 	if _, ok := privileged.installed["/etc/apt/keyrings/ookla_speedtest-cli-archive-keyring.gpg"]; !ok {
 		t.Fatal("expected ookla keyring install")
 	}
+
 	listBody, ok := privileged.installed["/etc/apt/sources.list.d/ookla_speedtest-cli.list"]
 	if !ok {
 		t.Fatal("expected ookla sources.list install")
 	}
+
 	if !strings.Contains(listBody, "noble") {
 		t.Fatalf("sources list = %q, want noble suite", listBody)
 	}
-	if !strings.Contains(listBody, "signed-by=/etc/apt/keyrings/ookla_speedtest-cli-archive-keyring.gpg") {
+
+	if !strings.Contains(
+		listBody,
+		"signed-by=/etc/apt/keyrings/ookla_speedtest-cli-archive-keyring.gpg",
+	) {
 		t.Fatalf("sources list = %q, want signed-by keyring", listBody)
 	}
 
@@ -337,10 +416,12 @@ func TestInstallDebianPackagesSkipsSpeedtestWhenRepoUnpublished(t *testing.T) {
 		deps: Deps{
 			Commands: &fakeCommandRunner{},
 			Lookup:   fakeCommandLookup{commands: map[string]bool{"apt-get": true}},
-			Catalog: fakeCatalogProvider{packageConfig: &catalog.PackageConfig{
-				AptSpecific: []string{"curl", "speedtest"},
-				AptRepos:    []catalog.AptRepo{ooklaAptRepo()},
-			}},
+			Catalog: fakeCatalogProvider{
+				packageConfig: &catalog.PackageConfig{
+					AptSpecific: []string{"curl", "speedtest"},
+					AptRepos:    []catalog.AptRepo{ooklaAptRepo()},
+				},
+			},
 			Privileged: privileged,
 			AptRepos: fakeAptRepos{
 				codename: "resolute",
@@ -355,23 +436,34 @@ func TestInstallDebianPackagesSkipsSpeedtestWhenRepoUnpublished(t *testing.T) {
 		},
 	}
 
-	if err := installer.installDebianPackages(context.Background(), platform.Host{
-		GOOS:         platform.GOOSLinux,
-		Distribution: platform.DistributionUbuntu,
-	}, nil); err != nil {
+	if err := installer.installDebianPackages(
+		context.Background(),
+		platform.Host{
+			GOOS:         platform.GOOSLinux,
+			Distribution: platform.DistributionUbuntu,
+		},
+		nil,
+	); err != nil {
 		t.Fatalf("installDebianPackages() returned error: %v", err)
 	}
 
-	if debianContainsCommand(privileged.calls, "apt-get", []string{"remove", "-y", "-qq", "speedtest-cli"}) {
+	if debianContainsCommand(
+		privileged.calls,
+		"apt-get",
+		[]string{"remove", "-y", "-qq", "speedtest-cli"},
+	) {
 		t.Fatal("did not expect apt-get remove speedtest-cli when repo is skipped")
 	}
+
 	if _, ok := privileged.installed["/etc/apt/sources.list.d/ookla_speedtest-cli.list"]; ok {
 		t.Fatal("did not expect ookla sources.list when unpublished")
 	}
+
 	installCall := debianAptGetInstallArgs(privileged.calls)
 	if containsString(installCall, "speedtest") {
 		t.Fatalf("apt-get install args = %#v, did not want speedtest", installCall)
 	}
+
 	if !containsString(installCall, "curl") {
 		t.Fatalf("apt-get install args = %#v, want curl", installCall)
 	}
@@ -407,10 +499,12 @@ func debianContainsCommand(calls []commandCall, command string, args []string) b
 		if call.command != command {
 			continue
 		}
+
 		if reflect.DeepEqual(call.args, args) {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -419,11 +513,15 @@ func debianAptGetInstallArgs(calls []commandCall) []string {
 		if call.command != "apt-get" || len(call.args) == 0 || call.args[0] != "install" {
 			continue
 		}
-		if len(call.args) >= 4 && call.args[1] == "-y" && call.args[2] == "-qq" && call.args[3] == "gnupg" {
+
+		if len(call.args) >= 4 && call.args[1] == "-y" && call.args[2] == "-qq" &&
+			call.args[3] == "gnupg" {
 			continue
 		}
+
 		return call.args
 	}
+
 	return nil
 }
 
@@ -433,5 +531,6 @@ func containsString(values []string, want string) bool {
 			return true
 		}
 	}
+
 	return false
 }

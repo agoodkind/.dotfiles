@@ -21,11 +21,13 @@ func Configure() {
 		logPath = filepathForCursorLog()
 		_ = os.Setenv("DOTFILES_LOG", logPath)
 	}
+
 	logger, err := telemetry.NewLogger(logPath)
 	if err != nil {
 		syncLogger = nil
 		return
 	}
+
 	syncLogger = logger
 }
 
@@ -35,6 +37,7 @@ func ConfigureWithLogger(logger *telemetry.Logger) {
 		syncLogger = logger
 		return
 	}
+
 	Configure()
 }
 
@@ -52,6 +55,7 @@ func Debug(message string) {
 	if !debugEnabled {
 		return
 	}
+
 	logger := ensureLogger()
 	if logger != nil {
 		logger.Debug(message)
@@ -83,10 +87,13 @@ func ensureLogger() *telemetry.Logger {
 		logPath = filepathForCursorLog()
 		_ = os.Setenv("DOTFILES_LOG", logPath)
 	}
+
 	logger, err := telemetry.NewLogger(logPath)
 	if err != nil {
 		return nil
 	}
+
 	syncLogger = logger
+
 	return syncLogger
 }

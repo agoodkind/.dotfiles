@@ -53,10 +53,12 @@ func run(args []string) int {
 	if logPath == "" {
 		logPath = filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "dots.log")
 	}
+
 	logger, err := telemetry.NewLogger(logPath)
 	if err != nil {
 		return 1
 	}
+
 	appLogger = logger
 	defer logger.Close()
 	runner.SetLogger(logger)
@@ -96,6 +98,7 @@ func run(args []string) int {
 	default:
 		logWarn("unknown command: " + args[0])
 		printUsage()
+
 		return 2
 	}
 }
@@ -104,10 +107,14 @@ func runSync(args []string) int {
 	for _, arg := range args {
 		if arg == "-h" || arg == "--help" {
 			logInfo("Usage:")
-			logInfo("  dots sync [--repair] [--quick] [--skip-git] [--skip-network] [--skip-cursor-sync] [--dry-run] [--use-defaults] [--strict]")
+			logInfo(
+				"  dots sync [--repair] [--quick] [--skip-git] [--skip-network] [--skip-cursor-sync] [--dry-run] [--use-defaults] [--strict]",
+			)
+
 			return 0
 		}
 	}
+
 	fs := flag.NewFlagSet("sync", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	repairMode := fs.Bool("repair", false, "run full repair flow")
@@ -121,22 +128,28 @@ func runSync(args []string) int {
 	if err := fs.Parse(args); err != nil {
 		logWarn(err.Error())
 		printUsage()
+
 		return 2
 	}
-	if err := syncer.Run(context.Background(), syncer.Options{
-		RepairMode:     *repairMode,
-		QuickMode:      *quickMode,
-		SkipGit:        *skipGit,
-		SkipNetwork:    *skipNetwork,
-		SkipCorpusSync: false,
-		SkipCursorSync: *skipCursorSync,
-		DryRun:         *dryRun,
-		UseDefaults:    *useDefaults,
-		StrictMode:     *strictMode,
-	}); err != nil {
+
+	if err := syncer.Run(
+		context.Background(),
+		syncer.Options{
+			RepairMode:     *repairMode,
+			QuickMode:      *quickMode,
+			SkipGit:        *skipGit,
+			SkipNetwork:    *skipNetwork,
+			SkipCorpusSync: false,
+			SkipCursorSync: *skipCursorSync,
+			DryRun:         *dryRun,
+			UseDefaults:    *useDefaults,
+			StrictMode:     *strictMode,
+		},
+	); err != nil {
 		logError("sync failed", err)
 		return 1
 	}
+
 	return 0
 }
 
@@ -163,6 +176,7 @@ func runPerf(args []string) int {
 		logError("perf failed", err)
 		return 1
 	}
+
 	return 0
 }
 
@@ -173,14 +187,20 @@ func runRefreshShellCaches(args []string) int {
 			return 0
 		}
 	}
+
 	if len(args) > 0 {
 		logWarn("refresh-shell-caches does not accept arguments")
 		return 2
 	}
-	if err := dispatcher.RunWorkers(context.Background(), []string{"prefer-cache-rebuild", "zwc-recompile"}); err != nil {
+
+	if err := dispatcher.RunWorkers(
+		context.Background(),
+		[]string{"prefer-cache-rebuild", "zwc-recompile"},
+	); err != nil {
 		logError("refresh-shell-caches failed", err)
 		return 1
 	}
+
 	return 0
 }
 
@@ -193,25 +213,30 @@ func runCursorSync(args []string) int {
 			}
 		}
 	}
+
 	dotfiles := os.Getenv("DOTDOTFILES")
 	if dotfiles == "" {
 		dotfiles = filepath.Join(os.Getenv("HOME"), ".dotfiles")
 	}
+
 	sourceSet, err := corpus.LoadSourceSet(dotfiles)
 	if err != nil {
 		logError("loading corpus for cursor upload", err)
 		return 1
 	}
+
 	style := compilation.RuleRenderStyle{SkillsRelDir: "../skills", Harness: "cursor"}
 	rules, err := compilation.RenderRulesForUploadFromSourceSet(sourceSet, style)
 	if err != nil {
 		logError("rendering corpus rules for cursor upload", err)
 		return 1
 	}
+
 	if err := cursorSync.Run(rules); err != nil {
 		logError("cursor sync failed", err)
 		return 1
 	}
+
 	return 0
 }
 
@@ -240,29 +265,38 @@ func runGitHook(args []string) int {
 			return 0
 		}
 	}
+
 	err := githook.Run(context.Background(), args, os.Stdin, os.Stderr)
 	if err == nil {
 		return 0
 	}
+
 	if errors.Is(err, githook.ErrUsage) {
 		return 2
 	}
+
 	var refusal *githook.RefusalError
 	if errors.As(err, &refusal) {
 		return 1
 	}
+
 	logError("git-hook failed", err)
+
 	return 1
 }
 
 func printUsage() {
 	logInfo("Usage:")
-	logInfo("  dots sync [--repair] [--quick] [--skip-git] [--skip-network] [--skip-cursor-sync] [--dry-run] [--use-defaults] [--strict]")
+	logInfo(
+		"  dots sync [--repair] [--quick] [--skip-git] [--skip-network] [--skip-cursor-sync] [--dry-run] [--use-defaults] [--strict]",
+	)
 	logInfo("  dots dispatch [worker...]")
 	logInfo("  dots perf [log|history|arm-zprof|rebuild-path-cache]")
 	logInfo("  dots refresh-shell-caches")
 	logInfo("  dots cursor-sync")
-	logInfo("  dots install [--use-defaults] [--quick] [--skip-git] [--skip-network] [--repair] [--strict]")
+	logInfo(
+		"  dots install [--use-defaults] [--quick] [--skip-git] [--skip-network] [--repair] [--strict]",
+	)
 	logInfo("  dots uninstall [--purge-packages]")
 	logInfo("  dots git-hook {reference-transaction|pre-commit|pre-rebase} [args]")
 	logInfo("  dots version")

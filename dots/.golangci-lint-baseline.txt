@@ -1,4 +1,801 @@
-# golangci-lint: generated_at=2026-05-29T06:31:56Z
-internal/sync/compilation/compilation.go:669:24: G703: Path traversal via taint analysis (gosec)	# golangci-lint:first_added=2026-05-05T02:39:16Z last_seen=2026-05-10T16:23:39Z
-internal/sync/tools/tools.go:409:24: G703: Path traversal via taint analysis (gosec)	# golangci-lint:first_added=2026-05-05T02:39:16Z last_seen=2026-05-10T16:23:39Z
+# golangci-lint: generated_at=2026-11-14T07:31:22Z
+cmd/dots/main.go:72:10: Magic number: 2, in <return> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+cmd/dots/main.go:108:28: string `--help` has 5 occurrences, but such constant `cmdHelpLong` already exists (goconst)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+cmd/dots/main.go:111:1: The line is 130 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+cmd/dots/main.go:118:2: variable name 'fs' is too short for the scope of its usage (varnamelen)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+cmd/dots/main.go:97:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+cmd/dots/main.go:279:5: errorsastype: errors.As can be simplified using AsType[*githook.RefusalError] (modernize)	# golangci-lint:first_added=2026-11-14T07:28:27Z last_seen=2026-11-14T07:31:22Z
+cmd/dots/main.go:291:1: The line is 128 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+cmd/fresh-linux-bootstrap-smoke/main.go:732:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+cmd/fresh-linux-bootstrap-smoke/main.go:337:17: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"%v\", r)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+cmd/fresh-linux-bootstrap-smoke/main.go:370:14: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"container exited with status %d\", result.StatusCode)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+cmd/fresh-linux-bootstrap-smoke/main.go:379:20: Magic number: 5, in <argument> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+cmd/fresh-linux-bootstrap-smoke/main.go:386:59: Magic number: 30, in <argument> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+cmd/fresh-linux-bootstrap-smoke/main.go:432:1: godoc line is too long (78 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+cmd/fresh-linux-bootstrap-smoke/main.go:536:6: Function 'runInsideContainer' is too long (141 > 100) (funlen)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+cmd/fresh-linux-bootstrap-smoke/main.go:698:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"curl/wget and git are required when the smoke is not running as root\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+cmd/fresh-linux-bootstrap-smoke/main.go:698:10: error-format: fmt.Errorf can be replaced with errors.New (perfsprint)	# golangci-lint:first_added=2026-11-14T07:28:44Z last_seen=2026-11-14T07:31:22Z
+cmd/fresh-macos-bootstrap-smoke/main.go:98:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+cmd/fresh-macos-bootstrap-smoke/main.go:169:1: godoc line is too long (78 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+cmd/fresh-macos-bootstrap-smoke/main.go:258:1: Comment should end in a period (godot)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+cmd/fresh-macos-bootstrap-smoke/main.go:266:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"tart not found; install with: brew install openai/tools/tart\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+cmd/fresh-macos-bootstrap-smoke/main.go:266:10: error-format: fmt.Errorf can be replaced with errors.New (perfsprint)	# golangci-lint:first_added=2026-11-14T07:28:44Z last_seen=2026-11-14T07:31:22Z
+cmd/fresh-macos-bootstrap-smoke/main.go:277:80: Magic number: 30, in <argument> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+cmd/fresh-macos-bootstrap-smoke/main.go:568:1: godoc line is too long (80 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+cmd/fresh-macos-bootstrap-smoke/main.go:581:11: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"tart Guest Agent in %s not ready after %v\", vmName, maxWait)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+config/assets.go:15:1: godoc line is too long (85 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+config/assets.go:1:1: godoc line is too long (78 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+config/assets.go:32:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+config/assets.go:29:2: variable name 'bb' is too short for the scope of its usage (varnamelen)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+internal/catalog/catalog.go:124:2: variable name 'mu' is too short for the scope of its usage (varnamelen)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/catalog/catalog.go:129:1: godoc line is too long (103 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/catalog/catalog.go:169:1: godoc line is too long (93 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/catalog/catalog.go:184:1: godoc line is too long (104 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/catalog/catalog.go:1:1: godoc line is too long (79 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/catalog/catalog.go:214:1: godoc line is too long (107 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/catalog/catalog.go:240:1: godoc line is too long (97 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/catalog/catalog.go:252:1: godoc line is too long (111 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/catalog/catalog.go:29:1: godoc line is too long (92 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/catalog/catalog.go:337:1: godoc line is too long (80 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/catalog/catalog.go:338:1: godoc line is too long (78 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/catalog/catalog.go:76:1: godoc line is too long (81 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/clock/clock.go:11:1: godoc line is too long (78 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/clock/clock.go:14:1: godoc line is too long (87 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/clock/clock.go:1:1: godoc line is too long (81 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cmdexec/cmdexec.go:102:1: godoc line is too long (94 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cmdexec/cmdexec.go:113:1: godoc line is too long (93 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cmdexec/cmdexec.go:68:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/cmdexec/cmdexec.go:27:1: godoc line is too long (87 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cmdexec/cmdexec.go:65:1: godoc line is too long (95 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cmdexec/cmdexec.go:92:1: godoc line is too long (85 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/config/config.go:12:1: godoc line is too long (79 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/constants/constants.go:4:1: The line is 123 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/constants/constants.go:4:1: godoc line is too long (120 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/cursorapi/client.go:168:1: godoc line is too long (92 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/cursorapi/client.go:23:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/cursorapi/client.go:196:36: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"remove worker panic: %v\", recovered)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/cursorapi/client.go:275:1: godoc line is too long (91 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/cursorapi/client.go:211:35: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"remove coordinator panic: %v\", recovered)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/cursorapi/client.go:228:4: continue with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/cursorapi/client.go:26:1: The line is 125 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/cursorapi/client.go:26:1: godoc line is too long (122 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/cursorapi/client.go:57:24: Magic number: 3, in <condition> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/cursorapi/client.go:73:1: godoc line is too long (83 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/cursorapi/client.go:92:2: Consider preallocating payload (prealloc)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/logging/logging.go:16:1: godoc line is too long (89 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/logging/logging.go:77:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/logging/logging.go:34:1: godoc line is too long (95 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/logging/logging.go:53:1: godoc line is too long (78 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/logging/logging.go:66:1: godoc line is too long (84 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/models/models.go:14:1: godoc line is too long (89 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/protobuf/protobuf.go:137:1: godoc line is too long (95 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/protobuf/protobuf.go:142:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/protobuf/protobuf.go:178:1: godoc line is too long (86 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/protobuf/protobuf.go:27:60: Magic number: 255, in <argument> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/protobuf/protobuf.go:188:1: godoc line is too long (94 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/protobuf/protobuf.go:33:1: godoc line is too long (105 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/protobuf/protobuf.go:53:1: godoc line is too long (99 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/protobuf/protobuf.go:82:24: Magic number: 3, in <operation> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/syncer/syncer.go:94:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/syncer/syncer.go:155:3: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/syncer/syncer.go:16:1: godoc line is too long (81 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/syncer/syncer.go:222:4: continue with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/syncer/syncer.go:19:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"cursor rule sync failed\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/syncer/syncer.go:19:10: error-format: fmt.Errorf can be replaced with errors.New (perfsprint)	# golangci-lint:first_added=2026-11-14T07:28:44Z last_seen=2026-11-14T07:31:22Z
+internal/cursor/syncer/syncer.go:74:1: godoc line is too long (98 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/dispatch.go:195:24: parameter name 'fn' is too short for the scope of its usage (varnamelen)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/dispatch.go:198:51: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"panic: %v\", recovered)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/dispatch.go:1:1: godoc line is too long (84 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/dispatch.go:321:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/dispatch.go:256:11: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"interrupted\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/dispatch.go:256:11: error-format: fmt.Errorf can be replaced with errors.New (perfsprint)	# golangci-lint:first_added=2026-11-14T07:28:44Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/dispatch.go:271:6: Function 'RunWorkers' is too long (113 > 100) (funlen)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/dispatch.go:335:24: G703: Path traversal via taint analysis (gosec)	# golangci-lint:first_added=2026-11-14T07:29:03Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/dispatch.go:307:80: Magic number: 0o666, in <argument> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/dispatch.go:315:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"lock file descriptor %d exceeds int bounds\", flockFd)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/dispatch.go:324:21: Error return value of `syscall.Flock` is not checked (errcheck)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/pathcache/pathcache.go:97:24: G703: Path traversal via taint analysis (gosec)	# golangci-lint:first_added=2026-11-14T07:29:03Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/pathcache/pathcache.go:99:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/prefercache/prefercache.go:13:1: godoc line is too long (79 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/prefercache/prefercache.go:22:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/sshkey/sshkey.go:17:1: godoc line is too long (84 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/sshkey/sshkey.go:38:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/updater/updater.go:67:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/updater/updater.go:212:18: G703: Path traversal via taint analysis (gosec)	# golangci-lint:first_added=2026-11-14T07:29:03Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/updater/updater.go:240:40: Magic number: 60, in <operation> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/updater/updater.go:247:12: Magic number: 2, in <assign> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/updater/updater.go:28:1: godoc line is too long (100 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/zwc/zwc.go:16:1: godoc line is too long (84 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/dispatch/zwc/zwc.go:34:23: G703: Path traversal via taint analysis (gosec)	# golangci-lint:first_added=2026-11-14T07:29:03Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:104:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"expected commands on PATH, missing: %s\", strings.Join(missing, \", \"))" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:223:1: godoc line is too long (78 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:122:4: continue with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:304:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:130:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\n\t\"fresh smoke requires checked out submodules: %s; run git submodule update --init --recursive before smoke\",\n\tstrings.Join(missing, \", \"),\n)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:139:1: godoc line is too long (87 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:192:15: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"file descriptor %d exceeds valid flock range\", rawFD)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:195:2: variable name 'fd' is too short for the scope of its usage (varnamelen)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:1:1: godoc line is too long (85 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:207:55: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"%v\", r)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:239:1: godoc line is too long (79 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:268:2: Consider preallocating args with capacity 3 + len(extraArgs) (prealloc)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:28:1: godoc line is too long (92 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:299:16: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"install timed out\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:299:16: error-format: fmt.Errorf can be replaced with errors.New (perfsprint)	# golangci-lint:first_added=2026-11-14T07:28:44Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:320:1: godoc line is too long (83 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:32:11: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"expected %s to be absent before bootstrap\", command)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:334:1: godoc line is too long (81 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:45:9: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"expected output to contain %q\\n%s\", substr, output)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:53:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"expected %d build lines, got %d\\n%s\", expectedCount, actualCount, output)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:59:1: godoc line is too long (80 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/freshsmoke.go:71:11: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"strict smoke output contains warning marker %q\\n%s\", marker, output)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/scenarios.go:99:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/scenarios.go:279:46: Magic number: 2, in <argument> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/scenarios.go:212:1: godoc line is too long (78 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/scenarios.go:259:1: godoc line is too long (79 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/scenarios.go:367:3: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/freshsmoke/scenarios.go:68:10: do not define dynamic errors, use wrapped static errors instead: "errors.New(\"GO_LOCAL_ROOT missing from smoke env\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/gitdir/gitdir.go:118:3: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/gitdir/gitdir.go:118:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/gitdir/gitdir.go:123:14: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"git rev-parse %s returned no path\", flag)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/githook/git.go:141:2: variable name 'ok' is too short for the scope of its usage (varnamelen)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+internal/githook/git.go:173:23: Magic number: 40, in <return> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/githook/git.go:1:1: godoc line is too long (81 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/githook/git.go:248:3: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/githook/git.go:75:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/githook/hook_git_test.go:290:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/githook/parse.go:36:16: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"reference-transaction line %d: missing new value\", lineNumber)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/githook/parse.go:41:16: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"reference-transaction line %d: missing ref name\", lineNumber)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/githook/parse.go:56:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/githook/policy.go:95:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/githook/protection.go:25:3: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/githook/protection.go:77:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/githook/protection.go:49:6: errorsastype: errors.As can be simplified using AsType[*exec.ExitError] (modernize)	# golangci-lint:first_added=2026-11-14T07:28:27Z last_seen=2026-11-14T07:31:22Z
+internal/githook/protection.go:77:17: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"GitHub protection result does not include pr_protected\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/githook/protection.go:77:17: error-format: fmt.Errorf can be replaced with errors.New (perfsprint)	# golangci-lint:first_added=2026-11-14T07:28:44Z last_seen=2026-11-14T07:31:22Z
+internal/githook/refusal.go:15:1: The line is 186 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/githook/refusal.go:8:1: godoc line is too long (82 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/githook/run.go:52:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/githook/run.go:50:5: errorsastype: errors.As can be simplified using AsType[*RefusalError] (modernize)	# golangci-lint:first_added=2026-11-14T07:28:27Z last_seen=2026-11-14T07:31:22Z
+internal/install/install.go:95:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/install/install.go:232:35: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"unsupported install flag: %s\", arg)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/install/install.go:891:26: G703: Path traversal via taint analysis (gosec)	# golangci-lint:first_added=2026-11-14T07:29:03Z last_seen=2026-11-14T07:31:22Z
+internal/install/install.go:411:18: Magic number: 7, in <condition> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/install/install.go:545:9: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"install lock file descriptor %d exceeds int bounds\", flockFD)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/install/install.go:58:6: Function 'Run' is too long (107 > 100) (funlen)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+internal/install/install.go:604:6: Function 'ensureManagedRepository' is too long (119 > 100) (funlen)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+internal/install/install.go:845:3: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/install/install.go:806:20: Magic number: 2, in <condition> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/install/install.go:884:34: Magic number: 4, in <argument> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/install/install_test.go:299:4: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/perf/perf.go:717:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/perf/perf.go:108:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"unknown perf command: %s\", args[0])" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/perf/perf.go:232:6: Function 'runHistory' is too long (131 > 100) (funlen)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+internal/perf/perf.go:234:2: variable name 'fs' is too short for the scope of its usage (varnamelen)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/perf/perf.go:239:25: Magic number: 50, in <argument> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/perf/perf.go:315:31: Magic number: 100, in <condition> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/perf/perf.go:319:33: Magic number: 300, in <condition> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/perf/perf.go:333:3: variable name 'by' is too short for the scope of its usage (varnamelen)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/perf/perf.go:334:3: variable name 'ts' is too short for the scope of its usage (varnamelen)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+internal/perf/perf.go:335:16: Magic number: 16, in <condition> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/perf/perf.go:411:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"path_helper not found at %s\", pathHelper)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/perf/perf.go:460:27: do not define dynamic errors, use wrapped static errors instead: "errors.New(\"no startup logs found\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/perf/perf.go:593:5: break with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/perf/perf.go:623:25: Magic number: 2, in <operation> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/perf/perf.go:673:19: Magic number: 2, in <condition> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/perf/perf.go:685:20: Magic number: 9, in <condition> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/perf/perf.go:85:1: godoc line is too long (87 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/prefercache/prefercache.go:66:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/runner/runner.go:17:1: godoc line is too long (79 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/runner/runner.go:22:1: godoc line is too long (112 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/runner/runner.go:79:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/runner/runner.go:57:1: godoc line is too long (106 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/runner/runner.go:76:36: parameter name 'p' is too short for the scope of its usage (varnamelen)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/common/common.go:418:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/common/common.go:131:1: godoc line is too long (101 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/common/common.go:136:1: godoc line is too long (86 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/common/common.go:155:1: godoc line is too long (84 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/common/common.go:194:6: Function 'EnsurePasswordlessSudo' is too long (134 > 100) (funlen)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+internal/sync/common/common.go:222:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"username %q is not safe for a sudoers entry\", currentUser.Username)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/common/common.go:329:3: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/common/common.go:233:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"sudoers drop-in path %q escaped /etc/sudoers.d\", dropInPath)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/common/common.go:31:1: godoc line is too long (96 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/common/common.go:341:1: godoc line is too long (88 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/common/common.go:45:1: godoc line is too long (85 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/common/common.go:381:1: godoc line is too long (79 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/common/common.go:402:1: godoc line is too long (105 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/common/common.go:424:1: godoc line is too long (108 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/common/common.go:430:6: variable name 'i' is too short for the scope of its usage (varnamelen)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/common/common.go:59:1: godoc line is too long (103 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:100:1: godoc line is too long (84 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:158:26: G703: Path traversal via taint analysis (gosec)	# golangci-lint:first_added=2026-05-05T02:39:16Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:31:1: godoc line is too long (81 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:49:1: godoc line is too long (78 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:180:1: godoc line is too long (95 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:197:17: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"skill link %q requires skill_dest in manifest\", name)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:23:2: godoc line is too long (79 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:25:2: godoc line is too long (86 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:264:17: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"harness filter requires a provider\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:341:22: error-format: fmt.Errorf can be replaced with errors.New (perfsprint)	# golangci-lint:first_added=2026-11-14T07:28:44Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:269:18: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"unknown harness %q\", provider)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:274:17: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"harness filter used without a render harness\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:27:2: godoc line is too long (92 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:289:2: godoc line is too long (88 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:314:1: The line is 130 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:335:22: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"missing opening frontmatter delimiter\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:338:15: string "\n---\n" has 3 occurrences, make it a constant (goconst)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:341:22: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"missing closing frontmatter delimiter\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:397:11: Magic number: 4, in <operation> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:360:9: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"skill render conflicts:\\n- %s\", strings.Join(conflicts, \"\\n- \"))" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/compilation.go:55:1: godoc line is too long (82 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/rules.go:101:15: Magic number: 4, in <operation> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/rules.go:28:1: godoc line is too long (80 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/rules.go:139:1: unexported method "hasMetadata" for struct "RuleSource" should be placed after the exported method "RenderCopilot" (funcorder)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/rules.go:143:1: unexported method "isScoped" for struct "RuleSource" should be placed after the exported method "RenderCopilot" (funcorder)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/rules.go:147:1: unexported method "globsString" for struct "RuleSource" should be placed after the exported method "RenderCopilot" (funcorder)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/rules.go:151:1: unexported method "applyToString" for struct "RuleSource" should be placed after the exported method "RenderCopilot" (funcorder)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/rules.go:15:2: godoc line is too long (91 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/rules.go:167:14: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"unknown rule target format %q\", format)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/rules.go:171:1: unexported method "renderCursor" for struct "RuleSource" should be placed after the exported method "RenderCopilot" (funcorder)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/rules.go:17:2: godoc line is too long (82 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/rules.go:198:1: unexported method "renderClaude" for struct "RuleSource" should be placed after the exported method "RenderCopilot" (funcorder)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/rules.go:93:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/rules.go:36:14: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"unsupported rule_ext %q\", ext)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/rules.go:72:1: godoc line is too long (78 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/rules.go:78:15: string "\n---\n" has 3 occurrences, make it a constant (goconst)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/rules.go:86:6: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"rule source front matter missing closing delimiter\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/rules.go:86:6: error-format: fmt.Errorf can be replaced with errors.New (perfsprint)	# golangci-lint:first_added=2026-11-14T07:28:44Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/rules.go:93:3: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/source_set.go:3:1: godoc line is too long (98 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/source_set_render.go:210:32: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\n\t\"invalid skill file path %q for %s\",\n\tfileName,\n\tskill.Name,\n)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/source_set_render.go:246:5: continue with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/source_set_render.go:292:1: godoc line is too long (80 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/source_set_render.go:326:14: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"body embedding cycle: %s\", strings.Join(cycleNames, \" -> \"))" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/source_set_render.go:362:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"invalid %s body name %q\", ref.kind, name)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/source_set_render.go:373:25: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"unknown rule body %q\", ref.name)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/source_set_render.go:378:3: variable name 'ok' is too short for the scope of its usage (varnamelen)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/source_set_render.go:380:25: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"unknown skill body %q\", ref.name)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/source_set_render.go:390:25: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"skill body %q has no SKILL.md source\", ref.name)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/source_set_render.go:401:24: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"unknown body kind %q\", ref.kind)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/source_set_render.go:707:1: godoc line is too long (83 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/source_set_render.go:549:1: godoc line is too long (106 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/source_set_render.go:622:1: godoc line is too long (107 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/source_set_render.go:792:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"render target %s escapes destination %s\", target, root)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/compilation/source_set_render.go:818:11: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"render path component %s is a symlink\", currentPath)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/corpus/source_set.go:58:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/corpus/source_set.go:245:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\n\t\"read-only agent metadata did not match imported agents: %s\",\n\tstrings.Join(unmatchedNames, \", \"),\n)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/corpus/source_set.go:287:14: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"%s %q escapes %s %s\", pathLabel, relative, baseLabel, cleanBase)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/corpus/source_set.go:332:3: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/corpus/source_set.go:311:14: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\n\t\"%s %q resolves outside %s %s\",\n\tpathLabel,\n\trelative,\n\tbaseLabel,\n\tcleanBase,\n)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/corpus/source_set.go:350:14: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"missing opening fenced block\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/corpus/source_set.go:396:22: error-format: fmt.Errorf can be replaced with errors.New (perfsprint)	# golangci-lint:first_added=2026-11-14T07:28:44Z last_seen=2026-11-14T07:31:22Z
+internal/sync/corpus/source_set.go:356:14: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"missing fenced block body\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/corpus/source_set.go:362:14: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"missing closing fenced block\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/corpus/source_set.go:370:22: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"missing opening frontmatter delimiter\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/corpus/source_set.go:376:22: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"missing closing frontmatter delimiter\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/corpus/source_set.go:388:22: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"missing prompt name\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/corpus/source_set.go:396:22: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"missing prompt description\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/corpus/source_set.go:399:15: Magic number: 4, in <operation> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/corpus/source_set.go:416:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"invalid prompt name %q\", name)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/corpus/source_set.go:428:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"duplicate rule %q\", name)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/corpus/source_set.go:438:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"duplicate skill %q\", skill.Name)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/corpus/source_set.go:43:22: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\n\t\"unknown source kind %q for %s\",\n\timportedSource.Kind,\n\timportedSource.Name,\n)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/corpus/source_set.go:448:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"duplicate agent %q\", agent.Name)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/logrotate/logrotate.go:116:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"rotating logs: %s\", strings.Join(failed, \", \"))" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/logrotate/logrotate.go:144:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/logrotate/logrotate.go:93:4: continue with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/debian/apt_repos.go:168:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"apt repo %s is missing gpg_url, keyring, or list_path\", repo.ID)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/debian/apt_repos.go:176:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"apt repo %s has no base URL for this distribution\", repo.ID)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/debian/apt_repos.go:578:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/debian/apt_repos.go:211:29: Function 'installAptRepoKeyring' is too long (148 > 100) (funlen)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/debian/apt_repos.go:571:3: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/debian/apt_repos.go:299:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"gpg is unavailable\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/debian/apt_repos.go:299:10: error-format: fmt.Errorf can be replaced with errors.New (perfsprint)	# golangci-lint:first_added=2026-11-14T07:28:44Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/debian/apt_repos.go:582:15: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"download %s: status %d\", fileURL, response.StatusCode)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/debian/apt_repos.go:63:4: continue with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/debian/debian.go:587:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/debian/debian.go:402:4: continue with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/debian/debian.go:587:3: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/debian/debian.go:319:1: godoc line is too long (78 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/debian/debian.go:330:1: godoc line is too long (79 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/debian/debian.go:416:27: string `install` has 3 occurrences, make it a constant (goconst)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/debian/debian.go:85:1: New returns interface (goodkind.io/.dotfiles/internal/sync/platform.Installer) (ireturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/macos/macos.go:799:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/macos/macos.go:283:35: Error return value of `installer.deps.Files.Remove` is not checked (errcheck)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/macos/macos.go:202:16: string `write` has 8 occurrences, make it a constant (goconst)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/macos/macos.go:202:25: string `com.apple.finder` has 3 occurrences, make it a constant (goconst)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/macos/macos.go:202:4: string `defaults` has 8 occurrences, make it a constant (goconst)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/macos/macos.go:202:66: string `-bool` has 7 occurrences, make it a constant (goconst)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/macos/macos.go:202:75: string `true` has 7 occurrences, make it a constant (goconst)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/macos/macos.go:445:1: godoc line is too long (85 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/macos/macos.go:506:34: Magic number: 2, in <condition> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/macos/macos.go:89:1: New returns interface (goodkind.io/.dotfiles/internal/sync/platform.Installer) (ireturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/macos/macos_test.go:94:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/macos/macos_test.go:54:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/platform.go:161:4: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/platform.go:182:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/platform.go:22:2: godoc line is too long (80 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/toolchain/toolchain.go:339:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/toolchain/toolchain.go:138:35: Error return value of `installer.deps.Files.Remove` is not checked (errcheck)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/toolchain/toolchain.go:270:38: Magic number: 2, in <argument> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/toolchain/toolchain.go:272:20: Magic number: 2, in <condition> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/platform/toolchain/toolchain_test.go:87:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:971:3: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:971:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:104:6: Function 'runDotfilesUpdate' is too long (130 > 100) (funlen)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:1068:12: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\n\t\"ignored file %s conflicts with recorded path %s in %s\",\n\tignoredPath,\n\ttrackedPath,\n\trepository,\n)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:112:14: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"skip: %s\", reason)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:1160:14: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"submodule %s has no recorded gitlink in %s\", sub, revision)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:881:22: G703: Path traversal via taint analysis (gosec)	# golangci-lint:first_added=2026-11-14T07:29:03Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:1248:3: variable name 'ok' is too short for the scope of its usage (varnamelen)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:1322:14: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"submodule path %q escapes repository root %s\", subPath, cleanRoot)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:1313:14: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\n\t\"submodule path %q must be below repository root %s\",\n\tsubPath,\n\tcleanRoot,\n)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:1335:1: godoc line is too long (82 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:1371:40: Magic number: 2, in <argument> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:1372:21: Magic number: 2, in <condition> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:1390:1: file-length-limit: file length is 1361 lines, which exceeds the limit of 1000 (revive)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:145:14: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"local history diverged from origin/main, needs manual fix\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:170:15: error-format: fmt.Errorf can be replaced with errors.New (perfsprint)	# golangci-lint:first_added=2026-11-14T07:28:44Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:149:14: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"unable to determine remote status\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:151:14: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"unknown remote status: %s\", remoteStatus)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:170:15: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"upstream changes conflict with local work (overlapping files)\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:31:1: The line is 128 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:31:1: godoc line is too long (125 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:437:5: continue with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:840:6: Function 'checkOneSubmoduleUpdate' is too long (156 > 100) (funlen)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:873:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\n\t\"submodule %s has a staged gitlink change that blocks synchronization in %s\",\n\tsub,\n\tdotfiles,\n)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:942:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\n\t\"submodule %s has local commit %s outside recorded update %s in %s\",\n\tsub,\n\tcurrent,\n\trecorded,\n\tsubAbs,\n)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/repository/repository.go:975:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\n\t\"submodule %s has local file changes that block recorded update %s in %s\",\n\tsub,\n\trecorded,\n\tsubAbs,\n)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/sync.go:136:1: The line is 148 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+internal/sync/sync.go:235:30: G703: Path traversal via taint analysis (gosec)	# golangci-lint:first_added=2026-11-14T07:29:03Z last_seen=2026-11-14T07:31:22Z
+internal/sync/sync.go:85:4: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/sync.go:235:80: Magic number: 0o666, in <argument> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/sync.go:243:25: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"lock file descriptor %d exceeds int bounds\", flockFd)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/sync.go:374:6: Function 'runUpdateSteps' is too long (110 > 100) (funlen)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+internal/sync/sync.go:400:1: File is not properly formatted (golines)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+internal/sync/sync.go:75:21: Error return value of `syscall.Flock` is not checked (errcheck)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/sync.go:80:46: parameter name 'fn' is too short for the scope of its usage (varnamelen)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/gh.go:97:4: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/gh.go:116:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"configure repo and destinations for GitHub skill %s\", tool.ID)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/gh.go:97:4: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/gh.go:157:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\n\t\"symlinked skill directory %s requires a local installation before updating\",\n\tskillPath,\n)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/gh.go:215:86: Magic number: 3, in <argument> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/gh.go:217:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\n\t\"skill %s has invalid frontmatter; resolve the installation conflict\",\n\ttool.Bin,\n)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/gh.go:230:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"skill %s requires matching name and description\", tool.Bin)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/gh.go:235:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\n\t\"skill %s at %s lacks source metadata for %s; resolve the installation conflict\",\n\ttool.Bin,\n\tskillPath,\n\ttool.Repo,\n)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/gh.go:255:46: Magic number: 2, in <argument> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/gh.go:278:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"skill reference %s resolves outside skill directory\", reference)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/gh.go:281:22: G703: Path traversal via taint analysis (gosec)	# golangci-lint:first_added=2026-11-14T07:29:03Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/gh.go:288:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"skill reference %s must be a regular file\", reference)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/gh.go:39:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"configure repo for GitHub CLI extension %s\", tool.ID)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/gh.go:57:11: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\n\t\"extension %s uses %s instead of %s; resolve the installation conflict\",\n\ttool.Bin,\n\tfields[1],\n\ttool.Repo,\n)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/gh_test.go:29:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/tools.go:875:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/tools.go:160:11: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\n\t\"%s requires version %s or later after installation; version on PATH is %q\",\n\ttool.ID,\n\ttool.MinimumVersion,\n\tcurrent,\n)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/tools.go:854:3: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/tools.go:832:1: godoc line is too long (78 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/tools.go:337:28: Magic number: 2, in <argument> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/tools.go:824:20: G703: Path traversal via taint analysis (gosec)	# golangci-lint:first_added=2026-05-05T02:39:16Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/tools.go:40:1: godoc line is too long (83 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/tools.go:430:4: break with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/tools.go:435:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"no asset found for %s\", name)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/tools.go:846:34: Magic number: 120, in <assign> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/tools.go:509:15: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\n\t\"github api error %d: %s\",\n\tresp.StatusCode,\n\tstrings.TrimSpace(string(body)),\n)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/tools.go:553:14: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\n\t\"crates api error %d: %s\",\n\tresp.StatusCode,\n\tstrings.TrimSpace(string(body)),\n)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/tools.go:671:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"unsupported artifact type for %s\", filepath.Base(artifactPath))" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/tools.go:725:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"binary %s not found in archive\", tool)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/tools.go:854:14: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\n\t\"download failed for %s: %d %s\",\n\tfileURL,\n\tresponse.StatusCode,\n\tstrings.TrimSpace(string(body)),\n)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/tools/tools.go:90:11: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"%s\", message)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:981:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:1064:1: godoc line is too long (85 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:1096:20: Magic number: 2, in <condition> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:1105:1: The line is 127 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:1117:1: file-length-limit: file length is 1069 lines, which exceeds the limit of 1000 (revive)	# golangci-lint:first_added=2026-11-14T07:31:22Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:861:20: G703: Path traversal via taint analysis (gosec)	# golangci-lint:first_added=2026-11-14T07:29:03Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:26:1: godoc line is too long (79 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:35:1: godoc line is too long (81 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:776:4: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:402:1: godoc line is too long (108 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:44:1: godoc line is too long (83 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:470:3: variable name 'f' is too short for the scope of its usage (varnamelen)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:694:4: continue with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:704:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"one or more zinit plugins are detached\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:799:10: error-format: fmt.Errorf can be replaced with errors.New (perfsprint)	# golangci-lint:first_added=2026-11-14T07:28:44Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:760:20: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"invalid .git file\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:76:1: godoc line is too long (98 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:784:20: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"unsafe .git file path\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:799:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"zsh is not available\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/sync/workspace/workspace.go:966:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\n\t\"%d Homebrew path(s) are not owned by %s and passwordless sudo is unavailable; run: sudo chown %s %s\",\n\tlen(targets),\n\tcurrent.Username,\n\tcurrent.Username,\n\tstrings.Join(targets, \" \"),\n)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/telemetry/telemetry.go:107:1: godoc line is too long (89 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/telemetry/telemetry.go:120:1: godoc line is too long (81 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/telemetry/telemetry.go:524:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/telemetry/telemetry.go:382:1: godoc line is too long (86 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/telemetry/telemetry.go:174:33: Magic number: 56, in <argument> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/telemetry/telemetry.go:294:4: continue with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/telemetry/telemetry.go:310:1: unexported method "log" for struct "Logger" should be placed after the exported method "PrintTTYLineContext" (funcorder)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/telemetry/telemetry.go:326:2: Consider preallocating attrs with capacity 2 + len(attributes) (prealloc)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/telemetry/telemetry.go:341:1: unexported method "logStructured" for struct "Logger" should be placed after the exported method "PrintTTYLineContext" (funcorder)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/telemetry/telemetry.go:352:32: Magic number: 2, in <argument> detected (mnd)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/telemetry/telemetry.go:362:1: unexported method "write" for struct "Logger" should be placed after the exported method "PrintTTYLineContext" (funcorder)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/telemetry/telemetry.go:372:1: unexported method "writeRaw" for struct "Logger" should be placed after the exported method "PrintTTYLineContext" (funcorder)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/telemetry/telemetry.go:378:1: unexported method "writeLine" for struct "Logger" should be placed after the exported method "PrintTTYLineContext" (funcorder)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/telemetry/telemetry.go:384:1: godoc line is too long (87 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/telemetry/telemetry.go:389:1: godoc line is too long (95 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/telemetry/telemetry.go:39:1: godoc line is too long (85 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/telemetry/telemetry.go:437:51: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"panic: %v\", recovered)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/telemetry/telemetry.go:516:26: G703: Path traversal via taint analysis (gosec)	# golangci-lint:first_added=2026-11-14T07:29:03Z last_seen=2026-11-14T07:31:22Z
+internal/telemetry/telemetry_test.go:118:4: break with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/uninstall/uninstall.go:655:24: G703: Path traversal via taint analysis (gosec)	# golangci-lint:first_added=2026-11-14T07:29:03Z last_seen=2026-11-14T07:31:22Z
+internal/uninstall/uninstall.go:96:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/uninstall/uninstall.go:354:15: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"package config is unavailable\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/uninstall/uninstall.go:506:10: error-format: fmt.Errorf can be replaced with errors.New (perfsprint)	# golangci-lint:first_added=2026-11-14T07:28:44Z last_seen=2026-11-14T07:31:22Z
+internal/uninstall/uninstall.go:493:2: variable name 'fi' is too short for the scope of its usage (varnamelen)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/uninstall/uninstall.go:506:10: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"not a symlink\")" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/uninstall/uninstall.go:63:11: do not define dynamic errors, use wrapped static errors instead: "fmt.Errorf(\"unsupported uninstall flag: %s\", arg)" (err113)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:31:22Z
+internal/util/path.go:9:1: godoc line is too long (79 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+internal/util/path.go:12:1: godoc line is too long (81 > 77) (godoclint)	# golangci-lint:first_added=2026-11-14T07:28:36Z last_seen=2026-11-14T07:31:22Z
+cmd/dots/main.go:99:3: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+cmd/dots/main.go:59:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+cmd/dots/main_test.go:94:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+cmd/dots/main_test.go:95:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+cmd/fresh-linux-bootstrap-smoke/main.go:95:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+cmd/fresh-linux-bootstrap-smoke/main.go:67:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+cmd/fresh-linux-bootstrap-smoke/main.go:195:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+cmd/fresh-linux-bootstrap-smoke/main.go:404:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+cmd/fresh-macos-bootstrap-smoke/main.go:81:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+cmd/fresh-macos-bootstrap-smoke/main.go:66:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+cmd/fresh-macos-bootstrap-smoke/main.go:317:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+cmd/fresh-macos-bootstrap-smoke/main.go:452:2: missing whitespace above this line (no shared variables above for) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+config/assets.go:31:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+config/assets.go:32:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/catalog/catalog.go:317:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/catalog/catalog.go:318:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/catalog/catalog.go:269:3: missing whitespace above this line (too many statements above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/cmdexec/cmdexec.go:95:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/cmdexec/cmdexec.go:85:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/cmdexec/cmdexec.go:134:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/cursor/cursorapi/client.go:92:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/cursor/cursorapi/client.go:84:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/cursor/cursorapi/client.go:96:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/cursor/cursorapi/client.go:177:3: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/cursor/logging/logging.go:89:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/cursor/logging/logging.go:91:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/cursor/protobuf/protobuf.go:65:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/cursor/protobuf/protobuf.go:30:2: missing whitespace above this line (too many statements above for) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/cursor/protobuf/protobuf.go:92:3: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/cursor/syncer/syncer.go:95:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/cursor/syncer/syncer.go:133:2: missing whitespace above this line (too many statements above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/cursor/syncer/syncer.go:30:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/dispatch/dispatch.go:63:3: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/dispatch/dispatch.go:112:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/dispatch/dispatch.go:313:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/dispatch/dispatch.go:192:4: missing whitespace above this line (invalid statement above for) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/dispatch/pathcache/pathcache.go:92:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/dispatch/pathcache/pathcache.go:45:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/dispatch/pathcache/pathcache.go:93:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/dispatch/pathcache/pathcache_test.go:99:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/dispatch/prefercache/prefercache.go:18:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/dispatch/prefercache/prefercache.go:19:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/dispatch/sshkey/sshkey.go:37:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/dispatch/sshkey/sshkey.go:39:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/dispatch/updater/updater.go:97:3: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/dispatch/updater/updater.go:98:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/dispatch/zwc/zwc.go:63:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/dispatch/zwc/zwc.go:31:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/dispatch/zwc/zwc.go:64:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/freshsmoke/freshsmoke.go:88:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/freshsmoke/freshsmoke.go:96:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/freshsmoke/freshsmoke.go:97:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/freshsmoke/freshsmoke.go:140:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/freshsmoke/freshsmoke_test.go:21:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/freshsmoke/freshsmoke_test.go:45:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/freshsmoke/freshsmoke_test.go:41:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/freshsmoke/scenarios.go:98:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/gitdir/gitdir.go:98:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/gitdir/gitdir_test.go:95:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/gitdir/gitdir_test.go:105:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/git.go:95:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/git.go:82:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/git.go:177:2: missing whitespace above this line (too many statements above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/harness.go:18:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/harness.go:19:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/hook_git_test.go:96:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/hook_git_test.go:455:4: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/hook_git_test.go:347:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/hook_git_test.go:401:2: missing whitespace above this line (too many statements above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/parse.go:48:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/parse.go:25:2: missing whitespace above this line (no shared variables above for) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/parse.go:49:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/parse_test.go:26:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/policy.go:97:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/policy.go:96:3: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/policy.go:31:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/protection.go:57:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/refusal.go:31:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/refusal.go:32:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/run.go:49:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/githook/run.go:50:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/install/install.go:93:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/install/install.go:609:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/install/install.go:400:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/install/install.go:663:2: missing whitespace above this line (too many statements above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/install/install_test.go:94:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/install/install_test.go:23:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/install/install_test.go:308:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/install/install_test.go:326:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/perf/perf.go:602:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/perf/perf.go:603:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/perf/perf.go:383:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/perf/perf.go:483:3: missing whitespace above this line (no shared variables above for) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/perf/perf.go:555:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/prefercache/prefercache.go:79:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/prefercache/prefercache.go:80:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/prefercache/prefercache.go:74:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/runner/runner.go:86:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/runner/runner.go:85:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/common/common.go:91:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/common/common.go:327:2: missing whitespace above this line (too many statements above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/common/common.go:66:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/common/common_test.go:84:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/common/common_test.go:58:5: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/compilation/rules.go:76:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/compilation/rules.go:114:2: missing whitespace above this line (too many statements above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/compilation/rules_test.go:86:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/compilation/rules_test.go:55:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/compilation/rules_test.go:47:2: missing whitespace above this line (too many statements above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/compilation/skills_test.go:73:4: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/compilation/skills_test.go:29:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/compilation/skills_test.go:323:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/compilation/skills_test.go:625:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/corpus/source_set.go:92:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/corpus/source_set.go:80:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/corpus/source_set.go:157:2: missing whitespace above this line (too many statements above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/corpus/source_set_test.go:44:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/logrotate/logrotate.go:98:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/logrotate/logrotate.go:232:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/logrotate/logrotate.go:78:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/logrotate/logrotate_test.go:87:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/logrotate/logrotate_test.go:160:2: missing whitespace above this line (too many statements above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/logrotate/logrotate_test.go:236:2: missing whitespace above this line (too many statements above for) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/logrotate/logrotate_test.go:268:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/logrotate/logrotate_test.go:305:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/debian/apt_repos.go:88:3: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/debian/apt_repos.go:46:2: missing whitespace above this line (too many statements above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/debian/apt_repos.go:82:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/debian/debian.go:398:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/debian/debian.go:149:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/debian/debian.go:266:3: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/debian/debian.go:257:2: missing whitespace above this line (too many statements above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/debian/debian_test.go:97:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/debian/debian_test.go:98:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/macos/macos.go:600:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/macos/macos.go:90:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/macos/macos.go:447:2: missing whitespace above this line (too many statements above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/macos/macos.go:350:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/macos/macos.go:375:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/macos/macos_test.go:83:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/platform.go:87:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/platform_test.go:78:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/platform_test.go:40:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/toolchain/toolchain.go:96:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/toolchain/toolchain.go:68:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/toolchain/toolchain.go:200:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/toolchain/toolchain_test.go:50:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/platform/toolchain/toolchain_test.go:51:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/repository/repository.go:96:3: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/repository/repository.go:647:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/repository/repository.go:602:2: missing whitespace above this line (too many statements above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/repository/repository.go:541:3: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/repository/repository_test.go:81:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/repository/repository_test.go:252:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/repository/repository_test.go:82:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/repository/stalelocks_test.go:62:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/repository/stalelocks_test.go:87:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/sync.go:94:5: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/sync.go:99:3: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/sync_test.go:55:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/tools/gh.go:95:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/tools/gh.go:77:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/tools/gh.go:40:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/tools/gh_test.go:99:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/tools/gh_test.go:283:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/tools/gh_test.go:50:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/tools/tools.go:98:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/tools/tools.go:230:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/tools/tools.go:648:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/tools/tools_test.go:25:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/workspace/backup_test.go:77:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/workspace/backup_test.go:79:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/workspace/profile_test.go:96:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/workspace/workspace.go:94:4: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/workspace/workspace.go:766:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/workspace/workspace.go:802:3: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/workspace/workspace_test.go:98:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/workspace/workspace_test.go:55:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/worktree_test.go:99:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/sync/worktree_test.go:115:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/telemetry/telemetry.go:93:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/telemetry/telemetry.go:94:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/telemetry/telemetry.go:75:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/telemetry/telemetry_test.go:103:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/telemetry/telemetry_test.go:91:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/uninstall/uninstall.go:88:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/uninstall/uninstall.go:70:2: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/uninstall/uninstall.go:576:2: missing whitespace above this line (too many statements above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/uninstall/uninstall.go:613:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/uninstall/uninstall.go:522:2: missing whitespace above this line (invalid statement above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/util/path.go:33:3: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/util/path.go:34:3: missing whitespace above this line (too many lines above return) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/util/path_test.go:14:2: missing whitespace above this line (too many statements above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/zshstartup/zshstartup_test.go:65:2: missing whitespace below this line (after-block) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/zshstartup/zshstartup_test.go:220:2: missing whitespace above this line (no shared variables above range) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+internal/zshstartup/zshstartup_test.go:253:2: missing whitespace above this line (invalid statement above for) (wsl_v5)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:29:59Z
+cmd/dots/main.go:107:1: The line is 137 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+cmd/dots/main.go:228:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+cmd/dots/main.go:260:1: The line is 135 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+cmd/dots/main_test.go:95:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+cmd/fresh-linux-bootstrap-smoke/main.go:93:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+cmd/fresh-linux-bootstrap-smoke/main.go:190:1: The line is 121 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+cmd/fresh-linux-bootstrap-smoke/main.go:391:1: The line is 123 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+cmd/fresh-linux-bootstrap-smoke/main.go:501:1: The line is 144 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+cmd/fresh-linux-bootstrap-smoke/main.go:509:1: The line is 124 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+cmd/fresh-linux-bootstrap-smoke/main.go:63:1: The line is 126 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+cmd/fresh-macos-bootstrap-smoke/main.go:78:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+cmd/fresh-macos-bootstrap-smoke/main.go:153:1: The line is 140 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+cmd/fresh-macos-bootstrap-smoke/main.go:62:1: The line is 138 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+cmd/fresh-macos-bootstrap-smoke/main.go:64:1: The line is 122 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+config/assets.go:28:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/catalog/catalog.go:318:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/catalog/catalog.go:293:7: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/cmdexec/cmdexec.go:31:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/cmdexec/cmdexec.go:112:1: The line is 132 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/cmdexec/cmdexec.go:64:1: The line is 125 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/cmdexec/cmdexec.go:74:1: The line is 138 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/cmdexec/cmdexec.go:79:1: The line is 139 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/cursor/cursorapi/client.go:197:1: The line is 131 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/cursor/syncer/syncer.go:130:1: The line is 127 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/cursor/syncer/syncer.go:152:1: The line is 129 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/cursor/syncer/syncer.go:42:1: The line is 130 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/cursor/syncer/syncer.go:67:8: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/cursor/syncer/syncer.go:92:1: The line is 122 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/dispatch/dispatch.go:153:1: The line is 122 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/dispatch/dispatch.go:268:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/dispatch/dispatch.go:268:1: The line is 130 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/dispatch/pathcache/pathcache.go:89:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/dispatch/prefercache/prefercache.go:15:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/dispatch/updater/updater.go:94:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/dispatch/updater/updater.go:260:1: The line is 127 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/dispatch/updater/updater.go:90:1: The line is 125 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/dispatch/zwc/zwc.go:64:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/freshsmoke/freshsmoke.go:79:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/freshsmoke/freshsmoke.go:248:1: The line is 129 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/freshsmoke/scenarios.go:180:1: The line is 122 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/freshsmoke/scenarios.go:95:8: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/freshsmoke/scenarios.go:213:1: The line is 129 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/freshsmoke/scenarios.go:257:1: The line is 128 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/freshsmoke/scenarios.go:270:1: The line is 121 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/gitdir/gitdir_test.go:105:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/githook/git.go:186:1: The line is 127 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/githook/git.go:227:9: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/githook/harness.go:19:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/githook/parse.go:45:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/githook/protection.go:50:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/githook/refusal.go:32:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/install/install.go:98:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/install/install.go:110:1: The line is 128 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/install/install.go:498:1: The line is 121 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/install/install.go:232:1: The line is 249 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/install/install.go:239:1: The line is 236 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/install/install.go:407:1: The line is 126 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/install/install.go:515:1: The line is 123 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/install/install.go:519:1: The line is 137 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/perf/perf.go:590:8: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/perf/perf.go:163:1: The line is 123 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/perf/perf.go:561:4: continue with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/prefercache/prefercache.go:64:8: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/common/common.go:301:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/common/common.go:218:1: The line is 122 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/common/common.go:220:1: The line is 130 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/common/common.go:242:1: The line is 152 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/common/common.go:251:1: The line is 132 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/common/common.go:309:1: The line is 131 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/common/common_test.go:58:5: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/compilation/rules.go:215:1: The line is 127 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/compilation/rules.go:80:1: The line is 143 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/compilation/rules.go:85:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/compilation/rules.go:87:1: The line is 134 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/compilation/rules_test.go:55:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/compilation/skills_test.go:29:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/corpus/source_set.go:98:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/corpus/source_set.go:117:4: continue with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/corpus/source_set.go:135:1: The line is 127 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/corpus/source_set.go:153:1: The line is 137 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/logrotate/logrotate.go:87:6: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/logrotate/logrotate.go:182:1: The line is 129 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/logrotate/logrotate.go:218:1: The line is 134 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/logrotate/logrotate_test.go:305:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/debian/apt_repos.go:90:7: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/debian/apt_repos.go:39:1: The line is 130 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/debian/apt_repos.go:316:1: The line is 129 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/debian/apt_repos.go:321:1: The line is 132 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/debian/apt_repos.go:85:1: The line is 125 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/debian/apt_repos.go:91:1: The line is 127 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/debian/debian.go:395:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/debian/debian.go:199:1: The line is 142 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/debian/debian.go:27:1: The line is 132 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/debian/debian.go:231:1: The line is 124 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/debian/debian.go:250:1: The line is 133 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/debian/debian.go:298:1: The line is 121 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/debian/debian.go:377:1: The line is 149 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/debian/debian_test.go:98:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/macos/macos.go:597:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/macos/macos.go:152:1: The line is 145 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/macos/macos.go:192:1: The line is 126 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/macos/macos.go:195:1: The line is 142 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/macos/macos.go:228:1: The line is 122 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/macos/macos.go:445:1: The line is 146 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/macos/macos.go:479:1: The line is 143 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/platform.go:142:6: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/platform_test.go:40:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/toolchain/toolchain.go:268:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/platform/toolchain/toolchain.go:188:1: The line is 136 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:93:6: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:123:1: The line is 126 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:155:1: The line is 134 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:217:1: The line is 157 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:338:1: The line is 159 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:506:1: The line is 135 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:352:1: The line is 124 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:524:1: The line is 155 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:430:1: The line is 152 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:85:1: The line is 150 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:441:1: The line is 123 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:447:1: The line is 130 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:460:1: The line is 144 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:461:1: The line is 133 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:554:1: The line is 121 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:546:1: The line is 136 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:558:1: The line is 148 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:559:1: The line is 127 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:565:1: The line is 139 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository.go:568:1: The line is 141 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/repository/repository_test.go:252:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/sync.go:85:6: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/sync.go:123:1: The line is 162 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/sync.go:132:1: The line is 128 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/sync.go:138:1: The line is 135 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/tools/gh.go:98:6: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/tools/gh.go:110:1: The line is 127 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/tools/gh.go:98:1: The line is 129 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/tools/gh.go:138:1: The line is 133 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/tools/gh.go:46:1: The line is 125 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/tools/gh.go:68:1: The line is 121 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/tools/gh.go:90:1: The line is 143 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/tools/tools.go:119:1: The line is 127 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/tools/tools.go:66:6: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/tools/tools.go:126:1: The line is 136 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/tools/tools.go:305:1: The line is 121 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/tools/tools.go:140:1: The line is 139 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/tools/tools.go:202:1: The line is 126 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/tools/tools.go:210:1: The line is 123 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/tools/tools.go:297:1: The line is 133 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/tools/tools.go:346:1: The line is 122 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/tools/tools.go:435:1: The line is 138 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/tools/tools.go:84:1: The line is 124 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/workspace/backup_test.go:79:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/workspace/workspace.go:92:7: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/workspace/workspace.go:128:1: The line is 142 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/workspace/workspace.go:179:1: The line is 121 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/workspace/workspace.go:284:1: The line is 136 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/workspace/workspace.go:321:1: The line is 128 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/workspace/workspace.go:447:1: The line is 156 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/workspace/workspace.go:748:1: The line is 200 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/workspace/workspace.go:833:1: The line is 129 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/workspace/workspace.go:846:1: The line is 207 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/sync/worktree_test.go:115:2: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/telemetry/telemetry.go:444:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/telemetry/telemetry.go:301:1: The line is 131 characters long, which exceeds the maximum of 120 characters. (lll)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/telemetry/telemetry.go:460:8: avoid inline error handling using `if err = ...; err != nil`; use plain assignment `err = ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/uninstall/uninstall.go:86:5: avoid inline error handling using `if err := ...; err != nil`; use plain assignment `err := ...` (noinlineerr)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
+internal/util/path.go:34:3: return with no blank line before (nlreturn)	# golangci-lint:first_added=2026-11-14T07:28:18Z last_seen=2026-11-14T07:28:18Z
 internal/telemetry/telemetry.go:356:13: G706: Log injection via taint analysis (gosec)	# golangci-lint:first_added=2026-05-10T07:17:19Z last_seen=2026-05-10T16:23:39Z

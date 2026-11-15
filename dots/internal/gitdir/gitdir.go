@@ -36,6 +36,7 @@ func (i Info) MainWorktree() string {
 	if i.CommonDir == "" {
 		return ""
 	}
+
 	return filepath.Dir(i.CommonDir)
 }
 
@@ -45,6 +46,7 @@ func (i Info) ModulesDir() string {
 	if i.CommonDir == "" {
 		return ""
 	}
+
 	return filepath.Join(i.CommonDir, "modules")
 }
 
@@ -56,10 +58,12 @@ func Resolve(ctx context.Context, root string, logger *telemetry.Logger) (Info, 
 	if err != nil {
 		return Info{Root: root, GitDir: "", CommonDir: "", IsWorktree: false}, err
 	}
+
 	commonDir, err := revParsePath(ctx, root, "--git-common-dir", logger)
 	if err != nil {
 		return Info{Root: root, GitDir: "", CommonDir: "", IsWorktree: false}, err
 	}
+
 	return Info{
 		Root:       root,
 		GitDir:     gitDir,
@@ -76,6 +80,7 @@ func LinkedWorktree(ctx context.Context, root string, logger *telemetry.Logger) 
 	if err != nil {
 		return Info{Root: root, GitDir: "", CommonDir: "", IsWorktree: false}, false
 	}
+
 	return layout, layout.IsWorktree
 }
 
@@ -83,19 +88,46 @@ func LinkedWorktree(ctx context.Context, root string, logger *telemetry.Logger) 
 // absolute path. Git answers relative to root when it is run from the working
 // tree root and absolute when it is run from a linked worktree, so the value
 // must be joined against root before two answers can be compared.
-func revParsePath(ctx context.Context, root string, flag string, logger *telemetry.Logger) (string, error) {
-	output, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", root, "rev-parse", flag)
+func revParsePath(
+	ctx context.Context,
+	root string,
+	flag string,
+	logger *telemetry.Logger,
+) (string, error) {
+	output, err := cmdexec.OutputWithLoggerAndEnv(
+		ctx,
+		logger,
+		nil,
+		"git",
+		"-C",
+		root,
+		"rev-parse",
+		flag,
+	)
 	if err != nil {
-		slog.WarnContext(ctx, "gitdir: revParsePath: git rev-parse failed", "flag", flag, "root", root, "err", err)
+		slog.WarnContext(
+			ctx,
+			"gitdir: revParsePath: git rev-parse failed",
+			"flag",
+			flag,
+			"root",
+			root,
+			"err",
+			err,
+		)
+
 		return "", fmt.Errorf("running git rev-parse %s: %w", flag, err)
 	}
+
 	path := strings.TrimSpace(output)
 	if path == "" {
 		return "", fmt.Errorf("git rev-parse %s returned no path", flag)
 	}
+
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(root, path)
 	}
+
 	return canonicalPath(path), nil
 }
 
@@ -108,5 +140,6 @@ func canonicalPath(path string) string {
 	if err != nil {
 		return filepath.Clean(path)
 	}
+
 	return resolved
 }

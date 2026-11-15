@@ -14,6 +14,7 @@ func ResolveConfigPath(value string, dotfiles string) string {
 	if value == "" {
 		return value
 	}
+
 	home := os.Getenv("HOME")
 	xdgDefaults := map[string]string{
 		"XDG_CACHE_HOME":  filepath.Join(home, ".cache"),
@@ -21,16 +22,23 @@ func ResolveConfigPath(value string, dotfiles string) string {
 		"XDG_STATE_HOME":  filepath.Join(home, ".local", "state"),
 		"XDG_CONFIG_HOME": filepath.Join(home, ".config"),
 	}
-	return os.Expand(value, func(key string) string {
-		if key == "DOTDOTFILES" {
-			return dotfiles
-		}
-		if fallback, ok := xdgDefaults[key]; ok {
-			if value := os.Getenv(key); value != "" {
-				return value
+
+	return os.Expand(
+		value,
+		func(key string) string {
+			if key == "DOTDOTFILES" {
+				return dotfiles
 			}
-			return fallback
-		}
-		return os.Getenv(key)
-	})
+
+			if fallback, ok := xdgDefaults[key]; ok {
+				if value := os.Getenv(key); value != "" {
+					return value
+				}
+
+				return fallback
+			}
+
+			return os.Getenv(key)
+		},
+	)
 }

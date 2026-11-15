@@ -21,11 +21,20 @@ type toolchainCommandCall struct {
 	args    []string
 }
 
-func (commands *fakeToolchainCommands) RunWithLogger(_ context.Context, _ *telemetry.Logger, command string, args ...string) error {
-	commands.calls = append(commands.calls, toolchainCommandCall{command: command, args: append([]string{}, args...)})
+func (commands *fakeToolchainCommands) RunWithLogger(
+	_ context.Context,
+	_ *telemetry.Logger,
+	command string,
+	args ...string,
+) error {
+	commands.calls = append(
+		commands.calls,
+		toolchainCommandCall{command: command, args: append([]string{}, args...)},
+	)
 	if err, ok := commands.errs[toolchainCommandKey(command, args...)]; ok {
 		return err
 	}
+
 	return nil
 }
 
@@ -43,11 +52,16 @@ type fakeToolchainDownloader struct {
 	err  error
 }
 
-func (downloader *fakeToolchainDownloader) DownloadToTempFile(_ context.Context, _ *telemetry.Logger, fileURL string) (string, error) {
+func (downloader *fakeToolchainDownloader) DownloadToTempFile(
+	_ context.Context,
+	_ *telemetry.Logger,
+	fileURL string,
+) (string, error) {
 	downloader.url = fileURL
 	if downloader.err != nil {
 		return "", downloader.err
 	}
+
 	return downloader.path, nil
 }
 
@@ -84,13 +98,13 @@ func (provider fakeToolchainCatalog) PackageConfig() *catalog.PackageConfig {
 func TestEnsureBootstrapPathEntriesPrependsUniquePaths(t *testing.T) {
 	t.Parallel()
 
-	env := &fakeToolchainEnv{values: map[string]string{
-		"HOME": "/tmp/home",
-		"PATH": "/usr/local/bin:/bin",
-	}}
-	installer := New(Deps{
-		Env: env,
-	})
+	env := &fakeToolchainEnv{
+		values: map[string]string{
+			"HOME": "/tmp/home",
+			"PATH": "/usr/local/bin:/bin",
+		},
+	}
+	installer := New(Deps{Env: env})
 
 	installer.EnsureBootstrapPathEntries()
 
@@ -106,10 +120,12 @@ func TestInstallRustupIfNeededDownloadsAndRunsScript(t *testing.T) {
 	commands := &fakeToolchainCommands{}
 	downloader := &fakeToolchainDownloader{path: "/tmp/rustup.sh"}
 	files := &fakeToolchainFiles{}
-	env := &fakeToolchainEnv{values: map[string]string{
-		"HOME": "/tmp/home",
-		"PATH": "/bin",
-	}}
+	env := &fakeToolchainEnv{
+		values: map[string]string{
+			"HOME": "/tmp/home",
+			"PATH": "/bin",
+		},
+	}
 	installer := New(Deps{
 		Commands:   commands,
 		Lookup:     fakeToolchainLookup{commands: map[string]bool{}},
@@ -122,18 +138,22 @@ func TestInstallRustupIfNeededDownloadsAndRunsScript(t *testing.T) {
 	if err != nil {
 		t.Fatalf("InstallRustupIfNeeded() returned error: %v", err)
 	}
+
 	if downloader.url != "https://sh.rustup.rs" {
 		t.Fatalf("download URL = %q", downloader.url)
 	}
+
 	wantCalls := []toolchainCommandCall{
 		{command: "sh", args: []string{"/tmp/rustup.sh", "-y"}},
 	}
 	if !reflect.DeepEqual(commands.calls, wantCalls) {
 		t.Fatalf("command calls = %#v, want %#v", commands.calls, wantCalls)
 	}
+
 	if !reflect.DeepEqual(files.removeCalls, []string{"/tmp/rustup.sh"}) {
 		t.Fatalf("remove calls = %#v, want rustup cleanup", files.removeCalls)
 	}
+
 	if !strings.Contains(env.values["PATH"], "/tmp/home/.cargo/bin") {
 		t.Fatalf("PATH = %q, want cargo bin entry", env.values["PATH"])
 	}
@@ -145,11 +165,13 @@ func TestInstallGoToolsIfNeededSkipsInstalledAndParsesCargoGitFeatures(t *testin
 	commands := &fakeToolchainCommands{}
 	installer := New(Deps{
 		Commands: commands,
-		Lookup: fakeToolchainLookup{commands: map[string]bool{
-			"go":       true,
-			"cargo":    true,
-			"existing": true,
-		}},
+		Lookup: fakeToolchainLookup{
+			commands: map[string]bool{
+				"go":       true,
+				"cargo":    true,
+				"existing": true,
+			},
+		},
 		Catalog: fakeToolchainCatalog{
 			packageConfig: &catalog.PackageConfig{
 				GoPackages: map[string]string{
@@ -175,7 +197,16 @@ func TestInstallGoToolsIfNeededSkipsInstalledAndParsesCargoGitFeatures(t *testin
 	wantCalls := []toolchainCommandCall{
 		{command: "go", args: []string{"install", "example.com/missing@latest"}},
 		{command: cargo, args: []string{"install", "cargo-missing"}},
-		{command: cargo, args: []string{"install", "--git", "https://example.com/repo", "--features", "feat-a,feat-b"}},
+		{
+			command: cargo,
+			args: []string{
+				"install",
+				"--git",
+				"https://example.com/repo",
+				"--features",
+				"feat-a,feat-b",
+			},
+		},
 	}
 	if !reflect.DeepEqual(commands.calls, wantCalls) {
 		t.Fatalf("command calls = %#v, want %#v", commands.calls, wantCalls)

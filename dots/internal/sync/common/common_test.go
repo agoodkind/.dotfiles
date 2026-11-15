@@ -47,23 +47,29 @@ func TestDebianPrivilegePrefix(t *testing.T) {
 
 	for _, test := range tests {
 		test := test
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
+		t.Run(
+			test.name,
+			func(t *testing.T) {
+				t.Parallel()
 
-			got, err := DebianPrivilegePrefix(test.euid, test.sudoAvailable, test.sudoUsable)
-			if test.wantErr {
-				if err == nil {
-					t.Fatal("DebianPrivilegePrefix returned nil error")
+				got, err := DebianPrivilegePrefix(test.euid, test.sudoAvailable, test.sudoUsable)
+				if test.wantErr {
+					if err == nil {
+						t.Fatal("DebianPrivilegePrefix returned nil error")
+					}
+
+					return
 				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("DebianPrivilegePrefix returned error: %v", err)
-			}
-			if !reflect.DeepEqual(got, test.want) {
-				t.Fatalf("DebianPrivilegePrefix = %#v, want %#v", got, test.want)
-			}
-		})
+
+				if err != nil {
+					t.Fatalf("DebianPrivilegePrefix returned error: %v", err)
+				}
+
+				if !reflect.DeepEqual(got, test.want) {
+					t.Fatalf("DebianPrivilegePrefix = %#v, want %#v", got, test.want)
+				}
+			},
+		)
 	}
 }
 
@@ -74,6 +80,7 @@ func TestDebianPrivilegedCommand(t *testing.T) {
 	if command != "apt-get" {
 		t.Fatalf("command = %q, want apt-get", command)
 	}
+
 	if !reflect.DeepEqual(args, []string{"update"}) {
 		t.Fatalf("args = %#v, want update", args)
 	}
@@ -82,6 +89,7 @@ func TestDebianPrivilegedCommand(t *testing.T) {
 	if command != "sudo" {
 		t.Fatalf("command = %q, want sudo", command)
 	}
+
 	if !reflect.DeepEqual(args, []string{"-n", "apt-get", "update"}) {
 		t.Fatalf("args = %#v, want sudo apt-get update args", args)
 	}
@@ -126,12 +134,20 @@ func TestIsValidSudoersUsername(t *testing.T) {
 
 	for _, test := range tests {
 		test := test
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
+		t.Run(
+			test.name,
+			func(t *testing.T) {
+				t.Parallel()
 
-			if got := isValidSudoersUsername(test.username); got != test.want {
-				t.Fatalf("isValidSudoersUsername(%q) = %v, want %v", test.username, got, test.want)
-			}
-		})
+				if got := isValidSudoersUsername(test.username); got != test.want {
+					t.Fatalf(
+						"isValidSudoersUsername(%q) = %v, want %v",
+						test.username,
+						got,
+						test.want,
+					)
+				}
+			},
+		)
 	}
 }

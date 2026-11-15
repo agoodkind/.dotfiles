@@ -32,6 +32,7 @@ func AssertAbsent(commands ...string) error {
 			return fmt.Errorf("expected %s to be absent before bootstrap", command)
 		}
 	}
+
 	return nil
 }
 
@@ -40,6 +41,7 @@ func AssertContains(output, substr string) error {
 	if strings.Contains(output, substr) {
 		return nil
 	}
+
 	return fmt.Errorf("expected output to contain %q\n%s", substr, output)
 }
 
@@ -50,6 +52,7 @@ func AssertBuildCount(output string, expectedCount int) error {
 	if actualCount != expectedCount {
 		return fmt.Errorf("expected %d build lines, got %d\n%s", expectedCount, actualCount, output)
 	}
+
 	return nil
 }
 
@@ -68,6 +71,7 @@ func AssertNoStrictWarnings(output string) error {
 			return fmt.Errorf("strict smoke output contains warning marker %q\n%s", marker, output)
 		}
 	}
+
 	return nil
 }
 
@@ -76,24 +80,30 @@ func AssertStrictInstallOutput(output string) error {
 	if err := AssertNoStrictWarnings(output); err != nil {
 		return err
 	}
+
 	if err := AssertContains(output, "dots debug logging enabled"); err != nil {
 		return err
 	}
+
 	return nil
 }
 
 // AssertCommandsOnPath returns an error if any command is absent from pathEnv.
 func AssertCommandsOnPath(pathEnv string, commands ...string) error {
 	missing := make([]string, 0)
+
 	for _, command := range commands {
 		if HasCommandOnPath(command, pathEnv) {
 			continue
 		}
+
 		missing = append(missing, command)
 	}
+
 	if len(missing) > 0 {
 		return fmt.Errorf("expected commands on PATH, missing: %s", strings.Join(missing, ", "))
 	}
+
 	return nil
 }
 
@@ -102,6 +112,7 @@ func AssertCommandsOnPath(pathEnv string, commands ...string) error {
 // initialize submodules for the snapshot.
 func AssertSmokeSubmodulesPresent(repoRoot string) error {
 	missing := make([]string, 0)
+
 	for _, submodule := range requiredSmokeSubmodules {
 		gitPath := filepath.Join(repoRoot, submodule, ".git")
 		if _, err := os.Stat(gitPath); err == nil {
@@ -114,12 +125,14 @@ func AssertSmokeSubmodulesPresent(repoRoot string) error {
 			return fmt.Errorf("checking smoke submodule %s: %w", submodule, err)
 		}
 	}
+
 	if len(missing) > 0 {
 		return fmt.Errorf(
 			"fresh smoke requires checked out submodules: %s; run git submodule update --init --recursive before smoke",
 			strings.Join(missing, ", "),
 		)
 	}
+
 	return nil
 }
 
@@ -127,26 +140,33 @@ func AssertSmokeSubmodulesPresent(repoRoot string) error {
 func PathWithEntries(pathEnv string, entries ...string) string {
 	seen := make(map[string]struct{})
 	parts := make([]string, 0)
+
 	for part := range strings.SplitSeq(pathEnv, ":") {
 		if part == "" {
 			continue
 		}
+
 		if _, ok := seen[part]; ok {
 			continue
 		}
+
 		seen[part] = struct{}{}
 		parts = append(parts, part)
 	}
+
 	for _, entry := range entries {
 		if entry == "" {
 			continue
 		}
+
 		if _, ok := seen[entry]; ok {
 			continue
 		}
+
 		seen[entry] = struct{}{}
 		parts = append(parts, entry)
 	}
+
 	return strings.Join(parts, ":")
 }
 
@@ -157,11 +177,13 @@ func HoldBuildLockFor(lockFile string, duration time.Duration) (<-chan struct{},
 		slog.Error("creating lock directory", "err", err)
 		return nil, fmt.Errorf("creating lock directory: %w", err)
 	}
+
 	file, err := os.OpenFile(lockFile, os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
 		slog.Error("opening build lock", "err", err)
 		return nil, fmt.Errorf("opening build lock: %w", err)
 	}
+
 	// Bounds-check before converting uintptr fd to int (satisfies gosec G115).
 	// POSIX fds are small non-negative integers; this guard is a no-op in practice.
 	rawFD := file.Fd()
@@ -169,12 +191,15 @@ func HoldBuildLockFor(lockFile string, duration time.Duration) (<-chan struct{},
 		_ = file.Close()
 		return nil, fmt.Errorf("file descriptor %d exceeds valid flock range", rawFD)
 	}
+
 	fd := int(rawFD)
 	if err := syscall.Flock(fd, syscall.LOCK_EX); err != nil {
 		_ = file.Close()
 		slog.Error("holding build lock", "err", err)
+
 		return nil, fmt.Errorf("holding build lock: %w", err)
 	}
+
 	released := make(chan struct{})
 	go func() {
 		defer func() {
@@ -189,6 +214,7 @@ func HoldBuildLockFor(lockFile string, duration time.Duration) (<-chan struct{},
 		_ = syscall.Flock(fd, syscall.LOCK_UN)
 		_ = file.Close()
 	}()
+
 	return released, nil
 }
 
@@ -227,25 +253,34 @@ func (b *syncBuffer) Write(payload []byte) (int, error) {
 	// bytes.Buffer.Write never returns a non-nil error, so the discarded error
 	// keeps this a clean io.Writer without a spurious wrap.
 	written, _ := b.buf.Write(payload)
+
 	return written, nil
 }
 
 func (b *syncBuffer) String() string {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+
 	return b.buf.String()
 }
 
 func installArgs(installScript string, extraArgs ...string) []string {
 	args := []string{installScript, "--use-defaults", "--skip-git"}
 	args = append(args, extraArgs...)
+
 	return args
 }
 
 // RunInstall runs install.sh --use-defaults --skip-git from repoRoot with the
 // given env, streaming output to [os.Stdout]/[os.Stderr] and returning the
 // combined output.
-func RunInstall(ctx context.Context, repoRoot string, env []string, timeout time.Duration, extraArgs ...string) (string, error) {
+func RunInstall(
+	ctx context.Context,
+	repoRoot string,
+	env []string,
+	timeout time.Duration,
+	extraArgs ...string,
+) (string, error) {
 	slog.InfoContext(ctx, "running install.sh", "repoRoot", repoRoot)
 	callCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -263,10 +298,12 @@ func RunInstall(ctx context.Context, repoRoot string, env []string, timeout time
 	if errors.Is(callCtx.Err(), context.DeadlineExceeded) {
 		return text, fmt.Errorf("install timed out")
 	}
+
 	if err != nil {
 		slog.ErrorContext(ctx, "install failed", "err", err)
 		return text, fmt.Errorf("install failed: %w\n%s", err, text)
 	}
+
 	return text, nil
 }
 
@@ -276,6 +313,7 @@ func GetenvDefault(name, fallback string) string {
 	if value := os.Getenv(name); value != "" {
 		return value
 	}
+
 	return fallback
 }
 
@@ -283,11 +321,13 @@ func GetenvDefault(name, fallback string) string {
 // or "" if the key is absent.
 func EnvValue(env []string, key string) string {
 	prefix := key + "="
+
 	for _, entry := range env {
 		if strings.HasPrefix(entry, prefix) {
 			return entry[len(prefix):]
 		}
 	}
+
 	return ""
 }
 
@@ -298,11 +338,13 @@ func HasCommandOnPath(command, pathEnv string) bool {
 		if dir == "" {
 			continue
 		}
+
 		candidate := filepath.Join(dir, command)
 		info, err := os.Stat(candidate)
 		if err == nil && !info.IsDir() && info.Mode()&0o111 != 0 {
 			return true
 		}
 	}
+
 	return false
 }

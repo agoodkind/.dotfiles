@@ -3,22 +3,15 @@ package workspace
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
-	"os/user"
 	"path/filepath"
-	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"goodkind.io/.dotfiles/internal/clock"
 	"goodkind.io/.dotfiles/internal/cmdexec"
-	"goodkind.io/.dotfiles/internal/gitdir"
-	"goodkind.io/.dotfiles/internal/runner"
 	"goodkind.io/.dotfiles/internal/sync/common"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
@@ -28,6 +21,7 @@ func xdgDataDir() string {
 	if v := os.Getenv("XDG_DATA_HOME"); v != "" {
 		return v
 	}
+
 	return filepath.Join(os.Getenv("HOME"), ".local", "share")
 }
 
@@ -36,96 +30,96 @@ func xdgStateDir() string {
 	if v := os.Getenv("XDG_STATE_HOME"); v != "" {
 		return v
 	}
-	return filepath.Join(os.Getenv("HOME"), ".local", "state")
-}
 
-// CleanupZinitCompletions removes dead symlinks from the zinit completions directory.
-func CleanupZinitCompletions(ctx context.Context, logger *telemetry.Logger) error {
-	slog.InfoContext(ctx, "workspace: CleanupZinitCompletions")
-	completionsDir := filepath.Join(os.Getenv("HOME"), ".local", "share", "zinit", "completions")
-	entries, err := os.ReadDir(completionsDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		slog.WarnContext(ctx, "workspace: reading zinit completions dir", "err", err)
-		return fmt.Errorf("reading zinit completions dir: %w", err)
-	}
-	for _, entry := range entries {
-		path := filepath.Join(completionsDir, entry.Name())
-		info, err := os.Lstat(filepath.Clean(path))
-		if err != nil {
-			continue
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			if _, err := os.Stat(filepath.Clean(path)); err != nil {
-				_ = os.Remove(filepath.Clean(path))
-			}
-		}
-	}
-	return nil
+	return filepath.Join(os.Getenv("HOME"), ".local", "state")
 }
 
 // LinkDotfiles creates symlinks in the home directory for each file in the dotfiles home/ directory.
 func LinkDotfiles(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
 	slog.InfoContext(ctx, "workspace: LinkDotfiles")
 	homeDir := os.Getenv("HOME")
-	backupPath := filepath.Join(xdgDataDir(), "dots", "backups", clock.Now().Format("20060102_150405"))
+	backupPath := filepath.Join(
+		xdgDataDir(),
+		"dots",
+		"backups",
+		clock.Now().Format("20060102_150405"),
+	)
 	source := filepath.Join(dotfiles, "home")
 	linked, skipped, backed := 0, 0, 0
 
-	walkErr := filepath.WalkDir(source, func(path string, entry os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if entry.IsDir() {
-			return nil
-		}
-		rel, err := filepath.Rel(source, path)
-		if err != nil {
-			slog.WarnContext(ctx, "workspace: computing relative path", "err", err)
-			return fmt.Errorf("computing relative path: %w", err)
-		}
-		homeFile := filepath.Join(homeDir, rel)
-
-		if rel == localProfileName {
-			if err := ensureLocalProfile(ctx, homeFile, path); err != nil {
+	walkErr := filepath.WalkDir(
+		source,
+		func(path string, entry os.DirEntry, err error) error {
+			if err != nil {
 				return err
 			}
-			skipped++
-			return nil
-		}
 
-		if common.IsSymlinkTo(homeFile, path) {
-			skipped++
-			return nil
-		}
+			if entry.IsDir() {
+				return nil
+			}
 
-		backedUp, pathIsFree := clearExistingHomeFile(ctx, homeFile, backupPath, rel, logger)
-		if backedUp {
-			backed++
-		}
-		if !pathIsFree {
-			return nil
-		}
+			rel, err := filepath.Rel(source, path)
+			if err != nil {
+				slog.WarnContext(ctx, "workspace: computing relative path", "err", err)
+				return fmt.Errorf("computing relative path: %w", err)
+			}
 
-		if err := os.MkdirAll(filepath.Dir(filepath.Clean(homeFile)), 0o755); err != nil {
-			slog.WarnContext(ctx, "workspace: creating home file directory", "err", err)
-			return fmt.Errorf("creating home file directory: %w", err)
-		}
-		_ = os.Remove(filepath.Clean(homeFile))
-		if err := os.Symlink(filepath.Join(source, rel), homeFile); err != nil {
-			slog.WarnContext(ctx, "workspace: creating symlink", "err", err)
-			return fmt.Errorf("creating symlink %s: %w", homeFile, err)
-		}
-		linked++
-		return nil
-	})
+			homeFile := filepath.Join(homeDir, rel)
+
+			if rel == localProfileName {
+				if err := ensureLocalProfile(ctx, homeFile, path); err != nil {
+					return err
+				}
+
+				skipped++
+
+				return nil
+			}
+
+			if common.IsSymlinkTo(homeFile, path) {
+				skipped++
+				return nil
+			}
+
+			backedUp, pathIsFree := clearExistingHomeFile(ctx, homeFile, backupPath, rel, logger)
+			if backedUp {
+				backed++
+			}
+
+			if !pathIsFree {
+				return nil
+			}
+
+			if err := os.MkdirAll(filepath.Dir(filepath.Clean(homeFile)), 0o755); err != nil {
+				slog.WarnContext(ctx, "workspace: creating home file directory", "err", err)
+				return fmt.Errorf("creating home file directory: %w", err)
+			}
+
+			_ = os.Remove(filepath.Clean(homeFile))
+			if err := os.Symlink(filepath.Join(source, rel), homeFile); err != nil {
+				slog.WarnContext(ctx, "workspace: creating symlink", "err", err)
+				return fmt.Errorf("creating symlink %s: %w", homeFile, err)
+			}
+
+			linked++
+
+			return nil
+		},
+	)
 	if walkErr != nil {
 		slog.WarnContext(ctx, "workspace: walking dotfiles", "err", walkErr)
 		return fmt.Errorf("walking dotfiles: %w", walkErr)
 	}
-	common.InfoContextf(ctx, logger, "  Linked: %s Skipped: %s Backed up: %s", strconv.Itoa(linked), strconv.Itoa(skipped), strconv.Itoa(backed))
+
+	common.InfoContextf(
+		ctx,
+		logger,
+		"  Linked: %s Skipped: %s Backed up: %s",
+		strconv.Itoa(linked),
+		strconv.Itoa(skipped),
+		strconv.Itoa(backed),
+	)
+
 	return nil
 }
 
@@ -141,18 +135,22 @@ func ensureLocalProfile(ctx context.Context, homeFile string, repoProfile string
 	if os.IsNotExist(err) {
 		return writeLocalProfile(ctx, homeFile, repoProfile, "", true)
 	}
+
 	if err != nil {
 		slog.WarnContext(ctx, "workspace: stat profile", "err", err)
 		return fmt.Errorf("stat profile: %w", err)
 	}
+
 	if info.Mode()&os.ModeSymlink != 0 {
 		return replaceProfileSymlink(ctx, homeFile, repoProfile)
 	}
+
 	data, err := os.ReadFile(filepath.Clean(homeFile))
 	if err != nil {
 		slog.WarnContext(ctx, "workspace: reading profile", "err", err)
 		return fmt.Errorf("reading profile: %w", err)
 	}
+
 	return writeLocalProfile(ctx, homeFile, repoProfile, string(data), false)
 }
 
@@ -162,32 +160,45 @@ func replaceProfileSymlink(ctx context.Context, homeFile string, repoProfile str
 			slog.WarnContext(ctx, "workspace: removing profile symlink", "err", err)
 			return fmt.Errorf("removing profile symlink: %w", err)
 		}
+
 		return writeLocalProfile(ctx, homeFile, repoProfile, "", true)
 	}
+
 	data, err := os.ReadFile(filepath.Clean(homeFile))
 	if err != nil {
 		slog.WarnContext(ctx, "workspace: reading profile symlink", "err", err)
 		return fmt.Errorf("reading profile symlink: %w", err)
 	}
+
 	if err := os.Remove(filepath.Clean(homeFile)); err != nil {
 		slog.WarnContext(ctx, "workspace: removing stale profile symlink", "err", err)
 		return fmt.Errorf("removing stale profile symlink: %w", err)
 	}
+
 	return writeLocalProfile(ctx, homeFile, repoProfile, string(data), true)
 }
 
-func writeLocalProfile(ctx context.Context, homeFile string, repoProfile string, existing string, mustWrite bool) error {
+func writeLocalProfile(
+	ctx context.Context,
+	homeFile string,
+	repoProfile string,
+	existing string,
+	mustWrite bool,
+) error {
 	body := withLocalProfileSource(existing, repoProfile)
 	if !mustWrite && existing != "" && body == existing {
 		return nil
 	}
+
 	if err := os.MkdirAll(filepath.Dir(filepath.Clean(homeFile)), 0o755); err != nil {
 		slog.WarnContext(ctx, "workspace: creating profile directory", "err", err)
 		return fmt.Errorf("creating profile directory: %w", err)
 	}
+
 	if err := writeFileAtomically(ctx, homeFile, []byte(body), 0o600); err != nil {
 		return fmt.Errorf("writing local profile: %w", err)
 	}
+
 	return nil
 }
 
@@ -198,29 +209,38 @@ func writeFileAtomically(ctx context.Context, path string, body []byte, mode os.
 		slog.WarnContext(ctx, "workspace: creating temp profile", "err", err)
 		return fmt.Errorf("creating temp profile: %w", err)
 	}
+
 	tempName := file.Name()
 	if _, err := file.Write(body); err != nil {
 		_ = file.Close()
 		_ = os.Remove(tempName)
 		slog.WarnContext(ctx, "workspace: writing temp profile", "err", err)
+
 		return fmt.Errorf("writing temp profile: %w", err)
 	}
+
 	if err := file.Chmod(mode); err != nil {
 		_ = file.Close()
 		_ = os.Remove(tempName)
 		slog.WarnContext(ctx, "workspace: chmod temp profile", "err", err)
+
 		return fmt.Errorf("chmod temp profile: %w", err)
 	}
+
 	if err := file.Close(); err != nil {
 		_ = os.Remove(tempName)
 		slog.WarnContext(ctx, "workspace: closing temp profile", "err", err)
+
 		return fmt.Errorf("closing temp profile: %w", err)
 	}
+
 	if err := os.Rename(tempName, cleanPath); err != nil {
 		_ = os.Remove(tempName)
 		slog.WarnContext(ctx, "workspace: replacing profile", "err", err)
+
 		return fmt.Errorf("replacing profile: %w", err)
 	}
+
 	return nil
 }
 
@@ -233,18 +253,22 @@ func withLocalProfileSource(existing string, repoProfile string) string {
 	if strings.Contains(existing, localProfileSentinel) && strings.Contains(existing, repoProfile) {
 		return existing
 	}
+
 	prefix := existing
 	suffix := ""
 	if before, after, found := strings.Cut(existing, localProfileSentinel); found {
 		prefix = strings.TrimRight(before, "\n")
 		suffix = suffixAfterManagedBlock(after)
 	}
+
 	if prefix == "" {
 		return block + suffix
 	}
+
 	if !strings.HasSuffix(prefix, "\n") {
 		prefix += "\n"
 	}
+
 	return prefix + block + suffix
 }
 
@@ -253,6 +277,7 @@ func suffixAfterManagedBlock(afterSentinel string) string {
 	if !found {
 		return ""
 	}
+
 	return afterFi
 }
 
@@ -271,6 +296,7 @@ func isWithinDir(root string, target string) bool {
 	if cleanTarget == cleanRoot {
 		return true
 	}
+
 	return strings.HasPrefix(cleanTarget, cleanRoot+string(filepath.Separator))
 }
 
@@ -281,7 +307,13 @@ func isWithinDir(root string, target string) bool {
 // real file whose backup failed is left in place and reported as not free,
 // since removing it would destroy the only copy. A symlink carries no content
 // of its own, so it is always safe to replace.
-func clearExistingHomeFile(ctx context.Context, homeFile string, backupPath string, rel string, logger *telemetry.Logger) (bool, bool) {
+func clearExistingHomeFile(
+	ctx context.Context,
+	homeFile string,
+	backupPath string,
+	rel string,
+	logger *telemetry.Logger,
+) (bool, bool) {
 	existing, err := os.Lstat(filepath.Clean(homeFile))
 	if err != nil {
 		return false, true
@@ -294,558 +326,37 @@ func clearExistingHomeFile(ctx context.Context, homeFile string, backupPath stri
 		slog.WarnContext(ctx, "workspace: skipping backup, path traversal detected", "rel", rel)
 	default:
 		if mkErr := os.MkdirAll(filepath.Dir(backupDest), 0o755); mkErr != nil {
-			slog.WarnContext(ctx, "workspace: creating backup directory, skipping backup", "err", mkErr)
-		} else if cpErr := cmdexec.RunWithLogger(ctx, logger, "cp", "-HpR", homeFile, backupDest); cpErr == nil {
+			slog.WarnContext(
+				ctx,
+				"workspace: creating backup directory, skipping backup",
+				"err",
+				mkErr,
+			)
+		} else if cpErr := cmdexec.RunWithLogger(
+			ctx,
+			logger,
+			"cp",
+			"-HpR",
+			homeFile,
+			backupDest,
+		); cpErr == nil {
 			backedUp = true
 		}
 	}
 
 	isSymlink := existing.Mode()&os.ModeSymlink != 0
 	if !backedUp && !isSymlink {
-		slog.WarnContext(ctx, "workspace: backup failed, leaving existing file in place", "path", homeFile)
+		slog.WarnContext(
+			ctx,
+			"workspace: backup failed, leaving existing file in place",
+			"path",
+			homeFile,
+		)
+
 		return false, false
 	}
+
 	_ = os.RemoveAll(filepath.Clean(homeFile))
+
 	return backedUp, true
-}
-
-// UpdateAuthorizedKeys fetches SSH public keys from GitHub and appends any new ones to ~/.ssh/authorized_keys.
-func UpdateAuthorizedKeys(ctx context.Context, skipNetwork bool, logger *telemetry.Logger) error {
-	slog.InfoContext(ctx, "workspace: UpdateAuthorizedKeys")
-	if common.IsWorkLaptop() || skipNetwork {
-		return nil
-	}
-
-	home := os.Getenv("HOME")
-	httpTmp := filepath.Join(home, ".ssh", "authorized_keys.tmp")
-	if err := cmdexec.RunWithLogger(ctx, logger, "curl", "-fsSL", "https://github.com/agoodkind.keys", "-o", httpTmp); err != nil {
-		slog.WarnContext(ctx, "workspace: fetching authorized keys", "err", err)
-		return fmt.Errorf("fetching authorized keys: %w", err)
-	}
-	defer os.Remove(httpTmp)
-	if err := os.MkdirAll(filepath.Clean(filepath.Join(home, ".ssh")), 0o700); err != nil {
-		slog.WarnContext(ctx, "workspace: creating ssh dir", "err", err)
-		return fmt.Errorf("creating ssh dir: %w", err)
-	}
-	if err := common.Touch(filepath.Join(home, ".ssh", "authorized_keys")); err != nil {
-		slog.WarnContext(ctx, "workspace: touching authorized_keys", "err", err)
-		return fmt.Errorf("touching authorized_keys: %w", err)
-	}
-
-	authorizedPath := filepath.Join(home, ".ssh", "authorized_keys")
-	rawExisting, err := os.ReadFile(filepath.Clean(authorizedPath))
-	if err != nil {
-		slog.WarnContext(ctx, "workspace: reading authorized_keys", "err", err)
-		return fmt.Errorf("reading authorized_keys: %w", err)
-	}
-	existing := map[string]struct{}{}
-	for line := range strings.SplitSeq(string(rawExisting), "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			existing[line] = struct{}{}
-		}
-	}
-
-	downloaded, err := os.ReadFile(filepath.Clean(httpTmp))
-	if err != nil {
-		slog.WarnContext(ctx, "workspace: reading downloaded keys", "err", err)
-		return fmt.Errorf("reading downloaded keys: %w", err)
-	}
-	added := 0
-	for line := range strings.SplitSeq(string(downloaded), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		if _, ok := existing[line]; ok {
-			continue
-		}
-		existing[line] = struct{}{}
-		f, err := os.OpenFile(filepath.Clean(authorizedPath), os.O_APPEND|os.O_WRONLY, 0o600)
-		if err != nil {
-			slog.WarnContext(ctx, "workspace: opening authorized_keys for append", "err", err)
-			return fmt.Errorf("opening authorized_keys for append: %w", err)
-		}
-		_, _ = fmt.Fprintln(f, line)
-		_ = f.Close()
-		added++
-	}
-	common.InfoContextf(ctx, logger, "  Added %s authorized key(s)", strconv.Itoa(added))
-	return nil
-}
-
-// SyncCursorUserRules does not upload corpus rules to the Cursor account.
-func SyncCursorUserRules(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
-	_ = dotfiles
-	_ = logger
-	slog.InfoContext(ctx, "workspace: cursor cloud rule sync is disabled")
-	return nil
-}
-
-// SyncGitHooks installs git hook symlinks from .githooks/ into .git/hooks/.
-func SyncGitHooks(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
-	slog.InfoContext(ctx, "workspace: SyncGitHooks")
-	hooksPath := filepath.Join(dotfiles, ".githooks")
-	if _, err := os.Stat(hooksPath); err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		slog.WarnContext(ctx, "workspace: checking git hooks dir", "err", err)
-		return fmt.Errorf("checking git hooks dir: %w", err)
-	}
-	// Hooks live in the shared git directory, which every worktree uses. In a
-	// linked worktree <root>/.git is a file, so joining onto it fails.
-	gitCommonDir := filepath.Join(dotfiles, ".git")
-	if layout, err := gitdir.Resolve(ctx, dotfiles, logger); err == nil {
-		gitCommonDir = layout.CommonDir
-	}
-	destination := filepath.Join(gitCommonDir, "hooks")
-	if err := os.MkdirAll(destination, 0o755); err != nil {
-		slog.WarnContext(ctx, "workspace: creating git hooks destination", "err", err)
-		return fmt.Errorf("creating git hooks destination: %w", err)
-	}
-	entries, err := os.ReadDir(hooksPath)
-	if err != nil {
-		slog.WarnContext(ctx, "workspace: reading git hooks dir", "err", err)
-		return fmt.Errorf("reading git hooks dir: %w", err)
-	}
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		target := filepath.Join(destination, entry.Name())
-		_ = os.Remove(target)
-		// An absolute link target stays correct wherever the shared git
-		// directory sits relative to the working tree.
-		if err := os.Symlink(filepath.Join(hooksPath, entry.Name()), target); err != nil {
-			slog.WarnContext(ctx, "workspace: creating hook symlink", "err", err)
-			return fmt.Errorf("creating hook symlink %s: %w", target, err)
-		}
-	}
-	return nil
-}
-
-// SyncGlobalGitHooks configures git to use the global hooks directory.
-func SyncGlobalGitHooks(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
-	hooks := filepath.Join(dotfiles, "git-global-hooks")
-	if _, err := os.Stat(hooks); err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		slog.WarnContext(ctx, "workspace: checking global git hooks dir", "err", err)
-		return fmt.Errorf("checking global git hooks dir: %w", err)
-	}
-	if err := cmdexec.RunWithLogger(ctx, logger, "git", "config", "--global", "core.hooksPath", hooks); err != nil {
-		slog.WarnContext(ctx, "workspace: setting git global hooks path", "err", err)
-		return fmt.Errorf("setting git global hooks path: %w", err)
-	}
-	return nil
-}
-
-// CheckGitHooksPath verifies the local git hooks path configuration.
-func CheckGitHooksPath(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
-	if configured, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "git", "-C", dotfiles, "config", "--local", "--get", "core.hooksPath"); err == nil {
-		_ = strings.TrimSpace(configured)
-	}
-	return nil
-}
-
-const zinitUpdateScript = `
-source "$1"
-
-zinit self-update
-self_update_rc=$?
-printf "[zinit-self-update-exit: %d]\n" "$self_update_rc"
-
-zsh -c 'source "$1"; zinit update --all --quiet' zsh "$1"
-update_rc=$?
-printf "[zinit-update-exit: %d]\n" "$update_rc"
-
-zinit compile --all
-compile_rc=$?
-printf "[zinit-compile-exit: %d]\n" "$compile_rc"
-
-plugins_dir="${ZINIT[PLUGINS_DIR]:-$HOME/.local/share/zinit/plugins}"
-printf "[zinit-plugins-dir: %s]\n" "$plugins_dir"
-
-(( self_update_rc == 0 && compile_rc == 0 ))
-`
-
-func zinitMarkerValue(output string, marker string) (string, bool) {
-	prefix := "[" + marker + ": "
-	for line := range strings.SplitSeq(output, "\n") {
-		trimmedLine := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmedLine, prefix) && strings.HasSuffix(trimmedLine, "]") {
-			value := strings.TrimSuffix(strings.TrimPrefix(trimmedLine, prefix), "]")
-			return value, true
-		}
-	}
-	return "", false
-}
-
-func zinitUpdateExitFromOutput(output string) (int, bool) {
-	value, ok := zinitMarkerValue(output, "zinit-update-exit")
-	if !ok {
-		return 0, false
-	}
-	exitCode, err := strconv.Atoi(value)
-	if err != nil {
-		return 0, false
-	}
-	return exitCode, true
-}
-
-func defaultZinitPluginsDir() string {
-	return filepath.Join(os.Getenv("HOME"), ".local", "share", "zinit", "plugins")
-}
-
-func verifyZinitPlugins(ctx context.Context, pluginsDir string, logger *telemetry.Logger) error {
-	if pluginsDir == "" {
-		pluginsDir = defaultZinitPluginsDir()
-	}
-
-	entries, err := os.ReadDir(pluginsDir)
-	if os.IsNotExist(err) {
-		common.InfoContext(ctx, logger, "  [zinit-verify: ok]")
-		return nil
-	}
-	if err != nil {
-		slog.WarnContext(ctx, "workspace: read zinit plugins dir", "dir", pluginsDir, "err", err)
-		return fmt.Errorf("reading zinit plugins dir %s: %w", pluginsDir, err)
-	}
-
-	verificationFailed := false
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		pluginName := entry.Name()
-		if pluginName == "custom" || pluginName == "_local---zinit" {
-			continue
-		}
-
-		pluginDir := filepath.Join(pluginsDir, pluginName)
-		isGitRepo, isDetached, err := zinitPluginGitState(pluginDir)
-		if err != nil {
-			slog.WarnContext(ctx, "workspace: check zinit plugin", "plugin", pluginName, "dir", pluginDir, "err", err)
-			return fmt.Errorf("checking zinit plugin %s: %w", pluginName, err)
-		}
-		if !isGitRepo {
-			common.InfoContextf(ctx, logger, "  [zinit-verify] %s: not a git repo", pluginName)
-			continue
-		}
-		if isDetached {
-			common.WarnContextf(ctx, logger, "  [zinit-verify] %s: detached HEAD", pluginName)
-			verificationFailed = true
-		}
-	}
-
-	if verificationFailed {
-		return fmt.Errorf("one or more zinit plugins are detached")
-	}
-	common.InfoContext(ctx, logger, "  [zinit-verify: ok]")
-	return nil
-}
-
-func zinitPluginGitState(pluginDir string) (bool, bool, error) {
-	headPath, ok, err := zinitPluginHeadPath(pluginDir)
-	if err != nil || !ok {
-		return ok, false, err
-	}
-
-	headContent, err := os.ReadFile(headPath)
-	if err != nil {
-		slog.Warn("workspace: read zinit HEAD", "path", headPath, "err", err)
-		return true, false, fmt.Errorf("reading git HEAD: %w", err)
-	}
-	headRef := strings.TrimSpace(string(headContent))
-	return true, !strings.HasPrefix(headRef, "ref: "), nil
-}
-
-func zinitPluginHeadPath(pluginDir string) (string, bool, error) {
-	pluginRoot, err := os.OpenRoot(pluginDir)
-	if err != nil {
-		slog.Warn("workspace: open zinit plugin root", "dir", pluginDir, "err", err)
-		return "", false, fmt.Errorf("opening zinit plugin root %s: %w", pluginDir, err)
-	}
-	defer closeRootWithWarning(pluginRoot, pluginDir)
-
-	gitInfo, err := pluginRoot.Stat(".git")
-	if os.IsNotExist(err) {
-		return "", false, nil
-	}
-	if err != nil {
-		slog.Warn("workspace: stat zinit .git", "dir", pluginDir, "err", err)
-		return "", false, fmt.Errorf("stat .git in %s: %w", pluginDir, err)
-	}
-	if gitInfo.IsDir() {
-		return filepath.Join(pluginDir, ".git", "HEAD"), true, nil
-	}
-
-	gitFileContent, err := pluginRoot.ReadFile(".git")
-	if err != nil {
-		slog.Warn("workspace: read zinit .git file", "dir", pluginDir, "err", err)
-		return "", true, fmt.Errorf("reading .git file: %w", err)
-	}
-	const gitDirPrefix = "gitdir: "
-	gitDirLine := strings.TrimSpace(string(gitFileContent))
-	if !strings.HasPrefix(gitDirLine, gitDirPrefix) {
-		return "", true, fmt.Errorf("invalid .git file")
-	}
-
-	gitDir := strings.TrimSpace(strings.TrimPrefix(gitDirLine, gitDirPrefix))
-	if filepath.IsAbs(gitDir) {
-		relativeGitDir, err := filepath.Rel(pluginDir, gitDir)
-		if err != nil {
-			slog.Warn("workspace: relativize gitdir", "dir", pluginDir, "gitdir", gitDir, "err", err)
-			return "", true, fmt.Errorf("relativizing .git file path: %w", err)
-		}
-		gitDir = relativeGitDir
-	}
-	if !filepath.IsLocal(gitDir) {
-		slog.Warn("workspace: unsafe gitdir", "dir", pluginDir, "gitdir", gitDir)
-		return "", true, fmt.Errorf("unsafe .git file path")
-	}
-	return filepath.Join(pluginDir, filepath.Clean(gitDir), "HEAD"), true, nil
-}
-
-func closeRootWithWarning(root *os.Root, pluginDir string) {
-	if err := root.Close(); err != nil {
-		slog.Warn("workspace: close zinit plugin root", "dir", pluginDir, "err", err)
-	}
-}
-
-// UpdateZinitPlugins runs zinit self-update and updates all zinit plugins.
-func UpdateZinitPlugins(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
-	if !runner.HasCommand("zsh") {
-		return fmt.Errorf("zsh is not available")
-	}
-	zinitPath := filepath.Join(dotfiles, "lib", "zinit", "zinit.zsh")
-	if _, err := os.Stat(zinitPath); err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		slog.WarnContext(ctx, "workspace: checking zinit.zsh", "err", err)
-		return fmt.Errorf("checking zinit.zsh: %w", err)
-	}
-	output, err := cmdexec.OutputWithLogger(
-		ctx,
-		logger,
-		"zsh",
-		"-c",
-		zinitUpdateScript,
-		"zsh",
-		zinitPath,
-	)
-	if err != nil {
-		slog.WarnContext(ctx, "workspace: updating zinit plugins", "err", err)
-		return fmt.Errorf("updating zinit plugins: %w", err)
-	}
-	pluginsDir, _ := zinitMarkerValue(output, "zinit-plugins-dir")
-	if err := verifyZinitPlugins(ctx, pluginsDir, logger); err != nil {
-		slog.WarnContext(ctx, "workspace: verifying zinit plugins", "err", err)
-		return fmt.Errorf("verifying zinit plugins: %w", err)
-	}
-	if updateExitCode, ok := zinitUpdateExitFromOutput(output); ok && updateExitCode != 0 {
-		common.InfoContext(ctx, logger, "  [zinit-update-status: ignored nonzero update exit after compile and verify]")
-	}
-	return nil
-}
-
-// CleanupHomebrewRepair removes incomplete Homebrew downloads and runs brew
-// cleanup. When cleanup fails because a Homebrew-managed path was left owned by
-// another user (a tool run under sudo writes a root-owned byte-cache into the
-// user-owned prefix), it restores ownership of exactly those paths and retries.
-func CleanupHomebrewRepair(ctx context.Context, logger *telemetry.Logger) error {
-	slog.InfoContext(ctx, "workspace: CleanupHomebrewRepair")
-	if runtime.GOOS != "darwin" {
-		return nil
-	}
-	if !runner.HasCommand("brew") {
-		return nil
-	}
-	cacheDir := filepath.Join(os.Getenv("HOME"), "Library", "Caches", "Homebrew", "downloads")
-	if matches, err := filepath.Glob(filepath.Join(cacheDir, "*.incomplete")); err == nil {
-		for _, match := range matches {
-			_ = os.RemoveAll(filepath.Clean(match))
-		}
-	}
-	out, err := cmdexec.OutputWithLogger(ctx, logger, "brew", "cleanup", "--prune=all")
-	if err == nil {
-		return nil
-	}
-	blocked := parseBrewPermissionDeniedPaths(out)
-	if len(blocked) == 0 {
-		slog.WarnContext(ctx, "workspace: running brew cleanup", "err", err)
-		return fmt.Errorf("running brew cleanup: %w", err)
-	}
-	repaired, repairErr := restoreOwnershipChains(ctx, logger, blocked)
-	if repairErr != nil {
-		slog.WarnContext(ctx, "workspace: brew cleanup self-heal unavailable", "err", repairErr)
-		return fmt.Errorf("running brew cleanup: %w", errors.Join(err, repairErr))
-	}
-	if repaired == 0 {
-		slog.WarnContext(ctx, "workspace: running brew cleanup", "err", err)
-		return fmt.Errorf("running brew cleanup: %w", err)
-	}
-	logger.InfoContext(ctx, fmt.Sprintf("  restored ownership of %d Homebrew path(s); retrying cleanup", repaired))
-	if _, err := cmdexec.OutputWithLogger(ctx, logger, "brew", "cleanup", "--prune=all"); err != nil {
-		slog.WarnContext(ctx, "workspace: brew cleanup after repair", "err", err)
-		return fmt.Errorf("running brew cleanup after restoring %d path(s): %w", repaired, err)
-	}
-	return nil
-}
-
-// permissionDeniedPattern captures the path in a Homebrew/Ruby permission error
-// such as "Permission denied @ apply2files - /opt/homebrew/.../file".
-var permissionDeniedPattern = regexp.MustCompile(`Permission denied @ \S+ - (.+)`)
-
-// parseBrewPermissionDeniedPaths extracts the distinct paths that brew cleanup
-// reported it could not remove, preserving first-seen order.
-func parseBrewPermissionDeniedPaths(output string) []string {
-	seen := make(map[string]struct{})
-	paths := make([]string, 0)
-	for line := range strings.SplitSeq(output, "\n") {
-		match := permissionDeniedPattern.FindStringSubmatch(line)
-		if match == nil {
-			continue
-		}
-		path := strings.TrimSpace(match[1])
-		if path == "" {
-			continue
-		}
-		if _, ok := seen[path]; ok {
-			continue
-		}
-		seen[path] = struct{}{}
-		paths = append(paths, path)
-	}
-	return paths
-}
-
-// restoreOwnershipChains restores ownership of each blocked path, plus any
-// ancestor directory up to the first one the current user already owns, so brew
-// can prune the path on retry. It touches only the broken ownership chain,
-// never sibling files, which keeps it safe on an Intel prefix (/usr/local) that
-// is shared with non-Homebrew software. When passwordless sudo is unavailable
-// it returns an error naming the remediation rather than masking the failure.
-func restoreOwnershipChains(ctx context.Context, logger *telemetry.Logger, blocked []string) (int, error) {
-	current, err := user.Current()
-	if err != nil {
-		slog.WarnContext(ctx, "workspace: resolving current user", "err", err)
-		return 0, fmt.Errorf("resolving current user: %w", err)
-	}
-	uid, err := strconv.Atoi(current.Uid)
-	if err != nil {
-		slog.WarnContext(ctx, "workspace: parsing current uid", "err", err)
-		return 0, fmt.Errorf("parsing current uid %q: %w", current.Uid, err)
-	}
-	targets := foreignOwnedChain(blocked, uid)
-	if len(targets) == 0 {
-		return 0, nil
-	}
-	if !common.HasSudoAccess(ctx, logger) {
-		err := fmt.Errorf("%d Homebrew path(s) are not owned by %s and passwordless sudo is unavailable; run: sudo chown %s %s", len(targets), current.Username, current.Username, strings.Join(targets, " "))
-		slog.WarnContext(ctx, "workspace: cannot restore ownership without sudo", "err", err)
-		return 0, err
-	}
-	args := append([]string{"-n", "chown", current.Username}, targets...)
-	if err := cmdexec.RunWithLogger(ctx, logger, "sudo", args...); err != nil {
-		slog.WarnContext(ctx, "workspace: restoring ownership", "err", err)
-		return 0, fmt.Errorf("restoring ownership of Homebrew paths: %w", err)
-	}
-	return len(targets), nil
-}
-
-// foreignOwnedChain returns each blocked path together with its ancestor
-// directories that are not owned by uid, stopping at the first owned ancestor.
-// Paths it cannot stat are skipped.
-func foreignOwnedChain(blocked []string, uid int) []string {
-	seen := make(map[string]struct{})
-	targets := make([]string, 0)
-	for _, path := range blocked {
-		for dir := path; ; {
-			info, err := os.Lstat(dir)
-			if err != nil {
-				break
-			}
-			stat, ok := info.Sys().(*syscall.Stat_t)
-			if !ok || int(stat.Uid) == uid {
-				break
-			}
-			if _, ok := seen[dir]; !ok {
-				seen[dir] = struct{}{}
-				targets = append(targets, dir)
-			}
-			parent := filepath.Dir(dir)
-			if parent == dir {
-				break
-			}
-			dir = parent
-		}
-	}
-	return targets
-}
-
-// CleanupNeovimRepair removes stale Neovim plugin and swap file directories.
-func CleanupNeovimRepair(ctx context.Context, logger *telemetry.Logger) error {
-	slog.InfoContext(ctx, "workspace: CleanupNeovimRepair")
-	nvimData := filepath.Join(xdgDataDir(), "nvim")
-	lazyDir := filepath.Join(nvimData, "lazy")
-	if entries, err := os.ReadDir(lazyDir); err == nil {
-		for _, entry := range entries {
-			name := entry.Name()
-			if strings.HasSuffix(name, ".cloning") {
-				_ = os.RemoveAll(filepath.Clean(filepath.Join(lazyDir, name)))
-			}
-		}
-		for _, entry := range entries {
-			if !entry.IsDir() {
-				continue
-			}
-			entries2, err := os.ReadDir(filepath.Join(lazyDir, entry.Name()))
-			if err != nil || len(entries2) == 0 {
-				_ = os.RemoveAll(filepath.Clean(filepath.Join(lazyDir, entry.Name())))
-			}
-		}
-	}
-
-	swapDirs := []string{
-		filepath.Join(xdgStateDir(), "nvim", "swap"),
-		filepath.Join(xdgDataDir(), "nvim", "swap"),
-	}
-	for _, dir := range swapDirs {
-		files, err := filepath.Glob(filepath.Join(dir, "*.swp"))
-		if err == nil {
-			for _, file := range files {
-				_ = os.Remove(filepath.Clean(file))
-			}
-		}
-	}
-	return nil
-}
-
-// UpdateNeovimPlugins runs the Neovim lazy plugin sync and tree-sitter parser installs.
-func UpdateNeovimPlugins(ctx context.Context, logger *telemetry.Logger) error {
-	if !runner.HasCommand("nvim") {
-		return nil
-	}
-	if err := cmdexec.RunWithLogger(ctx, logger, "nvim", "--headless", "-c", "lua require('lazy').sync()", "-c", "qa"); err != nil {
-		slog.WarnContext(ctx, "workspace: running neovim lazy sync", "err", err)
-		return fmt.Errorf("running neovim lazy sync: %w", err)
-	}
-	if !runner.HasCommand("tree-sitter") {
-		return nil
-	}
-	if versionOutput, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, nil, "tree-sitter", "--version"); err == nil {
-		parts := strings.Fields(versionOutput)
-		if len(parts) >= 2 {
-			version := strings.TrimPrefix(parts[1], "v")
-			if common.VersionAtLeast(version, "0.21.0") {
-				common.InfoContext(ctx, logger, "  treesitter parsers")
-				_ = cmdexec.RunWithLogger(ctx, logger, "nvim", "--headless", "+lua require('nvim-treesitter').install({'bash','lua','vim','vimdoc','python','javascript','typescript','json','yaml'})", "+sleep 10", "+qa")
-			}
-		}
-	}
-	return nil
 }

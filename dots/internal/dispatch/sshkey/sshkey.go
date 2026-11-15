@@ -19,11 +19,13 @@ func Load(ctx context.Context, dispatchLogger *telemetry.Logger) error {
 	if runtime.GOOS != "darwin" {
 		return nil
 	}
+
 	output, err := cmdexec.OutputWithLogger(ctx, dispatchLogger, "/usr/bin/ssh-add", "-l")
 	if err == nil && strings.Contains(output, "id_ed25519") {
 		dispatchLogger.InfoContext(ctx, "ssh key already loaded")
 		return nil
 	}
+
 	_, err = cmdexec.OutputWithLogger(
 		ctx,
 		dispatchLogger,
@@ -35,6 +37,8 @@ func Load(ctx context.Context, dispatchLogger *telemetry.Logger) error {
 		slog.WarnContext(ctx, "sshkey: Load: ssh-add failed", "err", err)
 		return fmt.Errorf("running ssh-add: %w", err)
 	}
+
 	dispatchLogger.InfoContext(ctx, "loaded id_ed25519 into keychain")
+
 	return nil
 }

@@ -17,7 +17,9 @@ import (
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
-var errDebianPrivilegeUnavailable = errors.New("root or passwordless sudo is required for Debian package operations")
+var errDebianPrivilegeUnavailable = errors.New(
+	"root or passwordless sudo is required for Debian package operations",
+)
 
 // Warn logs message at warn level via logger, if logger is non-nil.
 func Warn(logger *telemetry.Logger, message string) {
@@ -63,9 +65,11 @@ func WarnContextf(ctx context.Context, logger *telemetry.Logger, format string, 
 
 func formatString(format string, args ...string) string {
 	formatted := format
+
 	for _, arg := range args {
 		formatted = strings.Replace(formatted, "%s", arg, 1)
 	}
+
 	return formatted
 }
 
@@ -75,35 +79,26 @@ func IsSymlinkTo(target, source string) bool {
 	if err != nil {
 		return false
 	}
+
 	if info.Mode()&os.ModeSymlink == 0 {
 		return false
 	}
+
 	actual, err := os.Readlink(target)
 	if err != nil {
 		return false
 	}
+
 	if !filepath.IsAbs(actual) {
 		actual = filepath.Join(filepath.Dir(target), actual)
 	}
+
 	expected, err := filepath.Abs(source)
 	if err != nil {
 		expected = source
 	}
-	return filepath.Clean(actual) == filepath.Clean(expected)
-}
 
-// Touch creates the file at path if it does not already exist, with mode 0600.
-func Touch(path string) error {
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDONLY, 0o600)
-	if err != nil {
-		slog.Error("common: Touch: opening file", "path", path, "err", err)
-		return fmt.Errorf("opening file %s: %w", path, err)
-	}
-	if err := file.Close(); err != nil {
-		slog.Error("common: Touch: closing file", "path", path, "err", err)
-		return fmt.Errorf("closing file %s: %w", path, err)
-	}
-	return nil
+	return filepath.Clean(actual) == filepath.Clean(expected)
 }
 
 // SyncLogPath returns the log file path for the current sync run, honoring
@@ -113,6 +108,7 @@ func SyncLogPath() string {
 	if path := os.Getenv("DOTFILES_LOG"); path != "" {
 		return path
 	}
+
 	return filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "sync.log")
 }
 
@@ -126,9 +122,11 @@ func HasSudoAccess(ctx context.Context, logger *telemetry.Logger) bool {
 	if !runner.HasCommand("sudo") {
 		return false
 	}
+
 	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "sudo", "-n", "true"); err == nil {
 		return true
 	}
+
 	return cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "sudo", "-v") == nil
 }
 
@@ -153,12 +151,15 @@ func isValidSudoersUsername(username string) bool {
 	if username == "" {
 		return false
 	}
+
 	if strings.ContainsAny(username, " \t\n\r/\\") {
 		return false
 	}
+
 	if strings.HasPrefix(username, "%") || strings.HasPrefix(username, "#") {
 		return false
 	}
+
 	return true
 }
 
@@ -178,9 +179,11 @@ func EnsurePasswordlessSudo(ctx context.Context, logger *telemetry.Logger, group
 	if !runner.HasCommand("sudo") {
 		return nil
 	}
+
 	if os.Geteuid() == 0 {
 		return nil
 	}
+
 	// -k resets any cached sudo timestamp before the -n probe, so a recently
 	// entered password cannot make this look like NOPASSWD is already set.
 	if cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "sudo", "-k", "-n", "true") == nil {
@@ -192,14 +195,27 @@ func EnsurePasswordlessSudo(ctx context.Context, logger *telemetry.Logger, group
 		slog.WarnContext(ctx, "common: resolving current user for passwordless sudo", "err", err)
 		return fmt.Errorf("resolving current user: %w", err)
 	}
+
 	if !isValidSudoersUsername(currentUser.Username) {
-		slog.WarnContext(ctx, "common: username is not safe for a sudoers entry", "username", currentUser.Username)
+		slog.WarnContext(
+			ctx,
+			"common: username is not safe for a sudoers entry",
+			"username",
+			currentUser.Username,
+		)
+
 		return fmt.Errorf("username %q is not safe for a sudoers entry", currentUser.Username)
 	}
 
 	dropInPath := SudoersDropInPath(currentUser.Username)
 	if filepath.Dir(dropInPath) != "/etc/sudoers.d" {
-		slog.WarnContext(ctx, "common: sudoers drop-in path escaped /etc/sudoers.d", "path", dropInPath)
+		slog.WarnContext(
+			ctx,
+			"common: sudoers drop-in path escaped /etc/sudoers.d",
+			"path",
+			dropInPath,
+		)
+
 		return fmt.Errorf("sudoers drop-in path %q escaped /etc/sudoers.d", dropInPath)
 	}
 
@@ -215,9 +231,25 @@ func EnsurePasswordlessSudo(ctx context.Context, logger *telemetry.Logger, group
 	// avoid a spurious "executable file not found". The captured output is logged
 	// on failure so a real syntax error is diagnosable.
 	visudoEnv := map[string]string{"PATH": os.Getenv("PATH") + ":/usr/sbin:/sbin"}
-	visudoOutput, err := cmdexec.CombinedOutputWithInput(ctx, visudoEnv, strings.NewReader(entry), "visudo", "-c", "-f", "-")
+	visudoOutput, err := cmdexec.CombinedOutputWithInput(
+		ctx,
+		visudoEnv,
+		strings.NewReader(entry),
+		"visudo",
+		"-c",
+		"-f",
+		"-",
+	)
 	if err != nil {
-		slog.WarnContext(ctx, "common: sudoers drop-in failed validation", "err", err, "visudo_output", strings.TrimSpace(visudoOutput))
+		slog.WarnContext(
+			ctx,
+			"common: sudoers drop-in failed validation",
+			"err",
+			err,
+			"visudo_output",
+			strings.TrimSpace(visudoOutput),
+		)
+
 		return fmt.Errorf("validating sudoers drop-in: %w", err)
 	}
 
@@ -226,20 +258,37 @@ func EnsurePasswordlessSudo(ctx context.Context, logger *telemetry.Logger, group
 		slog.WarnContext(ctx, "common: creating sudoers temp file", "err", err)
 		return fmt.Errorf("creating sudoers temp file: %w", err)
 	}
+
 	tempPath := tempFile.Name()
 	defer os.Remove(tempPath)
 
 	if _, err := tempFile.WriteString(entry); err != nil {
 		tempFile.Close()
 		slog.WarnContext(ctx, "common: writing sudoers temp file", "err", err)
+
 		return fmt.Errorf("writing sudoers temp file: %w", err)
 	}
+
 	if err := tempFile.Close(); err != nil {
 		slog.WarnContext(ctx, "common: closing sudoers temp file", "err", err)
 		return fmt.Errorf("closing sudoers temp file: %w", err)
 	}
 
-	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "sudo", "install", "-m", "0440", "-o", "root", "-g", group, tempPath, dropInPath); err != nil {
+	if err := cmdexec.RunWithLoggerAndEnv(
+		ctx,
+		logger,
+		nil,
+		"sudo",
+		"install",
+		"-m",
+		"0440",
+		"-o",
+		"root",
+		"-g",
+		group,
+		tempPath,
+		dropInPath,
+	); err != nil {
 		slog.WarnContext(ctx, "common: installing sudoers drop-in", "err", err)
 		return fmt.Errorf("installing sudoers drop-in: %w", err)
 	}
@@ -247,12 +296,33 @@ func EnsurePasswordlessSudo(ctx context.Context, logger *telemetry.Logger, group
 	// Confirm the drop-in actually took effect, since a sudoers.d include rule or
 	// an unusable file could leave passwordless sudo inactive even after a clean
 	// install, and later background work would then still block on a prompt.
-	if err := cmdexec.RunWithLoggerAndEnv(ctx, logger, nil, "sudo", "-k", "-n", "true"); err != nil {
-		slog.WarnContext(ctx, "common: installed sudoers drop-in but passwordless sudo is still inactive", "path", dropInPath, "err", err)
-		return fmt.Errorf("installed sudoers drop-in at %s but passwordless sudo is still inactive: %w", dropInPath, err)
+	if err := cmdexec.RunWithLoggerAndEnv(
+		ctx,
+		logger,
+		nil,
+		"sudo",
+		"-k",
+		"-n",
+		"true",
+	); err != nil {
+		slog.WarnContext(
+			ctx,
+			"common: installed sudoers drop-in but passwordless sudo is still inactive",
+			"path",
+			dropInPath,
+			"err",
+			err,
+		)
+
+		return fmt.Errorf(
+			"installed sudoers drop-in at %s but passwordless sudo is still inactive: %w",
+			dropInPath,
+			err,
+		)
 	}
 
 	InfoContext(ctx, logger, "  enabled passwordless sudo for "+currentUser.Username)
+
 	return nil
 }
 
@@ -261,9 +331,11 @@ func DebianPrivilegePrefix(euid int, sudoAvailable bool, sudoUsable bool) ([]str
 	if euid == 0 {
 		return nil, nil
 	}
+
 	if sudoAvailable && sudoUsable {
 		return []string{"sudo", "-n"}, nil
 	}
+
 	return nil, errDebianPrivilegeUnavailable
 }
 
@@ -277,6 +349,7 @@ func CurrentDebianPrivilegePrefix(ctx context.Context, logger *telemetry.Logger)
 			sudoUsable = HasSudoAccess(ctx, logger)
 		}
 	}
+
 	return DebianPrivilegePrefix(os.Geteuid(), sudoAvailable, sudoUsable)
 }
 
@@ -285,38 +358,54 @@ func DebianPrivilegedCommand(prefix []string, command string, args ...string) (s
 	if len(prefix) == 0 {
 		return command, args
 	}
+
 	prefixedArgs := append([]string{}, prefix[1:]...)
 	prefixedArgs = append(prefixedArgs, command)
 	prefixedArgs = append(prefixedArgs, args...)
+
 	return prefix[0], prefixedArgs
 }
 
 // RunDebianPrivilegedCommand runs a command as root or through passwordless sudo.
-func RunDebianPrivilegedCommand(ctx context.Context, logger *telemetry.Logger, command string, args ...string) error {
+func RunDebianPrivilegedCommand(
+	ctx context.Context,
+	logger *telemetry.Logger,
+	command string,
+	args ...string,
+) error {
 	prefix, err := CurrentDebianPrivilegePrefix(ctx, logger)
 	if err != nil {
 		return err
 	}
+
 	actualCommand, actualArgs := DebianPrivilegedCommand(prefix, command, args...)
 	if err := cmdexec.RunWithLogger(ctx, logger, actualCommand, actualArgs...); err != nil {
 		slog.ErrorContext(ctx, "running privileged command", "command", command, "err", err)
 		return fmt.Errorf("running privileged command %s: %w", command, err)
 	}
+
 	return nil
 }
 
 // OutputDebianPrivilegedCommand runs a command as root or through passwordless sudo and returns its output.
-func OutputDebianPrivilegedCommand(ctx context.Context, logger *telemetry.Logger, command string, args ...string) (string, error) {
+func OutputDebianPrivilegedCommand(
+	ctx context.Context,
+	logger *telemetry.Logger,
+	command string,
+	args ...string,
+) (string, error) {
 	prefix, err := CurrentDebianPrivilegePrefix(ctx, logger)
 	if err != nil {
 		return "", err
 	}
+
 	actualCommand, actualArgs := DebianPrivilegedCommand(prefix, command, args...)
 	out, err := cmdexec.OutputWithLogger(ctx, logger, actualCommand, actualArgs...)
 	if err != nil {
 		slog.ErrorContext(ctx, "running privileged command", "command", command, "err", err)
 		return "", fmt.Errorf("running privileged command %s: %w", command, err)
 	}
+
 	return out, nil
 }
 
@@ -324,6 +413,7 @@ func OutputDebianPrivilegedCommand(ctx context.Context, logger *telemetry.Logger
 func VersionAtLeast(current, minimum string) bool {
 	currentParts := strings.Split(current, ".")
 	minimumParts := strings.Split(minimum, ".")
+
 	parts := max(len(currentParts), len(minimumParts))
 	for i := range parts {
 		cur := 0
@@ -331,15 +421,19 @@ func VersionAtLeast(current, minimum string) bool {
 		if i < len(currentParts) {
 			cur, _ = strconv.Atoi(strings.Split(currentParts[i], "-")[0])
 		}
+
 		if i < len(minimumParts) {
 			minPart, _ = strconv.Atoi(strings.Split(minimumParts[i], "-")[0])
 		}
+
 		if cur > minPart {
 			return true
 		}
+
 		if cur < minPart {
 			return false
 		}
 	}
+
 	return true
 }

@@ -74,17 +74,29 @@ func ParseRuleSource(content string) (RuleSource, error) {
 	if !strings.HasPrefix(content, "---\n") {
 		return emptyRuleSource(content), nil
 	}
+
 	endMarker := "\n---\n"
 	frontmatterEnd := strings.Index(content[4:], endMarker)
 	if frontmatterEnd == -1 {
-		return RuleSource{Description: "", AppliesTo: nil, Always: false, Body: ""}, fmt.Errorf("rule source front matter missing closing delimiter")
+		return RuleSource{
+			Description: "",
+			AppliesTo:   nil,
+			Always:      false,
+			Body:        "",
+		}, fmt.Errorf("rule source front matter missing closing delimiter")
 	}
 
 	var raw ruleSourceYAML
 	rawFrontmatter := content[4 : 4+frontmatterEnd]
 	if err := yaml.Unmarshal([]byte(rawFrontmatter), &raw); err != nil {
 		slog.Warn("compilation: ParseRuleSource yaml failed", "err", err)
-		return RuleSource{Description: "", AppliesTo: nil, Always: false, Body: ""}, fmt.Errorf("parsing rule source front matter: %w", err)
+
+		return RuleSource{
+			Description: "",
+			AppliesTo:   nil,
+			Always:      false,
+			Body:        "",
+		}, fmt.Errorf("parsing rule source front matter: %w", err)
 	}
 
 	bodyStart := 4 + frontmatterEnd + len(endMarker)
@@ -99,9 +111,11 @@ func ParseRuleSource(content string) (RuleSource, error) {
 	} else if raw.AlwaysApply != nil {
 		rule.Always = *raw.AlwaysApply
 	}
+
 	if len(rule.AppliesTo) == 0 && strings.TrimSpace(raw.Globs) != "" {
 		rule.AppliesTo = splitGlobs(raw.Globs)
 	}
+
 	return rule, nil
 }
 
@@ -111,6 +125,7 @@ func emptyRuleSource(body string) RuleSource {
 
 func splitGlobs(value string) []string {
 	parts := strings.Split(value, ",")
+
 	globs := make([]string, 0, len(parts))
 	for _, part := range parts {
 		trimmed := strings.TrimSpace(part)
@@ -118,6 +133,7 @@ func splitGlobs(value string) []string {
 			globs = append(globs, trimmed)
 		}
 	}
+
 	return globs
 }
 
@@ -137,6 +153,7 @@ func (r RuleSource) applyToString() string {
 	if r.Always {
 		return "**/*"
 	}
+
 	return r.globsString()
 }
 
@@ -158,8 +175,10 @@ func (r RuleSource) renderCursor() (string, error) {
 		if body == "" {
 			return "", nil
 		}
+
 		return body + "\n", nil
 	}
+
 	frontmatter := cursorRuleFrontmatter{
 		Description: r.Description,
 		Globs:       r.globsString(),
@@ -169,9 +188,11 @@ func (r RuleSource) renderCursor() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	if body == "" {
 		return renderedFrontmatter + "\n", nil
 	}
+
 	return renderedFrontmatter + "\n" + body + "\n", nil
 }
 
@@ -181,16 +202,20 @@ func (r RuleSource) renderClaude() (string, error) {
 		if body == "" {
 			return "", nil
 		}
+
 		return body + "\n", nil
 	}
+
 	frontmatter := claudeRuleFrontmatter{Paths: r.AppliesTo}
 	renderedFrontmatter, err := marshalFrontmatter(frontmatter)
 	if err != nil {
 		return "", err
 	}
+
 	if body == "" {
 		return renderedFrontmatter + "\n", nil
 	}
+
 	return renderedFrontmatter + "\n" + body + "\n", nil
 }
 
@@ -206,17 +231,22 @@ func (r RuleSource) RenderCopilot(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	if body == "" {
 		return renderedFrontmatter + "\n" + GeneratedAgentHTMLMarker + "\n", nil
 	}
+
 	return renderedFrontmatter + "\n" + GeneratedAgentHTMLMarker + "\n\n" + body + "\n", nil
 }
 
-func marshalFrontmatter[T cursorRuleFrontmatter | claudeRuleFrontmatter | copilotRuleFrontmatter](metadata T) (string, error) {
+func marshalFrontmatter[T cursorRuleFrontmatter | claudeRuleFrontmatter | copilotRuleFrontmatter](
+	metadata T,
+) (string, error) {
 	content, err := yaml.Marshal(metadata)
 	if err != nil {
 		slog.Warn("compilation: marshalFrontmatter yaml failed", "err", err)
 		return "", fmt.Errorf("marshaling front matter: %w", err)
 	}
+
 	return "---\n" + string(content) + "---\n", nil
 }

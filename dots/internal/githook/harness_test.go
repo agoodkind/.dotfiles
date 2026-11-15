@@ -19,15 +19,18 @@ func TestHarnessActiveIgnoresCursorAndDotfilesShell(t *testing.T) {
 func TestHarnessActiveDetectsAgentCLIs(t *testing.T) {
 	cases := []string{"CLAUDECODE", "CODEX_CI", "GEMINI_CLI"}
 	for _, name := range cases {
-		t.Run(name, func(t *testing.T) {
-			t.Setenv("CLAUDECODE", "")
-			t.Setenv("CODEX_CI", "")
-			t.Setenv("GEMINI_CLI", "")
-			t.Setenv(name, "1")
-			if !harnessActive() {
-				t.Fatalf("harnessActive() = false, want true when %s is set", name)
-			}
-		})
+		t.Run(
+			name,
+			func(t *testing.T) {
+				t.Setenv("CLAUDECODE", "")
+				t.Setenv("CODEX_CI", "")
+				t.Setenv("GEMINI_CLI", "")
+				t.Setenv(name, "1")
+				if !harnessActive() {
+					t.Fatalf("harnessActive() = false, want true when %s is set", name)
+				}
+			},
+		)
 	}
 }
 

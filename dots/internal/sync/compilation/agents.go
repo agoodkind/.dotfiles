@@ -52,7 +52,15 @@ func ValidateAgentFiles(agents map[string]AgentSource, dst string, format AgentT
 			return err
 		}
 		if _, err := renderAgent(agents[name], format); err != nil {
-			slog.Warn("compilation: validating agent render", "name", name, "format", format, "err", err)
+			slog.Warn(
+				"compilation: validating agent render",
+				"name",
+				name,
+				"format",
+				format,
+				"err",
+				err,
+			)
 			return fmt.Errorf("rendering agent %s: %w", name, err)
 		}
 		if err := validateNoNestedSymlink(dst, filepath.Join(dst, name+extension)); err != nil {
@@ -62,11 +70,15 @@ func ValidateAgentFiles(agents map[string]AgentSource, dst string, format AgentT
 	return nil
 }
 
-func RenderAgentFiles(agents map[string]AgentSource, dst string, format AgentTargetFormat) error {
+func RenderAgentFiles(agents map[string]AgentSource, dst string, format AgentTargetFormat) (
+	ChangeReport,
+	error,
+) {
+	report := emptyChangeReport()
 	slog.Info("compilation: rendering agent files", "dest", dst, "format", string(format))
 	if err := os.MkdirAll(dst, 0o755); err != nil {
 		slog.Warn("compilation: creating agent directory", "dest", dst, "err", err)
-		return fmt.Errorf("creating directory %s: %w", dst, err)
+		return report, fmt.Errorf("creating directory %s: %w", dst, err)
 	}
 	names := make([]string, 0, len(agents))
 	for name := range agents {
@@ -75,19 +87,19 @@ func RenderAgentFiles(agents map[string]AgentSource, dst string, format AgentTar
 	sort.Strings(names)
 	extension, err := agentExtension(format)
 	if err != nil {
-		return err
+		return report, err
 	}
 	activeFiles := make(map[string]struct{}, len(names))
 	renderedAgents := make(map[string]string, len(names))
 	for _, name := range names {
 		if err := validateAgentName(name); err != nil {
-			return err
+			return report, err
 		}
 		fileName := name + extension
 		activeFiles[fileName] = struct{}{}
 		rendered, err := renderAgent(agents[name], format)
 		if err != nil {
-			return fmt.Errorf("rendering agent %s: %w", name, err)
+			return report, fmt.Errorf("rendering agent %s: %w", name, err)
 		}
 		renderedAgents[fileName] = rendered
 	}
@@ -96,14 +108,21 @@ func RenderAgentFiles(agents map[string]AgentSource, dst string, format AgentTar
 		targetPath := filepath.Join(dst, fileName)
 		if isSymlink(targetPath) {
 			if err := os.Remove(targetPath); err != nil {
-				return fmt.Errorf("removing symlink %s: %w", targetPath, err)
+				return report, fmt.Errorf("removing symlink %s: %w", targetPath, err)
 			}
 		}
-		if err := writeFileIfChanged(targetPath, []byte(renderedAgents[fileName])); err != nil {
-			return err
+		outcome, err := writeFileIfChanged(targetPath, []byte(renderedAgents[fileName]))
+		if err != nil {
+			return report, err
 		}
+		report.recordWrite(targetPath, outcome)
 	}
-	return removeMissingManagedFiles(dst, extension, activeFiles)
+	removeReport, err := removeMissingManagedFiles(dst, extension, activeFiles)
+	if err != nil {
+		return report, err
+	}
+	report.Merge(removeReport)
+	return report, nil
 }
 
 func agentExtension(format AgentTargetFormat) (string, error) {
@@ -122,15 +141,40 @@ func agentExtension(format AgentTargetFormat) (string, error) {
 func renderAgent(agent AgentSource, format AgentTargetFormat) (string, error) {
 	switch format {
 	case AgentTargetClaude:
-		return renderMarkdownAgent(agent, false, readOnlyTools(agent.ReadOnly, []string{"Read", "Grep", "Glob", "WebFetch", "WebSearch"}))
+		return renderMarkdownAgent(
+			agent,
+			false,
+			readOnlyTools(
+				agent.ReadOnly,
+				[]string{"Read", "Grep", "Glob", "WebFetch", "WebSearch"},
+			),
+		)
 	case AgentTargetCursor:
 		return renderMarkdownAgent(agent, agent.ReadOnly, nil)
 	case AgentTargetGemini:
-		return renderMarkdownAgent(agent, false, readOnlyTools(agent.ReadOnly, []string{"read_file", "grep_search", "glob", "list_directory", "web_fetch", "google_web_search"}))
+		return renderMarkdownAgent(
+			agent,
+			false,
+			readOnlyTools(
+				agent.ReadOnly,
+				[]string{
+					"read_file",
+					"grep_search",
+					"glob",
+					"list_directory",
+					"web_fetch",
+					"google_web_search",
+				},
+			),
+		)
 	case AgentTargetCodex:
 		return renderCodexAgent(agent)
 	case AgentTargetCopilot:
-		return renderMarkdownAgent(agent, false, readOnlyTools(agent.ReadOnly, []string{"read", "search"}))
+		return renderMarkdownAgent(
+			agent,
+			false,
+			readOnlyTools(agent.ReadOnly, []string{"read", "search"}),
+		)
 	default:
 		return "", fmt.Errorf("unknown agent target format %q", format)
 	}

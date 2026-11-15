@@ -53,6 +53,7 @@ function _zsh_autosuggest_bind_widgets() { :; }
 		if err := os.MkdirAll(pluginDirectory, 0o755); err != nil {
 			t.Fatalf("creating fake plugin directory %s: %v", plugin.directory, err)
 		}
+
 		pluginPath := filepath.Join(pluginDirectory, plugin.file)
 		if err := os.WriteFile(pluginPath, []byte(plugin.body), 0o644); err != nil {
 			t.Fatalf("writing fake plugin %s: %v", plugin.directory, err)
@@ -63,6 +64,7 @@ function _zsh_autosuggest_bind_widgets() { :; }
 	if err := os.MkdirAll(binDirectory, 0o755); err != nil {
 		t.Fatalf("creating fake bin directory: %v", err)
 	}
+
 	fzfPath := filepath.Join(binDirectory, "fzf")
 	fzfScript := `#!/usr/bin/env bash
 if [[ "$1" == "--zsh" ]]; then
@@ -175,6 +177,7 @@ print -r -- "zinit deferred loaders work with noglob"
 	if err != nil {
 		t.Fatalf("running zinit noglob regression script: %v\n%s", err, output)
 	}
+
 	if !strings.Contains(string(output), "zinit deferred loaders work with noglob") {
 		t.Fatalf("regression script output missing success marker:\n%s", output)
 	}
@@ -198,16 +201,12 @@ print -r -- "log builtin disabled"
 	}
 
 	cmd := exec.Command("zsh", "-f", scriptPath)
-	cmd.Env = append(
-		os.Environ(),
-		"DOTDOTFILES="+repoRoot,
-		"HOME="+homeDirectory,
-		"ZSH_PERF=",
-	)
+	cmd.Env = append(os.Environ(), "DOTDOTFILES="+repoRoot, "HOME="+homeDirectory, "ZSH_PERF=")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("running zshenv log script: %v\n%s", err, output)
 	}
+
 	if !strings.Contains(string(output), "log builtin disabled") {
 		t.Fatalf("zshenv log script output missing success marker:\n%s", output)
 	}
@@ -217,13 +216,18 @@ func TestAgentShellGlobMatchesBash(t *testing.T) {
 	repoRoot := repositoryRoot(t)
 	homeDirectory := t.TempDir()
 	workDirectory := t.TempDir()
+
 	for _, name := range []string{"first.txt", "second.txt"} {
 		if err := os.WriteFile(filepath.Join(workDirectory, name), nil, 0o644); err != nil {
 			t.Fatalf("writing %s: %v", name, err)
 		}
 	}
 
-	cmd := exec.Command("zsh", "-c", "print -r -- *.txt 'unmatched:' missing_*.xyz url?key=value[1]")
+	cmd := exec.Command(
+		"zsh",
+		"-c",
+		"print -r -- *.txt 'unmatched:' missing_*.xyz url?key=value[1]",
+	)
 	cmd.Dir = workDirectory
 	cmd.Env = append(
 		os.Environ(),
@@ -250,6 +254,7 @@ func repositoryRoot(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("getting working directory: %v", err)
 	}
+
 	for {
 		pluginsPath := filepath.Join(directory, "zshrc", "core", "plugins.zsh")
 		zinitPath := filepath.Join(directory, "lib", "zinit", "zinit.zsh")
@@ -263,6 +268,7 @@ func repositoryRoot(t *testing.T) string {
 		if parent == directory {
 			t.Fatal("repository root with zshrc/core/plugins.zsh was not found")
 		}
+
 		directory = parent
 	}
 }

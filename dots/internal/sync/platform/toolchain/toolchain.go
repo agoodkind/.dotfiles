@@ -18,7 +18,12 @@ import (
 )
 
 type commandRunner interface {
-	RunWithLogger(ctx context.Context, logger *telemetry.Logger, command string, args ...string) error
+	RunWithLogger(
+		ctx context.Context,
+		logger *telemetry.Logger,
+		command string,
+		args ...string,
+	) error
 }
 
 type commandLookup interface {
@@ -26,7 +31,11 @@ type commandLookup interface {
 }
 
 type downloader interface {
-	DownloadToTempFile(ctx context.Context, logger *telemetry.Logger, fileURL string) (string, error)
+	DownloadToTempFile(
+		ctx context.Context,
+		logger *telemetry.Logger,
+		fileURL string,
+	) (string, error)
 }
 
 type fileSystem interface {
@@ -65,6 +74,7 @@ func New(deps Deps) *Installer {
 // NewRealDeps returns production dependencies for toolchain setup.
 func NewRealDeps() Deps {
 	productionDeps := realDeps{}
+
 	return Deps{
 		Commands:   productionDeps,
 		Lookup:     productionDeps,
@@ -94,6 +104,7 @@ func (installer *Installer) EnsureBootstrapPathEntries() {
 		entries = append(entries, filepath.Join(home, ".local", "bin"))
 		entries = append(entries, filepath.Join(home, ".cargo", "bin"))
 	}
+
 	if goLocalRoot != "" {
 		entries = append(entries, filepath.Join(goLocalRoot, "bin"))
 	}
@@ -102,33 +113,51 @@ func (installer *Installer) EnsureBootstrapPathEntries() {
 }
 
 // InstallRustupIfNeeded installs rustup when Rust is not already available.
-func (installer *Installer) InstallRustupIfNeeded(ctx context.Context, logger *telemetry.Logger) error {
+func (installer *Installer) InstallRustupIfNeeded(
+	ctx context.Context,
+	logger *telemetry.Logger,
+) error {
 	slog.InfoContext(ctx, "platform/toolchain: InstallRustupIfNeeded")
 	if installer.deps.Lookup.HasCommand("rustup") {
 		return nil
 	}
+
 	if installer.deps.Lookup.HasCommand("cargo") && installer.deps.Lookup.HasCommand("rustc") {
 		return nil
 	}
 
-	scriptPath, err := installer.deps.Downloader.DownloadToTempFile(ctx, logger, "https://sh.rustup.rs")
+	scriptPath, err := installer.deps.Downloader.DownloadToTempFile(
+		ctx,
+		logger,
+		"https://sh.rustup.rs",
+	)
 	if err != nil {
 		slog.WarnContext(ctx, "downloading tool", "err", err)
 		return fmt.Errorf("downloading tool: %w", err)
 	}
 	defer installer.deps.Files.Remove(scriptPath)
 
-	if err := installer.deps.Commands.RunWithLogger(ctx, logger, "sh", scriptPath, "-y"); err != nil {
+	if err := installer.deps.Commands.RunWithLogger(
+		ctx,
+		logger,
+		"sh",
+		scriptPath,
+		"-y",
+	); err != nil {
 		slog.WarnContext(ctx, "running sh", "err", err)
 		return fmt.Errorf("running sh: %w", err)
 	}
 
 	installer.EnsureBootstrapPathEntries()
+
 	return nil
 }
 
 // InstallGoToolsIfNeeded installs missing Go and Cargo tools from the catalog.
-func (installer *Installer) InstallGoToolsIfNeeded(ctx context.Context, logger *telemetry.Logger) error {
+func (installer *Installer) InstallGoToolsIfNeeded(
+	ctx context.Context,
+	logger *telemetry.Logger,
+) error {
 	if !installer.deps.Lookup.HasCommand("go") {
 		return nil
 	}
@@ -144,24 +173,34 @@ func (installer *Installer) InstallGoToolsIfNeeded(ctx context.Context, logger *
 		if installer.deps.Lookup.HasCommand(bin) {
 			continue
 		}
+
 		common.InfoContextf(ctx, logger, "  installing go tool %s", bin)
-		if err := installer.deps.Commands.RunWithLogger(ctx, logger, "go", "install", pkg); err != nil {
+		if err := installer.deps.Commands.RunWithLogger(
+			ctx,
+			logger,
+			"go",
+			"install",
+			pkg,
+		); err != nil {
 			slog.WarnContext(ctx, "running go install", "err", err)
 			return fmt.Errorf("running go install: %w", err)
 		}
 	}
 
 	_ = installer.installCargoToolsIfNeeded(ctx, cfg, logger)
+
 	return nil
 }
 
 func (installer *Installer) prependPathEntries(entries []string) {
 	currentPath := installer.deps.Env.Getenv("PATH")
 	seen := make(map[string]struct{})
+
 	for pathEntry := range strings.SplitSeq(currentPath, ":") {
 		if pathEntry == "" {
 			continue
 		}
+
 		seen[pathEntry] = struct{}{}
 	}
 
@@ -170,12 +209,15 @@ func (installer *Installer) prependPathEntries(entries []string) {
 		if entry == "" {
 			continue
 		}
+
 		if _, ok := seen[entry]; ok {
 			continue
 		}
+
 		seen[entry] = struct{}{}
 		newEntries = append(newEntries, entry)
 	}
+
 	if len(newEntries) == 0 {
 		return
 	}
@@ -185,23 +227,36 @@ func (installer *Installer) prependPathEntries(entries []string) {
 	_ = installer.deps.Env.Setenv("PATH", strings.Join(updatedEntries, ":"))
 }
 
-func (installer *Installer) installCargoToolsIfNeeded(ctx context.Context, cfg *catalog.PackageConfig, logger *telemetry.Logger) error {
+func (installer *Installer) installCargoToolsIfNeeded(
+	ctx context.Context,
+	cfg *catalog.PackageConfig,
+	logger *telemetry.Logger,
+) error {
 	// The injected lookup keeps tests deterministic; tools.CargoAvailable adds the
 	// real-host case where cargo sits at $CARGO_HOME/$HOME/.cargo off PATH so the
 	// rust bootstrap's freshly installed cargo is not silently skipped.
 	if !installer.deps.Lookup.HasCommand("cargo") && !tools.CargoAvailable() {
 		return nil
 	}
+
 	if len(cfg.CargoPackages) == 0 {
 		return nil
 	}
 
 	cargo := tools.CargoExecutable()
+
 	for _, tool := range cfg.CargoPackages {
 		if installer.deps.Lookup.HasCommand(tool) {
 			continue
 		}
-		if err := installer.deps.Commands.RunWithLogger(ctx, logger, cargo, "install", tool); err != nil {
+
+		if err := installer.deps.Commands.RunWithLogger(
+			ctx,
+			logger,
+			cargo,
+			"install",
+			tool,
+		); err != nil {
 			slog.WarnContext(ctx, "running cargo install", "err", err)
 			return fmt.Errorf("running cargo install: %w", err)
 		}
@@ -211,6 +266,7 @@ func (installer *Installer) installCargoToolsIfNeeded(ctx context.Context, cfg *
 		if tool == "" || repo == "" || installer.deps.Lookup.HasCommand(tool) {
 			continue
 		}
+
 		parts := strings.SplitN(repo, "|", 2)
 		args := []string{"install", "--git", parts[0]}
 		if len(parts) == 2 {
@@ -219,6 +275,7 @@ func (installer *Installer) installCargoToolsIfNeeded(ctx context.Context, cfg *
 				args = append(args, "--features", features)
 			}
 		}
+
 		if err := installer.deps.Commands.RunWithLogger(ctx, logger, cargo, args...); err != nil {
 			slog.WarnContext(ctx, "running cargo install", "err", err)
 			return fmt.Errorf("running cargo install: %w", err)
@@ -230,11 +287,17 @@ func (installer *Installer) installCargoToolsIfNeeded(ctx context.Context, cfg *
 
 type realDeps struct{}
 
-func (realDeps) RunWithLogger(ctx context.Context, logger *telemetry.Logger, command string, args ...string) error {
+func (realDeps) RunWithLogger(
+	ctx context.Context,
+	logger *telemetry.Logger,
+	command string,
+	args ...string,
+) error {
 	if err := cmdexec.RunWithLogger(ctx, logger, command, args...); err != nil {
 		slog.WarnContext(ctx, "platform/toolchain: run command", "command", command, "err", err)
 		return fmt.Errorf("run %s: %w", command, err)
 	}
+
 	return nil
 }
 
@@ -242,12 +305,17 @@ func (realDeps) HasCommand(name string) bool {
 	return runner.HasCommand(name)
 }
 
-func (realDeps) DownloadToTempFile(ctx context.Context, logger *telemetry.Logger, fileURL string) (string, error) {
+func (realDeps) DownloadToTempFile(
+	ctx context.Context,
+	logger *telemetry.Logger,
+	fileURL string,
+) (string, error) {
 	path, err := tools.DownloadToTempFile(ctx, logger, fileURL)
 	if err != nil {
 		slog.WarnContext(ctx, "platform/toolchain: download file", "url", fileURL, "err", err)
 		return "", fmt.Errorf("download %s: %w", fileURL, err)
 	}
+
 	return path, nil
 }
 
@@ -257,6 +325,7 @@ func (realDeps) Remove(path string) error {
 		slog.Warn("platform/toolchain: remove file", "path", path, "err", err)
 		return fmt.Errorf("remove %s: %w", path, err)
 	}
+
 	return nil
 }
 
@@ -269,6 +338,7 @@ func (realDeps) Setenv(key string, value string) error {
 		slog.Warn("platform/toolchain: setenv", "key", key, "err", err)
 		return fmt.Errorf("setenv %s: %w", key, err)
 	}
+
 	return nil
 }
 

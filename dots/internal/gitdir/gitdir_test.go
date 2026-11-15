@@ -25,17 +25,28 @@ func TestResolveDistinguishesWorktreeFromCanonicalCheckout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Resolve(canonical) returned error: %v", err)
 	}
+
 	if canonical.IsWorktree {
-		t.Fatalf("Resolve(canonical).IsWorktree = true, want false (gitDir=%s commonDir=%s)", canonical.GitDir, canonical.CommonDir)
+		t.Fatalf(
+			"Resolve(canonical).IsWorktree = true, want false (gitDir=%s commonDir=%s)",
+			canonical.GitDir,
+			canonical.CommonDir,
+		)
 	}
 
 	linked, err := Resolve(context.Background(), worktreeRoot, nil)
 	if err != nil {
 		t.Fatalf("Resolve(worktree) returned error: %v", err)
 	}
+
 	if !linked.IsWorktree {
-		t.Fatalf("Resolve(worktree).IsWorktree = false, want true (gitDir=%s commonDir=%s)", linked.GitDir, linked.CommonDir)
+		t.Fatalf(
+			"Resolve(worktree).IsWorktree = false, want true (gitDir=%s commonDir=%s)",
+			linked.GitDir,
+			linked.CommonDir,
+		)
 	}
+
 	if linked.CommonDir != canonical.CommonDir {
 		t.Fatalf("worktree common dir = %s, want %s", linked.CommonDir, canonical.CommonDir)
 	}
@@ -69,7 +80,12 @@ func TestLinkedWorktreeReportsFalseOutsideGit(t *testing.T) {
 func TestModulesDirPointsAtSharedGitDir(t *testing.T) {
 	t.Parallel()
 
-	layout := Info{Root: "/repo", GitDir: "/repo/.git/worktrees/x", CommonDir: "/repo/.git", IsWorktree: true}
+	layout := Info{
+		Root:       "/repo",
+		GitDir:     "/repo/.git/worktrees/x",
+		CommonDir:  "/repo/.git",
+		IsWorktree: true,
+	}
 	if got, want := layout.ModulesDir(), filepath.Join("/repo/.git", "modules"); got != want {
 		t.Fatalf("ModulesDir() = %s, want %s", got, want)
 	}
@@ -78,6 +94,7 @@ func TestModulesDirPointsAtSharedGitDir(t *testing.T) {
 	if got := empty.ModulesDir(); got != "" {
 		t.Fatalf("ModulesDir() on zero Info = %s, want empty", got)
 	}
+
 	if got := empty.MainWorktree(); got != "" {
 		t.Fatalf("MainWorktree() on zero Info = %s, want empty", got)
 	}
@@ -93,15 +110,22 @@ func newTestRepo(t *testing.T) string {
 	if err := os.MkdirAll(hooksDirectory, 0o755); err != nil {
 		t.Fatalf("creating hooks directory: %v", err)
 	}
+
 	runGit(t, repoRoot, "config", "core.hooksPath", hooksDirectory)
 	runGit(t, repoRoot, "config", "user.name", "Test")
 	runGit(t, repoRoot, "config", "user.email", "test@example.invalid")
 	runGit(t, repoRoot, "config", "commit.gpgsign", "false")
-	if err := os.WriteFile(filepath.Join(repoRoot, "README.md"), []byte("test\n"), 0o600); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(repoRoot, "README.md"),
+		[]byte("test\n"),
+		0o600,
+	); err != nil {
 		t.Fatalf("writing README.md: %v", err)
 	}
+
 	runGit(t, repoRoot, "add", "README.md")
 	runGit(t, repoRoot, "commit", "-m", "Initial commit")
+
 	return repoRoot
 }
 

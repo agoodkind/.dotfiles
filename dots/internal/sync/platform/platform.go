@@ -81,16 +81,19 @@ func NewRuntimeHostSource(deps RuntimeHostSourceDeps) *RuntimeHostSource {
 		if deps.GOOS == nil {
 			deps.GOOS = runtimeDeps
 		}
+
 		if deps.Files == nil {
 			deps.Files = runtimeDeps
 		}
 	}
+
 	return &RuntimeHostSource{deps: deps}
 }
 
 // NewRealHostSourceDeps returns production dependencies for host detection.
 func NewRealHostSourceDeps() RuntimeHostSourceDeps {
 	runtimeDeps := realHostSourceDeps{}
+
 	return RuntimeHostSourceDeps{
 		GOOS:  runtimeDeps,
 		Files: runtimeDeps,
@@ -124,7 +127,12 @@ func (source *RuntimeHostSource) Host(_ context.Context) Host {
 }
 
 // RunInstall selects the first matching installer and runs it.
-func RunInstall(ctx context.Context, hostSource HostSource, installers []Installer, request Request) error {
+func RunInstall(
+	ctx context.Context,
+	hostSource HostSource,
+	installers []Installer,
+	request Request,
+) error {
 	host := Host{
 		GOOS:         "",
 		Distribution: DistributionUnknown,
@@ -132,21 +140,33 @@ func RunInstall(ctx context.Context, hostSource HostSource, installers []Install
 	if hostSource != nil {
 		host = hostSource.Host(ctx)
 	}
+
 	request.Host = host
 
 	for _, installer := range installers {
 		if !installer.Supports(host) {
 			continue
 		}
+
 		common.InfoContextf(ctx, request.Logger, "  Running %s setup", installer.Name())
 		if err := installer.Install(ctx, request); err != nil {
-			slog.WarnContext(ctx, "platform: installer failed", "name", installer.Name(), "err", err)
+			slog.WarnContext(
+				ctx,
+				"platform: installer failed",
+				"name",
+				installer.Name(),
+				"err",
+				err,
+			)
+
 			return fmt.Errorf("run %s installer: %w", installer.Name(), err)
 		}
+
 		return nil
 	}
 
 	common.WarnContext(ctx, request.Logger, "  No OS-specific setup handler for this platform")
+
 	return nil
 }
 
@@ -162,5 +182,6 @@ func (realHostSourceDeps) ReadFile(path string) ([]byte, error) {
 		slog.Warn("platform: read file", "path", path, "err", err)
 		return nil, fmt.Errorf("read %s: %w", path, err)
 	}
+
 	return content, nil
 }

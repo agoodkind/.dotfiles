@@ -42,15 +42,18 @@ func cacheIsStale(cacheModTime time.Time, baseFile string, sourceDir string) boo
 			sources = append(sources, filepath.Join(sourceDir, entry.Name()))
 		}
 	}
+
 	for _, source := range sources {
 		info, err := os.Stat(filepath.Clean(source))
 		if err != nil {
 			continue
 		}
+
 		if !info.ModTime().Before(cacheModTime) {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -59,11 +62,14 @@ func Rebuild(ctx context.Context, dispatchLogger *telemetry.Logger) error {
 	if runtime.GOOS != "darwin" {
 		return nil
 	}
+
 	if _, err := os.Stat("/usr/libexec/path_helper"); err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
+
 		slog.WarnContext(ctx, "pathcache: stat path_helper", slog.Any("error", err))
+
 		return fmt.Errorf("stat path_helper: %w", err)
 	}
 
@@ -72,6 +78,7 @@ func Rebuild(ctx context.Context, dispatchLogger *telemetry.Logger) error {
 		slog.WarnContext(ctx, "pathcache: creating path cache dir", slog.Any("error", err))
 		return fmt.Errorf("creating path cache directory: %w", err)
 	}
+
 	cacheFile := filepath.Join(cacheDir, "path_cache.zsh")
 
 	cacheInfo, err := os.Stat(filepath.Clean(cacheFile))
@@ -86,9 +93,11 @@ func Rebuild(ctx context.Context, dispatchLogger *telemetry.Logger) error {
 		slog.WarnContext(ctx, "pathcache: running path_helper", slog.Any("error", err))
 		return fmt.Errorf("running path_helper: %w", err)
 	}
+
 	if err := os.WriteFile(filepath.Clean(cacheFile), []byte(output), 0o600); err != nil {
 		slog.WarnContext(ctx, "pathcache: writing path cache", slog.Any("error", err))
 		return fmt.Errorf("writing path cache: %w", err)
 	}
+
 	return nil
 }

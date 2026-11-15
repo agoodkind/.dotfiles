@@ -22,7 +22,12 @@ import (
 )
 
 type commandRunner interface {
-	RunWithLogger(ctx context.Context, logger *telemetry.Logger, command string, args ...string) error
+	RunWithLogger(
+		ctx context.Context,
+		logger *telemetry.Logger,
+		command string,
+		args ...string,
+	) error
 	CommandSucceeds(ctx context.Context, command string, args ...string) bool
 }
 
@@ -31,7 +36,11 @@ type commandLookup interface {
 }
 
 type downloader interface {
-	DownloadToTempFile(ctx context.Context, logger *telemetry.Logger, fileURL string) (string, error)
+	DownloadToTempFile(
+		ctx context.Context,
+		logger *telemetry.Logger,
+		fileURL string,
+	) (string, error)
 }
 
 type fileSystem interface {
@@ -87,6 +96,7 @@ func New(deps Deps, toolchainInstaller *toolchain.Installer) platform.Installer 
 // NewRealDeps returns production dependencies for macOS setup.
 func NewRealDeps() Deps {
 	productionDeps := realDeps{}
+
 	return Deps{
 		Commands: productionDeps,
 		Lookup:   productionDeps,
@@ -118,38 +128,61 @@ func (installer *Installer) Install(ctx context.Context, request platform.Reques
 
 	if err := common.EnsurePasswordlessSudo(ctx, request.Logger, "wheel"); err != nil {
 		slog.WarnContext(ctx, "platform/macos: enable passwordless sudo", "err", err)
-		common.WarnContext(ctx, request.Logger, "  failed to enable passwordless sudo; continuing without it")
-		_ = telemetry.Notify("warn", "failed to enable passwordless sudo", common.SyncLogPath(), telemetry.RunID(ctx))
+		common.WarnContext(
+			ctx,
+			request.Logger,
+			"  failed to enable passwordless sudo; continuing without it",
+		)
+		_ = telemetry.Notify(
+			"warn",
+			"failed to enable passwordless sudo",
+			common.SyncLogPath(),
+			telemetry.RunID(ctx),
+		)
 	}
+
 	if err := installer.ensureHomebrewInstalled(ctx, request.Logger); err != nil {
 		return err
 	}
+
 	if err := installer.runMacDefaults(ctx, request.Logger); err != nil {
 		return err
 	}
+
 	if installer.deps.Lookup.HasCommand("brew") {
 		_ = installer.deps.Commands.RunWithLogger(ctx, request.Logger, "brew", "cleanup")
 	}
+
 	if err := installer.installMacPackages(ctx, request.StrictMode, request.Logger); err != nil {
 		return err
 	}
+
 	if err := installer.toolchain.InstallRustupIfNeeded(ctx, request.Logger); err != nil {
 		slog.WarnContext(ctx, "platform/macos: install rustup", "err", err)
 		return fmt.Errorf("install rustup: %w", err)
 	}
+
 	if err := installer.installTouchIDHelper(ctx, request.Logger); err != nil {
 		return err
 	}
+
 	return installer.ensureMacPatchIfNeeded(ctx, request.Logger)
 }
 
-func (installer *Installer) ensureHomebrewInstalled(ctx context.Context, logger *telemetry.Logger) error {
+func (installer *Installer) ensureHomebrewInstalled(
+	ctx context.Context,
+	logger *telemetry.Logger,
+) error {
 	slog.InfoContext(ctx, "platform/macos: ensureHomebrewInstalled")
 	if installer.deps.Lookup.HasCommand("brew") {
 		return nil
 	}
 
-	scriptPath, err := installer.deps.Download.DownloadToTempFile(ctx, logger, "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh")
+	scriptPath, err := installer.deps.Download.DownloadToTempFile(
+		ctx,
+		logger,
+		"https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh",
+	)
 	if err != nil {
 		slog.WarnContext(ctx, "downloading tool", "err", err)
 		return fmt.Errorf("downloading tool: %w", err)
@@ -170,14 +203,26 @@ func (installer *Installer) runMacDefaults(ctx context.Context, logger *telemetr
 		{"defaults", "write", "com.apple.finder", "ShowPathbar", "-bool", "true"},
 		{"defaults", "write", "com.apple.finder", "ShowStatusBar", "-bool", "true"},
 		{"defaults", "write", "NSGlobalDomain", "AppleShowAllExtensions", "-bool", "true"},
-		{"defaults", "write", "com.apple.desktopservices", "DSDontWriteNetworkStores", "-bool", "true"},
+		{
+			"defaults",
+			"write",
+			"com.apple.desktopservices",
+			"DSDontWriteNetworkStores",
+			"-bool",
+			"true",
+		},
 		{"defaults", "write", "com.apple.desktopservices", "DSDontWriteUSBStores", "-bool", "true"},
 		{"defaults", "write", "com.apple.dock", "mouse-over-hilite-stack", "-bool", "true"},
 		{"defaults", "write", "com.apple.dock", "mineffect", "-string", "suck"},
 	}
 
 	for _, args := range commands {
-		if err := installer.deps.Commands.RunWithLogger(ctx, logger, args[0], args[1:]...); err != nil {
+		if err := installer.deps.Commands.RunWithLogger(
+			ctx,
+			logger,
+			args[0],
+			args[1:]...,
+		); err != nil {
 			slog.WarnContext(ctx, "running defaults", "err", err)
 			return fmt.Errorf("running defaults: %w", err)
 		}
@@ -185,14 +230,35 @@ func (installer *Installer) runMacDefaults(ctx context.Context, logger *telemetr
 
 	screenshotDir := catalog.DefaultMacConfig().ScreenshotDir
 	if screenshotDir != "" {
-		shotDir := os.Expand(screenshotDir, func(key string) string {
-			return installer.deps.Env.Getenv(key)
-		})
+		shotDir := os.Expand(
+			screenshotDir,
+			func(key string) string {
+				return installer.deps.Env.Getenv(key)
+			},
+		)
 		if err := installer.deps.Files.MkdirAll(filepath.Clean(shotDir), 0o755); err == nil {
-			_ = installer.deps.Commands.RunWithLogger(ctx, logger, "defaults", "write", "com.apple.screencapture", "location", shotDir)
+			_ = installer.deps.Commands.RunWithLogger(
+				ctx,
+				logger,
+				"defaults",
+				"write",
+				"com.apple.screencapture",
+				"location",
+				shotDir,
+			)
 		}
 	}
-	_ = installer.deps.Commands.RunWithLogger(ctx, logger, "defaults", "write", "com.google.Chrome", "BuiltInDnsClientEnabled", "-bool", "false")
+
+	_ = installer.deps.Commands.RunWithLogger(
+		ctx,
+		logger,
+		"defaults",
+		"write",
+		"com.google.Chrome",
+		"BuiltInDnsClientEnabled",
+		"-bool",
+		"false",
+	)
 	_ = installer.deps.Commands.RunWithLogger(ctx, logger, "killall", "Finder")
 	_ = installer.deps.Commands.RunWithLogger(ctx, logger, "killall", "Dock")
 	_ = installer.deps.Commands.RunWithLogger(ctx, logger, "killall", "SystemUIServer")
@@ -200,9 +266,16 @@ func (installer *Installer) runMacDefaults(ctx context.Context, logger *telemetr
 	return nil
 }
 
-func (installer *Installer) installTouchIDHelper(ctx context.Context, logger *telemetry.Logger) error {
+func (installer *Installer) installTouchIDHelper(
+	ctx context.Context,
+	logger *telemetry.Logger,
+) error {
 	slog.InfoContext(ctx, "platform/macos: installTouchIDHelper")
-	scriptPath, err := installer.deps.Download.DownloadToTempFile(ctx, logger, "https://git.io/sudo-touch-id")
+	scriptPath, err := installer.deps.Download.DownloadToTempFile(
+		ctx,
+		logger,
+		"https://git.io/sudo-touch-id",
+	)
 	if err != nil {
 		slog.WarnContext(ctx, "downloading tool", "err", err)
 		return fmt.Errorf("downloading tool: %w", err)
@@ -217,7 +290,10 @@ func (installer *Installer) installTouchIDHelper(ctx context.Context, logger *te
 	return nil
 }
 
-func (installer *Installer) ensureMacPatchIfNeeded(ctx context.Context, logger *telemetry.Logger) error {
+func (installer *Installer) ensureMacPatchIfNeeded(
+	ctx context.Context,
+	logger *telemetry.Logger,
+) error {
 	cfg := installer.deps.Catalog.MacPatchConfig()
 	if cfg == nil || !cfg.Enabled {
 		return nil
@@ -225,18 +301,30 @@ func (installer *Installer) ensureMacPatchIfNeeded(ctx context.Context, logger *
 
 	patchScript := cfg.PatchScript
 	if patchScript == "" {
-		patchScript = filepath.Join(installer.deps.Env.Getenv("DOTDOTFILES"), "bash", "setup", "platform", "patch-etc-zsh.bash")
+		patchScript = filepath.Join(
+			installer.deps.Env.Getenv("DOTDOTFILES"),
+			"bash",
+			"setup",
+			"platform",
+			"patch-etc-zsh.bash",
+		)
 	}
-	patchScript = installer.deps.Paths.ResolveConfigPath(patchScript, installer.deps.Env.Getenv("DOTDOTFILES"))
+
+	patchScript = installer.deps.Paths.ResolveConfigPath(
+		patchScript,
+		installer.deps.Env.Getenv("DOTDOTFILES"),
+	)
 
 	zprofilePath := cfg.ZProfilePath
 	if zprofilePath == "" {
 		zprofilePath = "/etc/zprofile"
 	}
+
 	zshrcPath := cfg.ZshrcPath
 	if zshrcPath == "" {
 		zshrcPath = "/etc/zshrc"
 	}
+
 	if cfg.Sentinel == "" {
 		cfg.Sentinel = "# DOTFILES_PERF_PATCH_V4"
 	}
@@ -247,8 +335,10 @@ func (installer *Installer) ensureMacPatchIfNeeded(ctx context.Context, logger *
 			if logger != nil {
 				logger.WarnContextWithErr(ctx, "read zprofile", err)
 			}
+
 			return fmt.Errorf("read zprofile: %w", err)
 		}
+
 		return nil
 	}
 
@@ -258,19 +348,29 @@ func (installer *Installer) ensureMacPatchIfNeeded(ctx context.Context, logger *
 			if logger != nil {
 				logger.WarnContextWithErr(ctx, "read zshrc", err)
 			}
+
 			return fmt.Errorf("read zshrc: %w", err)
 		}
+
 		return nil
 	}
 
-	if strings.Contains(string(zprofile), cfg.Sentinel) && strings.Contains(string(zshrc), cfg.Sentinel) {
+	if strings.Contains(string(zprofile), cfg.Sentinel) &&
+		strings.Contains(string(zshrc), cfg.Sentinel) {
 		return nil
 	}
+
 	if !installer.deps.Sudo.HasSudoAccess(ctx, logger) {
 		return nil
 	}
 
-	if err := installer.deps.Commands.RunWithLogger(ctx, logger, "sudo", "bash", patchScript); err != nil {
+	if err := installer.deps.Commands.RunWithLogger(
+		ctx,
+		logger,
+		"sudo",
+		"bash",
+		patchScript,
+	); err != nil {
 		slog.WarnContext(ctx, "running sudo bash", "err", err)
 		return fmt.Errorf("running sudo bash: %w", err)
 	}
@@ -278,7 +378,11 @@ func (installer *Installer) ensureMacPatchIfNeeded(ctx context.Context, logger *
 	return nil
 }
 
-func (installer *Installer) installMacPackages(ctx context.Context, strictMode bool, logger *telemetry.Logger) error {
+func (installer *Installer) installMacPackages(
+	ctx context.Context,
+	strictMode bool,
+	logger *telemetry.Logger,
+) error {
 	if !installer.deps.Lookup.HasCommand("brew") {
 		return nil
 	}
@@ -288,7 +392,13 @@ func (installer *Installer) installMacPackages(ctx context.Context, strictMode b
 		return nil
 	}
 
-	if err := installer.deps.Commands.RunWithLogger(ctx, logger, "brew", "update", "--quiet"); err != nil {
+	if err := installer.deps.Commands.RunWithLogger(
+		ctx,
+		logger,
+		"brew",
+		"update",
+		"--quiet",
+	); err != nil {
 		common.WarnContext(ctx, logger, "  brew update failed, continuing")
 		if strictMode {
 			slog.WarnContext(ctx, "running brew update", "err", err)
@@ -297,16 +407,23 @@ func (installer *Installer) installMacPackages(ctx context.Context, strictMode b
 	}
 
 	installer.trustMacTapPackages(ctx, cfg)
-	if err := installer.uninstallConflictingSpeedtestFormulae(ctx, cfg, strictMode, logger); err != nil {
+	if err := installer.uninstallConflictingSpeedtestFormulae(
+		ctx,
+		cfg,
+		strictMode,
+		logger,
+	); err != nil {
 		return err
 	}
 
 	if err := installer.installMacFormulae(ctx, cfg, strictMode, logger); err != nil {
 		return err
 	}
+
 	if err := installer.installMacCasks(ctx, cfg, strictMode, logger); err != nil {
 		return err
 	}
+
 	return installer.upgradeMacPackages(ctx, strictMode, logger)
 }
 
@@ -330,23 +447,30 @@ func TrustCatalogTaps(ctx context.Context, commands BrewTrustRunner, cfg *catalo
 	if commands == nil || cfg == nil {
 		return
 	}
+
 	if !commands.CommandSucceeds(ctx, "brew", "trust", "--help") {
 		return
 	}
 
-	formulae := tapQualifiedNames(append(append([]string{}, cfg.CommonPackages...), cfg.BrewSpecific...))
+	formulae := tapQualifiedNames(
+		append(append([]string{}, cfg.CommonPackages...), cfg.BrewSpecific...),
+	)
+
 	caskNames := make([]string, 0, len(cfg.BrewCasks))
 	for cask := range cfg.BrewCasks {
 		caskNames = append(caskNames, cask)
 	}
+
 	casks := tapQualifiedNames(caskNames)
 
 	for _, tap := range tapRepositoryNames(append(append([]string{}, formulae...), casks...)) {
 		commands.CommandSucceeds(ctx, "brew", "trust", tap)
 	}
+
 	for _, name := range formulae {
 		commands.CommandSucceeds(ctx, "brew", "trust", "--formula", name)
 	}
+
 	for _, name := range casks {
 		commands.CommandSucceeds(ctx, "brew", "trust", "--cask", name)
 	}
@@ -355,39 +479,50 @@ func TrustCatalogTaps(ctx context.Context, commands BrewTrustRunner, cfg *catalo
 func tapQualifiedNames(names []string) []string {
 	seen := make(map[string]struct{})
 	out := make([]string, 0)
+
 	for _, name := range names {
 		if strings.Count(name, "/") != 2 {
 			continue
 		}
+
 		if _, ok := seen[name]; ok {
 			continue
 		}
+
 		seen[name] = struct{}{}
 		out = append(out, name)
 	}
+
 	slices.Sort(out)
+
 	return out
 }
 
 func tapRepositoryNames(qualified []string) []string {
 	seen := make(map[string]struct{})
 	out := make([]string, 0)
+
 	for _, name := range qualified {
 		if strings.Count(name, "/") != 2 {
 			continue
 		}
+
 		last := strings.LastIndex(name, "/")
 		if last <= 0 {
 			continue
 		}
+
 		full := name[:last]
 		if _, ok := seen[full]; ok {
 			continue
 		}
+
 		seen[full] = struct{}{}
 		out = append(out, full)
 	}
+
 	slices.Sort(out)
+
 	return out
 }
 
@@ -395,7 +530,9 @@ func catalogIncludesFormula(cfg *catalog.PackageConfig, formula string) bool {
 	if cfg == nil {
 		return false
 	}
-	return slices.Contains(cfg.CommonPackages, formula) || slices.Contains(cfg.BrewSpecific, formula)
+
+	return slices.Contains(cfg.CommonPackages, formula) ||
+		slices.Contains(cfg.BrewSpecific, formula)
 }
 
 func (installer *Installer) uninstallConflictingSpeedtestFormulae(
@@ -412,7 +549,15 @@ func (installer *Installer) uninstallConflictingSpeedtestFormulae(
 		if !installer.brewFormulaInstalled(ctx, name) {
 			continue
 		}
-		if err := installer.deps.Commands.RunWithLogger(ctx, logger, "brew", "uninstall", "--formula", name); err != nil {
+
+		if err := installer.deps.Commands.RunWithLogger(
+			ctx,
+			logger,
+			"brew",
+			"uninstall",
+			"--formula",
+			name,
+		); err != nil {
 			common.WarnContextf(ctx, logger, "  failed to uninstall %s", name)
 			if strictMode {
 				slog.WarnContext(ctx, "running brew uninstall", "formula", name, "err", err)
@@ -424,7 +569,11 @@ func (installer *Installer) uninstallConflictingSpeedtestFormulae(
 	return nil
 }
 
-func (installer *Installer) upgradeMacPackages(ctx context.Context, strictMode bool, logger *telemetry.Logger) error {
+func (installer *Installer) upgradeMacPackages(
+	ctx context.Context,
+	strictMode bool,
+	logger *telemetry.Logger,
+) error {
 	if err := installer.deps.Commands.RunWithLogger(ctx, logger, "brew", "upgrade"); err != nil {
 		common.WarnContext(ctx, logger, "  brew upgrade failed, continuing")
 		if strictMode {
@@ -432,30 +581,48 @@ func (installer *Installer) upgradeMacPackages(ctx context.Context, strictMode b
 			return fmt.Errorf("running brew upgrade: %w", err)
 		}
 	}
-	if err := installer.deps.Commands.RunWithLogger(ctx, logger, "brew", "upgrade", "--cask", "--greedy"); err != nil {
+
+	if err := installer.deps.Commands.RunWithLogger(
+		ctx,
+		logger,
+		"brew",
+		"upgrade",
+		"--cask",
+		"--greedy",
+	); err != nil {
 		common.WarnContext(ctx, logger, "  brew cask upgrade failed, continuing")
 		if strictMode {
 			slog.WarnContext(ctx, "running brew cask upgrade", "err", err)
 			return fmt.Errorf("running brew cask upgrade: %w", err)
 		}
 	}
+
 	return nil
 }
 
-func (installer *Installer) installMacFormulae(ctx context.Context, cfg *catalog.PackageConfig, strictMode bool, logger *telemetry.Logger) error {
+func (installer *Installer) installMacFormulae(
+	ctx context.Context,
+	cfg *catalog.PackageConfig,
+	strictMode bool,
+	logger *telemetry.Logger,
+) error {
 	formulae := make(map[string]struct{})
+
 	formulaList := make([]string, 0, len(cfg.CommonPackages)+len(cfg.BrewSpecific))
 	for _, item := range append(cfg.CommonPackages, cfg.BrewSpecific...) {
 		name := brewPackageName(item)
 		if name == "" {
 			continue
 		}
+
 		if installer.brewFormulaInstalled(ctx, name) {
 			continue
 		}
+
 		if _, ok := formulae[name]; ok {
 			continue
 		}
+
 		formulae[name] = struct{}{}
 		formulaList = append(formulaList, name)
 	}
@@ -476,12 +643,25 @@ func (installer *Installer) installMacFormulae(ctx context.Context, cfg *catalog
 	return nil
 }
 
-func (installer *Installer) installMacCasks(ctx context.Context, cfg *catalog.PackageConfig, strictMode bool, logger *telemetry.Logger) error {
+func (installer *Installer) installMacCasks(
+	ctx context.Context,
+	cfg *catalog.PackageConfig,
+	strictMode bool,
+	logger *telemetry.Logger,
+) error {
 	for cask, app := range cfg.BrewCasks {
 		if !installer.macCaskNeedsInstall(ctx, cask, app) {
 			continue
 		}
-		if err := installer.deps.Commands.RunWithLogger(ctx, logger, "brew", "install", "--cask", cask); err != nil {
+
+		if err := installer.deps.Commands.RunWithLogger(
+			ctx,
+			logger,
+			"brew",
+			"install",
+			"--cask",
+			cask,
+		); err != nil {
 			common.WarnContextf(ctx, logger, "  failed to install cask %s", cask)
 			if strictMode {
 				slog.WarnContext(ctx, "running brew cask install", "cask", cask, "err", err)
@@ -497,14 +677,19 @@ func (installer *Installer) macCaskNeedsInstall(ctx context.Context, cask string
 	if installer.brewCaskInstalled(ctx, cask) {
 		return false
 	}
+
 	if app == "" {
 		return true
 	}
+
 	return !installer.macCaskAppExists(app, installer.deps.Env.Getenv("HOME"))
 }
 
 func (installer *Installer) macCaskAppExists(app string, home string) bool {
-	return slices.ContainsFunc(installer.macCaskAppPaths(app, home), installer.deps.Files.PathExists)
+	return slices.ContainsFunc(
+		installer.macCaskAppPaths(app, home),
+		installer.deps.Files.PathExists,
+	)
 }
 
 func (installer *Installer) macCaskAppPaths(app string, home string) []string {
@@ -524,6 +709,7 @@ func (installer *Installer) macCaskAppPaths(app string, home string) []string {
 			paths = append(paths, filepath.Clean(filepath.Join(applicationsDir, appName)))
 		}
 	}
+
 	return paths
 }
 
@@ -539,16 +725,23 @@ func brewPackageName(packageName string) string {
 	if packageName == "tshark" {
 		return "wireshark"
 	}
+
 	return packageName
 }
 
 type realDeps struct{}
 
-func (realDeps) RunWithLogger(ctx context.Context, logger *telemetry.Logger, command string, args ...string) error {
+func (realDeps) RunWithLogger(
+	ctx context.Context,
+	logger *telemetry.Logger,
+	command string,
+	args ...string,
+) error {
 	if err := cmdexec.RunWithLogger(ctx, logger, command, args...); err != nil {
 		slog.WarnContext(ctx, "platform/macos: run command", "command", command, "err", err)
 		return fmt.Errorf("run %s: %w", command, err)
 	}
+
 	return nil
 }
 
@@ -561,12 +754,17 @@ func (realDeps) HasCommand(name string) bool {
 	return runner.HasCommand(name)
 }
 
-func (realDeps) DownloadToTempFile(ctx context.Context, logger *telemetry.Logger, fileURL string) (string, error) {
+func (realDeps) DownloadToTempFile(
+	ctx context.Context,
+	logger *telemetry.Logger,
+	fileURL string,
+) (string, error) {
 	path, err := tools.DownloadToTempFile(ctx, logger, fileURL)
 	if err != nil {
 		slog.WarnContext(ctx, "platform/macos: download file", "url", fileURL, "err", err)
 		return "", fmt.Errorf("download %s: %w", fileURL, err)
 	}
+
 	return path, nil
 }
 
@@ -575,6 +773,7 @@ func (realDeps) MkdirAll(path string, perm os.FileMode) error {
 		slog.Warn("platform/macos: mkdir", "path", path, "err", err)
 		return fmt.Errorf("mkdir %s: %w", path, err)
 	}
+
 	return nil
 }
 
@@ -589,6 +788,7 @@ func (realDeps) ReadFile(path string) ([]byte, error) {
 		slog.Warn("platform/macos: read file", "path", path, "err", err)
 		return nil, fmt.Errorf("read %s: %w", path, err)
 	}
+
 	return content, nil
 }
 
@@ -598,6 +798,7 @@ func (realDeps) Remove(path string) error {
 		slog.Warn("platform/macos: remove file", "path", path, "err", err)
 		return fmt.Errorf("remove %s: %w", path, err)
 	}
+
 	return nil
 }
 

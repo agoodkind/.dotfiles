@@ -18,11 +18,14 @@ func TestGetLatestCrateVersionAsyncCmd(t *testing.T) {
 		if strings.Contains(err.Error(), "crates api error") {
 			t.Fatalf("crates.io rejected the request: %v", err)
 		}
+
 		t.Skipf("crates.io unreachable, skipping: %v", err)
 	}
+
 	if version == "" {
 		t.Fatal("getLatestCrateVersion returned an empty version")
 	}
+
 	if !common.VersionAtLeast(version, "0.1.1") {
 		t.Fatalf("getLatestCrateVersion returned %q, want >= 0.1.1", version)
 	}

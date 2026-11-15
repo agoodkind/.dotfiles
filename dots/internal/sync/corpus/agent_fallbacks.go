@@ -10,7 +10,10 @@ import (
 
 const agentFallbackPrefix = "agent-"
 
-func withAgentFallbackSkills(sourceSet compilation.CorpusSourceSet) (compilation.CorpusSourceSet, error) {
+func withAgentFallbackSkills(sourceSet compilation.CorpusSourceSet) (
+	compilation.CorpusSourceSet,
+	error,
+) {
 	skills := make(map[string]compilation.SkillSource, len(sourceSet.Skills)+len(sourceSet.Agents))
 	for name, skill := range sourceSet.Skills {
 		skills[name] = skill
@@ -52,9 +55,13 @@ func renderAgentFallbackSkill(skillName string, agent compilation.AgentSource) s
 	builder.WriteString(" agent fallback\n\n")
 	builder.WriteString("This skill applies the `")
 	builder.WriteString(agent.Name)
-	builder.WriteString("` agent contract in the current conversation. This harness does not provide prompt-bearing subagent isolation, so this skill does not create a separate context.\n\n")
+	builder.WriteString(
+		"` agent contract in the current conversation. This harness does not provide prompt-bearing subagent isolation, so this skill does not create a separate context.\n\n",
+	)
 	if agent.ReadOnly {
-		builder.WriteString("This fallback is read-only. Use only tools that inspect files, search content, or retrieve evidence. Do not edit files, run mutating commands, or change external state.\n\n")
+		builder.WriteString(
+			"This fallback is read-only. Use only tools that inspect files, search content, or retrieve evidence. Do not edit files, run mutating commands, or change external state.\n\n",
+		)
 	}
 	builder.WriteString("## Prompt contract\n\n")
 	builder.WriteString(strings.TrimSpace(agent.Body))

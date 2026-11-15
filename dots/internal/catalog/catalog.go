@@ -145,6 +145,7 @@ func DefaultPackageConfig() *PackageConfig {
 			AptRepos:         nil,
 		}
 	}
+
 	source := cached.Packages
 	duplicated := &PackageConfig{
 		CommonPackages:   append([]string{}, source.CommonPackages...),
@@ -161,6 +162,7 @@ func DefaultPackageConfig() *PackageConfig {
 	maps.Copy(duplicated.BrewCasks, source.BrewCasks)
 	maps.Copy(duplicated.GoPackages, source.GoPackages)
 	maps.Copy(duplicated.CargoGitPackages, source.CargoGitPackages)
+
 	return duplicated
 }
 
@@ -172,8 +174,10 @@ func DefaultToolDeclarations() []ToolDeclaration {
 	if errLoad != nil {
 		return nil
 	}
+
 	tools := make([]ToolDeclaration, 0, len(cached.Tools))
 	tools = append(tools, cached.Tools...)
+
 	return tools
 }
 
@@ -192,9 +196,11 @@ func DefaultDispatchConfig() *DispatchConfig {
 			WeeklyUpdateMarker: "",
 		}
 	}
+
 	source := cached.Dispatch
 	copyWorkers := make([]DispatchWorker, 0, len(source.Workers))
 	copyWorkers = append(copyWorkers, source.Workers...)
+
 	return &DispatchConfig{
 		Workers:            copyWorkers,
 		StatusDir:          source.StatusDir,
@@ -219,7 +225,9 @@ func DefaultMacPatchConfig() *MacPatchConfig {
 			PatchScript:  "",
 		}
 	}
+
 	source := cached.MacPatch
+
 	return &MacPatchConfig{
 		Enabled:      source.Enabled,
 		Sentinel:     source.Sentinel,
@@ -237,6 +245,7 @@ func DefaultMacConfig() *MacConfig {
 	if errLoad != nil {
 		return &MacConfig{ScreenshotDir: ""}
 	}
+
 	return &MacConfig{ScreenshotDir: cached.Macos.ScreenshotDir}
 }
 
@@ -252,9 +261,11 @@ func DefaultPreferCacheConfig() *PreferCacheConfig {
 			SourceFiles:    nil,
 		}
 	}
+
 	source := cached.PreferCache
 	copySourceFiles := make([]string, 0, len(source.SourceFiles))
 	copySourceFiles = append(copySourceFiles, source.SourceFiles...)
+
 	return &PreferCacheConfig{
 		CacheFile:      source.CacheFile,
 		InvalidateFile: source.InvalidateFile,
@@ -266,20 +277,33 @@ func loadCatalog() {
 	loadOnce.Do(func() {
 		dir := resolveConfigDir()
 		var merged catalogDocument
+
 		sections := []struct {
 			file  string
 			apply func(target *catalogDocument, parsed catalogDocument)
 		}{
-			{"packages.toml", func(target *catalogDocument, parsed catalogDocument) { target.Packages = parsed.Packages }},
-			{"tools.toml", func(target *catalogDocument, parsed catalogDocument) { target.Tools = parsed.Tools }},
-			{"dispatch.toml", func(target *catalogDocument, parsed catalogDocument) {
-				target.Dispatch = parsed.Dispatch
-				target.PreferCache = parsed.PreferCache
-			}},
-			{"platform-macos.toml", func(target *catalogDocument, parsed catalogDocument) {
-				target.MacPatch = parsed.MacPatch
-				target.Macos = parsed.Macos
-			}},
+			{
+				"packages.toml",
+				func(target *catalogDocument, parsed catalogDocument) { target.Packages = parsed.Packages },
+			},
+			{
+				"tools.toml",
+				func(target *catalogDocument, parsed catalogDocument) { target.Tools = parsed.Tools },
+			},
+			{
+				"dispatch.toml",
+				func(target *catalogDocument, parsed catalogDocument) {
+					target.Dispatch = parsed.Dispatch
+					target.PreferCache = parsed.PreferCache
+				},
+			},
+			{
+				"platform-macos.toml",
+				func(target *catalogDocument, parsed catalogDocument) {
+					target.MacPatch = parsed.MacPatch
+					target.Macos = parsed.Macos
+				},
+			},
 		}
 		for _, section := range sections {
 			path := filepath.Join(dir, section.file)
@@ -287,16 +311,21 @@ func loadCatalog() {
 			if err != nil {
 				slog.Error("catalog: reading config file", "path", path, "err", err)
 				errLoad = fmt.Errorf("read config file %s: %w", section.file, err)
+
 				return
 			}
+
 			var parsed catalogDocument
 			if err := toml.Unmarshal(data, &parsed); err != nil {
 				slog.Error("catalog: parsing config file", "path", path, "err", err)
 				errLoad = fmt.Errorf("parse config file %s: %w", section.file, err)
+
 				return
 			}
+
 			section.apply(&merged, parsed)
 		}
+
 		mu.Lock()
 		cached = merged
 		errLoad = nil
@@ -312,8 +341,10 @@ func resolveConfigDir() string {
 	if explicit := os.Getenv("DOTFILES_CONFIG_DIR"); explicit != "" {
 		return explicit
 	}
+
 	if dotfiles := os.Getenv("DOTDOTFILES"); dotfiles != "" {
 		return filepath.Join(dotfiles, "config")
 	}
+
 	return filepath.Join(os.Getenv("HOME"), ".dotfiles", "config")
 }

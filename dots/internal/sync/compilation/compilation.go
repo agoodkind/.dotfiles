@@ -38,6 +38,7 @@ type CorpusPaths struct {
 // ResolveCorpusSource returns the CorpusPaths for the given dotfiles root.
 func ResolveCorpusSource(dotfiles string) CorpusPaths {
 	root := filepath.Join(dotfiles, CorpusDirName)
+
 	return CorpusPaths{
 		Root:   root,
 		Rules:  filepath.Join(root, "rules"),
@@ -47,7 +48,8 @@ func ResolveCorpusSource(dotfiles string) CorpusPaths {
 
 // HasGeneratedMarker reports whether content contains any generated-file marker.
 func HasGeneratedMarker(content string) bool {
-	return strings.Contains(content, GeneratedAgentMarker) || strings.Contains(content, GeneratedAgentHTMLMarker)
+	return strings.Contains(content, GeneratedAgentMarker) ||
+		strings.Contains(content, GeneratedAgentHTMLMarker)
 }
 
 // CompileZshFiles compiles all .zsh files found under standard dotfiles directories.
@@ -60,24 +62,38 @@ func CompileZshFiles(ctx context.Context, dotfiles string, logger *telemetry.Log
 		filepath.Join(dotfiles, "bin"),
 	}
 	for _, dir := range dirs {
-		_ = filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if entry.IsDir() {
+		_ = filepath.WalkDir(
+			dir,
+			func(path string, entry os.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+
+				if entry.IsDir() {
+					return nil
+				}
+
+				name := filepath.Base(path)
+				if !strings.HasSuffix(name, ".zsh") && name != ".zshrc" {
+					return nil
+				}
+
+				compiled := path + ".zwc"
+				if NeedsCompile(path, compiled) {
+					_ = cmdexec.RunWithLogger(
+						ctx,
+						logger,
+						"zsh",
+						"-c",
+						fmt.Sprintf("zcompile %q", path),
+					)
+				}
+
 				return nil
-			}
-			name := filepath.Base(path)
-			if !strings.HasSuffix(name, ".zsh") && name != ".zshrc" {
-				return nil
-			}
-			compiled := path + ".zwc"
-			if NeedsCompile(path, compiled) {
-				_ = cmdexec.RunWithLogger(ctx, logger, "zsh", "-c", fmt.Sprintf("zcompile %q", path))
-			}
-			return nil
-		})
+			},
+		)
 	}
+
 	return nil
 }
 
@@ -87,10 +103,12 @@ func NeedsCompile(source string, target string) bool {
 	if err != nil {
 		return false
 	}
+
 	targetInfo, err := os.Stat(target)
 	if err != nil {
 		return true
 	}
+
 	return sourceInfo.ModTime().After(targetInfo.ModTime())
 }
 
@@ -101,13 +119,22 @@ func RebuildZcompdump(ctx context.Context, dotfiles string, logger *telemetry.Lo
 	if !runner.HasCommand("zsh") {
 		return nil
 	}
+
 	fpath := filepath.Join(dotfiles, "zshrc", "completions")
 	zcompdump := filepath.Join(os.Getenv("HOME"), ".zcompdump")
 	autoloadCmd := fmt.Sprintf("fpath=(\"%s\" $fpath)\nautoload -Uz compinit\n", fpath)
-	if err := cmdexec.RunWithLogger(ctx, logger, "zsh", "-c", autoloadCmd+"compinit -d "+zcompdump+"\nzcompile "+zcompdump+"\n"); err != nil {
+	if err := cmdexec.RunWithLogger(
+		ctx,
+		logger,
+		"zsh",
+		"-c",
+		autoloadCmd+"compinit -d "+zcompdump+"\nzcompile "+zcompdump+"\n",
+	); err != nil {
 		slog.ErrorContext(ctx, "rebuild zsh completions", "err", err)
+
 		return fmt.Errorf("rebuild zsh completions: %w", err)
 	}
+
 	return nil
 }
 
@@ -115,8 +142,10 @@ func RebuildZcompdump(ctx context.Context, dotfiles string, logger *telemetry.Lo
 func RebuildPreferCache(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
 	if err := prefercache.Rebuild(ctx, dotfiles, false, logger); err != nil {
 		slog.WarnContext(ctx, "compilation: RebuildPreferCache failed", "err", err)
+
 		return fmt.Errorf("rebuilding prefer cache: %w", err)
 	}
+
 	return nil
 }
 
@@ -126,15 +155,20 @@ func CreateHushLogin(ctx context.Context, _ *telemetry.Logger) error {
 	if _, err := os.Stat(filepath.Clean(path)); err == nil {
 		return nil
 	}
+
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDONLY, 0o600)
 	if err != nil {
 		slog.WarnContext(ctx, "compilation: CreateHushLogin failed", "err", err)
+
 		return fmt.Errorf("creating hushlogin: %w", err)
 	}
+
 	if err := file.Close(); err != nil {
 		slog.WarnContext(ctx, "compilation: CreateHushLogin close failed", "err", err)
+
 		return fmt.Errorf("creating hushlogin: %w", err)
 	}
+
 	return nil
 }
 
@@ -144,6 +178,24 @@ type RuleRenderStyle struct {
 	SkillsRelDir string
 	// Harness stores the output provider for conditional template rendering.
 	Harness string
+}
+
+// EmptyRuleRenderStyle returns a RuleRenderStyle with SkillsRelDir empty and
+// Harness set to the given provider name.
+//
+// Corpus resolve helpers call EmptyRuleRenderStyle so every field is populated
+// before Sync renders rules for a provider.
+//
+// Example:
+//
+//	style := EmptyRuleRenderStyle("cursor")
+//	style.SkillsRelDir = "../skills"
+func EmptyRuleRenderStyle(harness string) RuleRenderStyle {
+	var style RuleRenderStyle
+	style.SkillsRelDir = ""
+	style.Harness = harness
+
+	return style
 }
 
 // RenderedRule is a corpus rule prepared for cloud upload (title plus body without front matter).
@@ -165,8 +217,10 @@ func (d ruleTemplateData) Skill(name string) string {
 		if d.execErr != nil {
 			*d.execErr = fmt.Errorf("skill link %q requires skill_dest in manifest", name)
 		}
+
 		return ""
 	}
+
 	return renderSkillLink(d.style, name)
 }
 
@@ -180,25 +234,32 @@ func renderRuleTemplate(content string, style RuleRenderStyle, name string) (str
 	if !strings.Contains(content, "{{") {
 		return content, nil
 	}
+
 	var execErr error
 	parsed, err := template.New(name).Parse(content)
 	if err != nil {
 		slog.Warn("compilation: renderRuleTemplate parse failed", "name", name, "err", err)
+
 		return "", fmt.Errorf("parsing rule template %s: %w", name, err)
 	}
+
 	buf := bytes.NewBuffer(nil)
 	if err := parsed.Execute(buf, ruleTemplateData{style: style, execErr: &execErr}); err != nil {
 		slog.Warn("compilation: renderRuleTemplate execute failed", "name", name, "err", err)
+
 		return "", fmt.Errorf("executing rule template %s: %w", name, err)
 	}
+
 	if execErr != nil {
 		return "", execErr
 	}
+
 	return buf.String(), nil
 }
 
 func renderSkillLink(style RuleRenderStyle, name string) string {
 	skillPath := filepath.ToSlash(filepath.Join(style.SkillsRelDir, name, "SKILL.md"))
+
 	return fmt.Sprintf("[%s](%s)", name, skillPath)
 }
 
@@ -226,20 +287,25 @@ func matchHarness(current string, providers []string) (bool, error) {
 	if len(providers) == 0 {
 		return false, fmt.Errorf("harness filter requires a provider")
 	}
+
 	for _, provider := range providers {
 		if _, ok := harnessProviders[provider]; !ok {
 			return false, fmt.Errorf("unknown harness %q", provider)
 		}
 	}
+
 	if current == "" {
 		return false, fmt.Errorf("harness filter used without a render harness")
 	}
+
 	matched := false
+
 	for _, provider := range providers {
 		if provider == current {
 			matched = true
 		}
 	}
+
 	return matched, nil
 }
 
@@ -255,16 +321,20 @@ func skillRenderConflict(target string) string {
 	if err != nil {
 		return ""
 	}
+
 	existingContent := string(existing)
 	if strings.TrimSpace(existingContent) == "" {
 		return ""
 	}
+
 	if HasGeneratedMarker(existingContent) {
 		return ""
 	}
+
 	if hasUsableSkillFrontmatter(existingContent) {
 		return ""
 	}
+
 	return target + ": marker-less SKILL.md has unusable frontmatter; delete the file or restore the generated marker before syncing"
 }
 
@@ -273,6 +343,7 @@ func hasUsableSkillFrontmatter(content string) bool {
 	if err != nil {
 		return false
 	}
+
 	return strings.TrimSpace(frontmatter.Name) != "" &&
 		strings.TrimSpace(frontmatter.Description) != ""
 }
@@ -287,17 +358,22 @@ func parseSkillDocument(content string) (skillFrontmatterYAML, string, error) {
 	if !strings.HasPrefix(content, "---\n") {
 		return result, "", fmt.Errorf("missing opening frontmatter delimiter")
 	}
+
 	endMarker := "\n---\n"
 	frontmatterEnd := strings.Index(content[4:], endMarker)
 	if frontmatterEnd == -1 {
 		return result, "", fmt.Errorf("missing closing frontmatter delimiter")
 	}
+
 	rawFrontmatter := content[4 : 4+frontmatterEnd]
 	if err := yaml.Unmarshal([]byte(rawFrontmatter), &result); err != nil {
 		slog.Warn("compilation: parseSkillDocument yaml failed", "err", err)
+
 		return result, "", fmt.Errorf("parsing skill front matter: %w", err)
 	}
+
 	bodyStart := 4 + frontmatterEnd + len(endMarker)
+
 	return result, content[bodyStart:], nil
 }
 
@@ -305,28 +381,34 @@ func skillRenderConflictsError(conflicts []string) error {
 	if len(conflicts) == 0 {
 		return nil
 	}
+
 	return fmt.Errorf("skill render conflicts:\n- %s", strings.Join(conflicts, "\n- "))
 }
 
 func renderSkillSiblingLink(name string) string {
 	skillPath := filepath.ToSlash(filepath.Join("..", name, "SKILL.md"))
+
 	return fmt.Sprintf("[%s](%s)", name, skillPath)
 }
 
 func renderRuleLink(refStyle SkillRefStyle, name string) string {
 	fileName := name + refStyle.RuleExt
+
 	return fmt.Sprintf("[%s](%s/%s)", fileName, refStyle.RulesRelDir, fileName)
 }
 
 func renderRulesList(refStyle SkillRefStyle, ruleNames []string) string {
 	var builder strings.Builder
+
 	for index, name := range ruleNames {
 		if index > 0 {
 			builder.WriteString("\n")
 		}
+
 		builder.WriteString("- ")
 		builder.WriteString(renderRuleLink(refStyle, name))
 	}
+
 	return builder.String()
 }
 
@@ -334,52 +416,81 @@ func injectSkillMarker(content string) string {
 	if HasGeneratedMarker(content) {
 		return content
 	}
+
 	if strings.HasPrefix(content, "---\n") {
 		endMarker := "\n---\n"
 		frontmatterEnd := strings.Index(content[4:], endMarker)
 		if frontmatterEnd != -1 {
 			cut := 4 + frontmatterEnd + len(endMarker)
+
 			return content[:cut] + "\n" + GeneratedAgentHTMLMarker + "\n" + content[cut:]
 		}
 	}
+
 	return GeneratedAgentHTMLMarker + "\n\n" + content
 }
 
-func removeMissingManagedSkillDirs(dst string, activeSkills map[string]struct{}) error {
+func removeMissingManagedSkillDirs(
+	dst string,
+	activeSkills map[string]struct{},
+) (ChangeReport, error) {
+	report := emptyChangeReport()
 	slog.Info("compilation: removeMissingManagedSkillDirs")
 	entries, err := os.ReadDir(dst)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil
+			return report, nil
 		}
-		slog.Warn("compilation: removeMissingManagedSkillDirs ReadDir failed", "dst", dst, "err", err)
-		return fmt.Errorf("read dir %s: %w", dst, err)
+
+		slog.Warn(
+			"compilation: removeMissingManagedSkillDirs ReadDir failed",
+			"dst",
+			dst,
+			"err",
+			err,
+		)
+
+		return report, fmt.Errorf("read dir %s: %w", dst, err)
 	}
+
 	for _, entry := range entries {
 		name := entry.Name()
 		if _, ok := activeSkills[name]; ok {
 			continue
 		}
+
 		path := filepath.Join(dst, name)
 		if isSymlink(path) {
-			_ = os.Remove(path)
+			if err := os.Remove(path); err != nil {
+				return report, fmt.Errorf("removing symlink %s: %w", path, err)
+			}
+
+			report.recordRemoved(path)
+
 			continue
 		}
+
 		if !entry.IsDir() {
 			continue
 		}
+
 		skillContent, readErr := os.ReadFile(filepath.Join(path, "SKILL.md"))
 		if readErr != nil {
 			continue
 		}
+
 		if !HasGeneratedMarker(string(skillContent)) {
 			continue
 		}
+
 		if err := os.RemoveAll(path); err != nil {
-			return fmt.Errorf("removing directory %s: %w", path, err)
+			return report, fmt.Errorf("removing directory %s: %w", path, err)
 		}
+
+		report.recordRemoved(path)
 	}
-	return nil
+
+	return report, nil
 }
 
 func isSymlink(path string) bool {
@@ -387,59 +498,88 @@ func isSymlink(path string) bool {
 	if err != nil {
 		return false
 	}
+
 	return info.Mode()&os.ModeSymlink != 0
 }
 
-func writeFileIfChanged(path string, content []byte) error {
+func writeFileIfChanged(path string, content []byte) (WriteOutcome, error) {
 	cleanPath := filepath.Clean(path)
 	slog.Info("compilation: writeFileIfChanged")
-	if existing, err := os.ReadFile(cleanPath); err == nil {
+	existing, readErr := os.ReadFile(cleanPath)
+	existed := readErr == nil
+	if existed {
 		if bytes.Equal(existing, content) {
-			return nil
+			return WriteUnchanged, nil
 		}
-		if HasGeneratedMarker(string(content)) && !HasGeneratedMarker(string(existing)) && strings.TrimSpace(string(existing)) != "" {
-			return nil
+
+		if HasGeneratedMarker(string(content)) && !HasGeneratedMarker(string(existing)) &&
+			strings.TrimSpace(string(existing)) != "" {
+			return WriteSkippedUnmanaged, nil
 		}
 	}
+
 	if err := os.MkdirAll(filepath.Dir(cleanPath), 0o755); err != nil {
 		slog.Warn("compilation: writeFileIfChanged mkdir failed", "path", path, "err", err)
-		return fmt.Errorf("creating directory %s: %w", filepath.Dir(cleanPath), err)
+
+		return WriteUnchanged, fmt.Errorf("creating directory %s: %w", filepath.Dir(cleanPath), err)
 	}
+
 	if err := os.WriteFile(cleanPath, content, 0o600); err != nil {
 		slog.Warn("compilation: writeFileIfChanged write failed", "path", path, "err", err)
-		return fmt.Errorf("writing file %s: %w", path, err)
+
+		return WriteUnchanged, fmt.Errorf("writing file %s: %w", path, err)
 	}
-	return nil
+
+	if existed {
+		return WriteUpdated, nil
+	}
+
+	return WriteCreated, nil
 }
 
-func removeMissingManagedFiles(dst string, ext string, activeFiles map[string]struct{}) error {
+func removeMissingManagedFiles(
+	dst string,
+	ext string,
+	activeFiles map[string]struct{},
+) (ChangeReport, error) {
+	report := emptyChangeReport()
 	slog.Info("compilation: removeMissingManagedFiles")
 	entries, err := os.ReadDir(dst)
 	if err != nil && !os.IsNotExist(err) {
 		slog.Warn("compilation: removeMissingManagedFiles ReadDir failed", "dst", dst, "err", err)
-		return fmt.Errorf("read dir %s: %w", dst, err)
+
+		return report, fmt.Errorf("read dir %s: %w", dst, err)
 	}
+
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
 		}
+
 		if !strings.HasSuffix(entry.Name(), ext) {
 			continue
 		}
+
 		if _, ok := activeFiles[entry.Name()]; ok {
 			continue
 		}
+
 		path := filepath.Join(dst, entry.Name())
 		content, readErr := os.ReadFile(path)
 		if readErr != nil {
 			continue
 		}
+
 		if !HasGeneratedMarker(string(content)) {
 			continue
 		}
+
 		if err := os.Remove(path); err != nil {
-			return fmt.Errorf("removing file %s: %w", path, err)
+			return report, fmt.Errorf("removing file %s: %w", path, err)
 		}
+
+		report.recordRemoved(path)
 	}
-	return nil
+
+	return report, nil
 }

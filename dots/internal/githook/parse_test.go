@@ -11,19 +11,24 @@ func TestParseRefUpdatesReadsHeadSymbolicLine(t *testing.T) {
 	if err != nil {
 		t.Fatalf("readRefUpdates returned error: %v", err)
 	}
+
 	if len(updates) != 1 {
 		t.Fatalf("len(updates) = %d, want 1", len(updates))
 	}
+
 	if updates[0].refName != "HEAD" {
 		t.Fatalf("refName = %q, want HEAD", updates[0].refName)
 	}
+
 	if updates[0].newValue != "ref:refs/heads/feature" {
 		t.Fatalf("newValue = %q, want ref:refs/heads/feature", updates[0].newValue)
 	}
+
 	branch, ok := branchFromSymbolicValue(updates[0].newValue)
 	if !ok {
 		t.Fatal("branchFromSymbolicValue returned false, want true")
 	}
+
 	if branch != "feature" {
 		t.Fatalf("branch = %q, want feature", branch)
 	}

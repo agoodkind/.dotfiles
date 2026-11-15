@@ -25,7 +25,12 @@ func TestClearStaleGitLocksRemovesAbandonedSubmoduleLock(t *testing.T) {
 	staleLock := filepath.Join(submoduleGitDir, "index.lock")
 	writeLock(t, staleLock, time.Now().Add(-48*time.Hour))
 
-	layout := gitdir.Info{Root: t.TempDir(), GitDir: commonDir, CommonDir: commonDir, IsWorktree: false}
+	layout := gitdir.Info{
+		Root:       t.TempDir(),
+		GitDir:     commonDir,
+		CommonDir:  commonDir,
+		IsWorktree: false,
+	}
 	clearStaleGitLocks(context.Background(), layout, nil)
 
 	if _, err := os.Stat(staleLock); !os.IsNotExist(err) {
@@ -40,7 +45,12 @@ func TestClearStaleGitLocksLeavesFreshLocks(t *testing.T) {
 	freshLock := filepath.Join(commonDir, "index.lock")
 	writeLock(t, freshLock, time.Now())
 
-	layout := gitdir.Info{Root: t.TempDir(), GitDir: commonDir, CommonDir: commonDir, IsWorktree: false}
+	layout := gitdir.Info{
+		Root:       t.TempDir(),
+		GitDir:     commonDir,
+		CommonDir:  commonDir,
+		IsWorktree: false,
+	}
 	clearStaleGitLocks(context.Background(), layout, nil)
 
 	if _, err := os.Stat(freshLock); err != nil {
@@ -59,18 +69,25 @@ func TestClearStaleGitLocksCoversEveryLockName(t *testing.T) {
 
 	old := time.Now().Add(-24 * time.Hour)
 	created := make([]string, 0, len(gitLockNames)*2)
+
 	for _, dir := range []string{commonDir, submoduleGitDir} {
 		for _, lockName := range gitLockNames {
 			lockPath := filepath.Join(dir, lockName)
 			if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
 				t.Fatalf("creating lock parent: %v", err)
 			}
+
 			writeLock(t, lockPath, old)
 			created = append(created, lockPath)
 		}
 	}
 
-	layout := gitdir.Info{Root: t.TempDir(), GitDir: commonDir, CommonDir: commonDir, IsWorktree: false}
+	layout := gitdir.Info{
+		Root:       t.TempDir(),
+		GitDir:     commonDir,
+		CommonDir:  commonDir,
+		IsWorktree: false,
+	}
 	clearStaleGitLocks(context.Background(), layout, nil)
 
 	for _, lockPath := range created {
@@ -85,6 +102,7 @@ func writeLock(t *testing.T, path string, modTime time.Time) {
 	if err := os.WriteFile(path, nil, 0o600); err != nil {
 		t.Fatalf("writing lock %s: %v", path, err)
 	}
+
 	if err := os.Chtimes(path, modTime, modTime); err != nil {
 		t.Fatalf("setting lock mod time %s: %v", path, err)
 	}

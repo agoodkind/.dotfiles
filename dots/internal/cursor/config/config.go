@@ -22,7 +22,10 @@ func BuildSyncConfig() models.SyncConfig {
 	}
 
 	return models.SyncConfig{
-		CursorDB:     filepath.Join(home, "Library/Application Support/Cursor/User/globalStorage/state.vscdb"),
+		CursorDB: filepath.Join(
+			home,
+			"Library/Application Support/Cursor/User/globalStorage/state.vscdb",
+		),
 		APIBase:      constants.APIBase,
 		WorkspaceURL: workspaceURL,
 	}

@@ -33,7 +33,11 @@ func TestCacheIsStaleCoversEveryCaseTheShellRejects(t *testing.T) {
 					baseFile := filepath.Join(t.TempDir(), "paths")
 
 					writeFileWithModTime(t, baseFile, base.Add(baseFileOffset))
-					writeFileWithModTime(t, filepath.Join(sourceDir, "homebrew"), base.Add(childOffset))
+					writeFileWithModTime(
+						t,
+						filepath.Join(sourceDir, "homebrew"),
+						base.Add(childOffset),
+					)
 					// The directory time is set last, since writing a child
 					// updates it.
 					setModTime(t, sourceDir, base.Add(dirOffset))
@@ -42,8 +46,13 @@ func TestCacheIsStaleCoversEveryCaseTheShellRejects(t *testing.T) {
 					shellRejects := shellRejectsCache(cacheModTime, base.Add(dirOffset))
 
 					if shellRejects && !goSaysStale {
-						t.Fatalf("shell rejects the cache but the worker keeps it: cache=%v dir=%v child=%v base=%v",
-							cacheOffset, dirOffset, childOffset, baseFileOffset)
+						t.Fatalf(
+							"shell rejects the cache but the worker keeps it: cache=%v dir=%v child=%v base=%v",
+							cacheOffset,
+							dirOffset,
+							childOffset,
+							baseFileOffset,
+						)
 					}
 				}
 			}
@@ -97,6 +106,7 @@ func writeFileWithModTime(t *testing.T, path string, modTime time.Time) {
 	if err := os.WriteFile(path, []byte("PATH=\"/usr/bin\"\n"), 0o600); err != nil {
 		t.Fatalf("writing %s: %v", path, err)
 	}
+
 	setModTime(t, path, modTime)
 }
 

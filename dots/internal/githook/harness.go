@@ -10,11 +10,14 @@ func harnessActive() bool {
 	if os.Getenv("CLAUDECODE") != "" {
 		return true
 	}
+
 	if os.Getenv("CODEX_CI") != "" {
 		return true
 	}
+
 	if os.Getenv("GEMINI_CLI") != "" {
 		return true
 	}
+
 	return false
 }
