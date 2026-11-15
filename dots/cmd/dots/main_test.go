@@ -23,22 +23,30 @@ func TestRunSyncUsesDryRunInLinkedWorktree(t *testing.T) {
 	t.Setenv("DOTDOTFILES", worktreeRoot)
 
 	exitCode := 1
-	output := captureDotsStdout(t, func() {
-		exitCode = run([]string{"sync"})
-	})
+	output := captureDotsStdout(
+		t,
+		func() {
+			exitCode = run([]string{"sync"})
+		},
+	)
 	if exitCode != 0 {
 		t.Fatalf("run(sync) exit code = %d, want 0\n%s", exitCode, output)
 	}
+
 	if !strings.Contains(output, "dry-run: no changes applied") {
 		t.Fatalf("output = %q, want dry-run output", output)
 	}
+
 	mainCheckout, err := filepath.EvalSymlinks(canonicalRoot)
 	if err != nil {
 		t.Fatalf("resolving main checkout: %v", err)
 	}
-	if !strings.Contains(output, "linked worktree") || !strings.Contains(output, "Run sync from "+mainCheckout) {
+
+	if !strings.Contains(output, "linked worktree") ||
+		!strings.Contains(output, "Run sync from "+mainCheckout) {
 		t.Fatalf("output = %q, want linked-worktree guidance with %s", output, mainCheckout)
 	}
+
 	if strings.Contains(output, "--allow-worktree") {
 		t.Fatalf("output = %q, want no worktree override guidance", output)
 	}
@@ -48,8 +56,10 @@ func TestRunSyncUsesDryRunInLinkedWorktree(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading notifications: %v", err)
 	}
+
 	notificationText := string(notifications)
-	if !strings.Contains(notificationText, "|info|") || strings.Contains(notificationText, "|error|") {
+	if !strings.Contains(notificationText, "|info|") ||
+		strings.Contains(notificationText, "|error|") {
 		t.Fatalf("notifications = %q, want informational dry-run entry", notificationText)
 	}
 }
@@ -73,6 +83,7 @@ func captureDotsStdout(t *testing.T, action func()) string {
 	if err != nil {
 		t.Fatalf("creating stdout pipe: %v", err)
 	}
+
 	os.Stdout = writer
 	t.Cleanup(func() {
 		os.Stdout = originalStdout
@@ -88,10 +99,12 @@ func captureDotsStdout(t *testing.T, action func()) string {
 	if err := writer.Close(); err != nil {
 		t.Fatalf("closing stdout writer: %v", err)
 	}
+
 	output := <-outputChannel
 	if err := reader.Close(); err != nil {
 		t.Fatalf("closing stdout reader: %v", err)
 	}
+
 	return output
 }
 
@@ -104,15 +117,22 @@ func newDotsTestRepo(t *testing.T) string {
 	if err := os.MkdirAll(hooksDirectory, 0o755); err != nil {
 		t.Fatalf("creating hooks directory: %v", err)
 	}
+
 	runDotsTestGit(t, repoRoot, "config", "core.hooksPath", hooksDirectory)
 	runDotsTestGit(t, repoRoot, "config", "user.name", "Test")
 	runDotsTestGit(t, repoRoot, "config", "user.email", "test@example.invalid")
 	runDotsTestGit(t, repoRoot, "config", "commit.gpgsign", "false")
-	if err := os.WriteFile(filepath.Join(repoRoot, "README.md"), []byte("test\n"), 0o600); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(repoRoot, "README.md"),
+		[]byte("test\n"),
+		0o600,
+	); err != nil {
 		t.Fatalf("writing README: %v", err)
 	}
+
 	runDotsTestGit(t, repoRoot, "add", "README.md")
 	runDotsTestGit(t, repoRoot, "commit", "-m", "Initial commit")
+
 	return repoRoot
 }
 

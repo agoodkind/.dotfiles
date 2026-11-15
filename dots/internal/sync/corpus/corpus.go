@@ -1,26 +1,42 @@
-// Package corpus renders the agent corpus to user-wide destinations from a
-// declarative TOML manifest. Each manifest output records a kind, a destination,
-// and the parameters that kind needs; the engine dispatches every output to the
-// matching compilation primitive.
+// Package corpus renders agent corpus outputs from a TOML manifest.
+//
+// Each manifest output records a kind, a destination, and the parameters that
+// kind needs. The sync engine dispatches every output to the matching
+// compilation primitive.
 package corpus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
 
+	"goodkind.io/.dotfiles/internal/sync/common"
 	"goodkind.io/.dotfiles/internal/sync/compilation"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
 // ManifestName is the manifest file expected at the corpus root.
 const ManifestName = "targets.toml"
+
+var (
+	errInstructionDocRequiresTitle = errors.New("instruction-doc output requires title")
+	errUnknownOutputKind           = errors.New("unknown output kind")
+	errRuleFilesRequireExt         = errors.New("rule-files output requires rule_ext")
+	errOutputDestEscapesHome       = errors.New("output destination escapes home directory")
+	errOutputDestMustBeBelowHome   = errors.New("output destination must be a path below home")
+	errUnsupportedAgentProvider    = errors.New("unsupported agent provider")
+	errUnknownRefStyle             = errors.New("unknown ref_style")
+)
+
+var errOutputDestResolvesOutside = errors.New("output destination resolves outside home directory")
 
 // OutputKind is the artifact kind an output produces.
 type OutputKind string
@@ -98,37 +114,70 @@ type Manifest struct {
 }
 
 // LoadManifest reads and parses the manifest at the given path.
+//
+// Sync and LoadSourceSet call LoadManifest so every render starts from the same
+// parsed targets.toml.
+//
+// Example:
+//
+//	manifest, err := LoadManifest(filepath.Join(corpusRoot, ManifestName))
+//	if err != nil {
+//		return err
+//	}
 func LoadManifest(path string) (Manifest, error) {
 	var manifest Manifest
 	raw, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		slog.Error("corpus: reading manifest", "path", path, "err", err)
+
 		return manifest, fmt.Errorf("reading manifest %s: %w", path, err)
 	}
+
 	if err := toml.Unmarshal(raw, &manifest); err != nil {
 		slog.Error("corpus: parsing manifest", "path", path, "err", err)
+
 		return manifest, fmt.Errorf("parsing manifest %s: %w", path, err)
 	}
+
 	return manifest, nil
 }
 
-// LoadSourceSet loads local and imported corpus artifacts into one normalized set.
+// LoadSourceSet loads local and imported corpus artifacts into one set.
+//
+// Sync and tests call LoadSourceSet so every render starts from the same
+// normalized rules, skills, and agents.
+//
+// Example:
+//
+//	sourceSet, err := LoadSourceSet(dotfiles)
+//	if err != nil {
+//		return err
+//	}
 func LoadSourceSet(dotfiles string) (compilation.CorpusSourceSet, error) {
 	corpusPaths := compilation.ResolveCorpusSource(dotfiles)
 	manifest, err := LoadManifest(filepath.Join(corpusPaths.Root, ManifestName))
 	if err != nil {
 		return compilation.CorpusSourceSet{}, err
 	}
+
 	return loadSourceSet(dotfiles, manifest)
 }
 
 // Sync renders every manifest output that applies to the running OS.
+//
+// The sync pipeline calls Sync after loading the corpus so each provider
+// destination matches the current normalized source set.
+//
+// Example:
+//
+//	if err := Sync(ctx, dotfiles, logger); err != nil {
+//		return err
+//	}
 func Sync(ctx context.Context, dotfiles string, logger *telemetry.Logger) error {
-	_ = logger
-
 	home, err := os.UserHomeDir()
 	if err != nil {
 		slog.ErrorContext(ctx, "corpus: resolving home directory", "err", err)
+
 		return fmt.Errorf("resolving home directory: %w", err)
 	}
 
@@ -137,6 +186,7 @@ func Sync(ctx context.Context, dotfiles string, logger *telemetry.Logger) error 
 	if err != nil {
 		return err
 	}
+
 	sourceSet, err := loadSourceSet(dotfiles, manifest)
 	if err != nil {
 		return err
@@ -145,220 +195,604 @@ func Sync(ctx context.Context, dotfiles string, logger *telemetry.Logger) error 
 	if err := preflightOutputPlans(sourceSet, manifest.Outputs, home); err != nil {
 		return err
 	}
+
+	var report compilation.ChangeReport
+
 	for _, output := range manifest.Outputs {
 		if output.OS != "" && output.OS != runtime.GOOS {
 			continue
 		}
+
 		dest, err := ResolveOutputDest(home, output.Dest)
 		if err != nil {
 			return err
 		}
-		if err := renderOutput(sourceSet, output, home, dest); err != nil {
+
+		outputReport, err := renderOutput(sourceSet, output, home, dest)
+		if err != nil {
 			return err
 		}
+
+		report.Merge(outputReport)
 	}
+
+	logCorpusChangeReport(ctx, logger, home, report)
+
 	return nil
 }
 
-func preflightOutputPlans(sourceSet compilation.CorpusSourceSet, outputs []Output, home string) error {
+func logCorpusChangeReport(
+	ctx context.Context,
+	logger *telemetry.Logger,
+	home string,
+	report compilation.ChangeReport,
+) {
+	for _, path := range report.Created {
+		common.InfoContext(ctx, logger, "  created "+displayHomePath(home, path))
+	}
+
+	for _, path := range report.Updated {
+		common.InfoContext(ctx, logger, "  updated "+displayHomePath(home, path))
+	}
+
+	for _, path := range report.Removed {
+		common.InfoContext(ctx, logger, "  removed "+displayHomePath(home, path))
+	}
+
+	for _, path := range report.SkippedUnmanaged {
+		common.WarnContext(ctx, logger, "  skipped unmanaged "+displayHomePath(home, path))
+	}
+
+	common.InfoContextf(
+		ctx,
+		logger,
+		"  Corpus: written: %s unchanged: %s skipped unmanaged: %s removed: %s",
+		strconv.Itoa(report.WrittenCount()),
+		strconv.Itoa(len(report.Unchanged)),
+		strconv.Itoa(len(report.SkippedUnmanaged)),
+		strconv.Itoa(len(report.Removed)),
+	)
+}
+
+func displayHomePath(home string, path string) string {
+	cleanHome := filepath.Clean(home)
+	cleanPath := filepath.Clean(path)
+	if cleanPath == cleanHome {
+		return "~"
+	}
+
+	prefix := cleanHome + string(os.PathSeparator)
+	if rest, ok := strings.CutPrefix(cleanPath, prefix); ok {
+		return "~/" + filepath.ToSlash(rest)
+	}
+
+	return filepath.ToSlash(cleanPath)
+}
+
+func preflightOutputPlans(
+	sourceSet compilation.CorpusSourceSet,
+	outputs []Output,
+	home string,
+) error {
 	for _, output := range outputs {
 		if output.OS != "" && output.OS != runtime.GOOS {
 			continue
 		}
+
 		dest, err := ResolveOutputDest(home, output.Dest)
 		if err != nil {
 			return err
 		}
+
 		if err := validateOutput(sourceSet, output, home, dest); err != nil {
-			slog.Warn("corpus: preflighting output", "provider", output.Provider, "kind", output.Kind, "err", err)
-			return fmt.Errorf("preflighting %s output for %s: %w", output.Kind, output.Provider, err)
+			slog.Warn(
+				"corpus: preflighting output",
+				"provider",
+				output.Provider,
+				"kind",
+				output.Kind,
+				"err",
+				err,
+			)
+
+			return fmt.Errorf(
+				"preflighting %s output for %s: %w",
+				output.Kind,
+				output.Provider,
+				err,
+			)
 		}
 	}
+
 	return nil
 }
 
-func validateOutput(sourceSet compilation.CorpusSourceSet, output Output, home string, dest string) error {
-	var err error
+func validateOutput(
+	sourceSet compilation.CorpusSourceSet,
+	output Output,
+	home string,
+	dest string,
+) error {
 	switch output.Kind {
 	case KindSkills:
-		style, styleErr := resolveRefStyle(output.RefStyle)
-		if styleErr != nil {
-			return styleErr
-		}
-		style.Harness = string(output.Provider)
-		renderSourceSet := sourceSet
-		if output.Provider == providerAgents {
-			renderSourceSet, err = withAgentFallbackSkills(sourceSet)
-			if err != nil {
-				return err
-			}
-		}
-		if err := compilation.ValidateSkillDirsFromSourceSet(renderSourceSet, dest, style); err != nil {
-			slog.Warn("corpus: validating skill output", "provider", output.Provider, "err", err)
-			return fmt.Errorf("validating skill output: %w", err)
-		}
-		return nil
+		return validateSkillsOutput(sourceSet, output, dest)
 	case KindRuleFiles:
 		return validateRuleFileOutput(sourceSet, output, home, dest)
 	case KindInstructionDoc:
-		if output.Title == "" {
-			return fmt.Errorf("instruction-doc output for %s requires title", output.Provider)
-		}
-		ruleStyle, styleErr := resolveRuleRenderStyle(output, home, dest)
-		if styleErr != nil {
-			return styleErr
-		}
-		if err := compilation.ValidateRulesAsInstructionDocFromSourceSet(sourceSet, dest, ruleStyle); err != nil {
-			slog.Warn("corpus: validating instruction document", "provider", output.Provider, "err", err)
-			return fmt.Errorf("validating instruction document: %w", err)
-		}
-		return nil
+		return validateInstructionDocOutput(sourceSet, output, home, dest)
 	case KindPerFileInstructions:
-		ruleStyle, styleErr := resolveRuleRenderStyle(output, home, dest)
-		if styleErr != nil {
-			return styleErr
-		}
-		if err := compilation.ValidateCopilotInstructionFilesFromSourceSet(sourceSet, dest, ruleStyle); err != nil {
-			slog.Warn("corpus: validating Copilot instructions", "provider", output.Provider, "err", err)
-			return fmt.Errorf("validating Copilot instructions: %w", err)
-		}
-		return nil
+		return validatePerFileInstructionsOutput(sourceSet, output, home, dest)
 	case KindAgents:
-		format, formatErr := resolveAgentFormat(output.Provider)
-		if formatErr != nil {
-			return formatErr
-		}
-		if err := compilation.ValidateAgentFiles(sourceSet.Agents, dest, format); err != nil {
-			slog.Warn("corpus: validating agent output", "provider", output.Provider, "err", err)
-			return fmt.Errorf("validating agent output: %w", err)
-		}
-		return nil
+		return validateAgentsOutput(sourceSet, output, dest)
 	default:
-		return fmt.Errorf("unknown output kind %q for %s", output.Kind, output.Provider)
+		slog.Warn("corpus: unknown output kind", "provider", output.Provider, "kind", output.Kind)
+
+		return fmt.Errorf("%w %q for %s", errUnknownOutputKind, output.Kind, output.Provider)
 	}
 }
 
-func validateRuleFileOutput(sourceSet compilation.CorpusSourceSet, output Output, home string, dest string) error {
-	if output.RuleExt == "" {
-		return fmt.Errorf("rule-files output for %s requires rule_ext", output.Provider)
+func validateSkillsOutput(
+	sourceSet compilation.CorpusSourceSet,
+	output Output,
+	dest string,
+) error {
+	style, err := resolveRefStyle(output.RefStyle)
+	if err != nil {
+		return err
 	}
+
+	style.Harness = string(output.Provider)
+	renderSourceSet := sourceSet
+	if output.Provider == providerAgents {
+		renderSourceSet, err = withAgentFallbackSkills(sourceSet)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := compilation.ValidateSkillDirsFromSourceSet(renderSourceSet, dest, style); err != nil {
+		slog.Warn("corpus: validating skill output", "provider", output.Provider, "err", err)
+
+		return fmt.Errorf("validating skill output: %w", err)
+	}
+
+	return nil
+}
+
+func validateInstructionDocOutput(
+	sourceSet compilation.CorpusSourceSet,
+	output Output,
+	home string,
+	dest string,
+) error {
+	if output.Title == "" {
+		return fmt.Errorf("%w for %s", errInstructionDocRequiresTitle, output.Provider)
+	}
+
 	ruleStyle, err := resolveRuleRenderStyle(output, home, dest)
 	if err != nil {
 		return err
 	}
+
+	if err := compilation.ValidateRulesAsInstructionDocFromSourceSet(
+		sourceSet,
+		dest,
+		ruleStyle,
+	); err != nil {
+		slog.Warn(
+			"corpus: validating instruction document",
+			"provider",
+			output.Provider,
+			"err",
+			err,
+		)
+
+		return fmt.Errorf("validating instruction document: %w", err)
+	}
+
+	return nil
+}
+
+func validatePerFileInstructionsOutput(
+	sourceSet compilation.CorpusSourceSet,
+	output Output,
+	home string,
+	dest string,
+) error {
+	ruleStyle, err := resolveRuleRenderStyle(output, home, dest)
+	if err != nil {
+		return err
+	}
+
+	if err := compilation.ValidateCopilotInstructionFilesFromSourceSet(
+		sourceSet,
+		dest,
+		ruleStyle,
+	); err != nil {
+		slog.Warn(
+			"corpus: validating Copilot instructions",
+			"provider",
+			output.Provider,
+			"err",
+			err,
+		)
+
+		return fmt.Errorf("validating Copilot instructions: %w", err)
+	}
+
+	return nil
+}
+
+func validateAgentsOutput(
+	sourceSet compilation.CorpusSourceSet,
+	output Output,
+	dest string,
+) error {
+	format, err := resolveAgentFormat(output.Provider)
+	if err != nil {
+		return err
+	}
+
+	if err := compilation.ValidateAgentFiles(sourceSet.Agents, dest, format); err != nil {
+		slog.Warn("corpus: validating agent output", "provider", output.Provider, "err", err)
+
+		return fmt.Errorf("validating agent output: %w", err)
+	}
+
+	return nil
+}
+
+func validateRuleFileOutput(
+	sourceSet compilation.CorpusSourceSet,
+	output Output,
+	home string,
+	dest string,
+) error {
+	if output.RuleExt == "" {
+		return fmt.Errorf("%w for %s", errRuleFilesRequireExt, output.Provider)
+	}
+
+	ruleStyle, err := resolveRuleRenderStyle(output, home, dest)
+	if err != nil {
+		return err
+	}
+
 	format, err := compilation.RuleTargetFormatFromExt(output.RuleExt)
 	if err != nil {
 		slog.Warn("corpus: resolving rule format", "provider", output.Provider, "err", err)
-		return fmt.Errorf("unsupported rule_ext %q for %s: %w", output.RuleExt, output.Provider, err)
+
+		return fmt.Errorf(
+			"unsupported rule_ext %q for %s: %w",
+			output.RuleExt,
+			output.Provider,
+			err,
+		)
 	}
-	if err := compilation.ValidateRuleFilesFromSourceSet(sourceSet, dest, output.RuleExt, format, ruleStyle); err != nil {
+
+	if err := compilation.ValidateRuleFilesFromSourceSet(
+		sourceSet,
+		dest,
+		output.RuleExt,
+		format,
+		ruleStyle,
+	); err != nil {
 		slog.Warn("corpus: validating rule output", "provider", output.Provider, "err", err)
+
 		return fmt.Errorf("validating rule output: %w", err)
 	}
+
 	return nil
 }
 
 // ResolveOutputDest rejects destinations outside the resolved home directory.
+//
+// Sync and preflight call ResolveOutputDest so every corpus output stays under
+// the caller home directory before any files are written.
+//
+// Example:
+//
+//	dest, err := ResolveOutputDest(home, output.Dest)
+//	if err != nil {
+//		return err
+//	}
 func ResolveOutputDest(home string, relativeDest string) (string, error) {
 	cleanHome := filepath.Clean(home)
 	cleanDest := filepath.Clean(relativeDest)
 
 	if filepath.IsAbs(cleanDest) {
-		return "", fmt.Errorf("output destination %q escapes home directory %s", relativeDest, cleanHome)
+		return "", fmt.Errorf("%w: %q (home %s)", errOutputDestEscapesHome, relativeDest, cleanHome)
 	}
+
 	if cleanDest == "." {
-		return "", fmt.Errorf("output destination %q must be a path below %s", relativeDest, cleanHome)
+		return "", fmt.Errorf(
+			"%w: %q (home %s)",
+			errOutputDestMustBeBelowHome,
+			relativeDest,
+			cleanHome,
+		)
 	}
+
 	joined := filepath.Clean(filepath.Join(cleanHome, cleanDest))
 	if !strings.HasPrefix(joined, cleanHome+string(os.PathSeparator)) {
-		return "", fmt.Errorf("output destination %q escapes home directory %s", relativeDest, cleanHome)
+		return "", fmt.Errorf("%w: %q (home %s)", errOutputDestEscapesHome, relativeDest, cleanHome)
 	}
+
 	resolvedHome, err := filepath.EvalSymlinks(cleanHome)
 	if err != nil {
 		slog.Warn("corpus: resolving home directory", "home", cleanHome, "err", err)
+
 		return "", fmt.Errorf("resolving home directory %s: %w", cleanHome, err)
 	}
+
 	existingPath := joined
+
 	for {
 		resolvedParent, resolveErr := filepath.EvalSymlinks(existingPath)
 		if resolveErr == nil {
-			if resolvedParent != resolvedHome && !strings.HasPrefix(resolvedParent, resolvedHome+string(os.PathSeparator)) {
-				return "", fmt.Errorf("output destination %q resolves outside home directory %s", relativeDest, cleanHome)
+			if resolvedParent != resolvedHome &&
+				!strings.HasPrefix(resolvedParent, resolvedHome+string(os.PathSeparator)) {
+				return "", fmt.Errorf(
+					"%w: %q (home %s)",
+					errOutputDestResolvesOutside,
+					relativeDest,
+					cleanHome,
+				)
 			}
+
 			break
 		}
+
 		if !os.IsNotExist(resolveErr) {
-			return "", fmt.Errorf("resolving output destination path %s: %w", existingPath, resolveErr)
+			return "", fmt.Errorf(
+				"resolving output destination path %s: %w",
+				existingPath,
+				resolveErr,
+			)
 		}
+
 		nextPath := filepath.Dir(existingPath)
 		if nextPath == existingPath {
-			return "", fmt.Errorf("resolving output destination path %s: %w", existingPath, resolveErr)
+			return "", fmt.Errorf(
+				"resolving output destination path %s: %w",
+				existingPath,
+				resolveErr,
+			)
 		}
+
 		existingPath = nextPath
 	}
+
 	return joined, nil
 }
 
-func renderOutput(sourceSet compilation.CorpusSourceSet, output Output, home string, dest string) error {
-	var err error
+func renderOutput(
+	sourceSet compilation.CorpusSourceSet,
+	output Output,
+	home string,
+	dest string,
+) (compilation.ChangeReport, error) {
+	report, err := renderOutputByKind(sourceSet, output, home, dest)
+	if err != nil {
+		slog.Error(
+			"corpus: rendering output",
+			"provider",
+			output.Provider,
+			"kind",
+			string(output.Kind),
+			"dest",
+			dest,
+			"err",
+			err,
+		)
+
+		return report, fmt.Errorf(
+			"rendering %s %s into %s: %w",
+			output.Provider,
+			output.Kind,
+			dest,
+			err,
+		)
+	}
+
+	return report, nil
+}
+
+func renderOutputByKind(
+	sourceSet compilation.CorpusSourceSet,
+	output Output,
+	home string,
+	dest string,
+) (compilation.ChangeReport, error) {
 	switch output.Kind {
 	case KindSkills:
-		style, styleErr := resolveRefStyle(output.RefStyle)
-		if styleErr != nil {
-			return styleErr
-		}
-		style.Harness = string(output.Provider)
-		renderSourceSet := sourceSet
-		if output.Provider == providerAgents {
-			renderSourceSet, err = withAgentFallbackSkills(sourceSet)
-			if err != nil {
-				return err
-			}
-		}
-		err = compilation.RenderSkillDirsFromSourceSet(renderSourceSet, dest, style)
+		return renderSkillsOutput(sourceSet, output, dest)
 	case KindRuleFiles:
-		if output.RuleExt == "" {
-			return fmt.Errorf("rule-files output for %s requires rule_ext", output.Provider)
-		}
-		ruleStyle, ruleStyleErr := resolveRuleRenderStyle(output, home, dest)
-		if ruleStyleErr != nil {
-			return ruleStyleErr
-		}
-		format, formatErr := compilation.RuleTargetFormatFromExt(output.RuleExt)
-		if formatErr != nil {
-			slog.Error("corpus: unsupported rule_ext", "provider", output.Provider, "rule_ext", output.RuleExt, "err", formatErr)
-			return fmt.Errorf("unsupported rule_ext %q for %s: %w", output.RuleExt, output.Provider, formatErr)
-		}
-		err = compilation.RenderRuleFilesFromSourceSet(sourceSet, dest, output.RuleExt, format, ruleStyle)
+		return renderRuleFilesOutput(sourceSet, output, home, dest)
 	case KindInstructionDoc:
-		if output.Title == "" {
-			return fmt.Errorf("instruction-doc output for %s requires title", output.Provider)
-		}
-		ruleStyle, ruleStyleErr := resolveRuleRenderStyle(output, home, dest)
-		if ruleStyleErr != nil {
-			return ruleStyleErr
-		}
-		err = compilation.RenderRulesAsInstructionDocFromSourceSet(sourceSet, dest, output.Title, ruleStyle)
+		return renderInstructionDocOutput(sourceSet, output, home, dest)
 	case KindPerFileInstructions:
-		ruleStyle, ruleStyleErr := resolveRuleRenderStyle(output, home, dest)
-		if ruleStyleErr != nil {
-			return ruleStyleErr
-		}
-		err = compilation.RenderCopilotInstructionFilesFromSourceSet(sourceSet, dest, ruleStyle)
+		return renderPerFileInstructionsOutput(sourceSet, output, home, dest)
 	case KindAgents:
-		format, formatErr := resolveAgentFormat(output.Provider)
-		if formatErr != nil {
-			return formatErr
-		}
-		err = compilation.RenderAgentFiles(sourceSet.Agents, dest, format)
+		return renderAgentsOutput(sourceSet, output, dest)
 	default:
-		return fmt.Errorf("unknown output kind %q for %s", output.Kind, output.Provider)
+		slog.Warn("corpus: unknown output kind", "provider", output.Provider, "kind", output.Kind)
+
+		return compilation.ChangeReport{}, fmt.Errorf(
+			"%w %q for %s",
+			errUnknownOutputKind,
+			output.Kind,
+			output.Provider,
+		)
 	}
+}
+
+func renderSkillsOutput(
+	sourceSet compilation.CorpusSourceSet,
+	output Output,
+	dest string,
+) (compilation.ChangeReport, error) {
+	style, err := resolveRefStyle(output.RefStyle)
 	if err != nil {
-		slog.Error("corpus: rendering output", "provider", output.Provider, "kind", string(output.Kind), "dest", dest, "err", err)
-		return fmt.Errorf("rendering %s %s into %s: %w", output.Provider, output.Kind, dest, err)
+		return compilation.ChangeReport{}, err
 	}
-	return nil
+
+	style.Harness = string(output.Provider)
+	renderSourceSet := sourceSet
+	if output.Provider == providerAgents {
+		renderSourceSet, err = withAgentFallbackSkills(sourceSet)
+		if err != nil {
+			return compilation.ChangeReport{}, err
+		}
+	}
+
+	report, err := compilation.RenderSkillDirsFromSourceSet(renderSourceSet, dest, style)
+	if err != nil {
+		slog.Error("corpus: rendering skills", "provider", output.Provider, "err", err)
+
+		return report, fmt.Errorf("rendering skills: %w", err)
+	}
+
+	return report, nil
+}
+
+func renderRuleFilesOutput(
+	sourceSet compilation.CorpusSourceSet,
+	output Output,
+	home string,
+	dest string,
+) (compilation.ChangeReport, error) {
+	if output.RuleExt == "" {
+		return compilation.ChangeReport{}, fmt.Errorf(
+			"%w for %s",
+			errRuleFilesRequireExt,
+			output.Provider,
+		)
+	}
+
+	ruleStyle, err := resolveRuleRenderStyle(output, home, dest)
+	if err != nil {
+		return compilation.ChangeReport{}, err
+	}
+
+	format, err := compilation.RuleTargetFormatFromExt(output.RuleExt)
+	if err != nil {
+		slog.Error(
+			"corpus: unsupported rule_ext",
+			"provider",
+			output.Provider,
+			"rule_ext",
+			output.RuleExt,
+			"err",
+			err,
+		)
+
+		return compilation.ChangeReport{}, fmt.Errorf(
+			"unsupported rule_ext %q for %s: %w",
+			output.RuleExt,
+			output.Provider,
+			err,
+		)
+	}
+
+	report, err := compilation.RenderRuleFilesFromSourceSet(
+		sourceSet,
+		dest,
+		output.RuleExt,
+		format,
+		ruleStyle,
+	)
+	if err != nil {
+		return report, fmt.Errorf("rendering rule files: %w", err)
+	}
+
+	return report, nil
+}
+
+func renderInstructionDocOutput(
+	sourceSet compilation.CorpusSourceSet,
+	output Output,
+	home string,
+	dest string,
+) (compilation.ChangeReport, error) {
+	if output.Title == "" {
+		slog.Warn("corpus: instruction-doc missing title", "provider", output.Provider)
+
+		return compilation.ChangeReport{}, fmt.Errorf(
+			"%w for %s",
+			errInstructionDocRequiresTitle,
+			output.Provider,
+		)
+	}
+
+	ruleStyle, err := resolveRuleRenderStyle(output, home, dest)
+	if err != nil {
+		return compilation.ChangeReport{}, err
+	}
+
+	report, err := compilation.RenderRulesAsInstructionDocFromSourceSet(
+		sourceSet,
+		dest,
+		output.Title,
+		ruleStyle,
+	)
+	if err != nil {
+		slog.Error("corpus: rendering instruction doc", "provider", output.Provider, "err", err)
+
+		return report, fmt.Errorf("rendering instruction doc: %w", err)
+	}
+
+	return report, nil
+}
+
+func renderPerFileInstructionsOutput(
+	sourceSet compilation.CorpusSourceSet,
+	output Output,
+	home string,
+	dest string,
+) (compilation.ChangeReport, error) {
+	ruleStyle, err := resolveRuleRenderStyle(output, home, dest)
+	if err != nil {
+		return compilation.ChangeReport{}, err
+	}
+
+	report, err := compilation.RenderCopilotInstructionFilesFromSourceSet(
+		sourceSet,
+		dest,
+		ruleStyle,
+	)
+	if err != nil {
+		slog.Error(
+			"corpus: rendering Copilot instructions",
+			"provider",
+			output.Provider,
+			"err",
+			err,
+		)
+
+		return report, fmt.Errorf("rendering Copilot instructions: %w", err)
+	}
+
+	return report, nil
+}
+
+func renderAgentsOutput(
+	sourceSet compilation.CorpusSourceSet,
+	output Output,
+	dest string,
+) (compilation.ChangeReport, error) {
+	format, err := resolveAgentFormat(output.Provider)
+	if err != nil {
+		return compilation.ChangeReport{}, err
+	}
+
+	report, err := compilation.RenderAgentFiles(sourceSet.Agents, dest, format)
+	if err != nil {
+		slog.Error("corpus: rendering agents", "provider", output.Provider, "err", err)
+
+		return report, fmt.Errorf("rendering agents: %w", err)
+	}
+
+	return report, nil
 }
 
 func resolveAgentFormat(provider ProviderName) (compilation.AgentTargetFormat, error) {
@@ -374,17 +808,26 @@ func resolveAgentFormat(provider ProviderName) (compilation.AgentTargetFormat, e
 	case providerCopilot:
 		return compilation.AgentTargetCopilot, nil
 	case providerAgents:
-		return "", fmt.Errorf("unsupported agent provider %q", provider)
+		slog.Warn("corpus: unsupported agent provider", "provider", provider)
+
+		return "", fmt.Errorf("%w %q", errUnsupportedAgentProvider, provider)
 	default:
-		return "", fmt.Errorf("unsupported agent provider %q", provider)
+		slog.Warn("corpus: unsupported agent provider", "provider", provider)
+
+		return "", fmt.Errorf("%w %q", errUnsupportedAgentProvider, provider)
 	}
 }
 
-func resolveRuleRenderStyle(output Output, home string, dest string) (compilation.RuleRenderStyle, error) {
-	emptyStyle := compilation.RuleRenderStyle{SkillsRelDir: "", Harness: string(output.Provider)}
+func resolveRuleRenderStyle(
+	output Output,
+	home string,
+	dest string,
+) (compilation.RuleRenderStyle, error) {
+	emptyStyle := compilation.EmptyRuleRenderStyle(string(output.Provider))
 	if output.SkillDest == "" {
 		return emptyStyle, nil
 	}
+
 	var linkBase string
 	switch output.Kind {
 	case KindSkills, KindAgents:
@@ -396,13 +839,19 @@ func resolveRuleRenderStyle(output Output, home string, dest string) (compilatio
 	default:
 		return emptyStyle, nil
 	}
+
 	skillRoot := filepath.Join(home, output.SkillDest)
 	skillsRelDir, err := filepath.Rel(linkBase, skillRoot)
 	if err != nil {
 		slog.Error("corpus: computing skill link path", "provider", output.Provider, "err", err)
+
 		return emptyStyle, fmt.Errorf("computing skill link path for %s: %w", output.Provider, err)
 	}
-	return compilation.RuleRenderStyle{SkillsRelDir: filepath.ToSlash(skillsRelDir), Harness: string(output.Provider)}, nil
+
+	style := compilation.EmptyRuleRenderStyle(string(output.Provider))
+	style.SkillsRelDir = filepath.ToSlash(skillsRelDir)
+
+	return style, nil
 }
 
 func resolveRefStyle(name RefStyleName) (compilation.SkillRefStyle, error) {
@@ -412,6 +861,8 @@ func resolveRefStyle(name RefStyleName) (compilation.SkillRefStyle, error) {
 	case RefMD:
 		return compilation.SkillRefMD, nil
 	default:
-		return compilation.SkillRefStyle{}, fmt.Errorf("unknown ref_style %q", name)
+		slog.Warn("corpus: unknown ref_style", "ref_style", name)
+
+		return compilation.SkillRefStyle{}, fmt.Errorf("%w %q", errUnknownRefStyle, name)
 	}
 }

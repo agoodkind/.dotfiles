@@ -39,7 +39,9 @@ const (
 // ConfigureDefaultSlogFromEnv configures package-level slog output for helper packages.
 func ConfigureDefaultSlogFromEnv() {
 	level := slog.LevelWarn
-	rawLevel := environmentLogLevel(strings.ToLower(strings.TrimSpace(os.Getenv("DOTFILES_LOG_LEVEL"))))
+	rawLevel := environmentLogLevel(
+		strings.ToLower(strings.TrimSpace(os.Getenv("DOTFILES_LOG_LEVEL"))),
+	)
 	switch rawLevel {
 	case environmentLogLevelDebug:
 		level = slog.LevelDebug
@@ -48,10 +50,14 @@ func ConfigureDefaultSlogFromEnv() {
 	case environmentLogLevelError:
 		level = slog.LevelError
 	}
-	handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level:     level,
-		AddSource: level == slog.LevelDebug,
-	})
+
+	handler := slog.NewTextHandler(
+		os.Stderr,
+		&slog.HandlerOptions{
+			Level:     level,
+			AddSource: level == slog.LevelDebug,
+		},
+	)
 	slog.SetDefault(slog.New(handler))
 }
 
@@ -72,9 +78,11 @@ var cacheLogNames = []string{
 func KnownLogPaths() []string {
 	paths := make([]string, 0, len(cacheLogNames)+1)
 	paths = append(paths, dispatchLogPath())
+
 	for _, name := range cacheLogNames {
 		paths = append(paths, filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", name))
 	}
+
 	return paths
 }
 
@@ -87,10 +95,12 @@ func dispatchLogPath() string {
 	if configured := os.Getenv("DOTFILES_DISPATCH_LOG"); configured != "" {
 		return configured
 	}
+
 	cacheDir := os.Getenv("XDG_CACHE_HOME")
 	if cacheDir == "" {
 		cacheDir = filepath.Join(os.Getenv("HOME"), ".cache")
 	}
+
 	return filepath.Join(cacheDir, "dotfiles", "dispatch.log")
 }
 
@@ -120,10 +130,13 @@ func NewLogger(logPath string) (*Logger, error) {
 		return nil, fmt.Errorf("opening log file: %w", err)
 	}
 
-	fileHandler := slog.NewJSONHandler(logFile, &slog.HandlerOptions{
-		Level:     slog.LevelDebug,
-		AddSource: true,
-	})
+	fileHandler := slog.NewJSONHandler(
+		logFile,
+		&slog.HandlerOptions{
+			Level:     slog.LevelDebug,
+			AddSource: true,
+		},
+	)
 	correlatedHandler := correlation.SlogHandler(fileHandler, correlation.HandlerOptions{})
 
 	return &Logger{
@@ -147,6 +160,7 @@ func (l *Logger) Close() error {
 		slog.Error("telemetry: Close: closing log file", "err", err)
 		return fmt.Errorf("closing log file: %w", err)
 	}
+
 	return nil
 }
 
@@ -163,11 +177,13 @@ func (l *Logger) SectionContext(ctx context.Context, title string) func() {
 		l.writeRaw(l.stdout, fmt.Sprintf("\n%s%s%s", colorBlue, lines, colorReset))
 		l.writeRaw(l.stdout, fmt.Sprintf("%s%s%s", colorBlue, title, colorReset))
 		l.startSpinner(ctx, title)
+
 		return l.stopSpinner
 	}
 
 	l.InfoContext(ctx, lines)
 	l.InfoContext(ctx, title)
+
 	return func() {}
 }
 
@@ -212,7 +228,17 @@ func (l *Logger) WarnContextWithErr(ctx context.Context, message string, err err
 		l.WarnContext(ctx, message)
 		return
 	}
-	l.log(ctx, "WARN", slog.LevelWarn, message, l.stderr, "warn", colorYellow, slog.String("err", err.Error()))
+
+	l.log(
+		ctx,
+		"WARN",
+		slog.LevelWarn,
+		message,
+		l.stderr,
+		"warn",
+		colorYellow,
+		slog.String("err", err.Error()),
+	)
 }
 
 // ErrorWithErr logs an error message along with an error.
@@ -226,7 +252,17 @@ func (l *Logger) ErrorContextWithErr(ctx context.Context, message string, err er
 		l.log(ctx, "ERROR", slog.LevelError, message, l.stderr, "err", colorRed)
 		return
 	}
-	l.log(ctx, "ERROR", slog.LevelError, message, l.stderr, "err", colorRed, slog.String("err", err.Error()))
+
+	l.log(
+		ctx,
+		"ERROR",
+		slog.LevelError,
+		message,
+		l.stderr,
+		"err",
+		colorRed,
+		slog.String("err", err.Error()),
+	)
 }
 
 // Success logs a success message at info level.
@@ -251,20 +287,24 @@ func (l *Logger) RawOutputContext(ctx context.Context, output string) {
 		if line == "" {
 			continue
 		}
+
 		l.logStructured(ctx, "OUTPUT", slog.LevelDebug, line, slog.String("source", "command"))
 		if !l.interactive {
 			l.log(ctx, "OUTPUT", slog.LevelDebug, line, l.stdout, "out", colorGray)
 			continue
 		}
+
 		if suppressInteractiveRawLine(line) {
 			continue
 		}
+
 		l.write(l.stdout, fmt.Sprintf("%s- %s%s", colorGray, line, colorReset))
 	}
 }
 
 func suppressInteractiveRawLine(line string) bool {
-	return strings.HasPrefix(line, "go: downloading ") || strings.HasPrefix(line, "go: finding module for package ")
+	return strings.HasPrefix(line, "go: downloading ") ||
+		strings.HasPrefix(line, "go: finding module for package ")
 }
 
 func (l *Logger) log(
@@ -298,13 +338,23 @@ func (l *Logger) log(
 	l.write(stream, humanLine)
 }
 
-func (l *Logger) logStructured(ctx context.Context, levelLabel string, level slog.Level, message string, attributes ...slog.Attr) {
+func (l *Logger) logStructured(
+	ctx context.Context,
+	levelLabel string,
+	level slog.Level,
+	message string,
+	attributes ...slog.Attr,
+) {
 	if l.slogLogger == nil {
 		return
 	}
 
 	attrs := make([]slog.Attr, 0, 2+len(attributes))
-	attrs = append(attrs, slog.String("level_label", levelLabel), slog.String("log_file", l.filePath))
+	attrs = append(
+		attrs,
+		slog.String("level_label", levelLabel),
+		slog.String("log_file", l.filePath),
+	)
 	attrs = append(attrs, attributes...)
 	l.slogLogger.LogAttrs(ctx, level, message, attrs...)
 }
@@ -315,6 +365,7 @@ func (l *Logger) write(stream io.Writer, message string) {
 	if l.interactive {
 		l.stopSpinnerLocked()
 	}
+
 	l.writeLine(stream, message)
 }
 
@@ -348,10 +399,12 @@ func (l *Logger) PrintTTYLineContext(ctx context.Context, plain string, ttyStyle
 	if l.interactive {
 		l.stopSpinnerLocked()
 	}
+
 	out := plain
 	if l.interactive && ttyStyled != "" && os.Getenv("NO_COLOR") == "" {
 		out = ttyStyled
 	}
+
 	_, _ = fmt.Fprintln(l.stdout, out)
 }
 
@@ -359,6 +412,7 @@ func (l *Logger) startSpinner(ctx context.Context, message string) {
 	if !l.interactive {
 		return
 	}
+
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.spinProgram != nil {
@@ -408,6 +462,7 @@ func isTTY(output *os.File) bool {
 	if err != nil {
 		return false
 	}
+
 	return info.Mode()&os.ModeCharDevice != 0
 }
 
@@ -415,9 +470,11 @@ func streamName(stream io.Writer) string {
 	if stream == os.Stdout {
 		return "stdout"
 	}
+
 	if stream == os.Stderr {
 		return "stderr"
 	}
+
 	return "other"
 }
 
@@ -445,8 +502,13 @@ func Notify(level, message, logPath, runID string) error {
 		slog.Error("telemetry: Notify: creating notification directory", "err", err)
 		return fmt.Errorf("creating notification directory: %w", err)
 	}
+
 	timestamp := clock.Now().Format(displayTimestampFormat)
-	return appendLine(notifyPath, fmt.Sprintf("%s|%s|%s|%s|%s", timestamp, level, logPath, runID, message))
+
+	return appendLine(
+		notifyPath,
+		fmt.Sprintf("%s|%s|%s|%s|%s", timestamp, level, logPath, runID, message),
+	)
 }
 
 func appendLine(path string, line string) error {
@@ -461,6 +523,7 @@ func appendLine(path string, line string) error {
 		slog.Error("telemetry: appendLine: writing notification", "err", err)
 		return fmt.Errorf("writing notification: %w", err)
 	}
+
 	return nil
 }
 
@@ -478,6 +541,7 @@ func (m sectionSpinnerModel) Init() tea.Cmd {
 func (m sectionSpinnerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	updated, cmd := m.spinner.Update(msg)
 	m.spinner = updated
+
 	return m, cmd
 }
 

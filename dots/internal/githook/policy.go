@@ -11,23 +11,28 @@ func applyReferenceTransaction(ctx context.Context, state string, stdin io.Reade
 	if state != preparingState {
 		return nil
 	}
+
 	if !harnessActive() {
 		return nil
 	}
+
 	layout := inspectRepo(ctx)
 	if !layout.ready {
 		return nil
 	}
+
 	updates, err := readRefUpdates(ctx, stdin)
 	if err != nil {
 		return err
 	}
+
 	return applyRefUpdates(ctx, layout, updates)
 }
 
 func applyRefUpdates(ctx context.Context, layout repoLayout, updates []refUpdate) error {
 	headOld := ""
 	headNew := ""
+
 	for _, update := range updates {
 		switch {
 		case update.refName == headRef:
@@ -39,9 +44,11 @@ func applyRefUpdates(ctx context.Context, layout repoLayout, updates []refUpdate
 			}
 		}
 	}
+
 	if headNew == "" {
 		return nil
 	}
+
 	return applyHeadUpdate(ctx, layout, headOld, headNew)
 }
 
@@ -51,27 +58,35 @@ func applyHeadUpdate(ctx context.Context, layout repoLayout, headOld string, hea
 		if layout.primary && worktreeHeadSetup(ctx) {
 			return nil
 		}
+
 		return applySymbolicHead(ctx, layout, target)
 	}
+
 	if !isZeroOID(headOld) {
 		return nil
 	}
+
 	if layout.primary && worktreeHeadSetup(ctx) {
 		return nil
 	}
+
 	onDefault, err := currentBranchIsDefault(ctx)
 	if err != nil {
 		return err
 	}
+
 	if layout.primary && onDefault {
 		if !currentHeadExists(ctx) {
 			return nil
 		}
+
 		if pinnedSubmoduleCheckout(ctx, headNew) {
 			return nil
 		}
+
 		return refuse(msgLeaveDefault, hintLeaveDefault)
 	}
+
 	return nil
 }
 
@@ -85,19 +100,24 @@ func applySymbolicHead(ctx context.Context, layout repoLayout, target string) er
 	if err != nil {
 		return err
 	}
+
 	if layout.primary {
 		onDefault, defaultErr := currentBranchIsDefault(ctx)
 		if defaultErr != nil {
 			return defaultErr
 		}
+
 		if onDefault && !targetIsDefault {
 			return refuse(msgLeaveDefault, hintLeaveDefault)
 		}
+
 		return nil
 	}
+
 	if targetIsDefault {
 		return refuse(msgLinkedDefault, hintLinkedDefault)
 	}
+
 	return nil
 }
 
@@ -105,12 +125,15 @@ func applyPrimaryWrite(ctx context.Context) error {
 	if !harnessActive() {
 		return nil
 	}
+
 	layout := inspectRepo(ctx)
 	if !layout.ready {
 		return nil
 	}
+
 	if layout.primary && primaryMutationsBlocked(ctx) {
 		return refuse(msgPrimaryWrite, hintPrimaryWrite)
 	}
+
 	return nil
 }

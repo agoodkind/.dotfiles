@@ -23,8 +23,19 @@ import (
 const ppaReleaseProbeTimeout = 15 * time.Second
 
 type commandRunner interface {
-	RunWithLogger(ctx context.Context, logger *telemetry.Logger, command string, args ...string) error
-	OutputWithLoggerAndEnv(ctx context.Context, logger *telemetry.Logger, env []string, command string, args ...string) (string, error)
+	RunWithLogger(
+		ctx context.Context,
+		logger *telemetry.Logger,
+		command string,
+		args ...string,
+	) error
+	OutputWithLoggerAndEnv(
+		ctx context.Context,
+		logger *telemetry.Logger,
+		env []string,
+		command string,
+		args ...string,
+	) (string, error)
 }
 
 type commandLookup interface {
@@ -81,6 +92,7 @@ func New(deps Deps, toolchainInstaller *toolchain.Installer) platform.Installer 
 // NewRealDeps returns production dependencies for Debian setup.
 func NewRealDeps() Deps {
 	productionDeps := realDeps{}
+
 	return Deps{
 		Commands:   productionDeps,
 		Lookup:     productionDeps,
@@ -101,7 +113,9 @@ func (installer *Installer) Supports(host platform.Host) bool {
 	if host.GOOS != platform.GOOSLinux {
 		return false
 	}
-	return host.Distribution == platform.DistributionDebian || host.Distribution == platform.DistributionUbuntu
+
+	return host.Distribution == platform.DistributionDebian ||
+		host.Distribution == platform.DistributionUbuntu
 }
 
 // Install applies Debian-family sync setup.
@@ -113,16 +127,28 @@ func (installer *Installer) Install(ctx context.Context, request platform.Reques
 
 	if err := common.EnsurePasswordlessSudo(ctx, request.Logger, "root"); err != nil {
 		slog.WarnContext(ctx, "platform/debian: enable passwordless sudo", "err", err)
-		common.WarnContext(ctx, request.Logger, "  failed to enable passwordless sudo; continuing without it")
-		_ = telemetry.Notify("warn", "failed to enable passwordless sudo", common.SyncLogPath(), telemetry.RunID(ctx))
+		common.WarnContext(
+			ctx,
+			request.Logger,
+			"  failed to enable passwordless sudo; continuing without it",
+		)
+		_ = telemetry.Notify(
+			"warn",
+			"failed to enable passwordless sudo",
+			common.SyncLogPath(),
+			telemetry.RunID(ctx),
+		)
 	}
+
 	if err := installer.installDebianPackages(ctx, request.Host, request.Logger); err != nil {
 		return err
 	}
+
 	if err := installer.toolchain.InstallRustupIfNeeded(ctx, request.Logger); err != nil {
 		slog.WarnContext(ctx, "platform/debian: install rustup", "err", err)
 		return fmt.Errorf("install rustup: %w", err)
 	}
+
 	if err := installer.toolchain.InstallGoToolsIfNeeded(ctx, request.Logger); err != nil {
 		slog.WarnContext(ctx, "platform/debian: install Go tools", "err", err)
 		return fmt.Errorf("install Go tools: %w", err)
@@ -131,37 +157,82 @@ func (installer *Installer) Install(ctx context.Context, request platform.Reques
 	return nil
 }
 
-func (installer *Installer) installUbuntuPPAs(ctx context.Context, host platform.Host, cfg *catalog.PackageConfig, logger *telemetry.Logger) {
+func (installer *Installer) installUbuntuPPAs(
+	ctx context.Context,
+	host platform.Host,
+	cfg *catalog.PackageConfig,
+	logger *telemetry.Logger,
+) {
 	if host.Distribution != platform.DistributionUbuntu {
 		return
 	}
+
 	if len(cfg.UbuntuPPAs) == 0 {
 		return
 	}
 
-	if err := installer.deps.Privileged.Run(ctx, logger, "apt-get", "install", "-y", "-qq", "software-properties-common"); err != nil {
-		slog.WarnContext(ctx, "installUbuntuPPAs: installing software-properties-common", "err", err)
-		common.WarnContext(ctx, logger, "  failed to install software-properties-common; skipping PPAs")
+	if err := installer.deps.Privileged.Run(
+		ctx,
+		logger,
+		"apt-get",
+		"install",
+		"-y",
+		"-qq",
+		"software-properties-common",
+	); err != nil {
+		slog.WarnContext(
+			ctx,
+			"installUbuntuPPAs: installing software-properties-common",
+			"err",
+			err,
+		)
+		common.WarnContext(
+			ctx,
+			logger,
+			"  failed to install software-properties-common; skipping PPAs",
+		)
+
 		return
 	}
 
 	added := false
+
 	for _, ppa := range cfg.UbuntuPPAs {
-		if installer.deps.PPAChecker != nil && !installer.deps.PPAChecker.PublishesForCurrentRelease(ctx, ppa) {
-			common.InfoContextf(ctx, logger, "  skipping PPA %s: no release published for this Ubuntu version", ppa)
+		if installer.deps.PPAChecker != nil &&
+			!installer.deps.PPAChecker.PublishesForCurrentRelease(ctx, ppa) {
+			common.InfoContextf(
+				ctx,
+				logger,
+				"  skipping PPA %s: no release published for this Ubuntu version",
+				ppa,
+			)
 			continue
 		}
+
 		common.InfoContextf(ctx, logger, "  adding PPA %s", ppa)
-		if err := installer.deps.Privileged.Run(ctx, logger, "add-apt-repository", "-y", ppa); err != nil {
+		if err := installer.deps.Privileged.Run(
+			ctx,
+			logger,
+			"add-apt-repository",
+			"-y",
+			ppa,
+		); err != nil {
 			slog.WarnContext(ctx, "installUbuntuPPAs: add-apt-repository", "ppa", ppa, "err", err)
 			common.WarnContextf(ctx, logger, "  failed to add PPA %s", ppa)
 			continue
 		}
+
 		added = true
 	}
 
 	if added {
-		if err := installer.deps.Privileged.Run(ctx, logger, "apt-get", "update", "-qq"); err != nil {
+		if err := installer.deps.Privileged.Run(
+			ctx,
+			logger,
+			"apt-get",
+			"update",
+			"-qq",
+		); err != nil {
 			slog.WarnContext(ctx, "installUbuntuPPAs: apt-get update after PPAs", "err", err)
 		}
 	}
@@ -174,29 +245,78 @@ func (installer *Installer) installUbuntuPPAs(ctx context.Context, host platform
 func ppaPublishesForCurrentRelease(ctx context.Context, ppa string) bool {
 	owner, name, ok := parsePPAOwnerName(ppa)
 	if !ok {
-		slog.DebugContext(ctx, "debian: PPA is not in ppa:owner/name form; adding without a release probe", "ppa", ppa)
+		slog.DebugContext(
+			ctx,
+			"debian: PPA is not in ppa:owner/name form; adding without a release probe",
+			"ppa",
+			ppa,
+		)
+
 		return true
 	}
+
 	codename := ubuntuReleaseCodename()
 	if codename == "" {
-		slog.DebugContext(ctx, "debian: no Ubuntu codename found; adding PPA without a release probe", "ppa", ppa)
+		slog.DebugContext(
+			ctx,
+			"debian: no Ubuntu codename found; adding PPA without a release probe",
+			"ppa",
+			ppa,
+		)
+
 		return true
 	}
-	releaseURL := fmt.Sprintf("https://ppa.launchpadcontent.net/%s/%s/ubuntu/dists/%s/Release", owner, name, codename)
+
+	releaseURL := fmt.Sprintf(
+		"https://ppa.launchpadcontent.net/%s/%s/ubuntu/dists/%s/Release",
+		owner,
+		name,
+		codename,
+	)
 	request, err := http.NewRequestWithContext(ctx, http.MethodHead, releaseURL, nil)
 	if err != nil {
-		slog.DebugContext(ctx, "debian: building PPA release probe failed; adding PPA anyway", "ppa", ppa, "err", err)
+		slog.DebugContext(
+			ctx,
+			"debian: building PPA release probe failed; adding PPA anyway",
+			"ppa",
+			ppa,
+			"err",
+			err,
+		)
+
 		return true
 	}
+
 	client := &http.Client{Timeout: ppaReleaseProbeTimeout}
 	response, err := client.Do(request)
 	if err != nil {
-		slog.DebugContext(ctx, "debian: PPA release probe request failed; adding PPA anyway", "ppa", ppa, "err", err)
+		slog.DebugContext(
+			ctx,
+			"debian: PPA release probe request failed; adding PPA anyway",
+			"ppa",
+			ppa,
+			"err",
+			err,
+		)
+
 		return true
 	}
 	defer response.Body.Close()
-	published := response.StatusCode != http.StatusNotFound && response.StatusCode != http.StatusGone
-	slog.DebugContext(ctx, "debian: probed PPA release", "ppa", ppa, "codename", codename, "status", response.StatusCode, "published", published)
+	published := response.StatusCode != http.StatusNotFound &&
+		response.StatusCode != http.StatusGone
+	slog.DebugContext(
+		ctx,
+		"debian: probed PPA release",
+		"ppa",
+		ppa,
+		"codename",
+		codename,
+		"status",
+		response.StatusCode,
+		"published",
+		published,
+	)
+
 	return published
 }
 
@@ -207,6 +327,7 @@ func parsePPAOwnerName(ppa string) (string, string, bool) {
 	if !found || owner == "" || name == "" {
 		return "", "", false
 	}
+
 	return owner, name, true
 }
 
@@ -218,17 +339,24 @@ func ubuntuReleaseCodename() string {
 		slog.Debug("debian: reading /etc/os-release failed", "err", err)
 		return ""
 	}
+
 	for line := range strings.SplitSeq(string(data), "\n") {
 		value, ok := strings.CutPrefix(line, "VERSION_CODENAME=")
 		if !ok {
 			continue
 		}
+
 		return strings.Trim(strings.TrimSpace(value), `"`)
 	}
+
 	return ""
 }
 
-func (installer *Installer) installDebianPackages(ctx context.Context, host platform.Host, logger *telemetry.Logger) error {
+func (installer *Installer) installDebianPackages(
+	ctx context.Context,
+	host platform.Host,
+	logger *telemetry.Logger,
+) error {
 	if !installer.deps.Lookup.HasCommand("apt-get") {
 		return nil
 	}
@@ -247,26 +375,42 @@ func (installer *Installer) installDebianPackages(ctx context.Context, host plat
 
 	ooklaRepoReady := installer.installAptRepos(ctx, host, cfg, logger)
 	if ooklaRepoReady {
-		if err := installer.deps.Privileged.Run(ctx, logger, "apt-get", "remove", "-y", "-qq", unofficialSpeedtestCLIPackage); err != nil {
+		if err := installer.deps.Privileged.Run(
+			ctx,
+			logger,
+			"apt-get",
+			"remove",
+			"-y",
+			"-qq",
+			unofficialSpeedtestCLIPackage,
+		); err != nil {
 			slog.WarnContext(ctx, "removing unofficial speedtest-cli", "err", err)
-			common.WarnContext(ctx, logger, "  failed to remove speedtest-cli before official speedtest install")
+			common.WarnContext(
+				ctx,
+				logger,
+				"  failed to remove speedtest-cli before official speedtest install",
+			)
 		}
 	}
 
 	packages := make(map[string]struct{})
+
 	aptPackages := make([]string, 0, len(cfg.CommonPackages)+len(cfg.AptSpecific))
 	for _, item := range append(cfg.CommonPackages, cfg.AptSpecific...) {
 		if isSnapPackage(item, cfg.SnapPackages) {
 			continue
 		}
+
 		if !ooklaRepoReady && item == officialSpeedtestPackage {
 			common.InfoContext(ctx, logger, "  skipping speedtest: Ookla apt repo is unavailable")
 			continue
 		}
+
 		for mapped := range strings.FieldsSeq(aptPackageName(item)) {
 			if _, ok := packages[mapped]; ok {
 				continue
 			}
+
 			packages[mapped] = struct{}{}
 			aptPackages = append(aptPackages, mapped)
 		}
@@ -285,6 +429,7 @@ func (installer *Installer) installDebianPackages(ctx context.Context, host plat
 		if target == "" {
 			continue
 		}
+
 		if installer.deps.Lookup.HasCommand("snap") {
 			if err := installer.installSnapPackage(ctx, target, logger); err != nil {
 				common.WarnContext(ctx, logger, "  failed to install snap package "+target)
@@ -295,7 +440,11 @@ func (installer *Installer) installDebianPackages(ctx context.Context, host plat
 	return nil
 }
 
-func (installer *Installer) installSnapPackage(ctx context.Context, packageName string, logger *telemetry.Logger) error {
+func (installer *Installer) installSnapPackage(
+	ctx context.Context,
+	packageName string,
+	logger *telemetry.Logger,
+) error {
 	if installer.deps.Commands.RunWithLogger(ctx, logger, "snap", "list", packageName) == nil {
 		return nil
 	}
@@ -304,16 +453,26 @@ func (installer *Installer) installSnapPackage(ctx context.Context, packageName 
 	if installer.isSnapClassic(ctx, packageName) {
 		args = []string{"install", "--classic", packageName}
 	}
+
 	if err := installer.deps.Privileged.Run(ctx, logger, "snap", args...); err != nil {
 		if installer.isSnapClassic(ctx, packageName) {
 			slog.WarnContext(ctx, "running snap install", "err", err)
 			return fmt.Errorf("running snap install: %w", err)
 		}
+
 		if installer.deps.Commands.RunWithLogger(ctx, logger, "snap", "info", packageName) != nil {
 			slog.WarnContext(ctx, "running snap install", "err", err)
 			return fmt.Errorf("running snap install: %w", err)
 		}
-		if err := installer.deps.Privileged.Run(ctx, logger, "snap", "install", "--classic", packageName); err != nil {
+
+		if err := installer.deps.Privileged.Run(
+			ctx,
+			logger,
+			"snap",
+			"install",
+			"--classic",
+			packageName,
+		); err != nil {
 			slog.WarnContext(ctx, "running snap install", "err", err)
 			return fmt.Errorf("running snap install: %w", err)
 		}
@@ -323,10 +482,18 @@ func (installer *Installer) installSnapPackage(ctx context.Context, packageName 
 }
 
 func (installer *Installer) isSnapClassic(ctx context.Context, packageName string) bool {
-	output, err := installer.deps.Commands.OutputWithLoggerAndEnv(ctx, nil, nil, "snap", "info", packageName)
+	output, err := installer.deps.Commands.OutputWithLoggerAndEnv(
+		ctx,
+		nil,
+		nil,
+		"snap",
+		"info",
+		packageName,
+	)
 	if err != nil {
 		return false
 	}
+
 	return strings.Contains(output, "classic") && strings.Contains(output, "confinement")
 }
 
@@ -350,6 +517,7 @@ func aptPackageName(packageName string) string {
 	case toolOpenssh:
 		return "openssh-client openssh-server"
 	}
+
 	return packageName
 }
 
@@ -361,25 +529,39 @@ func snapPackageName(packageName string) string {
 	if packageName == "neovim" {
 		return "nvim"
 	}
+
 	return packageName
 }
 
 type realDeps struct{}
 
-func (realDeps) RunWithLogger(ctx context.Context, logger *telemetry.Logger, command string, args ...string) error {
+func (realDeps) RunWithLogger(
+	ctx context.Context,
+	logger *telemetry.Logger,
+	command string,
+	args ...string,
+) error {
 	if err := cmdexec.RunWithLogger(ctx, logger, command, args...); err != nil {
 		slog.WarnContext(ctx, "platform/debian: run command", "command", command, "err", err)
 		return fmt.Errorf("run %s: %w", command, err)
 	}
+
 	return nil
 }
 
-func (realDeps) OutputWithLoggerAndEnv(ctx context.Context, logger *telemetry.Logger, env []string, command string, args ...string) (string, error) {
+func (realDeps) OutputWithLoggerAndEnv(
+	ctx context.Context,
+	logger *telemetry.Logger,
+	env []string,
+	command string,
+	args ...string,
+) (string, error) {
 	output, err := cmdexec.OutputWithLoggerAndEnv(ctx, logger, env, command, args...)
 	if err != nil {
 		slog.WarnContext(ctx, "platform/debian: output command", "command", command, "err", err)
 		return output, fmt.Errorf("output %s: %w", command, err)
 	}
+
 	return output, nil
 }
 
@@ -391,11 +573,25 @@ func (realDeps) PackageConfig() *catalog.PackageConfig {
 	return catalog.DefaultPackageConfig()
 }
 
-func (realDeps) Run(ctx context.Context, logger *telemetry.Logger, command string, args ...string) error {
+func (realDeps) Run(
+	ctx context.Context,
+	logger *telemetry.Logger,
+	command string,
+	args ...string,
+) error {
 	if err := common.RunDebianPrivilegedCommand(ctx, logger, command, args...); err != nil {
-		slog.WarnContext(ctx, "platform/debian: run privileged command", "command", command, "err", err)
+		slog.WarnContext(
+			ctx,
+			"platform/debian: run privileged command",
+			"command",
+			command,
+			"err",
+			err,
+		)
+
 		return fmt.Errorf("run privileged %s: %w", command, err)
 	}
+
 	return nil
 }
 

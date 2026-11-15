@@ -19,9 +19,11 @@ func TestLinkDotfilesReplacesProfileSymlinkWithLocalFile(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dotfiles, "home"), 0o755); err != nil {
 		t.Fatalf("creating home dir: %v", err)
 	}
+
 	if err := os.WriteFile(repoProfile, []byte("repo-profile\n"), 0o644); err != nil {
 		t.Fatalf("writing repo profile: %v", err)
 	}
+
 	if err := os.WriteFile(repoZshrc, []byte("repo-zshrc\n"), 0o644); err != nil {
 		t.Fatalf("writing repo zshrc: %v", err)
 	}
@@ -40,13 +42,16 @@ func TestLinkDotfilesReplacesProfileSymlinkWithLocalFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat HOME/.profile: %v", err)
 	}
+
 	if info.Mode()&os.ModeSymlink != 0 {
 		t.Fatal("HOME/.profile is still a symlink")
 	}
+
 	body, err := os.ReadFile(homeProfile)
 	if err != nil {
 		t.Fatalf("reading HOME/.profile: %v", err)
 	}
+
 	if !strings.Contains(string(body), repoProfile) {
 		t.Fatalf("local profile does not source %s: %q", repoProfile, body)
 	}
@@ -56,6 +61,7 @@ func TestLinkDotfilesReplacesProfileSymlinkWithLocalFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("HOME/.zshrc was not a symlink: %v", err)
 	}
+
 	if target != repoZshrc {
 		t.Fatalf("HOME/.zshrc -> %q, want %q", target, repoZshrc)
 	}
@@ -64,6 +70,7 @@ func TestLinkDotfilesReplacesProfileSymlinkWithLocalFile(t *testing.T) {
 	if err := os.WriteFile(homeProfile, append([]byte(dockerBlock), body...), 0o644); err != nil {
 		t.Fatalf("writing Docker PATH block: %v", err)
 	}
+
 	if err := LinkDotfiles(context.Background(), dotfiles, logger); err != nil {
 		t.Fatalf("second LinkDotfiles: %v", err)
 	}
@@ -72,13 +79,16 @@ func TestLinkDotfilesReplacesProfileSymlinkWithLocalFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat HOME/.profile after second sync: %v", err)
 	}
+
 	if info.Mode()&os.ModeSymlink != 0 {
 		t.Fatal("second LinkDotfiles re-symlinked HOME/.profile")
 	}
+
 	body, err = os.ReadFile(homeProfile)
 	if err != nil {
 		t.Fatalf("reading HOME/.profile after second sync: %v", err)
 	}
+
 	if !strings.Contains(string(body), "End of Docker Desktop section") {
 		t.Fatalf("second LinkDotfiles wiped Docker PATH block: %q", body)
 	}
@@ -94,6 +104,7 @@ func TestLinkDotfilesWritesProfileWhenMissing(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dotfiles, "home"), 0o755); err != nil {
 		t.Fatalf("creating home dir: %v", err)
 	}
+
 	if err := os.WriteFile(repoProfile, []byte("repo-profile\n"), 0o644); err != nil {
 		t.Fatalf("writing repo profile: %v", err)
 	}
@@ -108,13 +119,16 @@ func TestLinkDotfilesWritesProfileWhenMissing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat HOME/.profile: %v", err)
 	}
+
 	if info.Mode()&os.ModeSymlink != 0 {
 		t.Fatal("HOME/.profile was created as a symlink")
 	}
+
 	body, err := os.ReadFile(homeProfile)
 	if err != nil {
 		t.Fatalf("reading HOME/.profile: %v", err)
 	}
+
 	if !strings.Contains(string(body), repoProfile) {
 		t.Fatalf("local profile does not source %s: %q", repoProfile, body)
 	}
@@ -130,6 +144,7 @@ func TestLinkDotfilesAppendsSourceToExistingRegularProfile(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dotfiles, "home"), 0o755); err != nil {
 		t.Fatalf("creating home dir: %v", err)
 	}
+
 	if err := os.WriteFile(repoProfile, []byte("repo-profile\n"), 0o644); err != nil {
 		t.Fatalf("writing repo profile: %v", err)
 	}
@@ -149,16 +164,20 @@ func TestLinkDotfilesAppendsSourceToExistingRegularProfile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat HOME/.profile: %v", err)
 	}
+
 	if info.Mode()&os.ModeSymlink != 0 {
 		t.Fatal("HOME/.profile became a symlink")
 	}
+
 	body, err := os.ReadFile(homeProfile)
 	if err != nil {
 		t.Fatalf("reading HOME/.profile: %v", err)
 	}
+
 	if !strings.HasPrefix(string(body), existing) {
 		t.Fatalf("existing profile content was not preserved: %q", body)
 	}
+
 	if !strings.Contains(string(body), repoProfile) {
 		t.Fatalf("local profile does not source %s: %q", repoProfile, body)
 	}
@@ -174,6 +193,7 @@ func TestLinkDotfilesRefreshesStaleProfileSource(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dotfiles, "home"), 0o755); err != nil {
 		t.Fatalf("creating home dir: %v", err)
 	}
+
 	if err := os.WriteFile(repoProfile, []byte("repo-profile\n"), 0o644); err != nil {
 		t.Fatalf("writing repo profile: %v", err)
 	}
@@ -198,16 +218,20 @@ func TestLinkDotfilesRefreshesStaleProfileSource(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading HOME/.profile: %v", err)
 	}
+
 	text := string(body)
 	if !strings.Contains(text, "export PATH=\"$PATH:/tmp/docker-bin\"") {
 		t.Fatalf("refresh wiped Docker PATH: %q", body)
 	}
+
 	if strings.Contains(text, "/old/checkout/home/.profile") {
 		t.Fatalf("stale source path remains: %q", body)
 	}
+
 	if !strings.Contains(text, repoProfile) {
 		t.Fatalf("refreshed profile does not source %s: %q", repoProfile, body)
 	}
+
 	if !strings.Contains(text, "# extra after managed block") {
 		t.Fatalf("refresh dropped content after the managed block: %q", body)
 	}
@@ -223,6 +247,7 @@ func TestLinkDotfilesReplacesForeignProfileSymlink(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dotfiles, "home"), 0o755); err != nil {
 		t.Fatalf("creating home dir: %v", err)
 	}
+
 	if err := os.WriteFile(repoProfile, []byte("repo-profile\n"), 0o644); err != nil {
 		t.Fatalf("writing repo profile: %v", err)
 	}
@@ -235,6 +260,7 @@ func TestLinkDotfilesReplacesForeignProfileSymlink(t *testing.T) {
 	if err := os.WriteFile(other, []byte(wrapper), 0o600); err != nil {
 		t.Fatalf("writing other profile: %v", err)
 	}
+
 	homeProfile := filepath.Join(home, ".profile")
 	if err := os.Symlink(other, homeProfile); err != nil {
 		t.Fatalf("creating foreign profile symlink: %v", err)
@@ -249,13 +275,16 @@ func TestLinkDotfilesReplacesForeignProfileSymlink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat HOME/.profile: %v", err)
 	}
+
 	if info.Mode()&os.ModeSymlink != 0 {
 		t.Fatal("HOME/.profile is still a symlink")
 	}
+
 	body, err := os.ReadFile(homeProfile)
 	if err != nil {
 		t.Fatalf("reading HOME/.profile: %v", err)
 	}
+
 	if !strings.Contains(string(body), repoProfile) {
 		t.Fatalf("replaced profile does not source %s: %q", repoProfile, body)
 	}

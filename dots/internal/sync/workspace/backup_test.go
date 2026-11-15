@@ -24,6 +24,7 @@ func TestIsWithinDirAcceptsDescendantsAndSelf(t *testing.T) {
 	if !isWithinDir("/tmp/backup", "/tmp/backup/rel/x.bak") {
 		t.Fatal("isWithinDir(/tmp/backup, /tmp/backup/rel/x.bak) = false, want true")
 	}
+
 	if !isWithinDir("/tmp/backup", "/tmp/backup") {
 		t.Fatal("isWithinDir(/tmp/backup, /tmp/backup) = false, want true")
 	}
@@ -43,26 +44,37 @@ func TestClearExistingHomeFileBacksUpAndFreesThePath(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(homeFile), 0o755); err != nil {
 		t.Fatalf("creating home dir: %v", err)
 	}
+
 	if err := os.WriteFile(homeFile, []byte("existing content\n"), 0o600); err != nil {
 		t.Fatalf("writing existing file: %v", err)
 	}
 
 	logger, _ := newBackupTestLogger(t)
-	backedUp, pathIsFree := clearExistingHomeFile(context.Background(), homeFile, backupPath, ".zshrc", logger)
+	backedUp, pathIsFree := clearExistingHomeFile(
+		context.Background(),
+		homeFile,
+		backupPath,
+		".zshrc",
+		logger,
+	)
 
 	if !backedUp {
 		t.Fatal("clearExistingHomeFile did not back up an existing real file")
 	}
+
 	if !pathIsFree {
 		t.Fatal("clearExistingHomeFile left the path occupied after a successful backup")
 	}
+
 	if _, err := os.Stat(homeFile); !os.IsNotExist(err) {
 		t.Fatalf("homeFile still present after backup, stat err = %v", err)
 	}
+
 	backupContent, err := os.ReadFile(filepath.Join(backupPath, ".zshrc.bak"))
 	if err != nil {
 		t.Fatalf("reading backup: %v", err)
 	}
+
 	if string(backupContent) != "existing content\n" {
 		t.Fatalf("backup content = %q, want %q", backupContent, "existing content\n")
 	}
@@ -75,6 +87,8 @@ func newBackupTestLogger(t *testing.T) (*telemetry.Logger, string) {
 	if err != nil {
 		t.Fatalf("creating logger: %v", err)
 	}
+
 	t.Cleanup(func() { _ = logger.Close() })
+
 	return logger, logPath
 }

@@ -18,6 +18,7 @@ func Recompile(ctx context.Context, dotfiles string, dispatchLogger *telemetry.L
 	if !runner.HasCommand("zsh") {
 		return nil
 	}
+
 	dirs := []string{
 		filepath.Join(dotfiles, "zshrc"),
 		filepath.Join(dotfiles, "lib", "zinit"),
@@ -28,27 +29,43 @@ func Recompile(ctx context.Context, dotfiles string, dispatchLogger *telemetry.L
 		filepath.Join(os.Getenv("HOME"), ".local", "share", "zinit", "snippets"),
 	}
 	compiled := 0
+
 	for _, dir := range dirs {
-		_ = filepath.WalkDir(filepath.Clean(dir), func(path string, entry os.DirEntry, walkErr error) error {
-			if walkErr != nil {
-				return walkErr
-			}
-			if entry.IsDir() {
-				return nil
-			}
-			if !strings.HasSuffix(path, ".zsh") && filepath.Base(path) != ".zshrc" {
-				return nil
-			}
-			if needsCompile(path) {
-				_, err := cmdexec.OutputWithLogger(ctx, dispatchLogger, "zsh", "-c", fmt.Sprintf("zcompile %q", path))
-				if err == nil {
-					compiled++
+		_ = filepath.WalkDir(
+			filepath.Clean(dir),
+			func(path string, entry os.DirEntry, walkErr error) error {
+				if walkErr != nil {
+					return walkErr
 				}
-			}
-			return nil
-		})
+
+				if entry.IsDir() {
+					return nil
+				}
+
+				if !strings.HasSuffix(path, ".zsh") && filepath.Base(path) != ".zshrc" {
+					return nil
+				}
+
+				if needsCompile(path) {
+					_, err := cmdexec.OutputWithLogger(
+						ctx,
+						dispatchLogger,
+						"zsh",
+						"-c",
+						fmt.Sprintf("zcompile %q", path),
+					)
+					if err == nil {
+						compiled++
+					}
+				}
+
+				return nil
+			},
+		)
 	}
+
 	dispatchLogger.InfoContext(ctx, fmt.Sprintf("compiled %d file(s)", compiled))
+
 	return nil
 }
 
@@ -57,9 +74,11 @@ func needsCompile(path string) bool {
 	if err != nil {
 		return false
 	}
+
 	compiledInfo, err := os.Stat(path + ".zwc")
 	if err != nil {
 		return true
 	}
+
 	return sourceInfo.ModTime().After(compiledInfo.ModTime())
 }

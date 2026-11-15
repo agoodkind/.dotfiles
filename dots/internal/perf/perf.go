@@ -104,6 +104,7 @@ func Run(args []string) error {
 		if strings.HasPrefix(args[0], "-") {
 			return runSummary(args)
 		}
+
 		return fmt.Errorf("unknown perf command: %s", args[0])
 	}
 }
@@ -130,17 +131,28 @@ func runSummary(args []string) error {
 	zprofEntries := parseZprof(record.Log.Zprof)
 	if len(zprofEntries) > 0 {
 		fmt.Fprintf(&out, "    └── [zprof: %d functions]\n", len(zprofEntries))
+
 		for idx, entry := range zprofEntries {
 			branch := "├──"
 			if idx == len(zprofEntries)-1 {
 				branch = "└──"
 			}
+
 			callSuffix := "s"
 			if entry.Calls == "1" {
 				callSuffix = ""
 			}
-			fmt.Fprintf(&out, "        %s %-28s %6.2f ms self   %6.2f ms total   (%s call%s)\n",
-				branch, entry.Name, entry.Self, entry.Total, entry.Calls, callSuffix)
+
+			fmt.Fprintf(
+				&out,
+				"        %s %-28s %6.2f ms self   %6.2f ms total   (%s call%s)\n",
+				branch,
+				entry.Name,
+				entry.Self,
+				entry.Total,
+				entry.Calls,
+				callSuffix,
+			)
 		}
 	}
 
@@ -154,16 +166,33 @@ func runSummary(args []string) error {
 	if ready <= 0 {
 		ready = record.Log.MS.FirstPrecmd
 	}
+
 	deferredTime := ready - record.Log.MS.FirstPrecmd
 	if deferredTime < 0 {
 		deferredTime = 0
 	}
+
 	out.WriteString("\ntimeline:\n")
-	fmt.Fprintf(&out, "  prompt visible:      %6.0f ms  (end of .zshrc)\n", record.Log.MS.TimePrompt)
-	fmt.Fprintf(&out, "  first precmd:        %6.0f ms  (+%.0f ms zsh hook overhead)\n", record.Log.MS.FirstPrecmd, precmdGap)
-	fmt.Fprintf(&out, "  shell interactive:   %6.0f ms  (+%.0f ms deferred tiers)\n", ready, deferredTime)
+	fmt.Fprintf(
+		&out,
+		"  prompt visible:      %6.0f ms  (end of .zshrc)\n",
+		record.Log.MS.TimePrompt,
+	)
+	fmt.Fprintf(
+		&out,
+		"  first precmd:        %6.0f ms  (+%.0f ms zsh hook overhead)\n",
+		record.Log.MS.FirstPrecmd,
+		precmdGap,
+	)
+	fmt.Fprintf(
+		&out,
+		"  shell interactive:   %6.0f ms  (+%.0f ms deferred tiers)\n",
+		ready,
+		deferredTime,
+	)
 
 	fmt.Fprint(os.Stdout, out.String())
+
 	return nil
 }
 
@@ -188,12 +217,15 @@ func runLog(args []string) error {
 		slog.Error("decode startup log", "err", err)
 		return fmt.Errorf("decode startup log: %w", err)
 	}
+
 	pretty, err := json.MarshalIndent(obj, "", "  ")
 	if err != nil {
 		slog.Error("format startup log", "err", err)
 		return fmt.Errorf("format startup log: %w", err)
 	}
+
 	fmt.Fprintln(os.Stdout, string(pretty))
+
 	return nil
 }
 
@@ -214,6 +246,7 @@ func runHistory(args []string) error {
 	if !*showAll && *last > 0 {
 		decodeLimit = *last
 	}
+
 	records, total, err := loadRecords(decodeLimit)
 	if err != nil {
 		slog.Error("load startup records", "err", err)
@@ -227,6 +260,7 @@ func runHistory(args []string) error {
 				filtered = append(filtered, record)
 			}
 		}
+
 		records = filtered
 	}
 
@@ -235,19 +269,45 @@ func runHistory(args []string) error {
 		for _, record := range records {
 			items = append(items, json.RawMessage(record.Raw))
 		}
+
 		pretty, err := json.MarshalIndent(items, "", "  ")
 		if err != nil {
 			slog.Error("encode history json", "err", err)
 			return fmt.Errorf("encode history json: %w", err)
 		}
+
 		fmt.Fprintln(os.Stdout, string(pretty))
+
 		return nil
 	}
 
-	fmt.Fprintf(os.Stdout, "%-18s %-10s %8s %8s %8s %8s %6s %6s  %s %s\n",
-		"timestamp", "tty", "pre-rc", "prompt", "precmd", "ready", "ph", "locale", "by", "flags")
-	fmt.Fprintf(os.Stdout, "%-18s %-10s %8s %8s %8s %8s %6s %6s\n",
-		"---------", "---", "------", "------", "------", "-----", "--", "------")
+	fmt.Fprintf(
+		os.Stdout,
+		"%-18s %-10s %8s %8s %8s %8s %6s %6s  %s %s\n",
+		"timestamp",
+		"tty",
+		"pre-rc",
+		"prompt",
+		"precmd",
+		"ready",
+		"ph",
+		"locale",
+		"by",
+		"flags",
+	)
+	fmt.Fprintf(
+		os.Stdout,
+		"%-18s %-10s %8s %8s %8s %8s %6s %6s\n",
+		"---------",
+		"---",
+		"------",
+		"------",
+		"------",
+		"-----",
+		"--",
+		"------",
+	)
+
 	for _, record := range records {
 		pathHelperMS := findTreeMS(record.Log.Tree, "path_helper", "path_helper_fork")
 		localeMS := findTreeMS(record.Log.Tree, "combining/locale")
@@ -255,23 +315,30 @@ func runHistory(args []string) error {
 		if record.Log.MS.PreZshrc > 100 {
 			flags += "SLOW-PRE "
 		}
+
 		if record.Log.MS.TimePrompt > 300 {
 			flags += "SLOW-PROMPT "
 		}
+
 		phFlag := "-"
 		if record.Log.Bypasses.PathHelperCached {
 			phFlag = "P"
 		}
+
 		locFlag := "-"
 		if record.Log.Bypasses.LocaleBypassed {
 			locFlag = "L"
 		}
+
 		by := phFlag + locFlag
 		ts := record.Log.TS
 		if len(ts) > 16 {
 			ts = ts[:16]
 		}
-		fmt.Fprintf(os.Stdout, "%-18s %-10s %8.0f %8.0f %8.0f %8.0f %6.0f %6.0f  %s %s\n",
+
+		fmt.Fprintf(
+			os.Stdout,
+			"%-18s %-10s %8.0f %8.0f %8.0f %8.0f %6.0f %6.0f  %s %s\n",
 			ts,
 			record.Log.TTY,
 			record.Log.MS.PreZshrc,
@@ -285,8 +352,14 @@ func runHistory(args []string) error {
 		)
 	}
 
-	fmt.Fprintf(os.Stdout, "\n%d logs shown (of %d total).  --slow  --all  --last=N  --json\n", len(records), total)
+	fmt.Fprintf(
+		os.Stdout,
+		"\n%d logs shown (of %d total).  --slow  --all  --last=N  --json\n",
+		len(records),
+		total,
+	)
 	fmt.Fprintln(os.Stdout, "by: P=path_helper cached  L=locale bypassed")
+
 	return nil
 }
 
@@ -300,17 +373,24 @@ func runArmZprof(args []string) error {
 			}
 		}
 	}
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		slog.Error("resolve home directory", "err", err)
 		return fmt.Errorf("resolve home directory: %w", err)
 	}
+
 	path := filepath.Join(home, ".zsh_profile_next")
 	if err := os.WriteFile(path, []byte{}, 0o600); err != nil {
 		slog.Error("arm zprof", "err", err)
 		return fmt.Errorf("arm zprof: %w", err)
 	}
-	fmt.Fprintln(os.Stdout, "zprof armed — open a new shell, then run zsh_perf to see function-level detail.")
+
+	fmt.Fprintln(
+		os.Stdout,
+		"zprof armed — open a new shell, then run zsh_perf to see function-level detail.",
+	)
+
 	return nil
 }
 
@@ -330,6 +410,7 @@ func runRebuildPathCache(args []string) error {
 		slog.Error("stat path_helper", "err", err)
 		return fmt.Errorf("path_helper not found at %s", pathHelper)
 	}
+
 	output, err := exec.CommandContext(context.Background(), pathHelper, "-s").CombinedOutput()
 	if err != nil {
 		slog.Error("run path_helper", "err", err)
@@ -341,18 +422,22 @@ func runRebuildPathCache(args []string) error {
 		slog.Error("resolve home directory", "err", err)
 		return fmt.Errorf("resolve home directory: %w", err)
 	}
+
 	cacheDir := filepath.Join(home, ".cache", "zsh_startup")
 	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
 		slog.Error("create path cache directory", "err", err)
 		return fmt.Errorf("create path cache directory: %w", err)
 	}
+
 	cacheFile := filepath.Join(cacheDir, "path_cache.zsh")
 	if err := os.WriteFile(cacheFile, output, 0o600); err != nil {
 		slog.Error("write path cache", "err", err)
 		return fmt.Errorf("write path cache: %w", err)
 	}
+
 	fmt.Fprintf(os.Stdout, "path cache rebuilt: %s\n", cacheFile)
 	fmt.Fprintf(os.Stdout, "contents: %s\n", strings.TrimSpace(string(output)))
+
 	return nil
 }
 
@@ -370,21 +455,26 @@ func selectRecord(useGlobal bool) (startupRecord, error) {
 	if err != nil {
 		return startupRecord{}, err
 	}
+
 	if len(records) == 0 {
 		return startupRecord{}, errors.New("no startup logs found")
 	}
+
 	if useGlobal {
 		return records[0], nil
 	}
+
 	tty := currentTTYID()
 	if tty == "" {
 		return records[0], nil
 	}
+
 	for _, record := range records {
 		if record.Log.TTY == tty {
 			return record, nil
 		}
 	}
+
 	return records[0], nil
 }
 
@@ -412,6 +502,7 @@ func loadRecords(limit int) ([]startupRecord, int, error) {
 		slog.Error("resolve home directory", "err", err)
 		return nil, 0, fmt.Errorf("resolve home directory: %w", err)
 	}
+
 	pattern := filepath.Join(home, ".cache", "zsh_startup", "*.json")
 	paths, err := filepath.Glob(pattern)
 	if err != nil {
@@ -424,18 +515,25 @@ func loadRecords(limit int) ([]startupRecord, int, error) {
 		if filepath.Base(path) == "latest.json" {
 			continue
 		}
+
 		info, err := os.Stat(path)
 		if err != nil {
 			continue
 		}
+
 		candidates = append(candidates, candidate{path: path, modTime: info.ModTime()})
 	}
-	sort.Slice(candidates, func(i, j int) bool {
-		if candidates[i].modTime.Equal(candidates[j].modTime) {
-			return candidates[i].path > candidates[j].path
-		}
-		return candidates[i].modTime.After(candidates[j].modTime)
-	})
+
+	sort.Slice(
+		candidates,
+		func(i, j int) bool {
+			if candidates[i].modTime.Equal(candidates[j].modTime) {
+				return candidates[i].path > candidates[j].path
+			}
+
+			return candidates[i].modTime.After(candidates[j].modTime)
+		},
+	)
 
 	total := len(candidates)
 	if limit > 0 && total > limit {
@@ -448,17 +546,23 @@ func loadRecords(limit int) ([]startupRecord, int, error) {
 		if err != nil {
 			continue
 		}
+
 		var log startupLog
 		if err := json.Unmarshal(raw, &log); err != nil {
 			continue
 		}
-		records = append(records, startupRecord{
-			Path:    item.path,
-			ModTime: item.modTime,
-			Raw:     raw,
-			Log:     log,
-		})
+
+		records = append(
+			records,
+			startupRecord{
+				Path:    item.path,
+				ModTime: item.modTime,
+				Raw:     raw,
+				Log:     log,
+			},
+		)
 	}
+
 	return records, total, nil
 }
 
@@ -467,6 +571,7 @@ func currentTTYID() string {
 	if tty == "" {
 		return ""
 	}
+
 	return strings.ReplaceAll(filepath.Base(tty), "/", "-")
 }
 
@@ -480,18 +585,21 @@ func renderTree(entries []treeEntry, prefix string) string {
 
 	for idx, entry := range entries {
 		isLastSibling := true
+
 		for lookIdx := idx + 1; lookIdx < len(entries); lookIdx++ {
 			lookDepth := entries[lookIdx].Depth
 			if lookDepth == entry.Depth {
 				isLastSibling = false
 				break
 			}
+
 			if lookDepth < entry.Depth {
 				break
 			}
 		}
 
 		var indent strings.Builder
+
 		for ancestorDepth := range entry.Depth {
 			if ancestorHasSibling(idx, ancestorDepth, entries) {
 				indent.WriteString("│   ")
@@ -504,6 +612,7 @@ func renderTree(entries []treeEntry, prefix string) string {
 		if isLastSibling {
 			branch = "└──"
 		}
+
 		left := prefix + indent.String() + branch + " " + entry.Label
 		leftParts[idx] = left
 		if width := visualWidth(left); width > maxLeft {
@@ -513,6 +622,7 @@ func renderTree(entries []treeEntry, prefix string) string {
 
 	padTarget := maxLeft + 2
 	var out strings.Builder
+
 	for idx, entry := range entries {
 		left := leftParts[idx]
 		pad := padTarget - visualWidth(left)
@@ -521,8 +631,10 @@ func renderTree(entries []treeEntry, prefix string) string {
 		if entry.Tag != "" {
 			suffix = fmt.Sprintf("  (%s)", entry.Tag)
 		}
+
 		fmt.Fprintf(&out, "%s%s%5.1f ms%s\n", left, strings.Repeat(" ", pad), entry.MS, suffix)
 	}
+
 	return out.String()
 }
 
@@ -532,10 +644,12 @@ func ancestorHasSibling(idx int, ancestorDepth int, entries []treeEntry) bool {
 		if lookDepth == ancestorDepth {
 			return true
 		}
+
 		if lookDepth < ancestorDepth {
 			return false
 		}
 	}
+
 	return false
 }
 
@@ -552,36 +666,47 @@ func parseZprof(raw *string) []zprofEntry {
 	lines := strings.Split(*raw, "\n")
 	sepCount := 0
 	entries := make([]zprofEntry, 0)
+
 	for _, line := range lines {
 		if strings.HasPrefix(line, "--") {
 			sepCount++
 			if sepCount >= 2 {
 				break
 			}
+
 			continue
 		}
+
 		if sepCount != 1 || !zprofLinePattern.MatchString(line) {
 			continue
 		}
+
 		fields := strings.Fields(line)
 		if len(fields) < 9 {
 			continue
 		}
+
 		total, err := parseFloat(fields[2])
 		if err != nil {
 			continue
 		}
+
 		self, err := parseFloat(fields[5])
 		if err != nil {
 			continue
 		}
-		entries = append(entries, zprofEntry{
-			Name:  strings.Join(fields[8:], " "),
-			Total: total,
-			Self:  self,
-			Calls: fields[1],
-		})
+
+		entries = append(
+			entries,
+			zprofEntry{
+				Name:  strings.Join(fields[8:], " "),
+				Total: total,
+				Self:  self,
+				Calls: fields[1],
+			},
+		)
 	}
+
 	return entries
 }
 
@@ -591,6 +716,7 @@ func parseFloat(value string) (float64, error) {
 		slog.Warn("perf: parseFloat: failed to parse value", "value", value, "err", err)
 		return 0, fmt.Errorf("parsing float %q: %w", value, err)
 	}
+
 	return parsed, nil
 }
 
@@ -600,6 +726,7 @@ func findTreeMS(entries []treeEntry, labels ...string) float64 {
 			return entry.MS
 		}
 	}
+
 	return 0
 }
 

@@ -55,65 +55,85 @@ func buildWorkersFromConfig(
 		if !workerConfig.Enabled {
 			continue
 		}
+
 		if len(selected) > 0 {
 			if _, ok := selected[workerConfig.Name]; !ok {
 				continue
 			}
+
 			selected[workerConfig.Name] = true
 		}
+
 		switch workerName(workerConfig.Name) {
 		case workerUpdater:
-			workers = append(workers, workerEntry{
-				name: workerConfig.Name,
-				run: func(ctx context.Context, dotfiles string) error {
-					return updater.Run(
-						ctx,
-						dotfiles,
-						statusDir,
-						util.ResolveConfigPath(dispatchConfig.WeeklyUpdateMarker, dotfiles),
-						dispatchConfig.WeeklyUpdateHours,
-						notifyDispatchLogPath(logPath),
-						dispatchLogger,
-					)
+			workers = append(
+				workers,
+				workerEntry{
+					name: workerConfig.Name,
+					run: func(ctx context.Context, dotfiles string) error {
+						return updater.Run(
+							ctx,
+							dotfiles,
+							statusDir,
+							util.ResolveConfigPath(dispatchConfig.WeeklyUpdateMarker, dotfiles),
+							dispatchConfig.WeeklyUpdateHours,
+							notifyDispatchLogPath(logPath),
+							dispatchLogger,
+						)
+					},
 				},
-			})
+			)
 		case workerPreferCacheRebuild:
-			workers = append(workers, workerEntry{
-				name: workerConfig.Name,
-				run: func(ctx context.Context, dotfiles string) error {
-					return prefercache.Rebuild(ctx, dotfiles, false, dispatchLogger)
+			workers = append(
+				workers,
+				workerEntry{
+					name: workerConfig.Name,
+					run: func(ctx context.Context, dotfiles string) error {
+						return prefercache.Rebuild(ctx, dotfiles, false, dispatchLogger)
+					},
 				},
-			})
+			)
 		case workerPathCacheRebuild:
-			workers = append(workers, workerEntry{
-				name: workerConfig.Name,
-				run: func(ctx context.Context, dotfiles string) error {
-					return pathcache.Rebuild(ctx, dispatchLogger)
+			workers = append(
+				workers,
+				workerEntry{
+					name: workerConfig.Name,
+					run: func(ctx context.Context, dotfiles string) error {
+						return pathcache.Rebuild(ctx, dispatchLogger)
+					},
 				},
-			})
+			)
 		case workerZwcRecompile:
-			workers = append(workers, workerEntry{
-				name: workerConfig.Name,
-				run: func(ctx context.Context, dotfiles string) error {
-					return zwc.Recompile(ctx, dotfiles, dispatchLogger)
+			workers = append(
+				workers,
+				workerEntry{
+					name: workerConfig.Name,
+					run: func(ctx context.Context, dotfiles string) error {
+						return zwc.Recompile(ctx, dotfiles, dispatchLogger)
+					},
 				},
-			})
+			)
 		case workerSSHKeyLoadMac:
-			workers = append(workers, workerEntry{
-				name: workerConfig.Name,
-				run: func(ctx context.Context, _ string) error {
-					return sshkey.Load(ctx, dispatchLogger)
+			workers = append(
+				workers,
+				workerEntry{
+					name: workerConfig.Name,
+					run: func(ctx context.Context, _ string) error {
+						return sshkey.Load(ctx, dispatchLogger)
+					},
 				},
-			})
+			)
 		default:
 			dispatchLogger.WarnContext(ctx, "unknown worker: "+workerConfig.Name)
 		}
 	}
+
 	for name, found := range selected {
 		if !found {
 			dispatchLogger.WarnContext(ctx, "unknown or disabled worker: "+name)
 		}
 	}
+
 	return workers
 }
 
@@ -124,33 +144,53 @@ func defaultWorkerList(
 	dispatchLogger *telemetry.Logger,
 ) []workerEntry {
 	return []workerEntry{
-		{name: "updater", run: func(ctx context.Context, dotfiles string) error {
-			return updater.Run(
-				ctx,
-				dotfiles,
-				statusDir,
-				util.ResolveConfigPath(dispatchConfig.WeeklyUpdateMarker, dotfiles),
-				dispatchConfig.WeeklyUpdateHours,
-				notifyDispatchLogPath(logPath),
-				dispatchLogger,
-			)
-		}},
-		{name: "prefer-cache-rebuild", run: func(ctx context.Context, dotfiles string) error {
-			return prefercache.Rebuild(ctx, dotfiles, false, dispatchLogger)
-		}},
-		{name: "path-cache-rebuild", run: func(ctx context.Context, dotfiles string) error {
-			return pathcache.Rebuild(ctx, dispatchLogger)
-		}},
-		{name: "zwc-recompile", run: func(ctx context.Context, dotfiles string) error {
-			return zwc.Recompile(ctx, dotfiles, dispatchLogger)
-		}},
-		{name: "ssh-key-load-mac", run: func(ctx context.Context, _ string) error {
-			return sshkey.Load(ctx, dispatchLogger)
-		}},
+		{
+			name: "updater",
+			run: func(ctx context.Context, dotfiles string) error {
+				return updater.Run(
+					ctx,
+					dotfiles,
+					statusDir,
+					util.ResolveConfigPath(dispatchConfig.WeeklyUpdateMarker, dotfiles),
+					dispatchConfig.WeeklyUpdateHours,
+					notifyDispatchLogPath(logPath),
+					dispatchLogger,
+				)
+			},
+		},
+		{
+			name: "prefer-cache-rebuild",
+			run: func(ctx context.Context, dotfiles string) error {
+				return prefercache.Rebuild(ctx, dotfiles, false, dispatchLogger)
+			},
+		},
+		{
+			name: "path-cache-rebuild",
+			run: func(ctx context.Context, dotfiles string) error {
+				return pathcache.Rebuild(ctx, dispatchLogger)
+			},
+		},
+		{
+			name: "zwc-recompile",
+			run: func(ctx context.Context, dotfiles string) error {
+				return zwc.Recompile(ctx, dotfiles, dispatchLogger)
+			},
+		},
+		{
+			name: "ssh-key-load-mac",
+			run: func(ctx context.Context, _ string) error {
+				return sshkey.Load(ctx, dispatchLogger)
+			},
+		},
 	}
 }
 
-func launchWorkers(dispatchCtx context.Context, dotfiles string, workers []workerEntry, workerDone chan<- workerOutcome) {
+func launchWorkers(
+	dispatchCtx context.Context,
+	dotfiles string,
+	workers []workerEntry,
+	workerDone chan<- workerOutcome,
+) {
 	for _, current := range workers {
 		go func(name string, fn func(context.Context, string) error) {
 			defer func() {
@@ -159,7 +199,10 @@ func launchWorkers(dispatchCtx context.Context, dotfiles string, workers []worke
 				}
 			}()
 			workerDone <- workerOutcome{name: name, err: fn(dispatchCtx, dotfiles)}
-		}(current.name, current.run)
+		}(
+			current.name,
+			current.run,
+		)
 	}
 }
 
@@ -178,32 +221,48 @@ func drainActiveWorkers(
 			for active > 0 {
 				result := <-workerDone
 				if result.err != nil {
-					dispatchLogger.WarnContextWithErr(ctx, fmt.Sprintf("WARN: %s exited", result.name), result.err)
+					dispatchLogger.WarnContextWithErr(
+						ctx,
+						fmt.Sprintf("WARN: %s exited", result.name),
+						result.err,
+					)
 				}
+
 				active--
 			}
+
 			if ctx.Err() != nil {
 				slog.WarnContext(ctx, "dispatch: context cancelled after drain")
 				return fmt.Errorf("context cancelled: %w", ctx.Err())
 			}
+
 			return nil
 		case <-sigCh:
 			cancel()
+
 			for active > 0 {
 				result := <-workerDone
 				if result.err != nil {
-					dispatchLogger.WarnContextWithErr(ctx, fmt.Sprintf("WARN: %s exited", result.name), result.err)
+					dispatchLogger.WarnContextWithErr(
+						ctx,
+						fmt.Sprintf("WARN: %s exited", result.name),
+						result.err,
+					)
 				}
+
 				active--
 			}
+
 			return fmt.Errorf("interrupted")
 		case result := <-workerDone:
 			if result.err != nil {
 				dispatchLogger.WarnContextWithErr(ctx, "WARN: "+result.name, result.err)
 			}
+
 			active--
 		}
 	}
+
 	return nil
 }
 
@@ -214,12 +273,14 @@ func RunWorkers(ctx context.Context, selectedWorkers []string) error {
 	if dotfiles == "" {
 		dotfiles = filepath.Join(os.Getenv("HOME"), ".dotfiles")
 	}
+
 	dispatchConfig := catalog.DefaultDispatchConfig()
 
 	logPath := util.ResolveConfigPath(dispatchConfig.LogPath, dotfiles)
 	if logPath == "" {
 		logPath = filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "dispatch.log")
 	}
+
 	// A sync the updater starts runs inside this process and holds this log
 	// open, so it must know which log it cannot rotate.
 	_ = os.Setenv("DOTFILES_DISPATCH_LOG", logPath)
@@ -237,10 +298,12 @@ func RunWorkers(ctx context.Context, selectedWorkers []string) error {
 	if err := os.MkdirAll(filepath.Clean(filepath.Join(dotfiles, ".cache")), 0o755); err != nil {
 		return fmt.Errorf("creating cache directory: %w", err)
 	}
+
 	lockPath := util.ResolveConfigPath(dispatchConfig.LockFile, dotfiles)
 	if lockPath == "" {
 		lockPath = filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "dispatch.flock")
 	}
+
 	lockFile, err := os.OpenFile(filepath.Clean(lockPath), os.O_CREATE|os.O_RDWR, 0o666)
 	if err != nil {
 		return fmt.Errorf("opening dispatch lock file: %w", err)
@@ -251,23 +314,32 @@ func RunWorkers(ctx context.Context, selectedWorkers []string) error {
 	if uint64(flockFd) > uint64(^uint(0)>>1) {
 		return fmt.Errorf("lock file descriptor %d exceeds int bounds", flockFd)
 	}
+
 	flockFdInt := int(flockFd)
 	if err := syscall.Flock(flockFdInt, syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		dispatchLogger.WarnContext(ctx, "another dispatch already running, exiting")
 		return nil
 	}
+
 	defer syscall.Flock(flockFdInt, syscall.LOCK_UN)
 
 	statusDir := util.ResolveConfigPath(dispatchConfig.StatusDir, dotfiles)
 	if statusDir == "" {
 		statusDir = filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "dispatch.lock")
 	}
+
 	if err := os.MkdirAll(filepath.Clean(statusDir), 0o755); err != nil {
 		return fmt.Errorf("creating status directory: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(filepath.Clean(statusDir), "pid"), fmt.Appendf(nil, "%d", os.Getpid()), 0o600); err != nil {
+
+	if err := os.WriteFile(
+		filepath.Join(filepath.Clean(statusDir), "pid"),
+		fmt.Appendf(nil, "%d", os.Getpid()),
+		0o600,
+	); err != nil {
 		return fmt.Errorf("writing pid file: %w", err)
 	}
+
 	defer os.RemoveAll(statusDir)
 
 	selected := make(map[string]bool, len(selectedWorkers))
@@ -277,11 +349,19 @@ func RunWorkers(ctx context.Context, selectedWorkers []string) error {
 		}
 	}
 
-	workers := buildWorkersFromConfig(ctx, statusDir, logPath, dispatchConfig, dispatchLogger, selected)
+	workers := buildWorkersFromConfig(
+		ctx,
+		statusDir,
+		logPath,
+		dispatchConfig,
+		dispatchLogger,
+		selected,
+	)
 	if len(workers) == 0 {
 		if len(selected) > 0 {
 			return nil
 		}
+
 		workers = defaultWorkerList(statusDir, logPath, dispatchConfig, dispatchLogger)
 	}
 
@@ -295,7 +375,15 @@ func RunWorkers(ctx context.Context, selectedWorkers []string) error {
 	logWorkersStart(ctx, workers, dispatchLogger)
 	launchWorkers(dispatchCtx, dotfiles, workers, workerDone)
 
-	return drainActiveWorkers(dispatchCtx, ctx, sigCh, workerDone, len(workers), cancel, dispatchLogger)
+	return drainActiveWorkers(
+		dispatchCtx,
+		ctx,
+		sigCh,
+		workerDone,
+		len(workers),
+		cancel,
+		dispatchLogger,
+	)
 }
 
 func logWorkersStart(ctx context.Context, workers []workerEntry, logger *telemetry.Logger) {
@@ -303,6 +391,7 @@ func logWorkersStart(ctx context.Context, workers []workerEntry, logger *telemet
 	for _, current := range workers {
 		workerNames = append(workerNames, current.name)
 	}
+
 	logger.InfoContext(ctx, "starting workers: "+strings.Join(workerNames, ", "))
 }
 
@@ -310,5 +399,6 @@ func notifyDispatchLogPath(logPath string) string {
 	if logPath == "" {
 		return filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "dispatch.log")
 	}
+
 	return logPath
 }

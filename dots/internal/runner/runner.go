@@ -33,6 +33,7 @@ func CommandWithContext(ctx context.Context, dir string, name string, args ...st
 		Fallback: os.Stderr,
 	})
 	cmd.Stdin = os.Stdin
+
 	return cmd
 }
 
@@ -49,6 +50,7 @@ func LookPath(name string) (string, error) {
 		slog.Warn("runner: command not found", "name", name, "err", err)
 		return "", fmt.Errorf("looking up %s: %w", name, err)
 	}
+
 	return path, nil
 }
 
@@ -76,12 +78,15 @@ func (w commandOutputWriter) Write(p []byte) (int, error) {
 		w.logger.RawOutput(string(p))
 		return len(p), nil
 	}
+
 	if w.fallback != nil {
 		n, err := w.fallback.Write(p)
 		if err != nil {
 			return n, fmt.Errorf("writing to fallback: %w", err)
 		}
+
 		return n, nil
 	}
+
 	return len(p), nil
 }

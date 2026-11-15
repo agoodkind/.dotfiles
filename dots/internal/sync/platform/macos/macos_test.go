@@ -25,16 +25,33 @@ type fakeCommands struct {
 	succeeds     map[string]bool
 }
 
-func (commands *fakeCommands) RunWithLogger(_ context.Context, _ *telemetry.Logger, command string, args ...string) error {
-	commands.runCalls = append(commands.runCalls, commandCall{command: command, args: append([]string{}, args...)})
+func (commands *fakeCommands) RunWithLogger(
+	_ context.Context,
+	_ *telemetry.Logger,
+	command string,
+	args ...string,
+) error {
+	commands.runCalls = append(
+		commands.runCalls,
+		commandCall{command: command, args: append([]string{}, args...)},
+	)
 	if err, ok := commands.runErrs[commandKey(command, args...)]; ok {
 		return err
 	}
+
 	return nil
 }
 
-func (commands *fakeCommands) CommandSucceeds(_ context.Context, command string, args ...string) bool {
-	commands.succeedCalls = append(commands.succeedCalls, commandCall{command: command, args: append([]string{}, args...)})
+func (commands *fakeCommands) CommandSucceeds(
+	_ context.Context,
+	command string,
+	args ...string,
+) bool {
+	commands.succeedCalls = append(
+		commands.succeedCalls,
+		commandCall{command: command, args: append([]string{}, args...)},
+	)
+
 	return commands.succeeds[commandKey(command, args...)]
 }
 
@@ -52,11 +69,16 @@ type fakeDownloader struct {
 	err  error
 }
 
-func (downloader *fakeDownloader) DownloadToTempFile(_ context.Context, _ *telemetry.Logger, fileURL string) (string, error) {
+func (downloader *fakeDownloader) DownloadToTempFile(
+	_ context.Context,
+	_ *telemetry.Logger,
+	fileURL string,
+) (string, error) {
 	downloader.url = fileURL
 	if downloader.err != nil {
 		return "", downloader.err
 	}
+
 	return downloader.path, nil
 }
 
@@ -77,10 +99,12 @@ func (files *fakeFiles) ReadFile(path string) ([]byte, error) {
 	if err, ok := files.readErrs[path]; ok {
 		return nil, err
 	}
+
 	content, ok := files.readFiles[path]
 	if !ok {
 		return nil, os.ErrNotExist
 	}
+
 	return content, nil
 }
 
@@ -191,9 +215,11 @@ func TestEnsureHomebrewInstalledDownloadsAndRunsInstaller(t *testing.T) {
 	installer := &Installer{
 		deps: Deps{
 			Commands: commands,
-			Lookup: fakeLookup{commands: map[string]bool{
-				"brew": false,
-			}},
+			Lookup: fakeLookup{
+				commands: map[string]bool{
+					"brew": false,
+				},
+			},
 			Download: downloader,
 			Files:    files,
 		},
@@ -203,15 +229,20 @@ func TestEnsureHomebrewInstalledDownloadsAndRunsInstaller(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ensureHomebrewInstalled() returned error: %v", err)
 	}
+
 	if downloader.url != "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" {
 		t.Fatalf("download URL = %q", downloader.url)
 	}
+
 	if len(commands.runCalls) != 1 {
 		t.Fatalf("run call count = %d, want 1", len(commands.runCalls))
 	}
-	if commands.runCalls[0].command != "bash" || !reflect.DeepEqual(commands.runCalls[0].args, []string{"/tmp/homebrew-install.sh"}) {
+
+	if commands.runCalls[0].command != "bash" ||
+		!reflect.DeepEqual(commands.runCalls[0].args, []string{"/tmp/homebrew-install.sh"}) {
 		t.Fatalf("run call = %#v, want bash installer", commands.runCalls[0])
 	}
+
 	if !reflect.DeepEqual(files.removeCalls, []string{"/tmp/homebrew-install.sh"}) {
 		t.Fatalf("remove calls = %#v, want installer cleanup", files.removeCalls)
 	}
@@ -228,9 +259,11 @@ func TestInstallMacPackagesStrictModeReturnsUpdateError(t *testing.T) {
 	installer := &Installer{
 		deps: Deps{
 			Commands: commands,
-			Lookup: fakeLookup{commands: map[string]bool{
-				"brew": true,
-			}},
+			Lookup: fakeLookup{
+				commands: map[string]bool{
+					"brew": true,
+				},
+			},
 			Catalog: fakeCatalog{
 				packageConfig: &catalog.PackageConfig{},
 			},
@@ -256,9 +289,11 @@ func TestInstallMacPackagesTrustsTapQualifiedFormulae(t *testing.T) {
 	installer := &Installer{
 		deps: Deps{
 			Commands: commands,
-			Lookup: fakeLookup{commands: map[string]bool{
-				"brew": true,
-			}},
+			Lookup: fakeLookup{
+				commands: map[string]bool{
+					"brew": true,
+				},
+			},
 			Catalog: fakeCatalog{
 				packageConfig: &catalog.PackageConfig{
 					BrewSpecific: []string{"bat", "MisterTea/et/et"},
@@ -271,18 +306,26 @@ func TestInstallMacPackagesTrustsTapQualifiedFormulae(t *testing.T) {
 		t.Fatalf("installMacPackages() returned error: %v", err)
 	}
 
-	if !containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--formula", "MisterTea/et/et"}) {
+	if !containsCommandCall(
+		commands.succeedCalls,
+		"brew",
+		[]string{"trust", "--formula", "MisterTea/et/et"},
+	) {
 		t.Fatal("expected brew trust --formula MisterTea/et/et")
 	}
+
 	if !containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "MisterTea/et"}) {
 		t.Fatal("expected brew trust MisterTea/et")
 	}
+
 	if containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--formula", "bat"}) {
 		t.Fatal("did not expect brew trust for core formula bat")
 	}
+
 	if !containsCommandCall(commands.runCalls, "brew", []string{"upgrade"}) {
 		t.Fatal("expected brew upgrade after formula install")
 	}
+
 	if !containsCommandCall(commands.runCalls, "brew", []string{"upgrade", "--cask", "--greedy"}) {
 		t.Fatal("expected brew upgrade --cask --greedy after formula install")
 	}
@@ -301,9 +344,11 @@ func TestInstallMacPackagesTrustsTapQualifiedCasks(t *testing.T) {
 	installer := &Installer{
 		deps: Deps{
 			Commands: commands,
-			Lookup: fakeLookup{commands: map[string]bool{
-				"brew": true,
-			}},
+			Lookup: fakeLookup{
+				commands: map[string]bool{
+					"brew": true,
+				},
+			},
 			Catalog: fakeCatalog{
 				packageConfig: &catalog.PackageConfig{
 					BrewCasks: map[string]string{
@@ -319,12 +364,18 @@ func TestInstallMacPackagesTrustsTapQualifiedCasks(t *testing.T) {
 		t.Fatalf("installMacPackages() returned error: %v", err)
 	}
 
-	if !containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--cask", "someuser/some-tap/some-cask"}) {
+	if !containsCommandCall(
+		commands.succeedCalls,
+		"brew",
+		[]string{"trust", "--cask", "someuser/some-tap/some-cask"},
+	) {
 		t.Fatal("expected brew trust --cask someuser/some-tap/some-cask")
 	}
+
 	if !containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "someuser/some-tap"}) {
 		t.Fatal("expected brew trust someuser/some-tap")
 	}
+
 	if containsCommandCall(commands.succeedCalls, "brew", []string{"trust", "--cask", "ghostty"}) {
 		t.Fatal("did not expect brew trust for core cask ghostty")
 	}
@@ -376,9 +427,11 @@ func TestInstallMacPackagesUninstallsSpeedtestGoBeforeOfficialCLI(t *testing.T) 
 	installer := &Installer{
 		deps: Deps{
 			Commands: commands,
-			Lookup: fakeLookup{commands: map[string]bool{
-				"brew": true,
-			}},
+			Lookup: fakeLookup{
+				commands: map[string]bool{
+					"brew": true,
+				},
+			},
 			Catalog: fakeCatalog{
 				packageConfig: &catalog.PackageConfig{
 					BrewSpecific: []string{"teamookla/speedtest/speedtest"},
@@ -391,17 +444,38 @@ func TestInstallMacPackagesUninstallsSpeedtestGoBeforeOfficialCLI(t *testing.T) 
 		t.Fatalf("installMacPackages() returned error: %v", err)
 	}
 
-	if !containsCommandCall(commands.runCalls, "brew", []string{"uninstall", "--formula", "speedtest-go"}) {
+	if !containsCommandCall(
+		commands.runCalls,
+		"brew",
+		[]string{"uninstall", "--formula", "speedtest-go"},
+	) {
 		t.Fatal("expected brew uninstall --formula speedtest-go")
 	}
-	if !containsCommandCall(commands.runCalls, "brew", []string{"install", "teamookla/speedtest/speedtest"}) {
+
+	if !containsCommandCall(
+		commands.runCalls,
+		"brew",
+		[]string{"install", "teamookla/speedtest/speedtest"},
+	) {
 		t.Fatal("expected brew install teamookla/speedtest/speedtest")
 	}
 
-	uninstallIndex := commandCallIndex(commands.runCalls, "brew", []string{"uninstall", "--formula", "speedtest-go"})
-	installIndex := commandCallIndex(commands.runCalls, "brew", []string{"install", "teamookla/speedtest/speedtest"})
+	uninstallIndex := commandCallIndex(
+		commands.runCalls,
+		"brew",
+		[]string{"uninstall", "--formula", "speedtest-go"},
+	)
+	installIndex := commandCallIndex(
+		commands.runCalls,
+		"brew",
+		[]string{"install", "teamookla/speedtest/speedtest"},
+	)
 	if uninstallIndex < 0 || installIndex < 0 || uninstallIndex > installIndex {
-		t.Fatalf("uninstall index %d, install index %d, want uninstall before install", uninstallIndex, installIndex)
+		t.Fatalf(
+			"uninstall index %d, install index %d, want uninstall before install",
+			uninstallIndex,
+			installIndex,
+		)
 	}
 }
 
@@ -414,10 +488,12 @@ func commandCallIndex(calls []commandCall, command string, args []string) int {
 		if call.command != command {
 			continue
 		}
+
 		if reflect.DeepEqual(call.args, args) {
 			return index
 		}
 	}
+
 	return -1
 }
 
@@ -432,9 +508,11 @@ func TestInstallMacPackagesLenientModeContinuesAfterUpdateError(t *testing.T) {
 	installer := &Installer{
 		deps: Deps{
 			Commands: commands,
-			Lookup: fakeLookup{commands: map[string]bool{
-				"brew": true,
-			}},
+			Lookup: fakeLookup{
+				commands: map[string]bool{
+					"brew": true,
+				},
+			},
 			Catalog: fakeCatalog{
 				packageConfig: &catalog.PackageConfig{},
 			},
@@ -460,9 +538,11 @@ func TestEnsureMacPatchSkipsWithoutSudo(t *testing.T) {
 		deps: Deps{
 			Commands: commands,
 			Files:    files,
-			Env: fakeEnv{values: map[string]string{
-				"DOTDOTFILES": "/repo",
-			}},
+			Env: fakeEnv{
+				values: map[string]string{
+					"DOTDOTFILES": "/repo",
+				},
+			},
 			Catalog: fakeCatalog{
 				macPatchConfig: &catalog.MacPatchConfig{
 					Enabled:      true,
@@ -480,6 +560,7 @@ func TestEnsureMacPatchSkipsWithoutSudo(t *testing.T) {
 	if err := installer.ensureMacPatchIfNeeded(context.Background(), nil); err != nil {
 		t.Fatalf("ensureMacPatchIfNeeded() returned error: %v", err)
 	}
+
 	if len(commands.runCalls) != 0 {
 		t.Fatalf("run calls = %#v, want none", commands.runCalls)
 	}
@@ -499,9 +580,11 @@ func TestEnsureMacPatchSkipsWhenSentinelPresent(t *testing.T) {
 		deps: Deps{
 			Commands: commands,
 			Files:    files,
-			Env: fakeEnv{values: map[string]string{
-				"DOTDOTFILES": "/repo",
-			}},
+			Env: fakeEnv{
+				values: map[string]string{
+					"DOTDOTFILES": "/repo",
+				},
+			},
 			Catalog: fakeCatalog{
 				macPatchConfig: &catalog.MacPatchConfig{
 					Enabled:      true,
@@ -519,6 +602,7 @@ func TestEnsureMacPatchSkipsWhenSentinelPresent(t *testing.T) {
 	if err := installer.ensureMacPatchIfNeeded(context.Background(), nil); err != nil {
 		t.Fatalf("ensureMacPatchIfNeeded() returned error: %v", err)
 	}
+
 	if len(commands.runCalls) != 0 {
 		t.Fatalf("run calls = %#v, want none", commands.runCalls)
 	}

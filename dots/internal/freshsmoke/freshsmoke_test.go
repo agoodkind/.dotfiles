@@ -18,12 +18,18 @@ func TestInstallArgsIncludesSkipGitBeforeExtraArgs(t *testing.T) {
 
 func TestAssertSmokeSubmodulesPresentAcceptsCheckedOutSubmodules(t *testing.T) {
 	repoRoot := t.TempDir()
+
 	for _, submodule := range requiredSmokeSubmodules {
 		submoduleDir := filepath.Join(repoRoot, submodule)
 		if err := os.MkdirAll(submoduleDir, 0o755); err != nil {
 			t.Fatalf("creating submodule dir %s: %v", submodule, err)
 		}
-		if err := os.WriteFile(filepath.Join(submoduleDir, ".git"), []byte("gitdir: ../../.git/modules/"+submodule+"\n"), 0o600); err != nil {
+
+		if err := os.WriteFile(
+			filepath.Join(submoduleDir, ".git"),
+			[]byte("gitdir: ../../.git/modules/"+submodule+"\n"),
+			0o600,
+		); err != nil {
 			t.Fatalf("writing submodule gitdir %s: %v", submodule, err)
 		}
 	}
@@ -38,11 +44,13 @@ func TestAssertSmokeSubmodulesPresentReportsMissingSubmodules(t *testing.T) {
 	if err == nil {
 		t.Fatal("AssertSmokeSubmodulesPresent() returned nil, want missing submodule error")
 	}
+
 	for _, submodule := range requiredSmokeSubmodules {
 		if !strings.Contains(err.Error(), submodule) {
 			t.Fatalf("missing submodule error did not mention %s: %v", submodule, err)
 		}
 	}
+
 	if !strings.Contains(err.Error(), "git submodule update --init --recursive") {
 		t.Fatalf("missing submodule error did not mention repair command: %v", err)
 	}

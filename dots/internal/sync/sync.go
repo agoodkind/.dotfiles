@@ -66,9 +66,11 @@ func Run(ctx context.Context, options Options) error {
 	if err != nil {
 		return err
 	}
+
 	if alreadyRunning {
 		return nil
 	}
+
 	defer lockFile.Close()
 	defer syscall.Flock(flockFdInt, syscall.LOCK_UN)
 
@@ -82,33 +84,42 @@ func Run(ctx context.Context, options Options) error {
 			logger.InfoContext(ctx, "  dry-run: no changes applied")
 			return nil
 		}
+
 		if err := fn(ctx); err != nil {
 			if critical {
 				logger.ErrorContextWithErr(ctx, "FATAL: "+name, err)
 				notify("error", fmt.Sprintf("sync failed at %s: %v", name, err))
+
 				return err
 			}
+
 			if options.StrictMode {
 				logger.ErrorContextWithErr(ctx, "STRICT: "+name, err)
 				notify("error", fmt.Sprintf("strict sync failed at %s: %v", name, err))
+
 				return fmt.Errorf("strict sync failed at %s: %w", name, err)
 			}
+
 			logger.WarnContextWithErr(ctx, "WARN: "+name, err)
 			notify("warn", "sync step failed (continued): "+name)
 			failed = append(failed, name)
 		}
+
 		return nil
 	}
 
 	if err := runLinkSteps(options, dotfiles, logger, runStep); err != nil {
 		return err
 	}
+
 	if err := runConfigSteps(options, dotfiles, logger, runStep); err != nil {
 		return err
 	}
+
 	if err := runUpdateSteps(options, dotfiles, logger, runStep); err != nil {
 		return err
 	}
+
 	if err := runCompilationSteps(dotfiles, logger, runStep); err != nil {
 		return err
 	}
@@ -120,32 +131,52 @@ func Run(ctx context.Context, options Options) error {
 	}
 
 	if isWorktree {
-		notify("info", "Dotfiles sync ran as a dry run from linked worktree "+worktreeLayout.Root+". Run sync from "+worktreeLayout.MainWorktree()+" to apply changes.")
+		notify(
+			"info",
+			"Dotfiles sync ran as a dry run from linked worktree "+worktreeLayout.Root+". Run sync from "+worktreeLayout.MainWorktree()+" to apply changes.",
+		)
 		logger.SuccessContext(ctx, "Dotfiles worktree dry run completed")
+
 		return nil
 	}
 
 	logger.SuccessContext(ctx, "Dotfiles synced")
+
 	return nil
 }
 
-func forceWorktreeDryRun(ctx context.Context, dotfiles string, options *Options, logger *telemetry.Logger) (gitdir.Info, bool) {
+func forceWorktreeDryRun(
+	ctx context.Context,
+	dotfiles string,
+	options *Options,
+	logger *telemetry.Logger,
+) (gitdir.Info, bool) {
 	layout, isWorktree := gitdir.LinkedWorktree(ctx, dotfiles, logger)
 	if !isWorktree {
 		return layout, false
 	}
+
 	options.DryRun = true
-	logger.InfoContext(ctx, "Sync from linked worktree forced to dry-run mode. Run sync from "+layout.MainWorktree()+" to apply changes.")
+	logger.InfoContext(
+		ctx,
+		"Sync from linked worktree forced to dry-run mode. Run sync from "+layout.MainWorktree()+" to apply changes.",
+	)
+
 	return layout, true
 }
 
 // newNotifier returns the function sync steps use to queue a notification for
 // the next interactive login, mirroring warnings and errors into the log.
-func newNotifier(ctx context.Context, logger *telemetry.Logger, logPath string) func(string, string) {
+func newNotifier(
+	ctx context.Context,
+	logger *telemetry.Logger,
+	logPath string,
+) func(string, string) {
 	return func(level string, message string) {
 		if err := telemetry.Notify(level, message, logPath, telemetry.RunID(ctx)); err != nil {
 			logger.WarnContextWithErr(ctx, "notification write failed", err)
 		}
+
 		if level == "warn" || level == "error" {
 			logger.WarnContext(ctx, message)
 		}
@@ -157,46 +188,61 @@ func resolveDotfilesEnv() string {
 	if dotfiles == "" {
 		dotfiles = filepath.Join(os.Getenv("HOME"), ".dotfiles")
 	}
+
 	_ = os.Setenv("DOTDOTFILES", dotfiles)
 	repository.LoadOverrides()
+
 	return dotfiles
 }
 
 func openSyncLogger() (*telemetry.Logger, string, error) {
-	if err := os.MkdirAll(filepath.Clean(filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles")), 0o755); err != nil {
+	if err := os.MkdirAll(
+		filepath.Clean(filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles")),
+		0o755,
+	); err != nil {
 		slog.Error("sync: openSyncLogger: creating cache directory", "err", err)
 		return nil, "", fmt.Errorf("creating dotfiles cache directory: %w", err)
 	}
+
 	logPath := os.Getenv("DOTFILES_LOG")
 	if logPath == "" {
 		logPath = filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles", "sync.log")
 	}
+
 	if err := os.MkdirAll(filepath.Dir(filepath.Clean(logPath)), 0o755); err != nil {
 		slog.Error("sync: openSyncLogger: creating log directory", "err", err)
 		return nil, "", fmt.Errorf("creating log directory: %w", err)
 	}
+
 	logger, err := telemetry.NewLogger(logPath)
 	if err != nil {
 		slog.Error("sync: openSyncLogger: creating logger", "err", err)
 		return nil, "", fmt.Errorf("creating sync logger: %w", err)
 	}
+
 	return logger, logPath, nil
 }
 
 func acquireSyncLock(ctx context.Context, logger *telemetry.Logger) (*os.File, int, bool, error) {
-	if err := os.MkdirAll(filepath.Clean(filepath.Join(os.Getenv("HOME"), ".cache")), 0o755); err != nil {
+	if err := os.MkdirAll(
+		filepath.Clean(filepath.Join(os.Getenv("HOME"), ".cache")),
+		0o755,
+	); err != nil {
 		return nil, 0, false, fmt.Errorf("creating cache directory: %w", err)
 	}
+
 	lockPath := filepath.Join(os.Getenv("HOME"), ".cache", "dotfiles_sync.flock")
 	lockFile, err := os.OpenFile(filepath.Clean(lockPath), os.O_CREATE|os.O_RDWR, 0o666)
 	if err != nil {
 		return nil, 0, false, fmt.Errorf("opening sync lock file: %w", err)
 	}
+
 	flockFd := lockFile.Fd()
 	if uint64(flockFd) > uint64(^uint(0)>>1) {
 		_ = lockFile.Close()
 		return nil, 0, false, fmt.Errorf("lock file descriptor %d exceeds int bounds", flockFd)
 	}
+
 	flockFdInt := int(flockFd)
 	if err := syscall.Flock(flockFdInt, syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		_ = lockFile.Close()
@@ -204,168 +250,304 @@ func acquireSyncLock(ctx context.Context, logger *telemetry.Logger) (*os.File, i
 			logger.InfoContext(ctx, "sync already running, exiting")
 			return nil, 0, true, nil
 		}
+
 		logger.WarnContextWithErr(ctx, "flock acquire failed", err)
 		slog.WarnContext(ctx, "flock acquire failed", "err", err)
+
 		return nil, 0, false, fmt.Errorf("acquiring sync lock: %w", err)
 	}
+
 	return lockFile, flockFdInt, false, nil
 }
 
 type syncStep = func(string, bool, func(context.Context) error) error
 
 func runLinkSteps(options Options, dotfiles string, logger *telemetry.Logger, step syncStep) error {
-	if err := step("Updating git repo", true, func(ctx context.Context) error {
-		return repository.UpdateGitRepoSync(ctx, options.SkipGit, logger)
-	}); err != nil {
+	if err := step(
+		"Updating git repo",
+		true,
+		func(ctx context.Context) error {
+			return repository.UpdateGitRepoSync(ctx, options.SkipGit, logger)
+		},
+	); err != nil {
 		return err
 	}
-	if err := step("Cleaning zinit completions", false, func(ctx context.Context) error {
-		return workspace.CleanupZinitCompletions(ctx, logger)
-	}); err != nil {
+
+	if err := step(
+		"Cleaning zinit completions",
+		false,
+		func(ctx context.Context) error {
+			return workspace.CleanupZinitCompletions(ctx, logger)
+		},
+	); err != nil {
 		return err
 	}
-	if err := step("Linking dotfiles", false, func(ctx context.Context) error {
-		return workspace.LinkDotfiles(ctx, dotfiles, logger)
-	}); err != nil {
+
+	if err := step(
+		"Linking dotfiles",
+		false,
+		func(ctx context.Context) error {
+			return workspace.LinkDotfiles(ctx, dotfiles, logger)
+		},
+	); err != nil {
 		return err
 	}
-	if err := step("Updating authorized keys", false, func(ctx context.Context) error {
-		return workspace.UpdateAuthorizedKeys(ctx, options.SkipNetwork, logger)
-	}); err != nil {
+
+	if err := step(
+		"Updating authorized keys",
+		false,
+		func(ctx context.Context) error {
+			return workspace.UpdateAuthorizedKeys(ctx, options.SkipNetwork, logger)
+		},
+	); err != nil {
 		return err
 	}
+
 	return nil
 }
 
-func runConfigSteps(options Options, dotfiles string, logger *telemetry.Logger, step syncStep) error {
-	if err := step("Syncing agent corpus", false, func(ctx context.Context) error {
-		if options.SkipCorpusSync {
-			logger.InfoContext(ctx, "  skipping agent corpus sync")
-			return nil
-		}
-		return corpus.Sync(ctx, dotfiles, logger)
-	}); err != nil {
+func runConfigSteps(
+	options Options,
+	dotfiles string,
+	logger *telemetry.Logger,
+	step syncStep,
+) error {
+	if err := step(
+		"Syncing agent corpus",
+		false,
+		func(ctx context.Context) error {
+			if options.SkipCorpusSync {
+				logger.InfoContext(ctx, "  skipping agent corpus sync")
+				return nil
+			}
+
+			return corpus.Sync(ctx, dotfiles, logger)
+		},
+	); err != nil {
 		return err
 	}
-	if err := step("Syncing Cursor User Rules", false, func(ctx context.Context) error {
-		logger.InfoContext(ctx, "  cursor cloud rule sync is disabled")
-		return nil
-	}); err != nil {
+
+	if err := step(
+		"Syncing Cursor User Rules",
+		false,
+		func(ctx context.Context) error {
+			if options.SkipCursorSync {
+				logger.InfoContext(ctx, "  skipping cursor user rules sync")
+				return nil
+			}
+
+			return workspace.SyncCursorUserRules(ctx, dotfiles, logger)
+		},
+	); err != nil {
 		return err
 	}
-	if err := step("Checking git hooks path", false, func(ctx context.Context) error {
-		return workspace.CheckGitHooksPath(ctx, dotfiles, logger)
-	}); err != nil {
+
+	if err := step(
+		"Checking git hooks path",
+		false,
+		func(ctx context.Context) error {
+			return workspace.CheckGitHooksPath(ctx, dotfiles, logger)
+		},
+	); err != nil {
 		return err
 	}
-	if err := step("Syncing git hooks", false, func(ctx context.Context) error {
-		return workspace.SyncGitHooks(ctx, dotfiles, logger)
-	}); err != nil {
+
+	if err := step(
+		"Syncing git hooks",
+		false,
+		func(ctx context.Context) error {
+			return workspace.SyncGitHooks(ctx, dotfiles, logger)
+		},
+	); err != nil {
 		return err
 	}
-	if err := step("Configuring global git hooks", false, func(ctx context.Context) error {
-		return workspace.SyncGlobalGitHooks(ctx, dotfiles, logger)
-	}); err != nil {
+
+	if err := step(
+		"Configuring global git hooks",
+		false,
+		func(ctx context.Context) error {
+			return workspace.SyncGlobalGitHooks(ctx, dotfiles, logger)
+		},
+	); err != nil {
 		return err
 	}
+
 	return nil
 }
 
-func runUpdateSteps(options Options, dotfiles string, logger *telemetry.Logger, step syncStep) error {
-	if err := step("Running OS setup", false, func(ctx context.Context) error {
-		if options.QuickMode {
-			return nil
-		}
+func runUpdateSteps(
+	options Options,
+	dotfiles string,
+	logger *telemetry.Logger,
+	step syncStep,
+) error {
+	if err := step(
+		"Running OS setup",
+		false,
+		func(ctx context.Context) error {
+			if options.QuickMode {
+				return nil
+			}
 
-		hostSource := platform.NewRuntimeHostSource(platform.NewRealHostSourceDeps())
-		sharedToolchain := toolchain.New(toolchain.NewRealDeps())
-		installers := []platform.Installer{
-			macos.New(macos.NewRealDeps(), sharedToolchain),
-			debian.New(debian.NewRealDeps(), sharedToolchain),
-		}
+			hostSource := platform.NewRuntimeHostSource(platform.NewRealHostSourceDeps())
+			sharedToolchain := toolchain.New(toolchain.NewRealDeps())
+			installers := []platform.Installer{
+				macos.New(macos.NewRealDeps(), sharedToolchain),
+				debian.New(debian.NewRealDeps(), sharedToolchain),
+			}
 
-		return platform.RunInstall(ctx, hostSource, installers, platform.Request{
-			Host:        platform.Host{GOOS: "", Distribution: platform.DistributionUnknown},
-			Logger:      logger,
-			UseDefaults: options.UseDefaults,
-			StrictMode:  options.StrictMode,
-		})
-	}); err != nil {
+			return platform.RunInstall(
+				ctx,
+				hostSource,
+				installers,
+				platform.Request{
+					Host: platform.Host{
+						GOOS:         "",
+						Distribution: platform.DistributionUnknown,
+					},
+					Logger:      logger,
+					UseDefaults: options.UseDefaults,
+					StrictMode:  options.StrictMode,
+				},
+			)
+		},
+	); err != nil {
 		return err
 	}
-	if err := step("Updating and compiling zinit plugins", false, func(ctx context.Context) error {
-		if options.QuickMode || options.SkipNetwork {
-			return nil
-		}
-		return workspace.UpdateZinitPlugins(ctx, dotfiles, logger)
-	}); err != nil {
+
+	if err := step(
+		"Updating and compiling zinit plugins",
+		false,
+		func(ctx context.Context) error {
+			if options.QuickMode || options.SkipNetwork {
+				return nil
+			}
+
+			return workspace.UpdateZinitPlugins(ctx, dotfiles, logger)
+		},
+	); err != nil {
 		return err
 	}
-	if err := step("Installing custom tools", false, func(ctx context.Context) error {
-		if options.QuickMode || options.SkipNetwork {
-			return nil
-		}
-		return tools.InstallCustomTools(ctx, dotfiles, options.StrictMode, logger)
-	}); err != nil {
+
+	if err := step(
+		"Installing custom tools",
+		false,
+		func(ctx context.Context) error {
+			if options.QuickMode || options.SkipNetwork {
+				return nil
+			}
+
+			return tools.InstallCustomTools(ctx, dotfiles, options.StrictMode, logger)
+		},
+	); err != nil {
 		return err
 	}
-	if err := step("Updating Neovim plugins", false, func(ctx context.Context) error {
-		if options.QuickMode || options.SkipNetwork {
-			return nil
-		}
-		return workspace.UpdateNeovimPlugins(ctx, logger)
-	}); err != nil {
+
+	if err := step(
+		"Updating Neovim plugins",
+		false,
+		func(ctx context.Context) error {
+			if options.QuickMode || options.SkipNetwork {
+				return nil
+			}
+
+			return workspace.UpdateNeovimPlugins(ctx, logger)
+		},
+	); err != nil {
 		return err
 	}
-	if err := step("Repair: cleaning up Homebrew", false, func(ctx context.Context) error {
-		if !options.RepairMode {
-			return nil
-		}
-		return workspace.CleanupHomebrewRepair(ctx, logger)
-	}); err != nil {
+
+	if err := step(
+		"Repair: cleaning up Homebrew",
+		false,
+		func(ctx context.Context) error {
+			if !options.RepairMode {
+				return nil
+			}
+
+			return workspace.CleanupHomebrewRepair(ctx, logger)
+		},
+	); err != nil {
 		return err
 	}
-	if err := step("Repair: cleaning up Neovim", false, func(ctx context.Context) error {
-		if !options.RepairMode {
-			return nil
-		}
-		return workspace.CleanupNeovimRepair(ctx, logger)
-	}); err != nil {
+
+	if err := step(
+		"Repair: cleaning up Neovim",
+		false,
+		func(ctx context.Context) error {
+			if !options.RepairMode {
+				return nil
+			}
+
+			return workspace.CleanupNeovimRepair(ctx, logger)
+		},
+	); err != nil {
 		return err
 	}
+
 	return nil
 }
 
 func runCompilationSteps(dotfiles string, logger *telemetry.Logger, step syncStep) error {
-	if err := step("Compiling zsh files", false, func(ctx context.Context) error {
-		return compilation.CompileZshFiles(ctx, dotfiles, logger)
-	}); err != nil {
+	if err := step(
+		"Compiling zsh files",
+		false,
+		func(ctx context.Context) error {
+			return compilation.CompileZshFiles(ctx, dotfiles, logger)
+		},
+	); err != nil {
 		return err
 	}
-	if err := step("Rebuilding zcompdump", false, func(ctx context.Context) error {
-		return compilation.RebuildZcompdump(ctx, dotfiles, logger)
-	}); err != nil {
+
+	if err := step(
+		"Rebuilding zcompdump",
+		false,
+		func(ctx context.Context) error {
+			return compilation.RebuildZcompdump(ctx, dotfiles, logger)
+		},
+	); err != nil {
 		return err
 	}
-	if err := step("Rebuilding prefer cache", false, func(ctx context.Context) error {
-		return compilation.RebuildPreferCache(ctx, dotfiles, logger)
-	}); err != nil {
+
+	if err := step(
+		"Rebuilding prefer cache",
+		false,
+		func(ctx context.Context) error {
+			return compilation.RebuildPreferCache(ctx, dotfiles, logger)
+		},
+	); err != nil {
 		return err
 	}
-	if err := step("Creating hushlogin", false, func(ctx context.Context) error {
-		return compilation.CreateHushLogin(ctx, logger)
-	}); err != nil {
+
+	if err := step(
+		"Creating hushlogin",
+		false,
+		func(ctx context.Context) error {
+			return compilation.CreateHushLogin(ctx, logger)
+		},
+	); err != nil {
 		return err
 	}
-	if err := step("Rotating logs", false, func(ctx context.Context) error {
-		return logrotate.Rotate(ctx, logrotate.DefaultRotationConfig(), logger)
-	}); err != nil {
+
+	if err := step(
+		"Rotating logs",
+		false,
+		func(ctx context.Context) error {
+			return logrotate.Rotate(ctx, logrotate.DefaultRotationConfig(), logger)
+		},
+	); err != nil {
 		return err
 	}
-	if err := step("Pruning startup logs", false, func(ctx context.Context) error {
-		return logrotate.PruneStartupLogs(ctx, logger)
-	}); err != nil {
+
+	if err := step(
+		"Pruning startup logs",
+		false,
+		func(ctx context.Context) error {
+			return logrotate.PruneStartupLogs(ctx, logger)
+		},
+	); err != nil {
 		return err
 	}
+
 	return nil
 }

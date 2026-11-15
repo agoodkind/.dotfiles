@@ -24,7 +24,12 @@ func CallCursorAPI(token string, apiBase string, endpoint string, payload []byte
 }
 
 // CallCursorAPIWithStatus posts payload to the given Cursor API endpoint and returns the HTTP status code and response body.
-func CallCursorAPIWithStatus(token string, apiBase string, endpoint string, payload []byte) (int, string) {
+func CallCursorAPIWithStatus(
+	token string,
+	apiBase string,
+	endpoint string,
+	payload []byte,
+) (int, string) {
 	output, err := cmdexec.CombinedOutputWithInput(
 		context.Background(),
 		nil,
@@ -67,11 +72,18 @@ func CallCursorAPIWithStatus(token string, apiBase string, endpoint string, payl
 
 // GetCursorAuthToken reads the Cursor auth token from the given SQLite database path.
 func GetCursorAuthToken(cursorDB string) string {
-	output, err := cmdexec.Output(context.Background(), "sqlite3", cursorDB, constants.CursorItemTableQuery)
+	output, err := cmdexec.Output(
+		context.Background(),
+		"sqlite3",
+		cursorDB,
+		constants.CursorItemTableQuery,
+	)
 	if err != nil {
 		return ""
 	}
+
 	token := strings.TrimSpace(output)
+
 	return strings.Trim(token, "\"")
 }
 
@@ -80,7 +92,11 @@ func BuildAddRulePayload(content string, title string, workspaceURL string) []by
 	payload := []byte{}
 	payload = append(payload, protobuf.EncodeBytesField(constants.FieldAddContent, content)...)
 	payload = append(payload, protobuf.EncodeBytesField(constants.FieldAddTitle, title)...)
-	payload = append(payload, protobuf.EncodeBytesField(constants.FieldAddWorkspaceURL, workspaceURL)...)
+	payload = append(
+		payload,
+		protobuf.EncodeBytesField(constants.FieldAddWorkspaceURL, workspaceURL)...,
+	)
+
 	return payload
 }
 
@@ -90,9 +106,11 @@ func ListRules(token string, apiBase string) []models.RuleRecord {
 	if len(response) == 0 {
 		return []models.RuleRecord{}
 	}
+
 	parsedResponse := protobuf.ParseMessage(response)
 	rawRuleMessages := CollectRawRuleMessages(parsedResponse)
 	records := []models.RuleRecord{}
+
 	for _, rawRuleMessage := range rawRuleMessages {
 		parsedEntry := protobuf.ParseMessage(rawRuleMessage)
 		record := buildRuleRecord(parsedEntry)
@@ -100,17 +118,20 @@ func ListRules(token string, apiBase string) []models.RuleRecord {
 			records = append(records, record)
 		}
 	}
+
 	return records
 }
 
 // ListRuleIDs returns the IDs of all rules from the Cursor API.
 func ListRuleIDs(token string, apiBase string) []string {
 	var ids []string
+
 	for _, rule := range ListRules(token, apiBase) {
 		if ruleID := rule["id"]; ruleID != "" {
 			ids = append(ids, ruleID)
 		}
 	}
+
 	return ids
 }
 
@@ -121,13 +142,26 @@ func RemoveRule(token string, apiBase string, ruleID string) error {
 	if len(response) == 0 {
 		return nil
 	}
+
 	return nil
 }
 
 // AddRule adds a new rule to the Cursor API and reports whether it succeeded.
-func AddRule(token string, apiBase string, workspaceURL string, title string, content string) (bool, string) {
+func AddRule(
+	token string,
+	apiBase string,
+	workspaceURL string,
+	title string,
+	content string,
+) (bool, string) {
 	payload := BuildAddRulePayload(content, title, workspaceURL)
-	statusCode, responseBody := CallCursorAPIWithStatus(token, apiBase, constants.EndpointAdd, payload)
+	statusCode, responseBody := CallCursorAPIWithStatus(
+		token,
+		apiBase,
+		constants.EndpointAdd,
+		payload,
+	)
+
 	return 200 <= statusCode && statusCode < 300, responseBody
 }
 
@@ -153,6 +187,7 @@ func DeleteAllRules(token string, apiBase string) int {
 	results := make(chan removalResult, total)
 
 	var waitGroup sync.WaitGroup
+
 	for range workerCount {
 		waitGroup.Add(1)
 		go func() {
@@ -160,8 +195,10 @@ func DeleteAllRules(token string, apiBase string) int {
 				if recovered := recover(); recovered != nil {
 					results <- removalResult{err: fmt.Errorf("remove worker panic: %v", recovered)}
 				}
+
 				waitGroup.Done()
 			}()
+
 			for ruleID := range jobs {
 				results <- removalResult{err: RemoveRule(token, apiBase, ruleID)}
 			}
@@ -174,9 +211,11 @@ func DeleteAllRules(token string, apiBase string) int {
 				results <- removalResult{err: fmt.Errorf("remove coordinator panic: %v", recovered)}
 			}
 		}()
+
 		for _, ruleID := range existingRuleIDs {
 			jobs <- ruleID
 		}
+
 		close(jobs)
 		waitGroup.Wait()
 		close(results)
@@ -188,13 +227,19 @@ func DeleteAllRules(token string, apiBase string) int {
 			logging.ErrorWithErr("Rule remove failed", result.err)
 			continue
 		}
+
 		index := removedCount.Add(1)
 		logging.Debug(fmt.Sprintf("Removed rule %d/%d", index, total))
 	}
 
 	remainingRuleCount := len(ListRuleIDs(token, apiBase))
 	if remainingRuleCount > 0 {
-		logging.Info(fmt.Sprintf("%d rule(s) still present after deletion. The API may have rejected some removes.", remainingRuleCount))
+		logging.Info(
+			fmt.Sprintf(
+				"%d rule(s) still present after deletion. The API may have rejected some removes.",
+				remainingRuleCount,
+			),
+		)
 	} else {
 		logging.Info(fmt.Sprintf("Removed %d cloud rule(s)", total))
 	}
@@ -202,15 +247,28 @@ func DeleteAllRules(token string, apiBase string) int {
 	if len(removalErrors) > 0 {
 		return total - len(removalErrors)
 	}
+
 	return total
 }
 
 func buildRuleRecord(parsedEntry models.ParsedMessage) models.RuleRecord {
 	return models.RuleRecord{
-		"id":        protobuf.DecodeBytesField(protobuf.GetBytesField(parsedEntry, constants.FieldRuleID), ""),
-		"content":   protobuf.DecodeBytesField(protobuf.GetBytesField(parsedEntry, constants.FieldRuleContent), ""),
-		"title":     protobuf.DecodeBytesField(protobuf.GetBytesField(parsedEntry, constants.FieldRuleTitle), ""),
-		"timestamp": protobuf.DecodeBytesField(protobuf.GetBytesField(parsedEntry, constants.FieldRuleTimestamp), ""),
+		"id": protobuf.DecodeBytesField(
+			protobuf.GetBytesField(parsedEntry, constants.FieldRuleID),
+			"",
+		),
+		"content": protobuf.DecodeBytesField(
+			protobuf.GetBytesField(parsedEntry, constants.FieldRuleContent),
+			"",
+		),
+		"title": protobuf.DecodeBytesField(
+			protobuf.GetBytesField(parsedEntry, constants.FieldRuleTitle),
+			"",
+		),
+		"timestamp": protobuf.DecodeBytesField(
+			protobuf.GetBytesField(parsedEntry, constants.FieldRuleTimestamp),
+			"",
+		),
 	}
 }
 
@@ -220,17 +278,22 @@ func CollectRawRuleMessages(parsedResponse models.ParsedMessage) [][]byte {
 	if !hasRules {
 		return nil
 	}
+
 	if rawRule.Kind == models.ParsedValueBytes {
 		return [][]byte{rawRule.Bytes}
 	}
+
 	if rawRule.Kind != models.ParsedValueList {
 		return nil
 	}
+
 	rawRuleMessages := [][]byte{}
+
 	for _, value := range rawRule.List {
 		if value.Kind == models.ParsedValueBytes {
 			rawRuleMessages = append(rawRuleMessages, value.Bytes)
 		}
 	}
+
 	return rawRuleMessages
 }

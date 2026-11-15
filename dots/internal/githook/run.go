@@ -21,6 +21,7 @@ func Run(ctx context.Context, args []string, stdin io.Reader, stderr io.Writer) 
 		fmt.Fprintln(stderr, ErrUsage.Error())
 		return ErrUsage
 	}
+
 	var err error
 	switch hookName(args[0]) {
 	case hookReferenceTransaction:
@@ -28,6 +29,7 @@ func Run(ctx context.Context, args []string, stdin io.Reader, stderr io.Writer) 
 		if len(args) > 1 {
 			state = args[1]
 		}
+
 		err = applyReferenceTransaction(ctx, state, stdin)
 	case hookPreCommit, hookPreRebase:
 		err = applyPrimaryWrite(ctx)
@@ -35,6 +37,7 @@ func Run(ctx context.Context, args []string, stdin io.Reader, stderr io.Writer) 
 		fmt.Fprintf(stderr, "unknown git-hook %q\n", args[0])
 		return ErrUsage
 	}
+
 	return writeHookError(stderr, err)
 }
 
@@ -42,10 +45,12 @@ func writeHookError(stderr io.Writer, err error) error {
 	if err == nil {
 		return nil
 	}
+
 	var refusal *RefusalError
 	if errors.As(err, &refusal) {
 		fmt.Fprintln(stderr, refusal.Error())
 		return err
 	}
+
 	return err
 }

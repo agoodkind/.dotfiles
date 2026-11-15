@@ -49,10 +49,12 @@ const (
 // removeCachedBinary deletes the cached dots binary so the next install must
 // rebuild, making the build count observable.
 func removeCachedBinary(ctx context.Context, dotsBinaryDir string) error {
-	if err := os.Remove(filepath.Join(dotsBinaryDir, "dots")); err != nil && !errors.Is(err, os.ErrNotExist) {
+	if err := os.Remove(filepath.Join(dotsBinaryDir, "dots")); err != nil &&
+		!errors.Is(err, os.ErrNotExist) {
 		slog.ErrorContext(ctx, "removing cached dots binary", "err", err)
 		return fmt.Errorf("removing cached dots binary: %w", err)
 	}
+
 	return nil
 }
 
@@ -65,21 +67,26 @@ func seedStaleGo(ctx context.Context, env []string) error {
 	if goLocalRoot == "" {
 		err := errors.New("GO_LOCAL_ROOT missing from smoke env")
 		slog.ErrorContext(ctx, "seeding stale go", "err", err)
+
 		return err
 	}
+
 	goBinary := filepath.Join(goLocalRoot, "bin", "go")
 	if err := os.MkdirAll(filepath.Dir(goBinary), 0o755); err != nil {
 		slog.ErrorContext(ctx, "creating stale go dir", "err", err)
 		return fmt.Errorf("creating stale go dir: %w", err)
 	}
+
 	if err := os.WriteFile(goBinary, []byte(staleGoStub), 0o600); err != nil {
 		slog.ErrorContext(ctx, "writing stale go stub", "err", err)
 		return fmt.Errorf("writing stale go stub: %w", err)
 	}
+
 	if err := os.Chmod(goBinary, 0o755); err != nil {
 		slog.ErrorContext(ctx, "making stale go stub executable", "err", err)
 		return fmt.Errorf("making stale go stub executable: %w", err)
 	}
+
 	return nil
 }
 
@@ -96,39 +103,53 @@ func appendComment(ctx context.Context, path string, comment string) error {
 		slog.ErrorContext(ctx, "appending to file", "path", path, "err", err)
 		return fmt.Errorf("appending to %s: %w", path, err)
 	}
+
 	return nil
 }
 
 // LockSmoke holds the shared lock briefly while an install runs, asserting the
 // install waits for the lock and then builds exactly once.
-func LockSmoke(ctx context.Context, repoRoot, dotsBinaryDir, lockFile string, env []string, timeout time.Duration) error {
+func LockSmoke(
+	ctx context.Context,
+	repoRoot string,
+	dotsBinaryDir string,
+	lockFile string,
+	env []string,
+	timeout time.Duration,
+) error {
 	slog.InfoContext(ctx, "running lock smoke")
 	if err := removeCachedBinary(ctx, dotsBinaryDir); err != nil {
 		return err
 	}
+
 	released, err := HoldBuildLockFor(lockFile, 2*time.Second)
 	if err != nil {
 		slog.ErrorContext(ctx, "holding build lock", "err", err)
 		return fmt.Errorf("holding build lock: %w", err)
 	}
+
 	output, err := RunInstall(ctx, repoRoot, env, timeout, "--strict")
 	<-released
 	if err != nil {
 		slog.ErrorContext(ctx, "lock install run", "err", err)
 		return fmt.Errorf("lock install run: %w", err)
 	}
+
 	if err := AssertStrictInstallOutput(output); err != nil {
 		slog.ErrorContext(ctx, "lock install strict output", "err", err)
 		return fmt.Errorf("lock install strict output: %w", err)
 	}
+
 	if err := AssertContains(output, "dots: waiting for lock"); err != nil {
 		slog.ErrorContext(ctx, "lock wait message", "err", err)
 		return fmt.Errorf("lock wait message: %w", err)
 	}
+
 	if err := AssertBuildCount(output, 1); err != nil {
 		slog.ErrorContext(ctx, "lock install build count", "err", err)
 		return fmt.Errorf("lock install build count: %w", err)
 	}
+
 	return nil
 }
 
@@ -140,35 +161,51 @@ func LockSmoke(ctx context.Context, repoRoot, dotsBinaryDir, lockFile string, en
 // "timed out" and zero-build-count assertions fail. Wall-clock timing is
 // intentionally not asserted because CI's go-run fallback recompile makes it
 // flaky.
-func LockTimeoutSmoke(ctx context.Context, repoRoot, dotsBinaryDir, lockFile string, env []string, timeout time.Duration) error {
+func LockTimeoutSmoke(
+	ctx context.Context,
+	repoRoot string,
+	dotsBinaryDir string,
+	lockFile string,
+	env []string,
+	timeout time.Duration,
+) error {
 	slog.InfoContext(ctx, "running lock-timeout smoke")
 	if err := removeCachedBinary(ctx, dotsBinaryDir); err != nil {
 		return err
 	}
+
 	released, err := HoldBuildLockFor(lockFile, lockTimeoutHold)
 	if err != nil {
 		slog.ErrorContext(ctx, "holding build lock", "err", err)
 		return fmt.Errorf("holding build lock: %w", err)
 	}
-	waitEnv := append(append([]string{}, env...), fmt.Sprintf("DOTS_BUILD_LOCK_WAIT_SECONDS=%d", lockTimeoutWaitSeconds))
+
+	waitEnv := append(
+		append([]string{}, env...),
+		fmt.Sprintf("DOTS_BUILD_LOCK_WAIT_SECONDS=%d", lockTimeoutWaitSeconds),
+	)
 	output, runErr := RunInstall(ctx, repoRoot, waitEnv, timeout, "--strict")
 	<-released
 	if runErr != nil {
 		slog.ErrorContext(ctx, "lock-timeout install run", "err", runErr)
 		return fmt.Errorf("lock-timeout install run: %w", runErr)
 	}
+
 	if err := AssertContains(output, "waiting for lock"); err != nil {
 		slog.ErrorContext(ctx, "lock-timeout wait message", "err", err)
 		return fmt.Errorf("lock-timeout wait message: %w", err)
 	}
+
 	if err := AssertContains(output, "timed out"); err != nil {
 		slog.ErrorContext(ctx, "lock-timeout give-up message", "err", err)
 		return fmt.Errorf("lock-timeout give-up message: %w", err)
 	}
+
 	if err := AssertBuildCount(output, 0); err != nil {
 		slog.ErrorContext(ctx, "lock-timeout build count", "err", err)
 		return fmt.Errorf("lock-timeout build count: %w", err)
 	}
+
 	return nil
 }
 
@@ -177,31 +214,43 @@ func LockTimeoutSmoke(ctx context.Context, repoRoot, dotsBinaryDir, lockFile str
 // the host state that wedged vault: an old Go left from an earlier bootstrap
 // against a go.mod whose floor has since advanced. Against the prior bootstrap
 // the stale Go is reused and the build fails, so the install run errors here.
-func StaleGoUpgradeSmoke(ctx context.Context, repoRoot, dotsBinaryDir string, env []string, timeout time.Duration) error {
+func StaleGoUpgradeSmoke(
+	ctx context.Context,
+	repoRoot string,
+	dotsBinaryDir string,
+	env []string,
+	timeout time.Duration,
+) error {
 	slog.InfoContext(ctx, "running stale-go upgrade smoke")
 	if err := seedStaleGo(ctx, env); err != nil {
 		return err
 	}
+
 	if err := removeCachedBinary(ctx, dotsBinaryDir); err != nil {
 		return err
 	}
+
 	output, err := RunInstall(ctx, repoRoot, env, timeout, "--strict")
 	if err != nil {
 		slog.ErrorContext(ctx, "stale-go upgrade install run", "err", err)
 		return fmt.Errorf("stale-go upgrade install run: %w", err)
 	}
+
 	if err := AssertContains(output, "does not satisfy go.mod"); err != nil {
 		slog.ErrorContext(ctx, "stale-go upgrade message", "err", err)
 		return fmt.Errorf("stale-go upgrade message: %w", err)
 	}
+
 	if err := AssertBuildCount(output, 1); err != nil {
 		slog.ErrorContext(ctx, "stale-go upgrade build count", "err", err)
 		return fmt.Errorf("stale-go upgrade build count: %w", err)
 	}
+
 	if err := AssertStrictInstallOutput(output); err != nil {
 		slog.ErrorContext(ctx, "stale-go upgrade strict output", "err", err)
 		return fmt.Errorf("stale-go upgrade strict output: %w", err)
 	}
+
 	return nil
 }
 
@@ -210,74 +259,119 @@ func StaleGoUpgradeSmoke(ctx context.Context, repoRoot, dotsBinaryDir string, en
 // The unlocked install raced the rm -rf and extract of GO_LOCAL_ROOT and on vault
 // clobbered a freshly downloaded 1.26 back to 1.22; under the shared lock the
 // install waits, then upgrades and builds once.
-func InstallRaceSmoke(ctx context.Context, repoRoot, dotsBinaryDir, lockFile string, env []string, timeout time.Duration) error {
+func InstallRaceSmoke(
+	ctx context.Context,
+	repoRoot string,
+	dotsBinaryDir string,
+	lockFile string,
+	env []string,
+	timeout time.Duration,
+) error {
 	slog.InfoContext(ctx, "running install-race smoke")
 	if err := seedStaleGo(ctx, env); err != nil {
 		return err
 	}
+
 	if err := removeCachedBinary(ctx, dotsBinaryDir); err != nil {
 		return err
 	}
+
 	released, err := HoldBuildLockFor(lockFile, 2*time.Second)
 	if err != nil {
 		slog.ErrorContext(ctx, "holding build lock", "err", err)
 		return fmt.Errorf("holding build lock: %w", err)
 	}
+
 	output, err := RunInstall(ctx, repoRoot, env, timeout, "--strict")
 	<-released
 	if err != nil {
 		slog.ErrorContext(ctx, "install-race install run", "err", err)
 		return fmt.Errorf("install-race install run: %w", err)
 	}
+
 	if err := AssertContains(output, "dots: waiting for lock"); err != nil {
 		slog.ErrorContext(ctx, "install-race expected the install to wait for the lock", "err", err)
 		return fmt.Errorf("install-race expected the install to wait for the lock: %w", err)
 	}
+
 	if err := AssertContains(output, "does not satisfy go.mod"); err != nil {
 		slog.ErrorContext(ctx, "install-race upgrade message", "err", err)
 		return fmt.Errorf("install-race upgrade message: %w", err)
 	}
+
 	if err := AssertBuildCount(output, 1); err != nil {
 		slog.ErrorContext(ctx, "install-race build count", "err", err)
 		return fmt.Errorf("install-race build count: %w", err)
 	}
+
 	if err := AssertStrictInstallOutput(output); err != nil {
 		slog.ErrorContext(ctx, "install-race strict output", "err", err)
 		return fmt.Errorf("install-race strict output: %w", err)
 	}
+
 	return nil
 }
 
 // StalenessSmoke proves the go-list build-input hash: editing a runtime-read
 // config file does NOT rebuild (it is not a compiled input), while editing a
 // compiled .go file DOES. configRelPath and goRelPath are relative to repoRoot.
-func StalenessSmoke(ctx context.Context, repoRoot, configRelPath, goRelPath string, env []string, timeout time.Duration) error {
+func StalenessSmoke(
+	ctx context.Context,
+	repoRoot string,
+	configRelPath string,
+	goRelPath string,
+	env []string,
+	timeout time.Duration,
+) error {
 	slog.InfoContext(ctx, "running staleness smoke")
 
-	if err := appendComment(ctx, filepath.Join(repoRoot, configRelPath), "\n# smoke: config edit must not rebuild\n"); err != nil {
+	if err := appendComment(
+		ctx,
+		filepath.Join(repoRoot, configRelPath),
+		"\n# smoke: config edit must not rebuild\n",
+	); err != nil {
 		return err
 	}
+
 	configOutput, err := RunInstall(ctx, repoRoot, env, timeout, "--strict")
 	if err != nil {
 		slog.ErrorContext(ctx, "staleness config-edit install run", "err", err)
 		return fmt.Errorf("staleness config-edit install run: %w", err)
 	}
+
 	if err := AssertBuildCount(configOutput, 0); err != nil {
 		slog.ErrorContext(ctx, "config edit must not rebuild", "path", configRelPath, "err", err)
-		return fmt.Errorf("editing %s rebuilt dots, but runtime config is not a build input: %w", configRelPath, err)
+
+		return fmt.Errorf(
+			"editing %s rebuilt dots, but runtime config is not a build input: %w",
+			configRelPath,
+			err,
+		)
 	}
 
-	if err := appendComment(ctx, filepath.Join(repoRoot, goRelPath), "\n// smoke: source edit must rebuild\n"); err != nil {
+	if err := appendComment(
+		ctx,
+		filepath.Join(repoRoot, goRelPath),
+		"\n// smoke: source edit must rebuild\n",
+	); err != nil {
 		return err
 	}
+
 	goOutput, err := RunInstall(ctx, repoRoot, env, timeout, "--strict")
 	if err != nil {
 		slog.ErrorContext(ctx, "staleness go-edit install run", "err", err)
 		return fmt.Errorf("staleness go-edit install run: %w", err)
 	}
+
 	if err := AssertBuildCount(goOutput, 1); err != nil {
 		slog.ErrorContext(ctx, "source edit must rebuild", "path", goRelPath, "err", err)
-		return fmt.Errorf("editing %s did not rebuild dots, but compiled sources are build inputs: %w", goRelPath, err)
+
+		return fmt.Errorf(
+			"editing %s did not rebuild dots, but compiled sources are build inputs: %w",
+			goRelPath,
+			err,
+		)
 	}
+
 	return nil
 }

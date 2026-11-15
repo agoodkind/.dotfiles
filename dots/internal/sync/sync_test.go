@@ -32,15 +32,19 @@ func TestRunExitsWhenSyncLockIsHeld(t *testing.T) {
 	if err := syscall.Flock(int(lockFile.Fd()), syscall.LOCK_EX); err != nil {
 		t.Fatalf("holding sync lock: %v", err)
 	}
+
 	defer syscall.Flock(int(lockFile.Fd()), syscall.LOCK_UN)
 
-	err = Run(context.Background(), Options{
-		QuickMode:      true,
-		SkipGit:        true,
-		SkipNetwork:    true,
-		SkipCursorSync: true,
-		UseDefaults:    true,
-	})
+	err = Run(
+		context.Background(),
+		Options{
+			QuickMode:      true,
+			SkipGit:        true,
+			SkipNetwork:    true,
+			SkipCursorSync: true,
+			UseDefaults:    true,
+		},
+	)
 	if err != nil {
 		t.Fatalf("Run returned error while sync lock was held: %v", err)
 	}
@@ -49,10 +53,12 @@ func TestRunExitsWhenSyncLockIsHeld(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading sync log: %v", err)
 	}
+
 	logContent := string(logBytes)
 	if !strings.Contains(logContent, "sync already running, exiting") {
 		t.Fatalf("sync log did not contain lock skip message:\n%s", logContent)
 	}
+
 	if strings.Contains(logContent, "Dotfiles sync started") {
 		t.Fatalf("sync log entered main sync pipeline while lock was held:\n%s", logContent)
 	}

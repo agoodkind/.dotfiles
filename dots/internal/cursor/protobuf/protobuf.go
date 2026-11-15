@@ -9,17 +9,24 @@ import (
 // EncodeVarint encodes an integer as a protobuf varint byte sequence.
 func EncodeVarint(value int) []byte {
 	encodedBytes := []byte{}
+
 	remainingValue := value
 	for remainingValue > constants.VarintDataMask {
-		byteVal := min((remainingValue&constants.VarintDataMask)|constants.VarintContinuationBit, 255)
+		byteVal := min(
+			(remainingValue&constants.VarintDataMask)|constants.VarintContinuationBit,
+			255,
+		)
 		if byteVal < 0 || byteVal > 255 {
 			byteVal = 255
 		}
+
 		encodedBytes = append(encodedBytes, byte(byteVal))
 		remainingValue >>= 7
 	}
+
 	finalByte := min(remainingValue&constants.VarintDataMask, 255)
 	encodedBytes = append(encodedBytes, byte(finalByte))
+
 	return encodedBytes
 }
 
@@ -27,6 +34,7 @@ func EncodeVarint(value int) []byte {
 func ReadVarint(data []byte, position int) (int, int) {
 	decodedValue := 0
 	shiftCount := 0
+
 	cursorPosition := position
 	for cursorPosition < len(data) {
 		currentByte := data[cursorPosition]
@@ -35,8 +43,10 @@ func ReadVarint(data []byte, position int) (int, int) {
 		if currentByte&constants.VarintContinuationBit == 0 {
 			break
 		}
+
 		shiftCount += 7
 	}
+
 	return decodedValue, cursorPosition
 }
 
@@ -44,7 +54,11 @@ func ReadVarint(data []byte, position int) (int, int) {
 func EncodeBytesField(fieldNumber int, value string) []byte {
 	payloadBytes := []byte(value)
 	fieldTag := (fieldNumber << 3) | constants.WireTypeLength
-	return append(append(EncodeVarint(fieldTag), EncodeVarint(len(payloadBytes))...), payloadBytes...)
+
+	return append(
+		append(EncodeVarint(fieldTag), EncodeVarint(len(payloadBytes))...),
+		payloadBytes...,
+	)
 }
 
 // ParseField parses a single protobuf field from data starting at position.
@@ -63,12 +77,14 @@ func ParseField(data []byte, position int) models.ParsedField {
 			Ok:           false,
 		}
 	}
+
 	tag, nextPosition := ReadVarint(data, position)
 	fieldNumber := tag >> 3
 	wireType := tag & constants.WireTypeMask
 
 	if wireType == constants.WireTypeVarint {
 		integerValue, endPosition := ReadVarint(data, nextPosition)
+
 		return models.ParsedField{
 			FieldNumber: fieldNumber,
 			WireType:    wireType,
@@ -89,6 +105,7 @@ func ParseField(data []byte, position int) models.ParsedField {
 		payloadEnd := payloadStart + payloadLength
 		payloadEnd = min(payloadEnd, len(data))
 		bytesValue := data[payloadStart:payloadEnd]
+
 		return models.ParsedField{
 			FieldNumber: fieldNumber,
 			WireType:    wireType,
@@ -124,11 +141,14 @@ func AddFieldValue(fields models.ParsedMessage, fieldNumber int, value models.Pa
 		fields[fieldNumber] = value
 		return
 	}
+
 	if existingValue.Kind == models.ParsedValueList {
 		existingValue.List = append(existingValue.List, value)
 		fields[fieldNumber] = existingValue
+
 		return
 	}
+
 	fields[fieldNumber] = models.ParsedValue{
 		Kind:    models.ParsedValueList,
 		Integer: 0,
@@ -140,15 +160,18 @@ func AddFieldValue(fields models.ParsedMessage, fieldNumber int, value models.Pa
 // ParseMessage decodes a protobuf byte slice into a ParsedMessage field map.
 func ParseMessage(data []byte) models.ParsedMessage {
 	fields := models.ParsedMessage{}
+
 	cursorPosition := 0
 	for cursorPosition < len(data) {
 		field := ParseField(data, cursorPosition)
 		if !field.Ok || field.Value.Kind == models.ParsedValueInvalid {
 			break
 		}
+
 		AddFieldValue(fields, field.FieldNumber, field.Value)
 		cursorPosition = field.NextPosition
 	}
+
 	return fields
 }
 
@@ -158,6 +181,7 @@ func GetBytesField(fields models.ParsedMessage, fieldNumber int) []byte {
 	if !found || fieldValue.Kind != models.ParsedValueBytes {
 		return nil
 	}
+
 	return fieldValue.Bytes
 }
 
@@ -166,5 +190,6 @@ func DecodeBytesField(value []byte, defaultValue string) string {
 	if value == nil {
 		return defaultValue
 	}
+
 	return string(value)
 }
