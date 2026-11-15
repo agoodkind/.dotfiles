@@ -9,10 +9,7 @@ ZINIT[OPTIMIZE_OUT_DISK_ACCESSES]=1
 
 typeset -ga _PERF_TREE_DEFERRED=()
 
-# Completion widget body for Tab while a zsh-autosuggestions suggestion is
-# showing. It runs the zsh completion that fzf-tab saved as _ftb__main_complete,
-# so fzf does not open. It inserts a single match or the shared prefix of several
-# matches, and it does not print the match list.
+# Runs zsh completion without fzf-tab and without printing the match list.
 function _dotfiles_complete_without_list() {
     local complete_status=0
     _ftb__main_complete "$@" || complete_status=$?
@@ -23,9 +20,7 @@ function _dotfiles_complete_without_list() {
     return $complete_status
 }
 
-# Tab: without a suggestion, run fzf-tab-complete. With a suggestion
-# (POSTDISPLAY is the grayed-out text), let zsh completion insert what it can,
-# and accept the suggestion only when completion did not change the line.
+# Accepts the autosuggestion only when completion cannot change the line.
 function _dotfiles_tab_complete_or_accept() {
     if [[ -z "$POSTDISPLAY" ]]; then
         zle fzf-tab-complete
@@ -38,10 +33,30 @@ function _dotfiles_tab_complete_or_accept() {
         zle autosuggest-accept
         return
     fi
-    # zsh-autosuggestions does not wrap widgets that start with an underscore,
-    # so replace the outdated suggestion here.
+    # zsh-autosuggestions does not wrap widgets that start with an underscore.
     POSTDISPLAY=
     zle autosuggest-fetch
+}
+
+# Offers every known host in fzf when the typed host has at most one match.
+function _dotfiles_hosts_or_all() {
+    # Plain zsh completion would replace the typed host with the shared prefix.
+    if ((! IN_FZF_TAB)); then
+        _dotfiles_hosts_original "$@"
+        return
+    fi
+
+    local -a host_matches
+    _dotfiles_hosts_original -O host_matches "$@"
+    if ((${#host_matches} > 1)); then
+        _dotfiles_hosts_original "$@"
+        return
+    fi
+
+    local PREFIX='' SUFFIX=''
+    _dotfiles_hosts_original "$@"
+    # fzf-tab skips its menu when an unambiguous prefix exists unless list has force.
+    compstate[list]+=' force'
 }
 
 function _ready_mark() {
@@ -79,8 +94,8 @@ function _load_tier1() {
     _ready_mark 2 compinit
 
     # Accept widgets for zsh-autosuggestions. forward-char / vi-forward-char make
-    # Right Arrow accept the grayed-out suggestion. Tab stays a completion key.
-    # Set BEFORE the plugin loads so its single bind pass picks this up.
+    # Right Arrow accept the grayed-out suggestion. Set BEFORE the plugin loads so
+    # its single bind pass picks this up.
     typeset -ga ZSH_AUTOSUGGEST_ACCEPT_WIDGETS=(
         forward-char
         end-of-line
@@ -111,9 +126,7 @@ function _load_tier2() {
     if (($+commands[fzf] != 0)); then
         source <(fzf --zsh)
     fi
-    # fzf --zsh binds Tab to fzf-completion, so bind Tab after sourcing it.
-    # fzf-tab-complete runs standard zsh completion first and opens fzf only when
-    # several matches remain after zsh inserts the shared prefix.
+    # fzf --zsh binds Tab, so bind Tab after sourcing it.
     zle -C _dotfiles_complete_without_list .complete-word _dotfiles_complete_without_list
     zle -N _dotfiles_tab_complete_or_accept
     bindkey -M emacs '^I' _dotfiles_tab_complete_or_accept
@@ -131,6 +144,13 @@ function _load_tier2() {
     zstyle ":completion:*" menu no
     # Complete on an empty command line. zsh inserts a literal tab by default.
     zstyle ":completion:*" insert-tab false
+    # Complete IP addresses from known_hosts. zsh drops them by default.
+    zstyle ":completion:*:hosts" use-ip true
+    if ((! $+functions[_dotfiles_hosts_original])); then
+        autoload +X -Uz _hosts
+        functions[_dotfiles_hosts_original]=$functions[_hosts]
+        functions[_hosts]=$functions[_dotfiles_hosts_or_all]
+    fi
 
     if (($+commands[gcp] != 0)); then
         unalias gcp 2>/dev/null
