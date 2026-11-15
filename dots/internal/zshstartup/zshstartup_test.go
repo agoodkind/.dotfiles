@@ -147,8 +147,8 @@ _load_tier2
 _require_function _dotfiles_zsh_syntax_loaded
 _require_function _dotfiles_fzf_tab_loaded
 _require_function _dotfiles_fzf_tab_source_loaded
-_require_value "emacs tab widget" "_dotfiles_tab_accept_or_complete" "$(_bound_widget emacs)"
-_require_value "viins tab widget" "_dotfiles_tab_accept_or_complete" "$(_bound_widget viins)"
+_require_value "emacs tab widget" "fzf-tab-complete" "$(_bound_widget emacs)"
+_require_value "viins tab widget" "fzf-tab-complete" "$(_bound_widget viins)"
 
 _load_tier3
 _require_function _dotfiles_zsh_completions_loaded

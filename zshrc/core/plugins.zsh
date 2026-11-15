@@ -9,20 +9,6 @@ ZINIT[OPTIMIZE_OUT_DISK_ACCESSES]=1
 
 typeset -ga _PERF_TREE_DEFERRED=()
 
-# Tab or Right Arrow: accept the zsh-autosuggestion if one is showing; Tab alone
-# falls through to the fzf-tab completion menu when there is no suggestion.
-# POSTDISPLAY is set by zsh-autosuggestions to the grayed-out suggestion text.
-# The Tab widget and bindkey lines are installed in tier 2, after fzf-tab has
-# registered fzf-tab-complete. Right Arrow is wired via ZSH_AUTOSUGGEST_ACCEPT_WIDGETS
-# when the plugin loads in tier 1.
-function _dotfiles_tab_accept_or_complete() {
-    if [[ -n "$POSTDISPLAY" ]]; then
-        zle autosuggest-accept
-    else
-        zle fzf-tab-complete
-    fi
-}
-
 function _ready_mark() {
     local mark_depth=$1 mark_label=$2 mark_tag=${3:-}
     local mark_now=$EPOCHREALTIME
@@ -58,8 +44,8 @@ function _load_tier1() {
     _ready_mark 2 compinit
 
     # Accept widgets for zsh-autosuggestions. forward-char / vi-forward-char make
-    # Right Arrow accept the grayed-out suggestion (same as Tab when one is
-    # showing). Set BEFORE the plugin loads so its single bind pass picks this up.
+    # Right Arrow accept the grayed-out suggestion. Tab stays a completion key.
+    # Set BEFORE the plugin loads so its single bind pass picks this up.
     typeset -ga ZSH_AUTOSUGGEST_ACCEPT_WIDGETS=(
         forward-char
         end-of-line
@@ -90,10 +76,11 @@ function _load_tier2() {
     if (($+commands[fzf] != 0)); then
         source <(fzf --zsh)
     fi
-    # Install the Tab widget after fzf-tab has registered fzf-tab-complete.
-    zle -N _dotfiles_tab_accept_or_complete
-    bindkey -M emacs '^I' _dotfiles_tab_accept_or_complete
-    bindkey -M viins '^I' _dotfiles_tab_accept_or_complete
+    # fzf --zsh binds Tab to fzf-completion, so bind Tab back to fzf-tab-complete.
+    # fzf-tab-complete runs standard zsh completion first and opens fzf only when
+    # several matches remain after zsh inserts the shared prefix.
+    bindkey -M emacs '^I' fzf-tab-complete
+    bindkey -M viins '^I' fzf-tab-complete
     _ready_mark 2 fzf-tab
 
     # shellcheck disable=SC2016
