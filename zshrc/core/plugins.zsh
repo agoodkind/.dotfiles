@@ -9,6 +9,41 @@ ZINIT[OPTIMIZE_OUT_DISK_ACCESSES]=1
 
 typeset -ga _PERF_TREE_DEFERRED=()
 
+# Completion widget body for Tab while a zsh-autosuggestions suggestion is
+# showing. It runs the zsh completion that fzf-tab saved as _ftb__main_complete,
+# so fzf does not open. It inserts a single match or the shared prefix of several
+# matches, and it does not print the match list.
+function _dotfiles_complete_without_list() {
+    local complete_status=0
+    _ftb__main_complete "$@" || complete_status=$?
+    compstate[list]=''
+    if ((compstate[nmatches] > 1)); then
+        compstate[insert]=unambiguous
+    fi
+    return $complete_status
+}
+
+# Tab: without a suggestion, run fzf-tab-complete. With a suggestion
+# (POSTDISPLAY is the grayed-out text), let zsh completion insert what it can,
+# and accept the suggestion only when completion did not change the line.
+function _dotfiles_tab_complete_or_accept() {
+    if [[ -z "$POSTDISPLAY" ]]; then
+        zle fzf-tab-complete
+        return
+    fi
+
+    local buffer_before=$BUFFER
+    zle _dotfiles_complete_without_list
+    if [[ "$BUFFER" == "$buffer_before" ]]; then
+        zle autosuggest-accept
+        return
+    fi
+    # zsh-autosuggestions does not wrap widgets that start with an underscore,
+    # so replace the outdated suggestion here.
+    POSTDISPLAY=
+    zle autosuggest-fetch
+}
+
 function _ready_mark() {
     local mark_depth=$1 mark_label=$2 mark_tag=${3:-}
     local mark_now=$EPOCHREALTIME
@@ -76,11 +111,13 @@ function _load_tier2() {
     if (($+commands[fzf] != 0)); then
         source <(fzf --zsh)
     fi
-    # fzf --zsh binds Tab to fzf-completion, so bind Tab back to fzf-tab-complete.
+    # fzf --zsh binds Tab to fzf-completion, so bind Tab after sourcing it.
     # fzf-tab-complete runs standard zsh completion first and opens fzf only when
     # several matches remain after zsh inserts the shared prefix.
-    bindkey -M emacs '^I' fzf-tab-complete
-    bindkey -M viins '^I' fzf-tab-complete
+    zle -C _dotfiles_complete_without_list .complete-word _dotfiles_complete_without_list
+    zle -N _dotfiles_tab_complete_or_accept
+    bindkey -M emacs '^I' _dotfiles_tab_complete_or_accept
+    bindkey -M viins '^I' _dotfiles_tab_complete_or_accept
     _ready_mark 2 fzf-tab
 
     # shellcheck disable=SC2016
