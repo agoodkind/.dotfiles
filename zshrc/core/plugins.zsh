@@ -92,6 +92,8 @@ function _load_tier2() {
     _zsplit_colon "$LS_COLORS"
     zstyle ":completion:*" list-colors "${_ZSH_ARR[@]}"
     zstyle ":completion:*" menu no
+    # Complete on an empty command line. zsh inserts a literal tab by default.
+    zstyle ":completion:*" insert-tab false
 
     if (($+commands[gcp] != 0)); then
         unalias gcp 2>/dev/null
