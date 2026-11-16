@@ -1,0 +1,241 @@
+---
+name: draft-tack-ticket
+description: Run the /draft-tack-ticket command workflow from the dotfiles agent command library when the user explicitly asks for /draft-tack-ticket or mentions this command by name.
+---
+
+# Draft Tack Work Item
+
+Draft a Tack ticket with the Tack MCP. Read
+`tack_getting_started` once per session before any other Tack
+tool, then use the tools and inputs that guide names for each step below.
+Show a draft first. Ask the user whether to create the ticket in Tack. Do not
+create until the user says yes.
+
+Use the Ask Questions tool at every decision point.
+
+## Ticket prose
+
+Write the name and description to the `make-readable` standard.
+
+- Put the main point first.
+- Use short complete sentences with concrete subjects and verbs.
+- Every sentence needs a subject and a verb.
+- Do not use fragments or telegraphic shorthand.
+- Remove narration, filler, repetition, and unasked recommendations.
+- Keep only details the assignee needs to do the work.
+- Use bullets only when bullets make the description easier to scan.
+- If a bullet is a sentence, it must still be a complete sentence.
+
+**Bad** (fragments):
+
+> Short terse. Saying something.
+
+**Good** (short but complete):
+
+> Coordinate with Acme Inc. to verify the Accounting events populate in relative order.
+
+Brief means fewer sentences. Brief does not mean broken sentences.
+
+## Links
+
+Every ticket must include relevant links.
+
+External URLs go in the issue description. Parent epics use the parent or
+epic scope input from `tack_getting_started`. Related Tack tickets use the
+relationship tool from that guide after creation. Do not embed relationship
+metadata in the description body.
+
+Example:
+
+> Move both `rate_limit.v1.yaml` and `rate_limit.v2.yaml` from `gateway/` to
+> `edge_config/` per Alex's request. Remove the v1 file after the freeze ends.
+>
+> Design doc: [link]
+> Related PR: [link]
+
+Do not create a ticket without at least one supporting link unless the user
+opts out.
+
+| Link type | Where it goes |
+| --- | --- |
+| Slack, PR, Figma, Datadog, Confluence | Description on create |
+| Epic | Parent or epic scope on create |
+| Blocks, relates, duplicates, other Tack tickets | Relationship tool after creation |
+
+**Bad** (relationship metadata in the body):
+
+```
+Epic: XYZ
+Relates: ZYA
+Blocks: ABC
+```
+
+**Good** (ticket reference in prose when it reads naturally):
+
+> After the work in PROJ-65, migrate the remaining rate limit files from
+> `gateway/` to `edge_config/`.
+
+## Description shape
+
+Body structure and detail level are guidelines. They are not strict templates.
+
+Use context to choose the shape of the description. Look at the conversation,
+sibling tickets, the type of work, and how much orientation the assignee needs.
+The examples below are common patterns. Adapt them or combine them when the
+situation calls for something different.
+
+## Task (default)
+
+A Task describes concrete work for an engineer.
+
+The task may name systems, repos, and files. Do not prescribe exact
+implementation steps.
+
+Match the `[Prefix]` naming convention from sibling tickets under the same
+parent epic.
+
+When work splits into multiple Tasks, ask which naming style fits.
+
+**Repo-scoped** names work when the task maps to specific repos or layers:
+
+- `[Prefix] [Web] Do X`
+- `[Prefix] [API] Do Y`
+- `[Prefix] [sample-web-assets] Add assets for Z`
+
+**General** names work when the task is cross-cutting or not tied to one repo:
+
+- `[Prefix] Do X`
+- `[Prefix] Investigate Y`
+- `[Prefix] Create Z in the docs site`
+
+## Bug
+
+A Bug report usually has three sections.
+
+- **Steps to reproduce**
+- **Observed behavior**
+- **Expected behavior**
+
+Do not add technical analysis, root cause guesses, or proposed fixes unless the
+user asks for them.
+
+A short Bug description may use one or two complete sentences plus an external
+link for a known flaky test. A customer-facing defect may need a full multi-step
+repro.
+
+## Detail patterns
+
+Pick a pattern from context. Patterns may blend when the work needs more than
+one shape.
+
+### Brief
+
+Use a few complete sentences. Bullets are fine when each bullet is a full
+sentence. This pattern fits small, obvious tasks.
+
+Example:
+
+> - Coordinate with Docs on the changelog event timing.
+> - Verify the changelog event populates correctly before the freeze.
+
+### Standard
+
+Use a short paragraph of prose with external links. This pattern fits most work.
+
+See the example in the Links section above.
+
+### Detailed
+
+Use sections such as Context and What needs to happen. This pattern fits
+cross-team work or work that needs significant orientation. External links may
+appear at the end of the description or inline where they read naturally.
+
+Example:
+
+> ## Context
+> This work unblocks the rollout because the rate limit files still live under
+> `gateway/`.
+>
+> ## What needs to happen
+> 1. Move `rate_limit.v1.yaml` to `edge_config/`.
+> 2. Move `rate_limit.v2.yaml` to `edge_config/`.
+> 3. Remove the v1 file after the freeze ends.
+>
+> Design doc: [link]
+> Related PR: [link]
+
+## Rules
+
+- Create an issue with the create tool from `tack_getting_started`. Tack does
+  not use Jira issue types. Default the work framing to Task. For a Bug, keep
+  the Bug description shape and ask whether to attach a `Bug` label with the
+  relationship tool from that guide.
+- Match sibling ticket naming under the parent epic. Tickets in the same
+  initiative usually share a bracket prefix such as `[Feature Launch]`.
+- Do not assign anyone unless the user provides a member. Assignment uses the
+  relationship tool from `tack_getting_started` after creation.
+- Pass the parent or epic scope when the request includes an epic. Otherwise
+  pass exactly one scope input from `tack_getting_started`.
+- Put the description body in properties under the description property name
+  from the property-defs step in `tack_getting_started`.
+- On tool errors, follow the response `Next step` line rather than retrying the
+  same call. If create still fails, output the ticket details for manual
+  creation.
+
+## Flow
+
+### Step 1: Mode and context
+
+Ask the user:
+
+- Task or Bug?
+- Parent epic? Pre-fill from context when context already includes it.
+- Project, if there is no epic?
+- Related or blocking Tack tickets?
+
+Resolve the workspace with the workspace list tool from `tack_getting_started`
+(ask when more than one workspace is visible).
+
+### Step 2: Description shape
+
+Decide the description length, sections, and tone from context. Look at sibling
+tickets and the detail patterns above. Ask the user only when the shape is
+ambiguous.
+
+### Step 3: Draft
+
+Look up sibling tickets with the issue list tool from `tack_getting_started`
+under the parent epic or project. Match their naming convention. Show the user:
+
+- Name with naming prefix
+- Description in `make-readable` prose with external links in the body
+- Parent epic or other scope reference for create
+- Tack ticket relationships to add after creation
+
+### Step 4: Review draft
+
+Ask whether the draft looks good or needs edits. Iterate until the user is
+satisfied.
+
+### Step 5: Ask to create
+
+Ask whether the user wants to create the ticket in Tack.
+
+If the user says no, stop and leave the draft for them to copy or edit.
+
+If the user says yes, continue to Step 6.
+
+### Step 6: Create
+
+After the user says yes, create the issue with the create tool from
+`tack_getting_started`. Pass workspace, name, description properties, and
+parent or other scope using the inputs that guide defines.
+
+### Step 7: Tack ticket relationships
+
+Add each relationship from Step 1 with the relationship tool from
+`tack_getting_started`.
+
+### Step 8: Done
+
+Return the printed reference from the create response.
