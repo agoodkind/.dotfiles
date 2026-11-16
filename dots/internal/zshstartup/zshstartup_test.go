@@ -134,14 +134,6 @@ source "$DOTDOTFILES/zshrc/core/plugins.zsh"
 
 _load_tier1
 _require_function _zsh_autosuggest_start
-if [[ -z ${ZSH_AUTOSUGGEST_ACCEPT_WIDGETS[(r)forward-char]} ]]; then
-    print -r -- "forward-char is missing from ZSH_AUTOSUGGEST_ACCEPT_WIDGETS"
-    exit 1
-fi
-if [[ -z ${ZSH_AUTOSUGGEST_ACCEPT_WIDGETS[(r)vi-forward-char]} ]]; then
-    print -r -- "vi-forward-char is missing from ZSH_AUTOSUGGEST_ACCEPT_WIDGETS"
-    exit 1
-fi
 
 _load_tier2
 _require_function _dotfiles_zsh_syntax_loaded

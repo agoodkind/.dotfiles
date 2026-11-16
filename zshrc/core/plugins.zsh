@@ -93,13 +93,11 @@ function _load_tier1() {
     zicdreplay
     _ready_mark 2 compinit
 
-    # Accept widgets for zsh-autosuggestions. forward-char / vi-forward-char make
-    # Right Arrow accept the grayed-out suggestion. Set BEFORE the plugin loads so
-    # its single bind pass picks this up.
+    # Accept widgets for zsh-autosuggestions without forward-char and
+    # vi-forward-char, so Right Arrow does not accept the suggestion. Set BEFORE
+    # the plugin loads so its single bind pass picks this up.
     typeset -ga ZSH_AUTOSUGGEST_ACCEPT_WIDGETS=(
-        forward-char
         end-of-line
-        vi-forward-char
         vi-end-of-line
         vi-add-eol
     )
