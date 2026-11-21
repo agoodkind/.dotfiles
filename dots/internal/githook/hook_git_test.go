@@ -658,8 +658,8 @@ func TestNativePreCommitChainsHooksOnce(t *testing.T) {
 	homeHook := filepath.Join(os.Getenv("HOME"), ".git-hooks", "pre-commit")
 	commonHook := filepath.Join(commonDir, "hooks", "pre-commit")
 	worktreeHook := filepath.Join(gitDir, "hooks", "pre-commit")
-	pwd, err := exec.LookPath("pwd")
-	if err != nil {
+	fixtureHook := filepath.Join(t.TempDir(), "print-worktree")
+	if err := os.WriteFile(fixtureHook, []byte("#!/bin/sh\npwd\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 
@@ -668,7 +668,7 @@ func TestNativePreCommitChainsHooksOnce(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := os.Symlink(pwd, hook); err != nil {
+		if err := os.Symlink(fixtureHook, hook); err != nil {
 			t.Fatal(err)
 		}
 	}
