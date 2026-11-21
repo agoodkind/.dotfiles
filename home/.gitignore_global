@@ -19,3 +19,4 @@ target/
 build/
 .derived_data
 .worktrees
+**/.claude/settings.local.json

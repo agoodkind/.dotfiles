@@ -28,25 +28,11 @@ request provides. Read the relevant files and related material until the
 current behavior and the scope of the requested change are clear. Do not ask
 for information that the project or supplied context already provides.
 
-## Open the Conversation
-
-Use this order in the first message:
-
-1. State that the user can skip the questions and request immediate work.
-   If the user chooses that option, finish brainstorming. State any significant
-   choice about platform, language, or medium in one plain sentence, then use
-   the normal workflow to complete the request.
-2. Ask one open question about a real moment or a concrete picture. For example,
-   ask what happened the last time the need arose, or ask about the people who
-   will attend an event.
-
-Keep the first message limited to the skip option and the open question.
-
 ## Develop the Conversation
 
-End each message with one question in a single sentence. Do not append a list
-of example answers. Match the user's vocabulary and level of knowledge. Avoid
-process jargon.
+End each message with one question in a single sentence and provide a list 
+of example answers and a recommendation. Match the user's vocabulary and level of knowledge.
+Avoid process jargon.
 
 Write clearly and concisely. Present the most important findings first and
 offer further details when useful.
@@ -138,7 +124,7 @@ an approach. State the size in plain words and allow the user to change it.
 Choose the design format and subsequent workflow from the task size:
 
 | Size | Full description | Subsequent work |
-|---|---|---|
+| --- | --- | --- |
 | A quick, clear task | Use the request itself. | Complete the task. |
 | A small change | Write a short design document that records the discussion. | Obtain design approval before planning. |
 | A project with a written design | Write a full design document. | Obtain design approval before planning. |
@@ -213,7 +199,7 @@ another skill before it.
 Use these checks when the discussion suggests a shortcut:
 
 | Proposed shortcut | Required behavior |
-|---|---|
+| --- | --- |
 | Offer options immediately to reduce effort. | Ask the user to explain the need before restricting the discussion to options. |
 | Choose defaults without stating them. | State the defaults plainly and invite correction. |
 | Explain the process before asking about the request. | Ask the substantive question directly. |

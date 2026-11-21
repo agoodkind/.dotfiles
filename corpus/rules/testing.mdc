@@ -11,8 +11,8 @@ Write a new automated test when the change adds or changes observable runtime be
 
 Do not add a test when direct validation completely proves the requested change. Documentation, comments, formatting, metadata, generated output, and mechanical refactors usually need inspection, generation, linting, compilation, or an existing relevant test instead of a new test.
 
-When a new test is necessary, write the smallest end-to-end test that enters through a public boundary, runs the production path under review, and asserts an outcome visible to a user, caller, operator, or downstream system.
+When a new test is necessary, write the smallest test that runs the production path under review, and optionally asserts an outcome visible to a user, caller, operator, or downstream system.
 
-Strongly prefer real dependencies through the public boundary. Temporary databases, temporary directories, and local servers are valid. Strongly avoid replacing dependencies with mocks, stubs, spies, test doubles, or recorded responses.
+In addition to regular tests, add real dependencies through the public boundary where feasible without excessive machinery. Such as temporary databases, temporary directories, and local servers.
 
 Delete tests for removed behavior. Delete or rewrite tests that would still pass when the protected behavior is broken. Do not add static content checks, fixture-only snapshots, or tests that duplicate compiler and linter guarantees.
