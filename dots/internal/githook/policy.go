@@ -2,22 +2,27 @@ package githook
 
 import (
 	"context"
+	"errors"
 	"io"
 )
 
-const preparingState = "preparing"
+const (
+	preparingState = "preparing"
+	preparedState  = "prepared"
+)
+
+var errUnknownCheckout = errors.New("cannot identify the worktree for the proposed HEAD change")
 
 func applyReferenceTransaction(ctx context.Context, state string, stdin io.Reader) error {
-	if state != preparingState {
+	if state != preparingState && state != preparedState {
 		return nil
 	}
 
-	if !harnessActive() {
+	if state == preparingState && !harnessActive() {
 		return nil
 	}
 
-	layout := inspectRepo(ctx)
-	if !layout.ready {
+	if state == preparedState && !checkoutHarnessActive() {
 		return nil
 	}
 
@@ -26,95 +31,63 @@ func applyReferenceTransaction(ctx context.Context, state string, stdin io.Reade
 		return err
 	}
 
-	return applyRefUpdates(ctx, layout, updates)
-}
-
-func applyRefUpdates(ctx context.Context, layout repoLayout, updates []refUpdate) error {
-	headOld := ""
-	headNew := ""
-
 	for _, update := range updates {
-		switch {
-		case update.refName == headRef:
-			headOld = update.oldValue
-			headNew = update.newValue
-		case isStashRef(update.refName):
+		if state == preparingState && isStashRef(update.refName) {
+			layout := inspectRepo(ctx)
 			if layout.primary && primaryMutationsBlocked(ctx) {
 				return refuse(msgPrimaryStash, hintPrimaryStash)
 			}
 		}
-	}
 
-	if headNew == "" {
-		return nil
-	}
+		if state == preparedState && update.refName == headRef {
+			layout := inspectRepo(ctx)
+			if !layout.ready {
+				return errUnknownCheckout
+			}
 
-	return applyHeadUpdate(ctx, layout, headOld, headNew)
-}
-
-func applyHeadUpdate(ctx context.Context, layout repoLayout, headOld string, headNew string) error {
-	target, symbolic := branchFromSymbolicValue(headNew)
-	if symbolic {
-		if layout.primary && worktreeHeadSetup(ctx) {
-			return nil
+			if err := applyHeadUpdate(ctx, layout, update); err != nil {
+				return err
+			}
 		}
-
-		return applySymbolicHead(ctx, layout, target)
-	}
-
-	if !isZeroOID(headOld) {
-		return nil
-	}
-
-	if layout.primary && worktreeHeadSetup(ctx) {
-		return nil
-	}
-
-	onDefault, err := currentBranchIsDefault(ctx)
-	if err != nil {
-		return err
-	}
-
-	if layout.primary && onDefault {
-		if !currentHeadExists(ctx) {
-			return nil
-		}
-
-		if pinnedSubmoduleCheckout(ctx, headNew) {
-			return nil
-		}
-
-		return refuse(msgLeaveDefault, hintLeaveDefault)
 	}
 
 	return nil
 }
 
-func currentHeadExists(ctx context.Context) bool {
-	_, err := gitOutput(ctx, "rev-parse", "--verify", "HEAD")
-	return err == nil
+func applyHeadUpdate(ctx context.Context, layout repoLayout, update refUpdate) error {
+	if worktreeHeadSetup(ctx) {
+		return nil
+	}
+
+	target, symbolic := branchFromSymbolicValue(update.newValue)
+	if symbolic {
+		return applySymbolicHead(ctx, layout, target)
+	}
+
+	if !layout.primary || pinnedSubmoduleCheckout(ctx, update.newValue) {
+		return nil
+	}
+
+	if update.oldValue == update.newValue && !isZeroOID(update.newValue) {
+		if _, attached := currentBranch(ctx); !attached {
+			return nil
+		}
+	}
+
+	return refuse(msgLeaveDefault, hintLeaveDefault)
 }
 
 func applySymbolicHead(ctx context.Context, layout repoLayout, target string) error {
-	targetIsDefault, err := isDefaultBranch(ctx, target)
+	defaultName, err := checkoutDefaultBranch(ctx)
 	if err != nil {
 		return err
 	}
 
-	if layout.primary {
-		onDefault, defaultErr := currentBranchIsDefault(ctx)
-		if defaultErr != nil {
-			return defaultErr
-		}
-
-		if onDefault && !targetIsDefault {
-			return refuse(msgLeaveDefault, hintLeaveDefault)
-		}
-
-		return nil
+	if layout.primary && target != defaultName {
+		return refuse(msgLeaveDefault, hintLeaveDefault)
 	}
 
-	if targetIsDefault {
+	if !layout.primary && target == defaultName {
 		return refuse(msgLinkedDefault, hintLinkedDefault)
 	}
 

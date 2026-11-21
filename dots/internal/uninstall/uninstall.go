@@ -18,6 +18,7 @@ import (
 	"goodkind.io/.dotfiles/internal/runner"
 	"goodkind.io/.dotfiles/internal/sync/common"
 	"goodkind.io/.dotfiles/internal/sync/compilation"
+	"goodkind.io/.dotfiles/internal/sync/workspace"
 	"goodkind.io/.dotfiles/internal/telemetry"
 )
 
@@ -112,6 +113,12 @@ func runUninstall(ctx context.Context, purgePackages bool) error {
 	removeCodexConfig(ctx, dotfiles)
 	removeGeminiConfig(ctx)
 	removeCopilotConfig(ctx, dotfiles)
+	if err := workspace.RemoveNativePreCommit(ctx); err != nil {
+		slog.WarnContext(ctx, "cannot unregister the native pre-commit hook", "err", err)
+
+		return fmt.Errorf("cannot unregister the native pre-commit hook: %w", err)
+	}
+
 	removeGitConfig(ctx, dotfiles)
 	removeCacheFiles()
 	removeHushlogin(ctx)

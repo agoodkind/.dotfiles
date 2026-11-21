@@ -2,7 +2,6 @@ package githook
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 )
@@ -31,25 +30,17 @@ func Run(ctx context.Context, args []string, stdin io.Reader, stderr io.Writer) 
 		}
 
 		err = applyReferenceTransaction(ctx, state, stdin)
-	case hookPreCommit, hookPreRebase:
+	case hookPreCommit:
+		err = runPreCommit(ctx, args[1:], stdin, stderr)
+	case hookPreRebase:
 		err = applyPrimaryWrite(ctx)
 	default:
 		fmt.Fprintf(stderr, "unknown git-hook %q\n", args[0])
 		return ErrUsage
 	}
 
-	return writeHookError(stderr, err)
-}
-
-func writeHookError(stderr io.Writer, err error) error {
-	if err == nil {
-		return nil
-	}
-
-	var refusal *RefusalError
-	if errors.As(err, &refusal) {
-		fmt.Fprintln(stderr, refusal.Error())
-		return err
+	if err != nil {
+		fmt.Fprintln(stderr, err)
 	}
 
 	return err

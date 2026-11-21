@@ -1,7 +1,12 @@
 package githook
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"sync"
 	"testing"
 )
 
@@ -44,9 +49,74 @@ func TestHarnessActiveClaudeWithCursorStillActive(t *testing.T) {
 	}
 }
 
+var (
+	dotsBuildRoot  string
+	dotsBuildEnv   []string
+	dotsGoEnv      map[string]string
+	buildDotsOnce  sync.Once
+	buildDotsError error
+)
+
+func dotsBinaryForTest(t *testing.T) string {
+	t.Helper()
+	binary := filepath.Join(dotsBuildRoot, "dots")
+	buildDotsOnce.Do(func() {
+		command := exec.Command("go", "env", "-json", "GOCACHE", "GOMODCACHE", "GOPATH")
+		command.Env = dotsBuildEnv
+		output, err := command.Output()
+		if err != nil {
+			buildDotsError = fmt.Errorf("read Go paths: %w", err)
+
+			return
+		}
+
+		if err := json.Unmarshal(output, &dotsGoEnv); err != nil {
+			buildDotsError = err
+
+			return
+		}
+
+		command = exec.Command("go", "build", "-buildvcs=false", "-o", binary, "./cmd/dots")
+		command.Dir = filepath.Join(sourceRootForTest(), "dots")
+		command.Env = dotsBuildEnv
+		if output, err := command.CombinedOutput(); err != nil {
+			buildDotsError = fmt.Errorf("build dots: %w\n%s", err, output)
+		}
+	})
+	if buildDotsError != nil {
+		t.Fatal(buildDotsError)
+	}
+
+	return binary
+}
+
 func TestMain(m *testing.M) {
-	_ = os.Unsetenv("CLAUDECODE")
-	_ = os.Unsetenv("CODEX_CI")
-	_ = os.Unsetenv("GEMINI_CLI")
-	os.Exit(m.Run())
+	for _, name := range []string{
+		"CLAUDECODE",
+		"CODEX_CI",
+		"GEMINI_CLI",
+		"CURSOR_AGENT",
+		"DOTFILES_AGENT_SHELL",
+	} {
+		if err := os.Unsetenv(name); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	}
+
+	var err error
+	dotsBuildRoot, err = os.MkdirTemp("", "dots-hook-tests-")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	dotsBuildEnv = os.Environ()
+	code := m.Run()
+	if err := os.RemoveAll(dotsBuildRoot); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	os.Exit(code)
 }

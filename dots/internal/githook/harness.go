@@ -2,6 +2,10 @@ package githook
 
 import "os"
 
+func checkoutHarnessActive() bool {
+	return harnessActive() || os.Getenv("CURSOR_AGENT") != ""
+}
+
 // harnessActive reports whether the current process is a non-Cursor agent CLI.
 // Names match home/.zshenv except CURSOR_AGENT, which is omitted so Cursor may
 // do git work on the primary checkout. DOTFILES_AGENT_SHELL is ignored because

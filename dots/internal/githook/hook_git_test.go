@@ -9,52 +9,67 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 )
 
 func TestHumanCheckoutFeatureOnPrimaryIsAllowed(t *testing.T) {
-	repo := newSeededRepo(t, "main")
+	repo := newSeededRepo(t)
 	enableGlobalHooks(t, repo)
-	if _, err := runGitResult(t, repo, "switch", "-c", "feature"); err != nil {
-		t.Fatalf("human checkout feature: %v", err)
-	}
+	mustGit(t, repo, "switch", "-c", "feature")
+	assertGitOutput(t, repo, "feature", "branch", "--show-current")
 }
 
-func TestCursorOnlyCheckoutFeatureOnPrimaryIsAllowed(t *testing.T) {
-	t.Setenv("CURSOR_AGENT", "1")
-	repo := newSeededRepo(t, "main")
-	enableGlobalHooks(t, repo)
-	if _, err := runGitResult(t, repo, "switch", "-c", "feature"); err != nil {
-		t.Fatalf("Cursor checkout feature: %v", err)
-	}
-}
-
-func TestClaudeFetchAndResetToOriginMainAreAllowed(t *testing.T) {
-	t.Setenv("CLAUDECODE", "1")
-	repo := newSeededRepo(t, "main")
+func TestCursorCheckoutOnPrimaryUsesRemoteDefault(t *testing.T) {
+	repo := newSeededRepo(t)
 	bare := t.TempDir()
-	if _, err := runGitResult(t, bare, "init", "--bare"); err != nil {
-		t.Fatalf("git init --bare: %v", err)
-	}
-
-	if _, err := runGitResult(t, repo, "remote", "add", "origin", bare); err != nil {
-		t.Fatalf("git remote add: %v", err)
-	}
-
-	if _, err := runGitResult(t, repo, "push", "origin", "HEAD:main"); err != nil {
-		t.Fatalf("git push origin: %v", err)
-	}
+	mustGit(t, bare, "init", "--bare", "--initial-branch=trunk")
+	mustGit(t, repo, "branch", "trunk")
+	mustGit(t, repo, "remote", "add", "origin", bare)
+	mustGit(t, repo, "push", "origin", "trunk")
+	mustGit(t, repo, "remote", "set-head", "origin", "trunk")
+	mustGit(t, repo, "switch", "-c", "feature")
 
 	enableGlobalHooks(t, repo)
-	if _, err := runGitResult(t, repo, "fetch", "origin"); err != nil {
-		t.Fatalf("git fetch origin: %v", err)
-	}
+	t.Setenv("CURSOR_AGENT", "1")
+	assertGitRefusal(t, repo, msgLeaveDefault, "switch", "main")
+	assertGitOutput(t, repo, "feature", "branch", "--show-current")
+	mustGit(t, repo, "switch", "trunk")
+	assertGitRefusal(t, repo, msgLeaveDefault, "switch", "feature")
+	assertGitOutput(t, repo, "trunk", "branch", "--show-current")
+}
 
-	output, err := runGitResult(t, repo, "reset", "--hard", "origin/main")
-	if err != nil {
-		t.Fatalf("git reset --hard origin/main: %v\n%s", err, output)
-	}
+func TestClaudeCommitFetchAndResetToOriginMainAreAllowed(t *testing.T) {
+	root := newGitFixture(t)
+	origin := newOriginRepo(t, root, "upstream")
+	repo := filepath.Join(root, "clone")
+	mustGit(t, root, "clone", origin.bare, repo)
+	remoteHead := commitToOrigin(t, origin.work, "remote change")
+
+	enableAgentPolicy(t, root)
+	mustGit(t, repo, "commit", "--allow-empty", "-m", "local change")
+	assertGitOutput(t, repo, "local change", "log", "-1", "--format=%s")
+	mustGit(t, repo, "fetch", "origin")
+	mustGit(t, repo, "reset", "--hard", "origin/main")
+	assertGitOutput(t, repo, remoteHead, "rev-parse", "HEAD")
+	assertGitOutput(t, repo, "main", "branch", "--show-current")
+}
+
+func TestCursorCanAddWorktreeButCannotSwitchItToDefault(t *testing.T) {
+	repo := newSeededRepo(t)
+	mustGit(t, repo, "switch", "-c", "existing-feature")
+	before := gitOutputForTest(t, repo, "rev-parse", "HEAD")
+	linked := filepath.Join(filepath.Dir(repo), "linked")
+	enableGlobalHooks(t, repo)
+	t.Setenv("CURSOR_AGENT", "1")
+
+	mustGit(t, repo, "worktree", "add", "-b", "linked-feature", linked)
+	assertGitOutput(t, repo, "existing-feature", "branch", "--show-current")
+	assertGitOutput(t, linked, "linked-feature", "branch", "--show-current")
+	assertGitOutput(t, linked, before, "rev-parse", "HEAD")
+	assertGitRefusal(t, linked, msgLinkedDefault, "switch", "main")
+	assertGitOutput(t, linked, "linked-feature", "branch", "--show-current")
 }
 
 func TestClaudeSubmoduleUpdateChecksOutPinnedCommit(t *testing.T) {
@@ -205,66 +220,116 @@ func TestRunUnknownHookReturnsUsage(t *testing.T) {
 	}
 }
 
-func newSeededRepo(t *testing.T, branch string) string {
+func newGitFixture(t *testing.T) string {
 	t.Helper()
-	t.Setenv("GIT_EMAIL_RULES", filepath.Join(t.TempDir(), "missing-email-rules"))
-	root := t.TempDir()
-	emptyHooks := filepath.Join(root, ".empty-hooks")
-	if err := os.MkdirAll(emptyHooks, 0o755); err != nil {
-		t.Fatalf("creating empty hooks dir: %v", err)
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatalf("resolve Git fixture: %v", err)
 	}
 
-	if _, err := runGitResult(
-		t,
-		root,
-		"-c",
-		"core.hooksPath="+emptyHooks,
-		"init",
-		"--initial-branch="+branch,
-	); err != nil {
-		t.Fatalf("git init: %v", err)
+	home := filepath.Join(root, "home")
+	if err := os.Mkdir(home, 0o700); err != nil {
+		t.Fatal(err)
 	}
 
-	if _, err := runGitResult(t, root, "config", "core.hooksPath", emptyHooks); err != nil {
-		t.Fatalf("config hooksPath: %v", err)
+	if config := os.Getenv("GH_CONFIG_DIR"); config == "" {
+		if configHome := os.Getenv("XDG_CONFIG_HOME"); configHome != "" {
+			t.Setenv("GH_CONFIG_DIR", filepath.Join(configHome, "gh"))
+		} else {
+			t.Setenv("GH_CONFIG_DIR", filepath.Join(os.Getenv("HOME"), ".config", "gh"))
+		}
 	}
 
-	if _, err := runGitResult(t, root, "config", "user.name", "Test User"); err != nil {
-		t.Fatalf("config user.name: %v", err)
-	}
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(root, "gitconfig"))
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	t.Setenv("GIT_CONFIG_COUNT", "0")
+	t.Setenv("GIT_EMAIL_RULES", filepath.Join(root, "missing-email-rules"))
+	t.Setenv("DOTFILES_LOG", filepath.Join(root, "dots.log"))
+	t.Setenv("DOTDOTFILES", filepath.Join(home, ".dotfiles"))
 
-	if _, err := runGitResult(t, root, "config", "user.email", "test@example.invalid"); err != nil {
-		t.Fatalf("config user.email: %v", err)
-	}
-
-	if _, err := runGitResult(t, root, "config", "commit.gpgsign", "false"); err != nil {
-		t.Fatalf("config commit.gpgsign: %v", err)
-	}
-
-	if _, err := runGitResult(t, root, "commit", "--allow-empty", "-m", "seed"); err != nil {
-		t.Fatalf("seed commit: %v", err)
+	for _, setting := range [][2]string{
+		{"user.name", "Test User"},
+		{"user.email", "test@example.invalid"},
+		{"commit.gpgsign", "false"},
+		{"init.defaultBranch", "main"},
+		{"protocol.file.allow", "always"},
+		{"core.hooksPath", filepath.Join(root, "no-hooks")},
+	} {
+		mustGit(t, root, "config", "--global", setting[0], setting[1])
 	}
 
 	return root
 }
 
+func newSeededRepo(t *testing.T) string {
+	t.Helper()
+	root := newGitFixture(t)
+	repo := filepath.Join(root, "repo")
+	mustGit(t, root, "init", "--quiet", repo)
+	mustGit(t, repo, "commit", "--allow-empty", "-m", "seed")
+
+	return repo
+}
+
 func enableGlobalHooks(t *testing.T, repo string) {
 	t.Helper()
-	if _, err := runGitResult(t, repo, "config", "core.hooksPath", globalHooksDir(t)); err != nil {
-		t.Fatalf("enabling global hooks: %v", err)
+	root := filepath.Dir(os.Getenv("GIT_CONFIG_GLOBAL"))
+	binary := dotsBinaryForTest(t)
+	mustGit(t, repo, "config", "--global", "core.hooksPath", referenceHooksForTest(t))
+	mustGit(t, repo, "config", "--global", "goodkind.protectedBranchEnforcePath", root)
+	t.Setenv("DOTS_BINARY", binary)
+	t.Setenv("DOTS_BINARY_DIR", filepath.Dir(binary))
+	t.Setenv("DOTS_BUILD_HASH_FILE", filepath.Join(filepath.Dir(binary), ".dots.build.hash"))
+	t.Setenv("DOTS_BUILD_LOCK_FILE", filepath.Join(filepath.Dir(binary), ".dots.build.lock"))
+	t.Setenv("GO_LOCAL_ROOT", filepath.Join(root, "go"))
+
+	for key, value := range dotsGoEnv {
+		t.Setenv(key, value)
 	}
+}
+
+func enableNativePreCommit(t *testing.T, repo string, dependencies ...string) {
+	t.Helper()
+	binary := dotsBinaryForTest(t)
+	bin := t.TempDir()
+
+	for _, executable := range append([]string{"git"}, dependencies...) {
+		path, err := exec.LookPath(executable)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := os.Symlink(path, filepath.Join(bin, executable)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	quote := func(value string) string {
+		return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
+	}
+	command := "PATH=" + quote(bin) + " " + quote(binary) + " git-hook pre-commit"
+	mustGit(t, repo, "config", "--global", "hook.dotfiles-pre-commit.event", "pre-commit")
+	mustGit(t, repo, "config", "--global", "hook.dotfiles-pre-commit.command", command)
+	output, err := runGitResult(t, repo, "hook", "list", "-z", "pre-commit")
+	if err != nil && strings.Contains(output, "usage: git hook") {
+		t.Skip("Git 2.54 or newer is required for configured hooks")
+	}
+
+	if err != nil || !slices.Contains(strings.Split(output, "\x00"), "dotfiles-pre-commit") {
+		t.Fatalf("Git did not select the configured pre-commit hook: %v\n%s", err, output)
+	}
+}
+
+func sourceRootForTest() string {
+	_, file, _, _ := runtime.Caller(0)
+	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", ".."))
 }
 
 func globalHooksDir(t *testing.T) string {
 	t.Helper()
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-
-	root := filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", ".."))
-
-	return filepath.Join(root, "git-global-hooks")
+	return filepath.Join(sourceRootForTest(), "git-global-hooks")
 }
 
 const (
@@ -280,41 +345,17 @@ type submoduleFixture struct {
 	submoduleBase string
 }
 
-// newSubmoduleFixture builds a clone of a superproject that pins a submodule,
-// which in turn pins a nested submodule. Each submodule origin has a base
-// commit, the pinned commit, and a newer tip on main, so the pin differs from
-// the branch a fresh submodule clone lands on. Git config is isolated from the
-// operator's global config, and no hooks run until enableAgentPolicy.
+// newSubmoduleFixture creates two levels of submodules.
+// Each origin has a base commit, a pinned commit, and a newer tip on main.
 func newSubmoduleFixture(t *testing.T) submoduleFixture {
 	t.Helper()
 	return newSubmoduleFixtureAt(t, submodulePath)
 }
 
-// newSubmoduleFixtureAt builds the newSubmoduleFixture layout with the
-// top-level submodule at path.
+// newSubmoduleFixtureAt uses path for the top-level submodule.
 func newSubmoduleFixtureAt(t *testing.T, path string) submoduleFixture {
 	t.Helper()
-	root, err := filepath.EvalSymlinks(t.TempDir())
-	if err != nil {
-		t.Fatalf("resolving temp root: %v", err)
-	}
-
-	globalConfig := filepath.Join(root, "gitconfig")
-	t.Setenv("GIT_CONFIG_GLOBAL", globalConfig)
-	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
-	t.Setenv("GIT_EMAIL_RULES", filepath.Join(root, "missing-email-rules"))
-	t.Setenv("DOTS_BINARY_DIR", filepath.Join(root, "dots-bin"))
-
-	for _, setting := range [][2]string{
-		{"user.name", "Test User"},
-		{"user.email", "test@example.invalid"},
-		{"commit.gpgsign", "false"},
-		{"init.defaultBranch", "main"},
-		{"protocol.file.allow", "always"},
-		{"core.hooksPath", filepath.Join(root, "no-hooks")},
-	} {
-		mustGit(t, root, "config", "--file", globalConfig, setting[0], setting[1])
-	}
+	root := newGitFixture(t)
 
 	nestedOrigin := newOriginRepo(t, root, "grammar")
 	nestedPin := commitToOrigin(t, nestedOrigin.work, "pin")
@@ -355,8 +396,7 @@ type originRepo struct {
 	base string
 }
 
-// newOriginRepo creates a bare origin and a working clone whose main tracks
-// it, seeded with one pushed base commit.
+// newOriginRepo pushes a base commit and sets main to track origin/main.
 func newOriginRepo(t *testing.T, root string, name string) originRepo {
 	t.Helper()
 	bare := filepath.Join(root, name+".git")
@@ -378,14 +418,46 @@ func commitToOrigin(t *testing.T, work string, message string) string {
 	return gitOutputForTest(t, work, "rev-parse", "HEAD")
 }
 
-// enableAgentPolicy turns on the global hooks and the shell gate for every
-// repository under root, then marks the process as a Claude Code session.
 func enableAgentPolicy(t *testing.T, root string) {
 	t.Helper()
-	globalConfig := os.Getenv("GIT_CONFIG_GLOBAL")
-	mustGit(t, root, "config", "--file", globalConfig, "core.hooksPath", globalHooksDir(t))
-	mustGit(t, root, "config", "--file", globalConfig, "goodkind.protectedBranchEnforcePath", root)
+	enableGlobalHooks(t, root)
+	enableNativePreCommit(t, root)
 	t.Setenv("CLAUDECODE", "1")
+}
+
+func referenceHooksForTest(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	directory := filepath.Join(root, "git-global-hooks")
+	if err := os.Mkdir(directory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, name := range []string{
+		"reference-transaction",
+		"pre-rebase",
+		"chain-hook.sh",
+		"protected-branch-policy.sh",
+		"invoke-dots-git-hook.sh",
+	} {
+		if err := os.Symlink(
+			filepath.Join(globalHooksDir(t), name),
+			filepath.Join(directory, name),
+		); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for _, name := range []string{"config", "dots"} {
+		if err := os.Symlink(
+			filepath.Join(sourceRootForTest(), name),
+			filepath.Join(root, name),
+		); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	return directory
 }
 
 func assertHeadAtGitlink(t *testing.T, superproject string, path string) {
@@ -404,6 +476,21 @@ func assertHeadAtGitlink(t *testing.T, superproject string, path string) {
 	head := gitOutputForTest(t, filepath.Join(superproject, path), "rev-parse", "HEAD")
 	if head != fields[1] {
 		t.Fatalf("%s HEAD = %s, want gitlink %s", path, head, fields[1])
+	}
+}
+
+func assertGitOutput(t *testing.T, dir, want string, args ...string) {
+	t.Helper()
+	if got := gitOutputForTest(t, dir, args...); got != want {
+		t.Fatalf("git %v = %q, want %q", args, got, want)
+	}
+}
+
+func assertGitRefusal(t *testing.T, dir, message string, args ...string) {
+	t.Helper()
+	output, err := runGitResult(t, dir, args...)
+	if err == nil || !strings.Contains(output, message) {
+		t.Fatalf("git %v error = %v, want refusal %q:\n%s", args, err, message, output)
 	}
 }
 
@@ -440,7 +527,7 @@ func TestClaudePrimaryBranchGuardWithoutUpstream(t *testing.T) {
 		t.Run(
 			strings.Join(operation, " "),
 			func(t *testing.T) {
-				repo := newSeededRepo(t, "main")
+				repo := newSeededRepo(t)
 				mustGit(t, repo, "config", "goodkind.protectedBranchEnforcePath", repo)
 				t.Setenv("CLAUDECODE", "1")
 				enableGlobalHooks(t, repo)
@@ -477,7 +564,7 @@ func TestClaudeUnprotectedPrimaryMutations(t *testing.T) {
 		t.Run(
 			origin,
 			func(t *testing.T) {
-				repo := newSeededRepo(t, "main")
+				repo := newSeededRepo(t)
 				mustGit(t, repo, "config", "goodkind.protectedBranchEnforcePath", repo)
 				if origin != "" {
 					mustGit(t, repo, "remote", "add", "origin", origin)
@@ -485,6 +572,7 @@ func TestClaudeUnprotectedPrimaryMutations(t *testing.T) {
 
 				t.Setenv("CLAUDECODE", "1")
 				enableGlobalHooks(t, repo)
+				enableNativePreCommit(t, repo)
 				output, err := runGitResult(t, repo, "commit", "--allow-empty", "-m", "allowed")
 				if err != nil {
 					t.Fatalf("unprotected commit failed: %v\n%s", err, output)
@@ -511,8 +599,144 @@ func TestClaudeUnprotectedPrimaryMutations(t *testing.T) {
 	}
 }
 
+func TestNativePreCommitIdentityPrecedence(t *testing.T) {
+	repo := newSeededRepo(t)
+	enableNativePreCommit(t, repo)
+	rules := filepath.Join(filepath.Dir(repo), "email-rules")
+	t.Setenv("GIT_EMAIL_RULES", rules)
+	writeTestFile(
+		t,
+		rules,
+		"* fallback@example.invalid Fallback User\n"+
+			repo+" base@example.invalid Base User\n",
+	)
+	writeTestFile(t, rules+".local", repo+" test@example.invalid Test User\n")
+	commit := []string{"commit", "--allow-empty", "-m", "identity test"}
+	mustGit(t, repo, commit...)
+
+	before := gitOutputForTest(t, repo, "rev-parse", "HEAD")
+	mustGit(t, repo, "config", "goodkind.allowedEmail", "configured@example.invalid")
+	mustGit(t, repo, commit...)
+	assertGitOutput(t, repo, before, "rev-parse", "HEAD^")
+
+	before = gitOutputForTest(t, repo, "rev-parse", "HEAD")
+	mustGit(t, repo, "config", "goodkind.allowedName", "Configured User")
+	assertGitRefusal(
+		t,
+		repo,
+		"Allowed Git identity: \"Configured User\" <configured@example.invalid>",
+		commit...,
+	)
+	assertGitOutput(t, repo, before, "rev-parse", "HEAD")
+
+	mustGit(t, repo, "config", "user.email", "configured@example.invalid")
+	mustGit(t, repo, "config", "user.name", "Configured User")
+	mustGit(t, repo, commit...)
+	assertGitOutput(
+		t,
+		repo,
+		"Configured User <configured@example.invalid>",
+		"log",
+		"-1",
+		"--format=%an <%ae>",
+	)
+}
+
+func TestNativePreCommitChainsHooksOnce(t *testing.T) {
+	repo := newSeededRepo(t)
+	enableNativePreCommit(t, repo)
+	linked := filepath.Join(filepath.Dir(repo), "linked")
+	mustGit(t, repo, "worktree", "add", "-b", "feature", linked)
+	commonDir := gitOutputForTest(
+		t,
+		linked,
+		"rev-parse",
+		"--path-format=absolute",
+		"--git-common-dir",
+	)
+	gitDir := gitOutputForTest(t, linked, "rev-parse", "--absolute-git-dir")
+	homeHook := filepath.Join(os.Getenv("HOME"), ".git-hooks", "pre-commit")
+	commonHook := filepath.Join(commonDir, "hooks", "pre-commit")
+	worktreeHook := filepath.Join(gitDir, "hooks", "pre-commit")
+	pwd, err := exec.LookPath("pwd")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, hook := range []string{homeHook, commonHook, worktreeHook} {
+		if err := os.MkdirAll(filepath.Dir(hook), 0o700); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := os.Symlink(pwd, hook); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	commit := []string{"commit", "--allow-empty", "-m", "chaining test"}
+	assertOnce := func() {
+		t.Helper()
+		output, err := runGitResult(t, linked, commit...)
+		if err != nil || strings.Count(output, linked+"\n") != 1 {
+			t.Fatalf("git commit error = %v, want one hook invocation:\n%s", err, output)
+		}
+	}
+	assertOnce()
+	mustGit(t, linked, "config", "core.hooksPath", filepath.Dir(commonHook))
+	assertOnce()
+}
+
+func TestNativePreCommitGitleaksScansStagedContent(t *testing.T) {
+	if _, err := exec.LookPath("gitleaks"); errors.Is(err, exec.ErrNotFound) {
+		t.Skip("Gitleaks is not installed")
+	} else if err != nil {
+		t.Fatal(err)
+	}
+
+	repo := newSeededRepo(t)
+	enableNativePreCommit(t, repo, "gitleaks")
+	writeTestFile(
+		t,
+		filepath.Join(repo, ".gitleaks.toml"),
+		`[[rules]]
+id = 'dotfiles-synthetic-test'
+description = 'The test rule matches a synthetic marker.'
+regex = 'fixture-mark-[0-9]{6}'
+`,
+	)
+	const syntheticMarker = "fixture-mark-804291"
+	fixture := filepath.Join(repo, "fixture.txt")
+	writeTestFile(t, fixture, syntheticMarker+"\n")
+	mustGit(t, repo, "add", "fixture.txt")
+	writeTestFile(t, fixture, "clean content\n")
+	before := gitOutputForTest(t, repo, "rev-parse", "HEAD")
+	commit := []string{"commit", "-m", "scanner test"}
+	output, err := runGitResult(t, repo, commit...)
+	if strings.Contains(output, syntheticMarker) {
+		t.Fatal("Gitleaks printed the synthetic match without redaction")
+	}
+
+	if err == nil || !strings.Contains(output, "leaks found: 1") {
+		t.Fatalf("git commit error = %v, want one Gitleaks finding:\n%s", err, output)
+	}
+
+	assertGitOutput(t, repo, before, "rev-parse", "HEAD")
+
+	mustGit(t, repo, "add", "fixture.txt")
+	writeTestFile(t, fixture, syntheticMarker+"\n")
+	mustGit(t, repo, commit...)
+	assertGitOutput(t, repo, "clean content", "show", "HEAD:fixture.txt")
+}
+
+func writeTestFile(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestProtectionHelperTargets(t *testing.T) {
-	repo := newSeededRepo(t, "main")
+	repo := newSeededRepo(t)
 	file := filepath.Join(repo, "file.txt")
 	if err := os.WriteFile(file, []byte("test\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -557,7 +781,7 @@ func TestProtectionHelperLiveGitHub(t *testing.T) {
 		t.Run(
 			scenario.repository,
 			func(t *testing.T) {
-				repo := newSeededRepo(t, "main")
+				repo := newSeededRepo(t)
 				mustGit(t, repo, "commit", "--allow-empty", "-m", "second")
 				mustGit(
 					t,
@@ -593,59 +817,75 @@ func TestProtectionHelperLiveGitHub(t *testing.T) {
 					)
 				}
 
-				t.Setenv("CLAUDECODE", "1")
 				enableGlobalHooks(t, repo)
-				before := gitOutputForTest(t, repo, "rev-parse", "HEAD")
-				commitOutput, err := runGitResult(
-					t,
-					repo,
-					"commit",
-					"--allow-empty",
-					"-m",
-					"protection test",
-				)
-				if scenario.protected {
-					if err == nil ||
-						!strings.Contains(commitOutput, "commit blocked on protected branch") {
-						t.Fatalf("protected commit error = %v, output:\n%s", err, commitOutput)
-					}
+				enableNativePreCommit(t, repo, "gh")
 
-					if after := gitOutputForTest(t, repo, "rev-parse", "HEAD"); after != before {
-						t.Fatalf("protected commit changed HEAD from %s to %s", before, after)
-					}
-				} else if err != nil {
-					t.Fatalf("unprotected commit failed: %v\n%s", err, commitOutput)
+				for _, provider := range []struct {
+					name       string
+					marker     string
+					restricted bool
+				}{
+					{name: "human"},
+					{name: "Cursor", marker: "CURSOR_AGENT"},
+					{name: "Claude", marker: "CLAUDECODE", restricted: true},
+					{name: "Codex", marker: "CODEX_CI", restricted: true},
+					{name: "Gemini", marker: "GEMINI_CLI", restricted: true},
+				} {
+					t.Run(
+						provider.name,
+						func(t *testing.T) {
+							if provider.marker != "" {
+								t.Setenv(provider.marker, "1")
+							}
+
+							before := gitOutputForTest(t, repo, "rev-parse", "HEAD")
+							commit := []string{
+								"commit",
+								"--allow-empty",
+								"-m",
+								"protection test for " + provider.name,
+							}
+							if scenario.protected && provider.restricted {
+								assertGitRefusal(
+									t,
+									repo,
+									"commit blocked on protected branch",
+									commit...,
+								)
+								assertGitOutput(t, repo, before, "rev-parse", "HEAD")
+
+								return
+							}
+
+							output, err := runGitResult(t, repo, commit...)
+							if err != nil || strings.Contains(output, "lookup failed") {
+								t.Fatalf("git commit error = %v, output:\n%s", err, output)
+							}
+
+							assertGitOutput(t, repo, before, "rev-parse", "HEAD^")
+						},
+					)
 				}
 
-				for _, operation := range [][]string{
-					{"rebase", "--force-rebase", "HEAD~1"},
-					{"stash", "push", "-m", "protection test"},
-				} {
-					if operation[0] == "stash" {
-						if err := os.WriteFile(
-							filepath.Join(repo, "change.txt"),
-							[]byte("stash\n"),
-							0o600,
-						); err != nil {
-							t.Fatal(err)
-						}
+				t.Setenv("CLAUDECODE", "1")
 
-						mustGit(t, repo, "add", "change.txt")
-					}
+				rebase := []string{"rebase", "--force-rebase", "HEAD~1"}
+				if scenario.protected {
+					assertGitRefusal(t, repo, msgPrimaryWrite, rebase...)
+				} else {
+					assertGitRefusal(t, repo, msgLeaveDefault, rebase...)
+					mustGit(t, repo, "rebase", "--abort")
+				}
 
-					output, err := runGitResult(t, repo, operation...)
-					if scenario.protected {
-						if err == nil || !strings.Contains(output, "agent harness cannot") {
-							t.Fatalf(
-								"protected git %v error = %v, output:\n%s",
-								operation,
-								err,
-								output,
-							)
-						}
-					} else if err != nil {
-						t.Fatalf("unprotected git %v failed: %v\n%s", operation, err, output)
-					}
+				assertGitOutput(t, repo, "main", "branch", "--show-current")
+
+				writeTestFile(t, filepath.Join(repo, "change.txt"), "stash\n")
+				mustGit(t, repo, "add", "change.txt")
+				stash := []string{"stash", "push", "-m", "protection test"}
+				if scenario.protected {
+					assertGitRefusal(t, repo, msgPrimaryStash, stash...)
+				} else {
+					mustGit(t, repo, stash...)
 				}
 			},
 		)

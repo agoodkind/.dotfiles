@@ -12,7 +12,7 @@ cat >"$stdin_file"
 export CHAIN_HOOK_STDIN_FILE="$stdin_file"
 
 state="${1:-}"
-if [[ "$state" == "preparing" ]]; then
+if [[ "$state" == "preparing" || "$state" == "prepared" ]]; then
     "$(dirname "$0")/invoke-dots-git-hook.sh" reference-transaction "$@" <"$stdin_file"
 fi
 

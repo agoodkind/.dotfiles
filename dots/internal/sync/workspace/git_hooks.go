@@ -98,14 +98,14 @@ func UpdateAuthorizedKeys(ctx context.Context, skipNetwork bool, logger *telemet
 		return fmt.Errorf("reading downloaded keys: %w", err)
 	}
 
-	added, err := appendMissingAuthorizedKeys(ctx, homeRoot, existing, downloaded)
+	addedCount, err := appendMissingAuthorizedKeys(ctx, homeRoot, existing, downloaded)
 	if err != nil {
 		slog.WarnContext(ctx, "workspace: appending authorized keys", "err", err)
 
 		return err
 	}
 
-	common.InfoContextf(ctx, logger, "  Added %s authorized key(s)", strconv.Itoa(added))
+	common.InfoContextf(ctx, logger, "  Added %s authorized key(s)", strconv.Itoa(addedCount))
 
 	return nil
 }
@@ -241,7 +241,8 @@ func SyncGitHooks(ctx context.Context, dotfiles string, logger *telemetry.Logger
 	return nil
 }
 
-// SyncGlobalGitHooks configures git to use the global hooks directory.
+// SyncGlobalGitHooks registers the dotfiles pre-commit hook.
+// It verifies that Git selects the configured hook in each repository.
 //
 // Example:
 //
@@ -260,21 +261,7 @@ func SyncGlobalGitHooks(ctx context.Context, dotfiles string, logger *telemetry.
 		return fmt.Errorf("checking global git hooks dir: %w", err)
 	}
 
-	if err := cmdexec.RunWithLogger(
-		ctx,
-		logger,
-		"git",
-		"config",
-		"--global",
-		"core.hooksPath",
-		hooks,
-	); err != nil {
-		slog.WarnContext(ctx, "workspace: setting git global hooks path", "err", err)
-
-		return fmt.Errorf("setting git global hooks path: %w", err)
-	}
-
-	return nil
+	return installNativeGitHooks(ctx, dotfiles, logger)
 }
 
 // CheckGitHooksPath verifies the local git hooks path configuration.

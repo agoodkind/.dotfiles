@@ -6,11 +6,23 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
-	"os/exec"
-	"path/filepath"
+	"net/url"
+	"regexp"
+	"slices"
+	"strings"
 
 	"goodkind.io/.dotfiles/internal/cmdexec"
+)
+
+const protectionLookupFailure = "GitHub pull request protection lookup failed: "
+
+var (
+	githubRepositoryPattern = regexp.MustCompile(`^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$`)
+	errGitHubDefaultBranch  = errors.New("GitHub did not return a default branch")
+	errGitHubOrigin         = errors.New(
+		"origin does not specify a valid GitHub owner and repository",
+	)
+	errGitHubProtection = errors.New("GitHub returned an invalid protection result")
 )
 
 func primaryMutationsBlocked(ctx context.Context) bool {
@@ -31,52 +43,150 @@ func primaryMutationsBlocked(ctx context.Context) bool {
 
 func defaultBranchRequiresPullRequest(ctx context.Context) (bool, error) {
 	slog.DebugContext(ctx, "reading GitHub pull request protection")
-	root := os.Getenv("DOTDOTFILES")
-	if root == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			slog.WarnContext(ctx, "locating dotfiles failed", "err", err)
-			return false, fmt.Errorf("locate dotfiles: %w", err)
-		}
-
-		root = filepath.Join(home, ".dotfiles")
+	repository, err := githubOriginRepository(ctx)
+	if err != nil || repository == "" {
+		return false, err
 	}
 
-	helper := filepath.Join(root, "git-global-hooks", "github-pr-protection.sh")
-	output, err := cmdexec.Output(ctx, helper, ".")
+	output, err := cmdexec.Output(
+		ctx,
+		"gh",
+		"repo",
+		"view",
+		"github.com/"+repository,
+		"--json",
+		"defaultBranchRef",
+	)
 	if err != nil {
-		stderr := ""
-		var exitError *exec.ExitError
-		if errors.As(err, &exitError) {
-			stderr = string(exitError.Stderr)
-		}
-
-		slog.WarnContext(
-			ctx,
-			"GitHub protection helper failed",
-			"helper",
-			helper,
-			"err",
+		return false, fmt.Errorf(
+			protectionLookupFailure+"cannot read the default branch of %s: %w",
+			repository,
 			err,
-			"stderr",
-			stderr,
 		)
-
-		return false, fmt.Errorf("%s: %w: %s", helper, err, stderr)
 	}
 
 	var result struct {
-		Protected *bool `json:"pr_protected"`
+		DefaultBranch struct {
+			Name string `json:"name"`
+		} `json:"defaultBranchRef"`
 	}
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		slog.WarnContext(ctx, "decoding GitHub protection result failed", "err", err)
-		return false, fmt.Errorf("decode GitHub protection result: %w", err)
+		return false, fmt.Errorf(
+			protectionLookupFailure+"cannot read the default branch of %s: %w",
+			repository,
+			err,
+		)
 	}
 
-	if result.Protected == nil {
-		slog.WarnContext(ctx, "GitHub protection result does not include pr_protected")
-		return false, fmt.Errorf("GitHub protection result does not include pr_protected")
+	if result.DefaultBranch.Name == "" {
+		return false, fmt.Errorf(
+			protectionLookupFailure+"%w for %s",
+			errGitHubDefaultBranch,
+			repository,
+		)
 	}
 
-	return *result.Protected, nil
+	return githubBranchRequiresPullRequest(ctx, repository, result.DefaultBranch.Name)
+}
+
+func githubOriginRepository(ctx context.Context) (string, error) {
+	remotes, err := cmdexec.Output(ctx, "git", "remote")
+	if err != nil {
+		return "", fmt.Errorf(protectionLookupFailure+"cannot read Git remotes for .: %w", err)
+	}
+
+	if !slices.Contains(strings.Split(remotes, "\n"), "origin") {
+		return "", nil
+	}
+
+	origin, err := cmdexec.Output(ctx, "git", "remote", "get-url", "origin")
+	if err != nil {
+		return "", fmt.Errorf(protectionLookupFailure+"cannot read the origin URL for .: %w", err)
+	}
+
+	origin = strings.TrimRight(origin, "\n")
+	prefixes := [...]string{
+		"https://github.com/",
+		"http://github.com/",
+		"git@github.com:",
+		"ssh://git@github.com/",
+	}
+
+	for _, prefix := range prefixes {
+		repository, matches := strings.CutPrefix(origin, prefix)
+		if !matches {
+			continue
+		}
+
+		repository = strings.TrimSuffix(strings.TrimSuffix(repository, "/"), ".git")
+		if !githubRepositoryPattern.MatchString(repository) {
+			return "", fmt.Errorf(protectionLookupFailure+"%w", errGitHubOrigin)
+		}
+
+		return repository, nil
+	}
+
+	return "", nil
+}
+
+func githubBranchRequiresPullRequest(ctx context.Context, repository, branch string) (bool, error) {
+	encodedBranch := strings.ReplaceAll(url.QueryEscape(branch), "+", "%20")
+	endpoint := "repos/" + repository + "/rules/branches/" + encodedBranch
+	output, err := cmdexec.Output(
+		ctx,
+		"gh",
+		"api",
+		"--hostname",
+		"github.com",
+		endpoint,
+		"--paginate",
+		"--slurp",
+	)
+	if err != nil {
+		return false, fmt.Errorf(
+			protectionLookupFailure+"cannot read active rules for the default branch of %s: %w",
+			repository,
+			err,
+		)
+	}
+
+	var pages [][]struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal([]byte(output), &pages); err != nil {
+		return false, fmt.Errorf(
+			protectionLookupFailure+"%w for %s: %w",
+			errGitHubProtection,
+			repository,
+			err,
+		)
+	}
+
+	if len(pages) == 0 {
+		return false, fmt.Errorf(
+			protectionLookupFailure+"%w for %s",
+			errGitHubProtection,
+			repository,
+		)
+	}
+
+	protected := false
+
+	for _, page := range pages {
+		if page == nil {
+			return false, fmt.Errorf(
+				protectionLookupFailure+"%w for %s",
+				errGitHubProtection,
+				repository,
+			)
+		}
+
+		for _, rule := range page {
+			if rule.Type == "pull_request" {
+				protected = true
+			}
+		}
+	}
+
+	return protected, nil
 }

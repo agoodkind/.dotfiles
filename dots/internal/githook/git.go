@@ -3,6 +3,7 @@ package githook
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -119,22 +120,29 @@ func defaultBranchNames(ctx context.Context) ([]string, error) {
 	return names, nil
 }
 
-func isDefaultBranch(ctx context.Context, name string) (bool, error) {
-	names, err := defaultBranchNames(ctx)
+var errUnknownDefaultBranch = errors.New(
+	"cannot determine the default branch; set origin/HEAD or configure init.defaultBranch",
+)
+
+func checkoutDefaultBranch(ctx context.Context) (string, error) {
+	const originPrefix = "refs/remotes/origin/"
+	head, err := cmdexec.OutputTrimmed(ctx, "git", "symbolic-ref", "--quiet", originPrefix+"HEAD")
+	if err == nil {
+		if name, ok := strings.CutPrefix(head, originPrefix); ok && name != "" {
+			return name, nil
+		}
+	}
+
+	name, err := readCommitIdentityConfig(ctx, "", "init.defaultBranch")
 	if err != nil {
-		return false, err
+		return "", err
 	}
 
-	return slices.Contains(names, name), nil
-}
-
-func currentBranchIsDefault(ctx context.Context) (bool, error) {
-	name, ok := currentBranch(ctx)
-	if !ok {
-		return false, nil
+	if name == "" {
+		return "", errUnknownDefaultBranch
 	}
 
-	return isDefaultBranch(ctx, name)
+	return name, nil
 }
 
 func branchFromSymbolicValue(value string) (string, bool) {
@@ -199,9 +207,8 @@ func pinnedSubmoduleCheckout(ctx context.Context, commit string) bool {
 }
 
 // superprojectGitlink reads the gitlink recorded at path in the superproject
-// index. Git runs hooks with variables such as GIT_DIR that name the
-// submodule, so the command drops every local repository variable to read the
-// superproject instead.
+// index. The command clears the submodule's Git environment before it reads
+// the superproject.
 func superprojectGitlink(ctx context.Context, superproject string, path string) (string, bool) {
 	localVars, err := gitOutput(ctx, "rev-parse", "--local-env-vars")
 	if err != nil {
@@ -269,6 +276,15 @@ func superprojectGitlink(ctx context.Context, superproject string, path string) 
 }
 
 func worktreeHeadSetup(ctx context.Context) bool {
+	currentHead, err := gitOutput(ctx, "rev-parse", "--path-format=absolute", "--git-path", "HEAD")
+	if err != nil {
+		return false
+	}
+
+	if _, err := os.Stat(currentHead + ".lock"); !os.IsNotExist(err) {
+		return false
+	}
+
 	commonDir, err := gitOutput(ctx, "rev-parse", "--path-format=absolute", "--git-common-dir")
 	if err != nil {
 		return false
@@ -290,7 +306,12 @@ func worktreeHeadSetup(ctx context.Context) bool {
 			continue
 		}
 
-		if _, err := os.Stat(filepath.Join(dir, "HEAD")); os.IsNotExist(err) {
+		_, headErr := os.Stat(filepath.Join(dir, "HEAD"))
+		if !os.IsNotExist(headErr) {
+			continue
+		}
+
+		if _, err := os.Stat(filepath.Join(dir, "HEAD.lock")); err == nil {
 			return true
 		}
 	}
