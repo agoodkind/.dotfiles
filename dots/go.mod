@@ -6,12 +6,12 @@ toolchain go1.27.4
 
 require (
 	charm.land/bubbles/v2 v2.2.1
-	charm.land/bubbletea/v2 v2.1.0
-	github.com/moby/moby/api v1.56.1
-	github.com/moby/moby/client v0.6.2
+	charm.land/bubbletea/v2 v2.1.2
+	github.com/moby/moby/api v1.57.0
+	github.com/moby/moby/client v0.6.3
 	github.com/pelletier/go-toml/v2 v2.4.3
-	go.yaml.in/yaml/v3 v3.0.5
-	goodkind.io/gklog v0.4.5
+	go.yaml.in/yaml/v3 v3.0.6
+	goodkind.io/gklog v0.5.0
 )
 
 require (
