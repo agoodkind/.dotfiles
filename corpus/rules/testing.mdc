@@ -1,5 +1,5 @@
 ---
-description: Rules for deciding when to add tests and how to test observable behavior
+description: Rules for deciding when to add tests and how to keep them fast while covering the real path
 applies_to:
   - "**/*"
 always: true
@@ -11,8 +11,10 @@ Write a new automated test when the change adds or changes observable runtime be
 
 Do not add a test when direct validation completely proves the requested change. Documentation, comments, formatting, metadata, generated output, and mechanical refactors usually need inspection, generation, linting, compilation, or an existing relevant test instead of a new test.
 
-When a new test is necessary, write the smallest test that runs the production path under review, and optionally asserts an outcome visible to a user, caller, operator, or downstream system.
+When a new test is necessary, write the smallest test that runs the production code path under review and asserts an outcome visible to a user, caller, operator, or downstream system.
 
-In addition to regular tests, add real dependencies through the public boundary where feasible without excessive machinery. Such as temporary databases, temporary directories, and local servers.
+Inject dependencies at the boundary under test. Replace clocks, timers, sleeps, retries, backoff, and other time-based waits with controllable fakes or stubs. Advance time in the test without waiting. Do not sleep in tests. Do not wait on real network, disk, or process latency when a seam can supply the same inputs and observe the same outputs.
+
+Keep each automated test fast enough that a full related suite stays practical in ordinary local runs. Prefer in-memory fakes, temporary directories only when the production path requires a filesystem, and the thinnest collaborator that still exercises the real control flow. Allow a temporary database or local server only when no injectable seam exists and the suite still finishes quickly.
 
 Delete tests for removed behavior. Delete or rewrite tests that would still pass when the protected behavior is broken. Do not add static content checks, fixture-only snapshots, or tests that duplicate compiler and linter guarantees.
