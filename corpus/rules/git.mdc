@@ -41,9 +41,7 @@ Never switch the main worktree to a branch other than the default branch.
 
 Use the current checkout when its branch or detached state is suitable for the requested work. Otherwise create or reuse a worktree. A worktree required for any repository changes.
 
-Do not create a worktree only to inspect files, history, or diffs.
-
-Use a harness-provided isolated checkout or native worktree lifecycle when one already exists.
+Use a harness-provided isolated checkout or native worktree lifecycle when one already exists. Do not just randomly pick a place for the worktree. Confirm with the user where to create the worktree, or prefer using a temporary directory.
 
 # Worktree and branch cleanup
 
