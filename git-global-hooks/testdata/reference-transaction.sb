@@ -1,0 +1,7 @@
+(version 1)
+(allow default)
+(deny file-write*
+    (require-all
+        (require-not (subpath (param "GIT_DIR")))
+        (require-not (subpath (param "TMPDIR")))
+        (require-not (literal "/dev/null"))))
